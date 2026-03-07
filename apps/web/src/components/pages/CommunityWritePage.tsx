@@ -3,15 +3,18 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import communityService from '@/services/communityService'
+import Editor from '@/components/Editor'
 import { useAuth } from '@/lib/useAuth'
-import { Plus, Trash2, Link as LinkIcon, ImagePlus, Tag, Loader2, ArrowLeft } from 'lucide-react'
+import { Plus, Trash2, Link as LinkIcon, ImagePlus, Tag, Loader2, ArrowLeft, Save } from 'lucide-react'
 
-const CATEGORIES = [
-  { value: 'general',    label: '자유 게시판' },
-  { value: 'bug',        label: '버그 리포트' },
-  { value: 'suggestion', label: '건의 / 개선' },
-  { value: 'review',     label: '게임 리뷰' },
-  { value: 'notice',     label: '공지 (관리자/개발사)' },
+const CHANNELS = [
+  { value: 'general',     label: '일반 질문' },
+  { value: 'dev',         label: '개발 질문' },
+  { value: 'daily',       label: '일상 이야기' },
+  { value: 'game-talk',   label: '게임 이야기' },
+  { value: 'info-share',  label: '정보공유' },
+  { value: 'new-game',    label: '게임 신작' },
+  { value: 'notice',      label: '공지 (관리자/개발사)' },
 ]
 
 export default function CommunityWritePage() {
@@ -22,14 +25,16 @@ export default function CommunityWritePage() {
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [category, setCategory] = useState('general')
+  const [channel, setChannel] = useState('general')
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [links, setLinks] = useState<{ url: string; label: string }[]>([])
   const [images, setImages] = useState<string[]>([])
   const [imageInput, setImageInput] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [tempSaving, setTempSaving] = useState(false)
   const [error, setError] = useState('')
+  const [tempSaveMsg, setTempSaveMsg] = useState('')
 
   useEffect(() => {
     if (!isAuthenticated) { router.push('/login'); return }
@@ -37,7 +42,7 @@ export default function CommunityWritePage() {
       communityService.getPost(id!).then(p => {
         setTitle(p.title)
         setContent(p.content)
-        setCategory(p.category)
+        setChannel(p.channel)
         setTags(p.tags || [])
         setLinks(p.links?.map(l => ({ url: l.url, label: l.label || '' })) || [])
         setImages(p.images || [])
@@ -63,11 +68,11 @@ export default function CommunityWritePage() {
 
   const handleSubmit = async () => {
     if (!title.trim()) { setError('제목을 입력해주세요'); return }
-    if (!content.trim()) { setError('내용을 입력해주세요'); return }
+    if (!content || content === '<p></p>') { setError('내용을 입력해주세요'); return }
     setError('')
     setSubmitting(true)
     try {
-      const payload = { title: title.trim(), content: content.trim(), category, tags, links: links.filter(l=>l.url.trim()), images }
+      const payload = { title: title.trim(), content, channel, tags, links: links.filter(l=>l.url.trim()), images }
       if (isEdit) {
         await communityService.updatePost(id!, payload)
         router.push(`/community/${id}`)
@@ -75,10 +80,26 @@ export default function CommunityWritePage() {
         const post = await communityService.createPost(payload)
         router.push(`/community/${post._id}`)
       }
-    } catch (e: any) {
-      setError(e?.response?.data?.message || '저장 실패')
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } }
+      setError(err?.response?.data?.message || '저장 실패')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleTempSave = async () => {
+    setTempSaving(true)
+    setTempSaveMsg('')
+    try {
+      await communityService.tempSave({ title: title.trim() || '임시저장', content, channel, tags })
+      setTempSaveMsg('임시저장 완료')
+      setTimeout(() => setTempSaveMsg(''), 3000)
+    } catch {
+      setTempSaveMsg('임시저장 실패')
+      setTimeout(() => setTempSaveMsg(''), 3000)
+    } finally {
+      setTempSaving(false)
     }
   }
 
@@ -97,20 +118,18 @@ export default function CommunityWritePage() {
 
           {error && <p className="bg-red-900/30 border border-red-700/40 text-red-300 text-sm px-4 py-3 rounded-xl">{error}</p>}
 
-          {/* 카테고리 */}
           <div>
-            <label className="text-slate-400 text-sm mb-2 block">카테고리</label>
+            <label className="text-slate-400 text-sm mb-2 block">채널</label>
             <div className="flex flex-wrap gap-2">
-              {CATEGORIES.filter(c => c.value !== 'notice' || canWriteNotice).map(c => (
-                <button key={c.value} onClick={() => setCategory(c.value)}
-                  className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${category===c.value?'bg-cyan-600/20 border-cyan-500/40 text-cyan-300':'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white'}`}>
+              {CHANNELS.filter(c => c.value !== 'notice' || canWriteNotice).map(c => (
+                <button key={c.value} onClick={() => setChannel(c.value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${channel===c.value?'bg-cyan-600/20 border-cyan-500/40 text-cyan-300':'border-slate-700 text-slate-400 hover:border-slate-600 hover:text-white'}`}>
                   {c.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* 제목 */}
           <div>
             <label className="text-slate-400 text-sm mb-2 block">제목 <span className="text-red-400">*</span></label>
             <input value={title} onChange={e=>setTitle(e.target.value)} maxLength={200}
@@ -120,18 +139,11 @@ export default function CommunityWritePage() {
             <p className="text-slate-600 text-xs mt-1 text-right">{title.length}/200</p>
           </div>
 
-          {/* 내용 */}
           <div>
             <label className="text-slate-400 text-sm mb-2 block">내용 <span className="text-red-400">*</span></label>
-            <textarea value={content} onChange={e=>setContent(e.target.value)} maxLength={10000}
-              rows={12}
-              placeholder="내용을 입력하세요"
-              className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl resize-none focus:outline-none focus:border-cyan-500 transition-colors"
-            />
-            <p className="text-slate-600 text-xs mt-1 text-right">{content.length}/10000</p>
+            <Editor content={content} onChange={setContent} placeholder="내용을 입력하세요..." />
           </div>
 
-          {/* 이미지 URL */}
           <div>
             <label className="text-slate-400 text-sm mb-2 flex items-center gap-1.5">
               <ImagePlus className="w-4 h-4"/> 이미지 URL ({images.length}/10)
@@ -162,7 +174,6 @@ export default function CommunityWritePage() {
             )}
           </div>
 
-          {/* 하이퍼링크 */}
           <div>
             <label className="text-slate-400 text-sm mb-2 flex items-center gap-1.5">
               <LinkIcon className="w-4 h-4"/> 하이퍼링크
@@ -190,7 +201,6 @@ export default function CommunityWritePage() {
             )}
           </div>
 
-          {/* 태그 */}
           <div>
             <label className="text-slate-400 text-sm mb-2 flex items-center gap-1.5">
               <Tag className="w-4 h-4"/> 태그 ({tags.length}/10)
@@ -218,16 +228,29 @@ export default function CommunityWritePage() {
             )}
           </div>
 
-          {/* 제출 */}
-          <div className="flex justify-end gap-3 pt-2 border-t border-slate-800">
-            <button onClick={() => router.back()} className="px-5 py-2.5 text-sm text-slate-400 border border-slate-700 rounded-xl hover:bg-slate-800 transition-colors">
-              취소
-            </button>
-            <button onClick={handleSubmit} disabled={submitting}
-              className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
-              {submitting && <Loader2 className="w-4 h-4 animate-spin"/>}
-              {isEdit ? '수정 완료' : '게시하기'}
-            </button>
+          <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+            <div className="flex items-center gap-3">
+              {!isEdit && (
+                <button onClick={handleTempSave} disabled={tempSaving}
+                  className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-400 border border-slate-700 rounded-xl hover:bg-slate-800 hover:text-white disabled:opacity-50 transition-colors">
+                  {tempSaving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>}
+                  임시저장
+                </button>
+              )}
+              {tempSaveMsg && (
+                <span className={`text-xs ${tempSaveMsg.includes('실패') ? 'text-red-400' : 'text-green-400'}`}>{tempSaveMsg}</span>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => router.back()} className="px-5 py-2.5 text-sm text-slate-400 border border-slate-700 rounded-xl hover:bg-slate-800 transition-colors">
+                취소
+              </button>
+              <button onClick={handleSubmit} disabled={submitting}
+                className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+                {submitting && <Loader2 className="w-4 h-4 animate-spin"/>}
+                {isEdit ? '수정 완료' : '게시하기'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

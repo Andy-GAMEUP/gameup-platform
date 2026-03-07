@@ -1,22 +1,25 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import communityService, { PostSummary } from '@/services/communityService'
 import { useAuth } from '@/lib/useAuth'
+import { useQuery } from '@tanstack/react-query'
 import {
   Flame, TrendingUp, Clock, ThumbsUp, MessageSquare, Eye,
   Bookmark, Plus, Search, ChevronLeft, ChevronRight,
   Loader2, Star
 } from 'lucide-react'
 
-const CATEGORY_MAP: Record<string, { label: string; color: string }> = {
-  general:    { label: '자유',     color: 'bg-slate-600/50 text-slate-300' },
-  bug:        { label: '버그',     color: 'bg-red-600/30 text-red-300' },
-  suggestion: { label: '건의',     color: 'bg-blue-600/30 text-blue-300' },
-  review:     { label: '리뷰',     color: 'bg-yellow-600/30 text-yellow-300' },
-  notice:     { label: '공지',     color: 'bg-purple-600/30 text-purple-300' },
+const CHANNEL_MAP: Record<string, { label: string; color: string }> = {
+  notice:       { label: '공지사항',    color: 'bg-purple-600/30 text-purple-300' },
+  general:      { label: '일반 질문',   color: 'bg-slate-600/50 text-slate-300' },
+  dev:          { label: '개발 질문',   color: 'bg-blue-600/30 text-blue-300' },
+  daily:        { label: '일상 이야기', color: 'bg-green-600/30 text-green-300' },
+  'game-talk':  { label: '게임 이야기', color: 'bg-yellow-600/30 text-yellow-300' },
+  'info-share': { label: '정보공유',    color: 'bg-cyan-600/30 text-cyan-300' },
+  'new-game':   { label: '게임 신작',   color: 'bg-orange-600/30 text-orange-300' },
 }
 
 const SORT_OPTIONS = [
@@ -30,17 +33,13 @@ export default function CommunityPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [posts, setPosts] = useState<PostSummary[]>([])
-  const [total, setTotal] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<any>(null)
-
   const sort = searchParams.get('sort') || 'latest'
-  const category = searchParams.get('category') || ''
+  const channel = searchParams.get('channel') || ''
   const search = searchParams.get('search') || ''
   const page = Number(searchParams.get('page') || 1)
   const [searchInput, setSearchInput] = useState(search)
+
+  const [stats, setStats] = useState<{ hotPosts?: { _id: string; title: string }[] } | null>(null)
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams)
@@ -50,15 +49,14 @@ export default function CommunityPage() {
     router.push('?' + next.toString())
   }
 
-  const load = useCallback(() => {
-    setLoading(true)
-    communityService.getPosts({ page, limit: 15, sort, category: category || undefined, search: search || undefined })
-      .then(({ posts: p, total: t, totalPages: tp }) => { setPosts(p); setTotal(t); setTotalPages(tp) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [page, sort, category, search])
+  const { data, isLoading } = useQuery({
+    queryKey: ['posts', { page, sort, channel, search }],
+    queryFn: () => communityService.getPosts({ page, limit: 15, sort, channel: channel || undefined, search: search || undefined }),
+  })
 
-  useEffect(() => { load() }, [load])
+  const posts = data?.posts ?? []
+  const total = data?.total ?? 0
+  const totalPages = data?.totalPages ?? 1
 
   useEffect(() => {
     communityService.getStats().then(setStats).catch(() => {})
@@ -73,7 +71,6 @@ export default function CommunityPage() {
     <div className="min-h-screen bg-[#0a0a0f]">
       <Navbar />
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* 헤더 */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-white text-2xl font-bold">커뮤니티</h1>
@@ -90,9 +87,7 @@ export default function CommunityPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* 왼쪽 사이드바 */}
           <aside className="lg:col-span-1 space-y-4">
-            {/* 검색 */}
             <form onSubmit={handleSearch} className="flex gap-2">
               <input
                 value={searchInput}
@@ -105,7 +100,6 @@ export default function CommunityPage() {
               </button>
             </form>
 
-            {/* 정렬 */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
               <p className="text-slate-400 text-xs font-semibold mb-3 uppercase tracking-wide">정렬</p>
               <div className="space-y-1">
@@ -118,31 +112,29 @@ export default function CommunityPage() {
               </div>
             </div>
 
-            {/* 카테고리 */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-              <p className="text-slate-400 text-xs font-semibold mb-3 uppercase tracking-wide">카테고리</p>
+              <p className="text-slate-400 text-xs font-semibold mb-3 uppercase tracking-wide">채널</p>
               <div className="space-y-1">
-                <button onClick={() => setParam('category', '')}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!category ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                <button onClick={() => setParam('channel', '')}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!channel ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
                   전체
                 </button>
-                {Object.entries(CATEGORY_MAP).map(([key, { label }]) => (
-                  <button key={key} onClick={() => setParam('category', key)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${category===key ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                {Object.entries(CHANNEL_MAP).map(([key, { label }]) => (
+                  <button key={key} onClick={() => setParam('channel', key)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${channel===key ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
                     {label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* 트렌딩 */}
-            {stats?.hotPosts?.length > 0 && (
+            {stats?.hotPosts && stats.hotPosts.length > 0 && (
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
                 <p className="text-slate-400 text-xs font-semibold mb-3 uppercase tracking-wide flex items-center gap-1">
                   <Flame className="w-3.5 h-3.5 text-orange-400" /> 인기 급상승
                 </p>
                 <div className="space-y-2">
-                  {stats.hotPosts.map((p: any, i: number) => (
+                  {stats.hotPosts.map((p, i) => (
                     <Link key={p._id} href={`/community/${p._id}`}
                       className="flex items-start gap-2 text-slate-400 hover:text-white text-xs transition-colors group">
                       <span className={`font-bold flex-shrink-0 mt-0.5 ${i===0?'text-orange-400':i===1?'text-slate-300':''}`}>{i+1}</span>
@@ -153,7 +145,6 @@ export default function CommunityPage() {
               </div>
             )}
 
-            {/* 내 즐겨찾기 링크 */}
             {isAuthenticated && (
               <Link href="/community/bookmarks"
                 className="flex items-center gap-2 bg-slate-900 border border-slate-800 hover:border-cyan-500/40 rounded-xl p-4 text-slate-400 hover:text-cyan-300 text-sm transition-colors">
@@ -162,9 +153,8 @@ export default function CommunityPage() {
             )}
           </aside>
 
-          {/* 게시글 목록 */}
           <main className="lg:col-span-3 space-y-3">
-            {loading ? (
+            {isLoading ? (
               <div className="flex justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
               </div>
@@ -185,7 +175,6 @@ export default function CommunityPage() {
                   <PostCard key={post._id} post={post} currentUserId={user?.id} />
                 ))}
 
-                {/* 페이지네이션 */}
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2 pt-4">
                     <button disabled={page<=1}
@@ -219,8 +208,10 @@ export default function CommunityPage() {
 }
 
 function PostCard({ post, currentUserId }: { post: PostSummary; currentUserId?: string }) {
-  const cat = CATEGORY_MAP[post.category] || CATEGORY_MAP.general
+  const ch = CHANNEL_MAP[post.channel] || CHANNEL_MAP.general
   const isMyPost = currentUserId && post.author?._id === currentUserId
+
+  const textPreview = post.content.replace(/<[^>]*>/g, '').slice(0, 200)
 
   return (
     <Link href={`/community/${post._id}`}
@@ -230,11 +221,11 @@ function PostCard({ post, currentUserId }: { post: PostSummary; currentUserId?: 
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             {post.isPinned && <span className="bg-purple-600/30 text-purple-300 text-xs px-1.5 py-0.5 rounded flex items-center gap-1"><Star className="w-3 h-3" />고정</span>}
             {post.isHot && <span className="bg-orange-600/30 text-orange-300 text-xs px-1.5 py-0.5 rounded flex items-center gap-1"><Flame className="w-3 h-3" />HOT</span>}
-            <span className={`text-xs px-1.5 py-0.5 rounded ${cat.color}`}>{cat.label}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${ch.color}`}>{ch.label}</span>
             {post.gameId && <span className="bg-cyan-600/20 text-cyan-400 text-xs px-1.5 py-0.5 rounded">{post.gameId.title}</span>}
           </div>
           <h3 className="text-white font-semibold text-sm group-hover:text-cyan-300 transition-colors line-clamp-1">{post.title}</h3>
-          <p className="text-slate-500 text-xs mt-1 line-clamp-2">{post.content}</p>
+          <p className="text-slate-500 text-xs mt-1 line-clamp-2">{textPreview}</p>
           {post.images?.length > 0 && (
             <div className="flex gap-1 mt-2">
               {post.images.slice(0,3).map((img, i) => (

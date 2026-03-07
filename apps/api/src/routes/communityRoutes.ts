@@ -4,7 +4,8 @@ import {
   toggleLike, toggleBookmark, reportPost, getMyBookmarks,
   getComments, createComment, updateComment, deleteComment,
   toggleCommentLike, reportComment,
-  getReportedPosts, adminUpdatePostStatus, getCommunityStats
+  getReportedPosts, adminUpdatePostStatus, getCommunityStats,
+  tempSave, getMyDrafts
 } from '../controllers/communityController'
 import { authenticateToken, requireAdmin } from '../middleware/auth'
 
@@ -16,8 +17,9 @@ router.get('/posts', getPosts)
 router.get('/posts/:id', getPost)
 router.get('/posts/:postId/comments', getComments)
 
-// 인증 필요
 router.use(authenticateToken)
+router.post('/posts/temp-save', tempSave)
+router.get('/my/drafts', getMyDrafts)
 router.post('/posts', createPost)
 // PUT and PATCH both call updatePost (partial update semantics; full replacement not supported)
 router.put('/posts/:id', updatePost)

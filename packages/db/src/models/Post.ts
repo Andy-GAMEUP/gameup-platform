@@ -5,7 +5,7 @@ export interface IPost extends Document {
   content: string
   author: mongoose.Types.ObjectId
   gameId?: mongoose.Types.ObjectId
-  category: 'general' | 'bug' | 'suggestion' | 'review' | 'notice'
+  channel: 'notice' | 'general' | 'dev' | 'daily' | 'game-talk' | 'info-share' | 'new-game'
   images: string[]
   links: { url: string; label?: string }[]
   tags: string[]
@@ -17,6 +17,7 @@ export interface IPost extends Document {
   isPinned: boolean
   isHot: boolean
   hotScore: number
+  isTempSave: boolean
   reportCount: number
   reports: {
     userId: mongoose.Types.ObjectId
@@ -30,10 +31,10 @@ export interface IPost extends Document {
 const postSchema = new Schema<IPost>(
   {
     title: { type: String, required: true, maxlength: 200 },
-    content: { type: String, required: true, maxlength: 10000 },
+    content: { type: String, required: true, maxlength: 50000 },
     author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     gameId: { type: Schema.Types.ObjectId, ref: 'Game' },
-    category: { type: String, enum: ['general', 'bug', 'suggestion', 'review', 'notice'], default: 'general' },
+    channel: { type: String, enum: ['notice', 'general', 'dev', 'daily', 'game-talk', 'info-share', 'new-game'], default: 'general' },
     images: [{ type: String }],
     links: [{ url: String, label: String }],
     tags: [{ type: String }],
@@ -45,6 +46,7 @@ const postSchema = new Schema<IPost>(
     isPinned: { type: Boolean, default: false },
     isHot: { type: Boolean, default: false },
     hotScore: { type: Number, default: 0 },
+    isTempSave: { type: Boolean, default: false },
     reportCount: { type: Number, default: 0 },
     reports: [{
       userId: { type: Schema.Types.ObjectId, ref: 'User' },
@@ -61,5 +63,6 @@ postSchema.index({ author: 1, createdAt: -1 })
 postSchema.index({ gameId: 1, status: 1, createdAt: -1 })
 postSchema.index({ isPinned: -1, status: 1, createdAt: -1 })
 postSchema.index({ isPinned: -1, status: 1, hotScore: -1 })
+postSchema.index({ channel: 1, status: 1, createdAt: -1 })
 
 export default mongoose.model<IPost>('Post', postSchema)

@@ -7,7 +7,7 @@ export interface PostSummary {
   content: string
   author: { _id: string; username: string; role: string }
   gameId?: { _id: string; title: string }
-  category: string
+  channel: string
   images: string[]
   links: { url: string; label?: string }[]
   tags: string[]
@@ -21,6 +21,7 @@ export interface PostSummary {
   isPinned: boolean
   isHot: boolean
   hotScore: number
+  isTempSave?: boolean
   reportCount: number
   createdAt: string
   updatedAt: string
@@ -41,10 +42,9 @@ export interface CommentItem {
 }
 
 const communityService = {
-  // 게시글
   getPosts: async (params?: {
     page?: number; limit?: number; sort?: string
-    category?: string; gameId?: string; search?: string; tag?: string
+    channel?: string; gameId?: string; search?: string; tag?: string
   }) => {
     const res = await apiClient.get('/community/posts', { params })
     return res.data as { posts: PostSummary[]; total: number; page: number; totalPages: number }
@@ -56,7 +56,7 @@ const communityService = {
   },
 
   createPost: async (data: {
-    title: string; content: string; category?: string
+    title: string; content: string; channel?: string
     gameId?: string; images?: string[]; links?: { url: string; label?: string }[]; tags?: string[]
   }) => {
     const res = await apiClient.post('/community/posts', data)
@@ -64,7 +64,7 @@ const communityService = {
   },
 
   updatePost: async (id: string, data: Partial<{
-    title: string; content: string; category: string
+    title: string; content: string; channel: string
     images: string[]; links: { url: string; label?: string }[]; tags: string[]
   }>) => {
     const res = await apiClient.put(`/community/posts/${id}`, data)
@@ -101,7 +101,16 @@ const communityService = {
     return res.data
   },
 
-  // 댓글
+  tempSave: async (data: { title: string; content: string; channel?: string; tags?: string[] }) => {
+    const res = await apiClient.post('/community/posts/temp-save', data)
+    return res.data.post as PostSummary
+  },
+
+  getMyDrafts: async () => {
+    const res = await apiClient.get('/community/my/drafts')
+    return res.data.posts as PostSummary[]
+  },
+
   getComments: async (postId: string) => {
     const res = await apiClient.get(`/community/posts/${postId}/comments`)
     return res.data.comments as CommentItem[]

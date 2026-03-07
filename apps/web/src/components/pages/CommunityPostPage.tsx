@@ -11,12 +11,14 @@ import {
   Shield, Wrench, AlertTriangle, Star, Flame, CheckCircle
 } from 'lucide-react'
 
-const CATEGORY_MAP: Record<string, { label: string; color: string }> = {
-  general:    { label: '자유',     color: 'bg-slate-600/50 text-slate-300' },
-  bug:        { label: '버그',     color: 'bg-red-600/30 text-red-300' },
-  suggestion: { label: '건의',     color: 'bg-blue-600/30 text-blue-300' },
-  review:     { label: '리뷰',     color: 'bg-yellow-600/30 text-yellow-300' },
-  notice:     { label: '공지',     color: 'bg-purple-600/30 text-purple-300' },
+const CHANNEL_MAP: Record<string, { label: string; color: string }> = {
+  notice:       { label: '공지사항',    color: 'bg-purple-600/30 text-purple-300' },
+  general:      { label: '일반 질문',   color: 'bg-slate-600/50 text-slate-300' },
+  dev:          { label: '개발 질문',   color: 'bg-blue-600/30 text-blue-300' },
+  daily:        { label: '일상 이야기', color: 'bg-green-600/30 text-green-300' },
+  'game-talk':  { label: '게임 이야기', color: 'bg-yellow-600/30 text-yellow-300' },
+  'info-share': { label: '정보공유',    color: 'bg-cyan-600/30 text-cyan-300' },
+  'new-game':   { label: '게임 신작',   color: 'bg-orange-600/30 text-orange-300' },
 }
 
 function RoleBadge({ role }: { role: string }) {
@@ -172,8 +174,9 @@ export default function CommunityPostPage() {
       showToast('신고가 접수되었습니다')
       setReportModal(null)
       setReportReason('')
-    } catch (e: any) {
-      showToast(e?.response?.data?.message || '신고 실패', false)
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } }
+      showToast(err?.response?.data?.message || '신고 실패', false)
     }
   }
 
@@ -192,7 +195,7 @@ export default function CommunityPostPage() {
 
   const isOwner = user?.id === post.author?._id
   const isAdminOrDev = user?.role === 'admin' || user?.role === 'developer'
-  const cat = CATEGORY_MAP[post.category] || CATEGORY_MAP.general
+  const cat = CHANNEL_MAP[post.channel] || CHANNEL_MAP.general
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
@@ -262,10 +265,21 @@ export default function CommunityPostPage() {
             </div>
           </div>
 
-          {/* 본문 */}
-          <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap break-words mb-5">
-            {post.content}
-          </div>
+          <div className="text-slate-300 text-sm leading-relaxed break-words mb-5
+            [&_h2]:text-white [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2
+            [&_h3]:text-white [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1.5
+            [&_p]:mb-3 [&_p:last-child]:mb-0
+            [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_ul]:space-y-1
+            [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_ol]:space-y-1
+            [&_blockquote]:border-l-2 [&_blockquote]:border-slate-600 [&_blockquote]:pl-4 [&_blockquote]:text-slate-400 [&_blockquote]:italic [&_blockquote]:my-3
+            [&_code]:bg-slate-800 [&_code]:text-cyan-300 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono
+            [&_pre]:bg-slate-800 [&_pre]:p-4 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:my-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0
+            [&_a]:text-cyan-400 [&_a]:underline [&_a:hover]:text-cyan-300
+            [&_img]:rounded-lg [&_img]:max-w-full [&_img]:my-3 [&_img]:border [&_img]:border-slate-700
+            [&_strong]:text-white [&_strong]:font-semibold
+            [&_em]:italic"
+            dangerouslySetInnerHTML={{ __html: post.content }}
+          />
 
           {/* 이미지 */}
           {post.images?.length > 0 && (

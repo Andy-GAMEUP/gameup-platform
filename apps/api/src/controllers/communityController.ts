@@ -12,10 +12,10 @@ function calcHotScore(likes: number, comments: number, views: number, createdAt:
 
 export const getPosts = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 15, sort = 'latest', category, gameId, search, tag } = req.query
+    const { page = 1, limit = 15, sort = 'latest', channel, gameId, search, tag } = req.query
     const limitNum = Math.min(Number(limit) || 15, 100)
-    const filter: Record<string, unknown> = { status: 'active' }
-    if (category) filter.category = category
+    const filter: Record<string, unknown> = { status: 'active', isTempSave: { $ne: true } }
+    if (channel) filter.channel = channel
     if (gameId) filter.gameId = gameId
     if (tag) filter.tags = tag
     if (search) {
@@ -71,7 +71,7 @@ export const getPost = async (req: Request, res: Response) => {
 
 export const createPost = async (req: AuthRequest, res: Response) => {
   try {
-    const { title, content, category, gameId, images, links, tags } = req.body
+    const { title, content, channel, gameId, images, links, tags } = req.body
     if (!title?.trim() || !content?.trim()) {
       return res.status(400).json({ message: '제목과 내용을 입력해주세요' })
     }
@@ -80,7 +80,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
       title: title.trim(),
       content: content.trim(),
       author: req.user!.id,
-      category: category || 'general',
+      channel: channel || 'general',
       gameId: gameId || undefined,
       images: images || [],
       links: validLinks,
@@ -96,7 +96,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 export const updatePost = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
-    const { title, content, category, images, links, tags } = req.body
+    const { title, content, channel, images, links, tags } = req.body
     const post = await Post.findById(id)
     if (!post) return res.status(404).json({ message: '게시글을 찾을 수 없습니다' })
     if (post.author.toString() !== req.user!.id && req.user!.role !== 'admin') {
@@ -104,7 +104,7 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
     }
     if (title) post.title = title.trim()
     if (content) post.content = content.trim()
-    if (category) post.category = category
+    if (channel) post.channel = channel
     if (images !== undefined) post.images = images
     if (links !== undefined) post.links = links.filter((l: { url: string }) => /^https?:\/\//i.test(l.url))
     if (tags !== undefined) post.tags = tags
@@ -381,6 +381,42 @@ export const adminUpdatePostStatus = async (req: AuthRequest, res: Response) => 
     res.json({ success: true, post })
   } catch {
     res.status(500).json({ message: '상태 변경 실패' })
+  }
+}
+
+export const tempSave = async (req: AuthRequest, res: Response) => {
+  try {
+    const { title, content, channel, tags } = req.body
+    const existing = await Post.findOne({ author: req.user!.id, isTempSave: true, status: 'active' })
+    if (existing) {
+      existing.title = title?.trim() || '임시저장'
+      existing.content = content?.trim() || ''
+      existing.channel = channel || 'general'
+      existing.tags = tags || []
+      await existing.save()
+      return res.json({ success: true, post: existing })
+    }
+    const post = await Post.create({
+      title: title?.trim() || '임시저장',
+      content: content?.trim() || '',
+      author: req.user!.id,
+      channel: channel || 'general',
+      tags: tags || [],
+      isTempSave: true
+    })
+    res.status(201).json({ success: true, post })
+  } catch {
+    res.status(500).json({ message: '임시저장 실패' })
+  }
+}
+
+export const getMyDrafts = async (req: AuthRequest, res: Response) => {
+  try {
+    const posts = await Post.find({ author: req.user!.id, isTempSave: true, status: 'active' })
+      .sort({ updatedAt: -1 }).limit(10)
+    res.json({ posts })
+  } catch {
+    res.status(500).json({ message: '임시저장 목록 조회 실패' })
   }
 }
 
