@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import User from '../models/User'
+import { UserModel as User } from '@gameup/db'
 import { hashPassword } from '../services/authService'
 
 const __filename = fileURLToPath(import.meta.url)

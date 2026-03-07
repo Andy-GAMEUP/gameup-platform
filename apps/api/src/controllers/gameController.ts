@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import fs from 'fs'
-import Game from '../models/Game'
+import { GameModel as Game } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 
 export const getAllGames = async (req: AuthRequest, res: Response) => {

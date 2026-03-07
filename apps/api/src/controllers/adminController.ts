@@ -1,10 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
-import User from '../models/User'
-import Game from '../models/Game'
-import Announcement from '../models/Announcement'
-import Review from '../models/Review'
-import PlayerActivity from '../models/PlayerActivity'
+import { UserModel as User, GameModel as Game, AnnouncementModel as Announcement, ReviewModel as Review, PlayerActivityModel as PlayerActivity } from '@gameup/db'
 
 // ── 플랫폼 전체 통계 ──────────────────────────────────────────────
 export const getAdminStats = async (req: AuthRequest, res: Response) => {

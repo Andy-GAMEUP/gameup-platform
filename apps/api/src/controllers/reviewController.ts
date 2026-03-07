@@ -1,9 +1,7 @@
 import { Response } from 'express'
 import mongoose from 'mongoose'
 import { AuthRequest } from '../middleware/auth'
-import Review from '../models/Review'
-import Game from '../models/Game'
-import PlayerActivity from '../models/PlayerActivity'
+import { ReviewModel as Review, GameModel as Game, PlayerActivityModel as PlayerActivity } from '@gameup/db'
 
 const VALID_FEEDBACK_TYPES = ['general', 'bug', 'suggestion', 'praise']
 const VALID_SEVERITIES = ['low', 'medium', 'high', 'critical']

@@ -17,6 +17,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@gameup/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       axios:
         specifier: ^1.13.5
         version: 1.13.6
@@ -72,6 +75,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@gameup/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@tosspayments/tosspayments-sdk':
         specifier: ^2.5.0
         version: 2.5.0

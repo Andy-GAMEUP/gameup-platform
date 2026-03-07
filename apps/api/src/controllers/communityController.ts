@@ -1,7 +1,6 @@
 import { Request, Response } from 'express'
 import mongoose from 'mongoose'
-import Post from '../models/Post'
-import Comment from '../models/Comment'
+import { PostModel as Post, CommentModel as Comment } from '@gameup/db'
 // 🔒 중복 AuthRequest 제거 - middleware/auth.ts의 것을 사용
 import { AuthRequest } from '../middleware/auth'
 

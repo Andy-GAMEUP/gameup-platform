@@ -7,7 +7,7 @@ import Badge from '@/components/Badge'
 import { Card, CardContent } from '@/components/Card'
 import { Heart, Star, Search, Filter, Loader2, Gamepad2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { gameService } from '@/services/gameService'
-import { Game } from '@/types'
+import { Game } from '@gameup/types'
 
 const PLACEHOLDER = 'https://via.placeholder.com/400x256/1e293b/334155?text=Game'
 

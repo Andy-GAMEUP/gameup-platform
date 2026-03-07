@@ -30,20 +30,21 @@ export interface User {
   username: string
   password?: string
   role: UserRole
-  memberType: MemberType
-  status: UserStatus
+  memberType?: MemberType
+  status?: UserStatus
   bio?: string
+  favoriteGenres?: string[]
   profileImage?: string
   level?: number
   activityScore?: number
   points?: number
   oauthProviders?: OAuthProvider[]
   companyInfo?: CompanyInfo
-  isActive: boolean
+  isActive?: boolean
   bannedUntil?: Date
   banReason?: string
-  createdAt: Date
-  updatedAt: Date
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export interface Follow {

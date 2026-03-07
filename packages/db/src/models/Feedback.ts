@@ -10,12 +10,30 @@ export interface IFeedback extends Document {
 
 const feedbackSchema = new Schema<IFeedback>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    gameId: { type: Schema.Types.ObjectId, ref: 'Game', required: true },
-    rating: { type: Number, required: true, min: 1, max: 5 },
-    comment: { type: String, required: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    gameId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Game',
+      required: true
+    },
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5
+    },
+    comment: {
+      type: String,
+      required: true
+    }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 )
 
-export const FeedbackModel = mongoose.model<IFeedback>('Feedback', feedbackSchema)
+export default mongoose.model<IFeedback>('Feedback', feedbackSchema)

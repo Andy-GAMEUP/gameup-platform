@@ -1,8 +1,5 @@
 import { Response } from 'express'
-import User from '../models/User'
-import Favorite from '../models/Favorite'
-import PlayerActivity from '../models/PlayerActivity'
-import Review from '../models/Review'
+import { UserModel as User, FavoriteModel as Favorite, PlayerActivityModel as PlayerActivity, ReviewModel as Review } from '@gameup/db'
 import { hashPassword, comparePassword, generateToken } from '../services/authService'
 import { AuthRequest } from '../middleware/auth'
 

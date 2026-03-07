@@ -4,31 +4,9 @@ export interface IUser extends Document {
   email: string
   username: string
   password: string
-  role: 'player' | 'developer' | 'admin'
-  memberType: 'individual' | 'corporate'
-  status: 'active' | 'suspended' | 'withdrawn' | 'deleted'
+  role: 'developer' | 'player' | 'admin'
   bio?: string
-  profileImage?: string
-  level: number
-  activityScore: number
-  points: number
-  favoriteGenres: string[]
-  oauthProviders: { provider: string; providerId: string; connectedAt: Date }[]
-  companyInfo?: {
-    companyName: string
-    businessNumber?: string
-    businessLicense?: string
-    phone?: string
-    email?: string
-    logo?: string
-    employeeCount?: string
-    companyType?: string[]
-    homepage?: string
-    contactName?: string
-    contactEmail?: string
-    introduction?: string
-    isApproved: boolean
-  }
+  favoriteGenres?: string[]
   isActive: boolean
   bannedUntil?: Date
   banReason?: string
@@ -38,43 +16,51 @@ export interface IUser extends Document {
 
 const userSchema = new Schema<IUser>(
   {
-    email: { type: String, required: true, unique: true },
-    username: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: { type: String, enum: ['player', 'developer', 'admin'], default: 'player' },
-    memberType: { type: String, enum: ['individual', 'corporate'], default: 'individual' },
-    status: { type: String, enum: ['active', 'suspended', 'withdrawn', 'deleted'], default: 'active' },
-    bio: String,
-    profileImage: String,
-    level: { type: Number, default: 1 },
-    activityScore: { type: Number, default: 0 },
-    points: { type: Number, default: 0 },
-    favoriteGenres: [String],
-    oauthProviders: [{
-      provider: String,
-      providerId: String,
-      connectedAt: { type: Date, default: Date.now },
-    }],
-    companyInfo: {
-      companyName: String,
-      businessNumber: String,
-      businessLicense: String,
-      phone: String,
-      email: String,
-      logo: String,
-      employeeCount: String,
-      companyType: [String],
-      homepage: String,
-      contactName: String,
-      contactEmail: String,
-      introduction: String,
-      isApproved: { type: Boolean, default: false },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true
     },
-    isActive: { type: Boolean, default: true },
-    bannedUntil: Date,
-    banReason: String,
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true
+    },
+    password: {
+      type: String,
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ['developer', 'player', 'admin'],
+      default: 'player'
+    },
+    bio: {
+      type: String,
+      default: '',
+      maxlength: 200
+    },
+    favoriteGenres: {
+      type: [String],
+      default: []
+    },
+    isActive: {
+      type: Boolean,
+      default: true
+    },
+    bannedUntil: {
+      type: Date
+    },
+    banReason: {
+      type: String
+    }
   },
-  { timestamps: true }
+  {
+    timestamps: true
+  }
 )
 
-export const UserModel = mongoose.model<IUser>('User', userSchema)
+export default mongoose.model<IUser>('User', userSchema)

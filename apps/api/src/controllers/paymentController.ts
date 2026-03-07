@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import axios from 'axios'
-import Payment from '../models/Payment'
+import { PaymentModel as Payment } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 
 const TOSS_API_BASE = 'https://api.tosspayments.com/v1'

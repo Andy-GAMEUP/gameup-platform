@@ -1,8 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
-import Favorite from '../models/Favorite'
-import Game from '../models/Game'
-import PlayerActivity from '../models/PlayerActivity'
+import { FavoriteModel as Favorite, GameModel as Game, PlayerActivityModel as PlayerActivity } from '@gameup/db'
 
 // 즐겨찾기 토글
 export const toggleFavorite = async (req: AuthRequest, res: Response) => {

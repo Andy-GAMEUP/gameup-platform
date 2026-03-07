@@ -1,6 +1,6 @@
 'use client'
 import apiClient from './api'
-import { Game } from '@/types'
+import { Game } from '@gameup/types'
 
 export const gameService = {
   getAllGames: async (params?: { genre?: string; search?: string; sort?: string; page?: number; limit?: number }) => {

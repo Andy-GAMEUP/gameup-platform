@@ -20,7 +20,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { gameService } from '@/services/gameService'
-import { Game } from '@/types'
+import { Game } from '@gameup/types'
 
 const PLACEHOLDER = 'https://via.placeholder.com/400x300/1e293b/334155?text=Game'
 
