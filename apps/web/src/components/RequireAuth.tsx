@@ -1,7 +1,7 @@
 'use client'
 import { ReactNode, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 
 export default function RequireAuth({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import communityService, { PostSummary, CommentItem } from '@/services/communityService'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 import {
   ThumbsUp, MessageSquare, Bookmark, Flag, Eye, ArrowLeft,
   Send, Trash2, Pencil, CornerDownRight, Loader2, ExternalLink,

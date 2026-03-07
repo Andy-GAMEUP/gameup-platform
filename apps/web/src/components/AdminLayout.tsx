@@ -2,7 +2,7 @@
 import { ReactNode, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 import {
   LayoutDashboard, Gamepad2, Users, Megaphone,
   MessageSquare, ChevronLeft, ChevronRight,

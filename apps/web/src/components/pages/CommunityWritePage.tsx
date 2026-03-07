@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import communityService from '@/services/communityService'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 import { Plus, Trash2, Link as LinkIcon, ImagePlus, Tag, Loader2, ArrowLeft } from 'lucide-react'
 
 const CATEGORIES = [

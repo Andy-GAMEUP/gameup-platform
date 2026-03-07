@@ -1,4 +1,5 @@
 export { default as UserModel } from './models/User'
+export type { IUser } from './models/User'
 export { default as GameModel } from './models/Game'
 export { default as PaymentModel } from './models/Payment'
 export { default as FeedbackModel } from './models/Feedback'

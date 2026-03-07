@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Gamepad2, Menu, X, LogOut, LayoutDashboard, User } from 'lucide-react'
 import { useState } from 'react'
 import Button from './Button'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)

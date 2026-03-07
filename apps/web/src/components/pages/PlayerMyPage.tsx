@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 import playerService, { FavoriteGame, Activity } from '@/services/playerService'
 import { authService } from '@/services/authService'
 import {

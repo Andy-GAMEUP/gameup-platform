@@ -1,7 +1,7 @@
 'use client'
 import { ReactNode, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 
 export default function RequireAdmin({ children }: { children: ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth()

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Gamepad2, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 
 export default function LoginPage() {
   const router = useRouter()

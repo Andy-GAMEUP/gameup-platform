@@ -2,7 +2,7 @@
 import React from 'react'
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 import DeveloperLayout from '@/components/DeveloperLayout'
 
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {

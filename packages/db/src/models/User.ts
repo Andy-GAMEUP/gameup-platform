@@ -1,15 +1,24 @@
 import mongoose, { Schema, Document } from 'mongoose'
 
+interface IOAuthProvider {
+  provider: 'kakao' | 'naver'
+  providerId: string
+  connectedAt: Date
+}
+
 export interface IUser extends Document {
   email: string
   username: string
-  password: string
+  password?: string
   role: 'developer' | 'player' | 'admin'
   bio?: string
   favoriteGenres?: string[]
   isActive: boolean
   bannedUntil?: Date
   banReason?: string
+  oauthProviders?: IOAuthProvider[]
+  memberType?: 'individual' | 'corporate'
+  profileImage?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -30,8 +39,7 @@ const userSchema = new Schema<IUser>(
       trim: true
     },
     password: {
-      type: String,
-      required: true
+      type: String
     },
     role: {
       type: String,
@@ -56,7 +64,18 @@ const userSchema = new Schema<IUser>(
     },
     banReason: {
       type: String
-    }
+    },
+    oauthProviders: [{
+      provider: { type: String, enum: ['kakao', 'naver'] },
+      providerId: { type: String },
+      connectedAt: { type: Date, default: Date.now },
+    }],
+    memberType: {
+      type: String,
+      enum: ['individual', 'corporate'],
+      default: 'individual',
+    },
+    profileImage: { type: String },
   },
   {
     timestamps: true

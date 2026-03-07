@@ -4,7 +4,7 @@ import { Card } from '@/components/Card'
 import Badge from '@/components/Badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/Tabs'
 import Link from 'next/link'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 import { gameService } from '@/services/gameService'
 
 export function DashboardPage() {

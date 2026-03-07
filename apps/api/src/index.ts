@@ -11,6 +11,7 @@ import paymentRoutes from './routes/paymentRoutes'
 import adminRoutes from './routes/adminRoutes'
 import playerRoutes from './routes/playerRoutes'
 import communityRoutes from './routes/communityRoutes'
+import authRoutes from './routes/authRoutes'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -68,6 +69,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
 // ── 라우트 ───────────────────────────────────────────────────────
+app.use('/api/auth', authRoutes)
 app.use('/api/users', authLimiter, userRoutes)
 app.use('/api/games', gameRoutes)
 app.use('/api/payments', paymentRoutes)

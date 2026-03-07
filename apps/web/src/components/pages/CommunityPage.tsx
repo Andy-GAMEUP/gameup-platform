@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import communityService, { PostSummary } from '@/services/communityService'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 import {
   Flame, TrendingUp, Clock, ThumbsUp, MessageSquare, Eye,
   Bookmark, Plus, Search, ChevronLeft, ChevronRight,

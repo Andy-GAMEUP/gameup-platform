@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import communityService, { PostSummary } from '@/services/communityService'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/useAuth'
 import { Bookmark, ArrowLeft, ThumbsUp, MessageSquare, Eye, Loader2 } from 'lucide-react'
 
 export default function CommunityBookmarksPage() {
