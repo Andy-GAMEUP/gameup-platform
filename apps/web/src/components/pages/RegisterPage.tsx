@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/useAuth'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { register } = useAuth()
+  const { register, loginWithKakao, loginWithNaver } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     username: '',
@@ -46,10 +46,13 @@ export default function RegisterPage() {
     setServerError('')
     try {
       await register(formData.email, formData.username, formData.password, formData.role)
-      if (formData.role === 'developer') router.push('/dashboard')
+      const res = await fetch('/api/auth/session')
+      const session = await res.json()
+      const role = session?.user?.role
+      if (role === 'developer') router.push('/dashboard')
       else router.push('/games')
     } catch (error: any) {
-      setServerError(error.response?.data?.message || '회원가입에 실패했습니다. 다시 시도해주세요.')
+      setServerError(error.message || '회원가입에 실패했습니다. 다시 시도해주세요.')
     } finally {
       setLoading(false)
     }
@@ -181,7 +184,6 @@ export default function RegisterPage() {
               {errors.confirmPassword && <p className="mt-1 text-xs text-red-400">{errors.confirmPassword}</p>}
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -192,6 +194,33 @@ export default function RegisterPage() {
               ) : '가입하기'}
             </button>
           </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-700" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-slate-900 text-slate-400">또는 소셜로 시작하기</span>
+              </div>
+            </div>
+            <div className="mt-4 space-y-3">
+              <button
+                onClick={loginWithKakao}
+                type="button"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#FEE500] text-[#191919] font-medium hover:bg-[#FDD835] transition-colors"
+              >
+                카카오로 시작하기
+              </button>
+              <button
+                onClick={loginWithNaver}
+                type="button"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#03C75A] text-white font-medium hover:bg-[#02b351] transition-colors"
+              >
+                네이버로 시작하기
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
