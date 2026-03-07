@@ -57,20 +57,23 @@ export default function PlayerMyPage() {
   // ── 활동 ──
   const [activities, setActivities] = useState<Activity[]>([])
   const [activityStats, setActivityStats] = useState({ playCount: 0, reviewCount: 0, favoriteCount: 0 })
+  const [followStats, setFollowStats] = useState({ followerCount: 0, followingCount: 0 })
 
   const [loading, setLoading] = useState(true)
 
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [favData, actData] = await Promise.all([
+      const [favData, actData, fsData] = await Promise.all([
         playerService.getMyFavorites({ limit: 12 }),
-        playerService.getMyActivity({ limit: 20 })
+        playerService.getMyActivity({ limit: 20 }),
+        playerService.getMyFollowStats(),
       ])
       setFavorites(favData.favorites)
       setFavTotal(favData.total)
       setActivities(actData.activities)
       setActivityStats(actData.stats)
+      setFollowStats(fsData)
     } catch (err) {
       console.error(err)
     } finally {
@@ -219,7 +222,7 @@ export default function PlayerMyPage() {
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-6 text-center w-full sm:w-auto">
+            <div className="grid grid-cols-5 gap-4 text-center w-full sm:w-auto">
               <div>
                 <p className="text-2xl font-bold text-cyan-400">{activityStats.playCount}</p>
                 <p className="text-slate-500 text-xs mt-0.5">플레이</p>
@@ -231,6 +234,14 @@ export default function PlayerMyPage() {
               <div>
                 <p className="text-2xl font-bold text-pink-400">{activityStats.favoriteCount}</p>
                 <p className="text-slate-500 text-xs mt-0.5">즐겨찾기</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-emerald-400">{followStats.followerCount}</p>
+                <p className="text-slate-500 text-xs mt-0.5">팔로워</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-sky-400">{followStats.followingCount}</p>
+                <p className="text-slate-500 text-xs mt-0.5">팔로잉</p>
               </div>
             </div>
           </div>

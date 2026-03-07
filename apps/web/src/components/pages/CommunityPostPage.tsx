@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import communityService, { PostSummary, CommentItem } from '@/services/communityService'
+import playerService from '@/services/playerService'
+import FollowModal from '@/components/FollowModal'
 import { useAuth } from '@/lib/useAuth'
 import {
   ThumbsUp, MessageSquare, Bookmark, Flag, Eye, ArrowLeft,
@@ -50,6 +52,11 @@ export default function CommunityPostPage() {
   const [likeCount, setLikeCount] = useState(0)
   const [bookmarkCount, setBookmarkCount] = useState(0)
 
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followerCount, setFollowerCount] = useState(0)
+  const [followingCount, setFollowingCount] = useState(0)
+  const [showFollowModal, setShowFollowModal] = useState<'followers' | 'following' | null>(null)
+
   const [commentText, setCommentText] = useState('')
   const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null)
   const [editingComment, setEditingComment] = useState<{ id: string; content: string } | null>(null)
@@ -89,6 +96,27 @@ export default function CommunityPostPage() {
   }
 
   useEffect(() => { load() }, [id, user])
+
+  useEffect(() => {
+    if (post?.author?._id && user && post.author._id !== user.id) {
+      playerService.checkFollowStatus(post.author._id)
+        .then(data => {
+          setIsFollowing(data.isFollowing)
+          setFollowerCount(data.followerCount)
+          setFollowingCount(data.followingCount)
+        })
+        .catch(() => {})
+    }
+  }, [post?.author?._id, user])
+
+  const handleFollow = async () => {
+    if (!post?.author?._id) return
+    try {
+      const data = await playerService.toggleFollow(post.author._id)
+      setIsFollowing(data.following)
+      setFollowerCount(data.followerCount)
+    } catch { showToast('팔로우 처리 실패', false) }
+  }
 
   const handleLike = async () => {
     if (!isAuthenticated) return router.push('/login')
@@ -229,6 +257,15 @@ export default function CommunityPostPage() {
         </div>
       )}
 
+      {showFollowModal && post?.author?._id && (
+        <FollowModal
+          userId={post.author._id}
+          type={showFollowModal}
+          isOpen={true}
+          onClose={() => setShowFollowModal(null)}
+        />
+      )}
+
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* 뒤로가기 */}
         <Link href="/community" className="flex items-center gap-1.5 text-slate-400 hover:text-white text-sm mb-5 transition-colors">
@@ -248,19 +285,46 @@ export default function CommunityPostPage() {
           {/* 제목 */}
           <h1 className="text-white text-xl font-bold mb-4">{post.title}</h1>
 
-          {/* 작성자 / 날짜 */}
           <div className="flex items-center gap-3 mb-5 pb-4 border-b border-slate-800">
             <Avatar username={post.author?.username||'?'} role={post.author?.role||''} size={9} />
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className={`text-sm font-semibold ${post.author?.role==='admin'?'text-purple-300':post.author?.role==='developer'?'text-cyan-300':'text-white'}`}>
                   {post.author?.username}
                 </span>
                 <RoleBadge role={post.author?.role||''} />
+                {isAuthenticated && !isOwner && (
+                  <button onClick={handleFollow}
+                    className={`ml-1 text-xs px-3 py-1 rounded-lg border transition-colors ${
+                      isFollowing
+                        ? 'border-slate-700 text-slate-400 hover:border-red-500/40 hover:text-red-400'
+                        : 'border-cyan-500/40 text-cyan-300 hover:bg-cyan-600/20'
+                    }`}>
+                    {isFollowing ? '팔로잉' : '팔로우'}
+                  </button>
+                )}
               </div>
-              <p className="text-slate-500 text-xs">{new Date(post.createdAt).toLocaleString('ko-KR')}</p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-slate-500 text-xs">{new Date(post.createdAt).toLocaleString('ko-KR')}</p>
+                {post.author?._id && (
+                  <>
+                    <span
+                      onClick={() => setShowFollowModal('followers')}
+                      className="text-slate-500 text-xs cursor-pointer hover:text-cyan-300 transition-colors"
+                    >
+                      팔로워 {followerCount}
+                    </span>
+                    <span
+                      onClick={() => setShowFollowModal('following')}
+                      className="text-slate-500 text-xs cursor-pointer hover:text-cyan-300 transition-colors"
+                    >
+                      팔로잉 {followingCount}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="ml-auto flex items-center gap-3 text-slate-500 text-xs">
+            <div className="flex items-center gap-3 text-slate-500 text-xs flex-shrink-0">
               <span className="flex items-center gap-1"><Eye className="w-3 h-3"/>{post.views}</span>
             </div>
           </div>

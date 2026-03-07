@@ -53,6 +53,13 @@ export interface Activity {
   createdAt: string
 }
 
+export interface FollowUser {
+  _id: string
+  username: string
+  role: string
+  profileImage?: string
+}
+
 export const playerService = {
   getGameReviews: async (gameId: string, params?: { page?: number; limit?: number; sort?: string; feedbackType?: string }) => {
     const res = await apiClient.get(`/games/${gameId}/reviews`, { params })
@@ -103,7 +110,28 @@ export const playerService = {
   getMyActivity: async (params?: { page?: number; limit?: number }) => {
     const res = await apiClient.get('/player/activity', { params })
     return res.data
-  }
+  },
+
+  toggleFollow: async (userId: string) => {
+    const res = await apiClient.post(`/users/${userId}/follow`)
+    return res.data as { following: boolean; followerCount: number; followingCount: number }
+  },
+  getFollowers: async (userId: string, page = 1) => {
+    const res = await apiClient.get(`/users/${userId}/followers`, { params: { page } })
+    return res.data as { followers: FollowUser[]; total: number }
+  },
+  getFollowing: async (userId: string, page = 1) => {
+    const res = await apiClient.get(`/users/${userId}/following`, { params: { page } })
+    return res.data as { following: FollowUser[]; total: number }
+  },
+  checkFollowStatus: async (userId: string) => {
+    const res = await apiClient.get(`/users/${userId}/follow-status`)
+    return res.data as { isFollowing: boolean; followerCount: number; followingCount: number }
+  },
+  getMyFollowStats: async () => {
+    const res = await apiClient.get('/users/me/follow-stats')
+    return res.data as { followerCount: number; followingCount: number }
+  },
 }
 
 export default playerService
