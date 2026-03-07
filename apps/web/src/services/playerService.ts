@@ -32,6 +32,19 @@ export interface FavoriteGame {
   createdAt: string
 }
 
+export interface ScrapItem {
+  _id: string
+  userId: string
+  targetId: string
+  targetType: 'game' | 'community' | 'partner' | 'minihome' | 'solution'
+  target?: {
+    _id: string
+    title: string
+    [key: string]: unknown
+  }
+  createdAt: string
+}
+
 export interface Activity {
   _id: string
   type: 'play' | 'review' | 'favorite' | 'unfavorite' | 'helpful'
@@ -41,7 +54,6 @@ export interface Activity {
 }
 
 export const playerService = {
-  // 리뷰
   getGameReviews: async (gameId: string, params?: { page?: number; limit?: number; sort?: string; feedbackType?: string }) => {
     const res = await apiClient.get(`/games/${gameId}/reviews`, { params })
     return res.data
@@ -63,7 +75,6 @@ export const playerService = {
     return res.data
   },
 
-  // 즐겨찾기
   toggleFavorite: async (gameId: string) => {
     const res = await apiClient.post(`/games/${gameId}/favorite`)
     return res.data
@@ -76,8 +87,11 @@ export const playerService = {
     const res = await apiClient.post('/player/favorites/check', { gameIds })
     return res.data
   },
+  getMyAllScraps: async (params?: { type?: string; page?: number; limit?: number }) => {
+    const res = await apiClient.get('/player/scraps', { params })
+    return res.data as { scraps: ScrapItem[]; total: number; page: number; totalPages: number }
+  },
 
-  // 플레이 / 활동
   recordPlay: async (gameId: string) => {
     const res = await apiClient.post(`/games/${gameId}/play`)
     return res.data

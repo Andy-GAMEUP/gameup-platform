@@ -1,5 +1,5 @@
 import { Response } from 'express'
-import { UserModel as User, FavoriteModel as Favorite, PlayerActivityModel as PlayerActivity, ReviewModel as Review } from '@gameup/db'
+import { UserModel as User, ScrapModel as Scrap, PlayerActivityModel as PlayerActivity, ReviewModel as Review } from '@gameup/db'
 import { hashPassword, comparePassword, generateToken } from '../services/authService'
 import { AuthRequest } from '../middleware/auth'
 
@@ -235,7 +235,7 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
     if (!isValid) return res.status(401).json({ message: '비밀번호가 올바르지 않습니다' })
 
     await Promise.all([
-      Favorite.deleteMany({ userId: req.user.id }),
+      Scrap.deleteMany({ userId: req.user!.id }),
       PlayerActivity.deleteMany({ userId: req.user.id }),
       Review.deleteMany({ userId: req.user.id }),
       User.findByIdAndDelete(req.user.id)

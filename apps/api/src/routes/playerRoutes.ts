@@ -10,6 +10,7 @@ import {
   toggleFavorite,
   getMyFavorites,
   checkFavorites,
+  getMyAllScraps,
   recordPlay,
   updatePlaySession,
   getMyActivity
@@ -25,6 +26,7 @@ router.get('/games/:gameId/reviews', getGameReviews)
 router.get('/games/:gameId/my-review', authenticateToken, getMyReview)
 router.get('/player/favorites', authenticateToken, getMyFavorites)
 router.post('/player/favorites/check', authenticateToken, checkFavorites)
+router.get('/player/scraps', authenticateToken, getMyAllScraps)
 router.get('/player/activity', authenticateToken, getMyActivity)
 
 // ── 쓰기 (플레이어 전용) ──
