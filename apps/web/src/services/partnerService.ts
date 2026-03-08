@@ -1,6 +1,38 @@
 'use client'
 import apiClient from './api'
 
+export interface PartnerProfile {
+  _id: string
+  userId: { _id: string; username: string; role: string; profileImage?: string }
+  status: string
+  slogan: string
+  introduction: string
+  selectedTopics: string[]
+  profileImage: string
+  postCount: number
+  approvedAt?: string
+  createdAt: string
+}
+
+export interface PartnerPostItem {
+  _id: string
+  partnerId: { _id: string; userId: { _id: string; username: string; role: string } } | string
+  author: { _id: string; username: string; role: string }
+  title: string
+  content: string
+  topicGroup: string
+  topic: string
+  images: string[]
+  tags: string[]
+  views: number
+  likes: string[]
+  likeCount: number
+  commentCount: number
+  status: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface PartnerApplication {
   _id: string
   userId: { _id: string; username: string; email: string; level?: number; profileImage?: string; createdAt: string }
@@ -63,6 +95,46 @@ export const partnerService = {
   getTopics: async () => {
     const res = await apiClient.get('/partner/topics')
     return res.data
+  },
+
+  getPartners: async (params?: { page?: number; limit?: number }) => {
+    const res = await apiClient.get('/partner/list', { params })
+    return res.data as { partners: PartnerProfile[]; total: number; page: number; totalPages: number }
+  },
+
+  getPartnerChannel: async (partnerId: string) => {
+    const res = await apiClient.get(`/partner/${partnerId}`)
+    return res.data as { partner: PartnerProfile }
+  },
+
+  getPartnerPosts: async (partnerId: string, params?: { page?: number; limit?: number; topic?: string; sort?: string }) => {
+    const res = await apiClient.get(`/partner/${partnerId}/posts`, { params })
+    return res.data as { posts: PartnerPostItem[]; total: number; page: number; totalPages: number }
+  },
+
+  getPartnerPost: async (id: string) => {
+    const res = await apiClient.get(`/partner/posts/${id}`)
+    return res.data as { post: PartnerPostItem }
+  },
+
+  createPartnerPost: async (data: { title: string; content: string; topicGroup?: string; topic?: string; images?: string[]; tags?: string[] }) => {
+    const res = await apiClient.post('/partner/posts', data)
+    return res.data as { post: PartnerPostItem }
+  },
+
+  updatePartnerPost: async (id: string, data: Partial<{ title: string; content: string; topicGroup: string; topic: string; images: string[]; tags: string[] }>) => {
+    const res = await apiClient.put(`/partner/posts/${id}`, data)
+    return res.data as { post: PartnerPostItem }
+  },
+
+  deletePartnerPost: async (id: string) => {
+    const res = await apiClient.delete(`/partner/posts/${id}`)
+    return res.data
+  },
+
+  togglePartnerPostLike: async (id: string) => {
+    const res = await apiClient.post(`/partner/posts/${id}/like`)
+    return res.data as { liked: boolean; likeCount: number }
   },
 
   admin: {
