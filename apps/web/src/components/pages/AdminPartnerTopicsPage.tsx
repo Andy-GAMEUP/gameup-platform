@@ -2,7 +2,142 @@
 import { useState, useEffect, useCallback } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import partnerService, { TopicGroup, TopicItem } from '@/services/partnerService'
-import { Plus, Trash2, ChevronUp, ChevronDown, Save, Loader2, GripVertical, X } from 'lucide-react'
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { Plus, Trash2, Save, Loader2, GripVertical, X } from 'lucide-react'
+
+interface SortableGroupCardProps {
+  group: TopicGroup
+  expandedId: string | null
+  setExpandedId: (id: string | null) => void
+  onUpdateGroup: (id: string, updates: { name?: string; topics?: TopicItem[] }) => void
+  onDeleteGroup: (id: string) => void
+  onGroupChange: (updatedGroup: TopicGroup) => void
+  saving: boolean
+}
+
+function SortableGroupCard({
+  group,
+  expandedId,
+  setExpandedId,
+  onUpdateGroup,
+  onDeleteGroup,
+  onGroupChange,
+  saving,
+}: SortableGroupCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: group._id })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+
+  const handleAddTopic = () => {
+    onGroupChange({ ...group, topics: [...group.topics, { name: '', isActive: true }] })
+  }
+
+  const handleRemoveTopic = (topicIndex: number) => {
+    onGroupChange({ ...group, topics: group.topics.filter((_, i) => i !== topicIndex) })
+  }
+
+  const handleUpdateTopic = (topicIndex: number, updates: Partial<TopicItem>) => {
+    onGroupChange({
+      ...group,
+      topics: group.topics.map((t, i) => (i === topicIndex ? { ...t, ...updates } : t)),
+    })
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 p-4 border-b border-slate-800">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 text-slate-500 hover:text-slate-400 transition-colors flex-shrink-0"
+          title="드래그하여 순서 변경"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+
+        <input
+          type="text"
+          value={group.name}
+          onChange={(e) => onGroupChange({ ...group, name: e.target.value })}
+          className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-slate-500"
+          placeholder="그룹 이름"
+        />
+
+        <button
+          onClick={() => onUpdateGroup(group._id, { name: group.name, topics: group.topics })}
+          disabled={saving}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded text-xs transition-colors disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+          저장
+        </button>
+
+        <button
+          onClick={() => onDeleteGroup(group._id)}
+          disabled={saving}
+          className="p-1.5 text-red-400 hover:text-red-300 disabled:opacity-30 transition-colors"
+          title="삭제"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => setExpandedId(expandedId === group._id ? null : group._id)}
+          className="text-slate-400 hover:text-white transition-colors"
+        >
+          {expandedId === group._id ? '▼' : '▶'}
+        </button>
+      </div>
+
+      {expandedId === group._id && (
+        <div className="p-4 space-y-3 bg-slate-950/50">
+          {group.topics.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-4">주제가 없습니다</p>
+          ) : (
+            group.topics.map((topic, topicIdx) => (
+              <div key={topicIdx} className="flex items-center gap-3 bg-slate-800 rounded-lg p-3">
+                <input
+                  type="text"
+                  value={topic.name}
+                  onChange={(e) => handleUpdateTopic(topicIdx, { name: e.target.value })}
+                  className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-slate-500"
+                  placeholder="주제 이름"
+                />
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={topic.isActive}
+                    onChange={(e) => handleUpdateTopic(topicIdx, { isActive: e.target.checked })}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-green-600 focus:ring-0"
+                  />
+                  <span className="text-slate-300 text-xs">활성</span>
+                </label>
+
+                <button
+                  onClick={() => handleRemoveTopic(topicIdx)}
+                  className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                  title="삭제"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))
+          )}
+
+          <button
+            onClick={handleAddTopic}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-slate-700 rounded-lg text-slate-400 hover:text-white hover:border-slate-600 text-sm transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            주제 추가
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function AdminPartnerTopicsPage() {
   const [groups, setGroups] = useState<TopicGroup[]>([])
@@ -38,7 +173,7 @@ export default function AdminPartnerTopicsPage() {
         topics: [],
         sortOrder: groups.length,
       })
-      setGroups([...groups, newGroup])
+      setGroups(prev => [...prev, newGroup])
       setExpandedId(newGroup._id)
       showToast('그룹이 추가되었습니다')
     } catch {
@@ -52,7 +187,7 @@ export default function AdminPartnerTopicsPage() {
     setSaving(true)
     try {
       await partnerService.admin.updateTopicGroup(id, updates)
-      setGroups(groups.map(g => g._id === id ? { ...g, ...updates } : g))
+      setGroups(prev => prev.map(g => g._id === id ? { ...g, ...updates } : g))
       showToast('저장되었습니다')
     } catch {
       showToast('저장 실패', false)
@@ -66,7 +201,7 @@ export default function AdminPartnerTopicsPage() {
     setSaving(true)
     try {
       await partnerService.admin.deleteTopicGroup(id)
-      setGroups(groups.filter(g => g._id !== id))
+      setGroups(prev => prev.filter(g => g._id !== id))
       showToast('삭제되었습니다')
     } catch {
       showToast('삭제 실패', false)
@@ -75,71 +210,33 @@ export default function AdminPartnerTopicsPage() {
     }
   }
 
-  const handleMoveUp = async (index: number) => {
-    if (index === 0) return
-    const newGroups = [...groups]
-    ;[newGroups[index - 1], newGroups[index]] = [newGroups[index], newGroups[index - 1]]
-    
+  const handleGroupChange = (updatedGroup: TopicGroup) => {
+    setGroups(prev => prev.map(g => g._id === updatedGroup._id ? updatedGroup : g))
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    if (saving) return
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = groups.findIndex(g => g._id === active.id)
+    const newIndex = groups.findIndex(g => g._id === over.id)
+    const newGroups = arrayMove(groups, oldIndex, newIndex)
+    const prevGroups = groups
+
+    setGroups(newGroups)
     setSaving(true)
     try {
       await partnerService.admin.reorderTopicGroups(
         newGroups.map((g, i) => ({ id: g._id, sortOrder: i }))
       )
-      setGroups(newGroups)
       showToast('순서가 변경되었습니다')
     } catch {
+      setGroups(prevGroups)
       showToast('순서 변경 실패', false)
     } finally {
       setSaving(false)
     }
-  }
-
-  const handleMoveDown = async (index: number) => {
-    if (index === groups.length - 1) return
-    const newGroups = [...groups]
-    ;[newGroups[index], newGroups[index + 1]] = [newGroups[index + 1], newGroups[index]]
-    
-    setSaving(true)
-    try {
-      await partnerService.admin.reorderTopicGroups(
-        newGroups.map((g, i) => ({ id: g._id, sortOrder: i }))
-      )
-      setGroups(newGroups)
-      showToast('순서가 변경되었습니다')
-    } catch {
-      showToast('순서 변경 실패', false)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleAddTopic = (groupId: string) => {
-    setGroups(groups.map(g => 
-      g._id === groupId 
-        ? { ...g, topics: [...g.topics, { name: '', isActive: true }] }
-        : g
-    ))
-  }
-
-  const handleRemoveTopic = (groupId: string, topicIndex: number) => {
-    setGroups(groups.map(g =>
-      g._id === groupId
-        ? { ...g, topics: g.topics.filter((_, i) => i !== topicIndex) }
-        : g
-    ))
-  }
-
-  const handleUpdateTopic = (groupId: string, topicIndex: number, updates: Partial<TopicItem>) => {
-    setGroups(groups.map(g =>
-      g._id === groupId
-        ? {
-            ...g,
-            topics: g.topics.map((t, i) =>
-              i === topicIndex ? { ...t, ...updates } : t
-            ),
-          }
-        : g
-    ))
   }
 
   return (
@@ -169,115 +266,24 @@ export default function AdminPartnerTopicsPage() {
             <p className="text-sm">주제 그룹이 없습니다</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {groups.map((group, idx) => (
-              <div key={group._id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center gap-3 p-4 border-b border-slate-800">
-                  <GripVertical className="w-4 h-4 text-slate-600 flex-shrink-0" />
-                  
-                  <input
-                    type="text"
-                    value={group.name}
-                    onChange={(e) => setGroups(groups.map(g => g._id === group._id ? { ...g, name: e.target.value } : g))}
-                    className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-slate-500"
-                    placeholder="그룹 이름"
+          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={groups.map(g => g._id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-4">
+                {groups.map((group) => (
+                  <SortableGroupCard
+                    key={group._id}
+                    group={group}
+                    expandedId={expandedId}
+                    setExpandedId={setExpandedId}
+                    onUpdateGroup={handleUpdateGroup}
+                    onDeleteGroup={handleDeleteGroup}
+                    onGroupChange={handleGroupChange}
+                    saving={saving}
                   />
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleMoveUp(idx)}
-                      disabled={idx === 0 || saving}
-                      className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
-                      title="위로 이동"
-                    >
-                      <ChevronUp className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleMoveDown(idx)}
-                      disabled={idx === groups.length - 1 || saving}
-                      className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
-                      title="아래로 이동"
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => handleUpdateGroup(group._id, { name: group.name, topics: group.topics })}
-                    disabled={saving}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded text-xs transition-colors disabled:opacity-50"
-                  >
-                    {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                    저장
-                  </button>
-
-                  <button
-                    onClick={() => handleDeleteGroup(group._id)}
-                    disabled={saving}
-                    className="p-1.5 text-red-400 hover:text-red-300 disabled:opacity-30 transition-colors"
-                    title="삭제"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => setExpandedId(expandedId === group._id ? null : group._id)}
-                    className="text-slate-400 hover:text-white transition-colors"
-                  >
-                    {expandedId === group._id ? '▼' : '▶'}
-                  </button>
-                </div>
-
-                {/* Topics */}
-                {expandedId === group._id && (
-                  <div className="p-4 space-y-3 bg-slate-950/50">
-                    {group.topics.length === 0 ? (
-                      <p className="text-slate-500 text-sm text-center py-4">주제가 없습니다</p>
-                    ) : (
-                      group.topics.map((topic, topicIdx) => (
-                        <div key={topicIdx} className="flex items-center gap-3 bg-slate-800 rounded-lg p-3">
-                          <input
-                            type="text"
-                            value={topic.name}
-                            onChange={(e) => handleUpdateTopic(group._id, topicIdx, { name: e.target.value })}
-                            className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-slate-500"
-                            placeholder="주제 이름"
-                          />
-                          
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={topic.isActive}
-                              onChange={(e) => handleUpdateTopic(group._id, topicIdx, { isActive: e.target.checked })}
-                              className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-green-600 focus:ring-0"
-                            />
-                            <span className="text-slate-300 text-xs">활성</span>
-                          </label>
-
-                          <button
-                            onClick={() => handleRemoveTopic(group._id, topicIdx)}
-                            className="p-1 text-red-400 hover:text-red-300 transition-colors"
-                            title="삭제"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))
-                    )}
-
-                    <button
-                      onClick={() => handleAddTopic(group._id)}
-                      className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-slate-700 rounded-lg text-slate-400 hover:text-white hover:border-slate-600 text-sm transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                      주제 추가
-                    </button>
-                  </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       </div>
 

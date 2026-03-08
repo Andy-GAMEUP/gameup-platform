@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import partnerService, { PartnerApplication } from '@/services/partnerService'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Loader2, X, ExternalLink } from 'lucide-react'
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
@@ -196,12 +197,18 @@ export default function AdminPartnerManagementPage() {
                     <td className="px-4 py-3 text-slate-400 text-sm">
                       {p.approvedAt ? new Date(p.approvedAt).toLocaleDateString('ko-KR') : '-'}
                     </td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => setSelected(p)}
-                        className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors border border-cyan-500/30 px-2 py-1 rounded">
-                        관리
-                      </button>
-                    </td>
+                     <td className="px-4 py-3">
+                       <div className="flex items-center gap-2">
+                         <button onClick={() => setSelected(p)}
+                           className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors border border-cyan-500/30 px-2 py-1 rounded">
+                           관리
+                         </button>
+                         <Link href={`/admin/partner-posts/${p._id}`}
+                           className="text-xs text-slate-400 hover:text-slate-200 transition-colors border border-slate-600/50 px-2 py-1 rounded">
+                           글 보기
+                         </Link>
+                       </div>
+                     </td>
                   </tr>
                 ))
               )}

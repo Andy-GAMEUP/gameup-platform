@@ -207,6 +207,11 @@ export const partnerService = {
       const res = await apiClient.put('/admin/partner/topics/reorder', { groups })
       return res.data
     },
+
+    reorderPosts: async (posts: { id: string; sortOrder: number }[]) => {
+      const res = await apiClient.put('/admin/partner/posts/reorder', { posts })
+      return res.data
+    },
   },
 }
 

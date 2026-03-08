@@ -14,6 +14,7 @@ import {
   updateTopicGroup,
   deleteTopicGroup,
   reorderTopicGroups,
+  reorderPartnerPosts,
 } from '../controllers/adminPartnerController'
 import { authenticateToken, requireAdmin } from '../middleware/auth'
 
@@ -35,6 +36,7 @@ router.delete('/admin/partner/topics/:id', deleteTopicGroup)
 router.get('/admin/partner/:id', getPartnerDetail)
 router.patch('/admin/partner/:id/status', updatePartnerStatus)
 router.get('/admin/partner/:partnerId/posts', getPartnerPosts)
+router.put('/admin/partner/posts/reorder', reorderPartnerPosts)
 router.delete('/admin/partner/posts/:id', deletePartnerPost)
 
 export default router

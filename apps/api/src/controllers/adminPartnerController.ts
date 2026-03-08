@@ -205,3 +205,17 @@ export const reorderTopicGroups = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: '순서 업데이트 실패' })
   }
 }
+
+export const reorderPartnerPosts = async (req: AuthRequest, res: Response) => {
+  try {
+    const { posts } = req.body
+    await Promise.all(
+      posts.map(({ id, sortOrder }: { id: string; sortOrder: number }) =>
+        PartnerPost.findByIdAndUpdate(id, { sortOrder })
+      )
+    )
+    res.json({ success: true })
+  } catch {
+    res.status(500).json({ message: '정렬 변경 실패' })
+  }
+}
