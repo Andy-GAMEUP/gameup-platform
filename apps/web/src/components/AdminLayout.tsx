@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Gamepad2, Users, Megaphone,
   MessageSquare, ChevronLeft, ChevronRight,
   Home, LogOut, Shield, UserPlus, Handshake, Tags,
-  Smartphone, Globe,
+  Smartphone, Globe, Hash,
 } from 'lucide-react'
 
 interface AdminLayoutProps { children: ReactNode }
@@ -23,6 +23,8 @@ const navItems = [
   { path: '/admin/partner-topics', label: '주제 관리', icon: Tags },
   { path: '/admin/publishing/hms', label: 'HMS 퍼블리싱', icon: Globe },
   { path: '/admin/publishing/hk', label: 'HK 퍼블리싱', icon: Smartphone },
+  { path: '/admin/minihome', label: '미니홈 관리', icon: Home },
+  { path: '/admin/minihome-keywords', label: '미니홈 키워드', icon: Hash },
 ]
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
