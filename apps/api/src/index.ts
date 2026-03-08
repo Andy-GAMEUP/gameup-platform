@@ -13,6 +13,8 @@ import playerRoutes from './routes/playerRoutes'
 import communityRoutes from './routes/communityRoutes'
 import authRoutes from './routes/authRoutes'
 import followRoutes from './routes/followRoutes'
+import partnerRoutes from './routes/partnerRoutes'
+import adminPartnerRoutes from './routes/adminPartnerRoutes'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -78,6 +80,8 @@ app.use('/api/payments', paymentRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api', playerRoutes)
 app.use('/api/community', communityRoutes)
+app.use('/api', partnerRoutes)
+app.use('/api', adminPartnerRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' })

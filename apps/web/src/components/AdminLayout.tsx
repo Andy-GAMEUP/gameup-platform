@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/useAuth'
 import {
   LayoutDashboard, Gamepad2, Users, Megaphone,
   MessageSquare, ChevronLeft, ChevronRight,
-  Home, LogOut, Shield
+  Home, LogOut, Shield, UserPlus, Handshake, Tags
 } from 'lucide-react'
 
 interface AdminLayoutProps { children: ReactNode }
@@ -17,6 +17,9 @@ const navItems = [
   { path: '/admin/community',  label: '커뮤니티',    icon: MessageSquare },
   { path: '/admin/users',      label: '회원 관리',   icon: Users },
   { path: '/admin/announcements', label: '공지사항', icon: Megaphone },
+  { path: '/admin/partner-requests', label: '파트너 신청', icon: UserPlus },
+  { path: '/admin/partner-management', label: '파트너 관리', icon: Handshake },
+  { path: '/admin/partner-topics', label: '주제 관리', icon: Tags },
 ]
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
