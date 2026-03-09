@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Gamepad2, Users, Megaphone,
   MessageSquare, ChevronLeft, ChevronRight,
   Home, LogOut, Shield, UserPlus, Handshake, Tags,
-  Smartphone, Globe, Hash, Calendar, FileCheck, ImageIcon,
+  Smartphone, Globe, Hash, Calendar, FileCheck, ImageIcon, Bell,
 } from 'lucide-react'
 
 interface AdminLayoutProps { children: ReactNode }
@@ -28,6 +28,7 @@ const navItems = [
   { path: '/admin/support-seasons', label: '시즌 관리', icon: Calendar },
   { path: '/admin/support-applications', label: '게임 신청', icon: FileCheck },
   { path: '/admin/support-banners', label: '지원 배너/탭', icon: ImageIcon },
+  { path: '/admin/notifications', label: '알림 관리', icon: Bell },
 ]
 
 export default function AdminLayout({ children }: AdminLayoutProps) {

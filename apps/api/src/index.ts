@@ -1,3 +1,4 @@
+import http from 'http'
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
@@ -21,7 +22,11 @@ import minihomeRoutes from './routes/minihomeRoutes'
 import adminMinihomeRoutes from './routes/adminMinihomeRoutes'
 import supportRoutes from './routes/supportRoutes'
 import adminSupportRoutes from './routes/adminSupportRoutes'
+import messageRoutes from './routes/messageRoutes'
+import notificationRoutes from './routes/notificationRoutes'
+import adminNotificationRoutes from './routes/adminNotificationRoutes'
 import { errorHandler, notFound } from './middleware/errorHandler'
+import { initSocket } from './socket'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -94,6 +99,9 @@ app.use('/api', minihomeRoutes)
 app.use('/api', adminMinihomeRoutes)
 app.use('/api', supportRoutes)
 app.use('/api', adminSupportRoutes)
+app.use('/api', messageRoutes)
+app.use('/api', notificationRoutes)
+app.use('/api', adminNotificationRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' })
@@ -103,8 +111,10 @@ app.get('/api/health', (req, res) => {
 app.use(notFound)
 app.use(errorHandler)
 
-app.listen(PORT, () => {
+const server = http.createServer(app)
+initSocket(server)
+server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
 })
 
-export default app
+export default server

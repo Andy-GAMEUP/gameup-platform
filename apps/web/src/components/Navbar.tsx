@@ -1,17 +1,28 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Gamepad2, Menu, X, LogOut, LayoutDashboard, User } from 'lucide-react'
-import { useState } from 'react'
+import { Gamepad2, Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import Button from './Button'
 import { useAuth } from '@/lib/useAuth'
+import NotificationPanel from './NotificationPanel'
+import notificationService from '@/services/notificationService'
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
   const { isAuthenticated, user, logout } = useAuth()
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    notificationService.getUnreadCount()
+      .then((data) => setUnreadCount(data.count ?? 0))
+      .catch(() => {})
+  }, [isAuthenticated])
 
   const navLinks = [
     { path: '/', label: '홈' },
@@ -33,6 +44,7 @@ export default function Navbar() {
   }
 
   return (
+    <>
     <nav className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-lg border-b border-slate-800">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
@@ -72,7 +84,20 @@ export default function Navbar() {
                     </Button>
                   </Link>
                 )}
-                {/* Profile dropdown */}
+                <Link href="/messages" className="relative text-slate-400 hover:text-white transition-colors p-1.5">
+                  <MessageSquare className="w-5 h-5" />
+                </Link>
+                <button
+                  onClick={() => setNotifOpen((v) => !v)}
+                  className="relative text-slate-400 hover:text-white transition-colors p-1.5"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
                 <div className="relative">
                   <button
                     onClick={() => setProfileMenuOpen((v) => !v)}
@@ -217,5 +242,7 @@ export default function Navbar() {
         )}
       </div>
     </nav>
+    <NotificationPanel isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
+    </>
   )
 }
