@@ -19,6 +19,8 @@ import publishingRoutes from './routes/publishingRoutes'
 import adminPublishingRoutes from './routes/adminPublishingRoutes'
 import minihomeRoutes from './routes/minihomeRoutes'
 import adminMinihomeRoutes from './routes/adminMinihomeRoutes'
+import supportRoutes from './routes/supportRoutes'
+import adminSupportRoutes from './routes/adminSupportRoutes'
 import { errorHandler, notFound } from './middleware/errorHandler'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -90,6 +92,8 @@ app.use('/api', publishingRoutes)
 app.use('/api', adminPublishingRoutes)
 app.use('/api', minihomeRoutes)
 app.use('/api', adminMinihomeRoutes)
+app.use('/api', supportRoutes)
+app.use('/api', adminSupportRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' })
