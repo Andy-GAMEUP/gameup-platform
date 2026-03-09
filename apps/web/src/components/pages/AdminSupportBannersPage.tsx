@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/AdminLayout'
 import supportService, { SupportBanner, SupportTab } from '@/services/supportService'
@@ -46,7 +47,7 @@ function SortableBannerRow({
         </button>
 
         {imageUrl && (
-          <img src={imageUrl} alt={title} className="w-20 h-14 object-cover rounded-lg flex-shrink-0 bg-slate-800" />
+          <Image src={imageUrl} alt={title} width={80} height={56} className="w-20 h-14 object-cover rounded-lg flex-shrink-0 bg-slate-800" unoptimized />
         )}
 
         <div className="flex-1 grid grid-cols-1 gap-2">

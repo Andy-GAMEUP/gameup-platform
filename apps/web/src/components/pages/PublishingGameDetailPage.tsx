@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Star, Play, Globe, MessageCircle, Loader2 } from 'lucide-react'
@@ -69,7 +70,7 @@ export default function PublishingGameDetailPage() {
             <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
               <div className="h-72 bg-slate-800 overflow-hidden">
                 {activeImage ? (
-                  <img src={activeImage} alt={game.title} className="w-full h-full object-cover" />
+                  <Image src={activeImage} alt={game.title} width={800} height={288} className="w-full h-full object-cover" unoptimized />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Play className="w-12 h-12 text-slate-600" />
@@ -82,7 +83,7 @@ export default function PublishingGameDetailPage() {
                     onClick={() => setActiveImage(game.thumbnail!)}
                     className="w-16 h-16 rounded-lg overflow-hidden border-2 border-transparent hover:border-cyan-500 transition-colors"
                   >
-                    <img src={game.thumbnail} alt="" className="w-full h-full object-cover" />
+                    <Image src={game.thumbnail} alt="" width={64} height={64} className="w-full h-full object-cover" unoptimized />
                   </button>
                 </div>
               )}

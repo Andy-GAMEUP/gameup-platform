@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2, ArrowLeft, Download, CheckCircle, Circle, ExternalLink } from 'lucide-react'
@@ -72,7 +73,7 @@ export default function SupportGameDetailPage() {
 
           <div className="flex items-center gap-5">
             {game.iconUrl ? (
-              <img src={game.iconUrl} alt={game.gameName} className="w-20 h-20 rounded-2xl object-cover bg-slate-800 flex-shrink-0" />
+              <Image src={game.iconUrl} alt={game.gameName} width={80} height={80} className="w-20 h-20 rounded-2xl object-cover bg-slate-800 flex-shrink-0" unoptimized />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-slate-800 flex-shrink-0" />
             )}
@@ -188,8 +189,7 @@ export default function SupportGameDetailPage() {
             <h2 className="text-white font-bold mb-4">스크린샷</h2>
             <div className="flex gap-3 overflow-x-auto pb-2">
               {game.screenshots.map((s, i) => (
-                <img key={i} src={s} alt={`스크린샷 ${i + 1}`}
-                  className="w-48 h-28 object-cover rounded-lg flex-shrink-0 bg-slate-800" />
+                <Image key={i} src={s} alt={`스크린샷 ${i + 1}`} width={192} height={112} className="w-48 h-28 object-cover rounded-lg flex-shrink-0 bg-slate-800" unoptimized />
               ))}
             </div>
           </div>

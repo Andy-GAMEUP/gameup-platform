@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
@@ -41,11 +42,12 @@ function FeaturedGameCard({ game }: { game: Game }) {
       onClick={() => router.push(`/games/${id}`)}
     >
       <div className="relative h-48 overflow-hidden">
-        <img
+        <Image
           src={game.thumbnail || PLACEHOLDER}
           alt={game.title}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-          onError={(e) => { e.currentTarget.src = PLACEHOLDER }}
+          fill
+          className="object-cover group-hover:scale-110 transition-transform duration-300"
+          unoptimized
         />
         <div className="absolute top-4 left-4">
           <Badge className={statusClass}>{statusLabel}</Badge>
@@ -144,11 +146,12 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-green-900/20 to-slate-950 z-10" />
         <div className="absolute inset-0 z-0">
-          <img
+          <Image
             src="https://images.unsplash.com/photo-1766052631095-c16328022120?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
             alt="Gaming Setup"
-            className="w-full h-full object-cover opacity-30"
-            onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/1920x1080/1e293b/334155?text=Gaming+Setup' }}
+            fill
+            className="object-cover opacity-30"
+            unoptimized
           />
         </div>
         <div className="container mx-auto px-4 py-32 relative z-20">

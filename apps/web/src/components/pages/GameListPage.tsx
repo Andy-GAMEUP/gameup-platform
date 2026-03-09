@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Button from '@/components/Button'
@@ -33,11 +34,12 @@ function GameCard({ game }: { game: Game }) {
     <div className="cursor-pointer group" onClick={() => router.push(`/games/${id}`)}>
       <Card className="bg-slate-900/50 border-2 border-green-500/30 overflow-hidden hover:border-green-500 transition-all h-full">
         <div className="relative h-48 overflow-hidden">
-          <img
+          <Image
             src={game.thumbnail || PLACEHOLDER}
             alt={game.title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-            onError={(e) => { e.currentTarget.src = PLACEHOLDER }}
+            fill
+            className="object-cover group-hover:scale-110 transition-transform duration-300"
+            unoptimized
           />
           <div className="absolute top-3 left-3">
             <Badge className={statusClass}>{statusLabel}</Badge>

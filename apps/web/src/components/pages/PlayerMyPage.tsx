@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
@@ -284,8 +285,7 @@ export default function PlayerMyPage() {
                 return (
                   <div key={fav._id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden group hover:border-slate-600 transition-colors">
                     <div className="relative">
-                      <img src={imgUrl} alt={g.title} className="w-full aspect-video object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).src = PLACEHOLDER }} />
+                      <Image src={imgUrl} alt={g.title} width={400} height={225} className="w-full aspect-video object-cover" unoptimized />
                       <button onClick={() => handleUnfavorite(g._id)}
                         className="absolute top-2 right-2 bg-slate-900/80 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/80"
                         title="즐겨찾기 해제">

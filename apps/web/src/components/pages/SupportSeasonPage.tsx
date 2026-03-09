@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2, ChevronDown, Gamepad2, ArrowLeft } from 'lucide-react'
@@ -29,7 +30,7 @@ function GameCard({ game }: { game: GameApplication }) {
     <Link href={`/support/games/${game._id}`} className="bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-slate-600 transition-colors block">
       <div className="flex items-center gap-3 mb-3">
         {game.iconUrl ? (
-          <img src={game.iconUrl} alt={game.gameName} className="w-12 h-12 rounded-xl object-cover bg-slate-800 flex-shrink-0" />
+          <Image src={game.iconUrl} alt={game.gameName} width={48} height={48} className="w-12 h-12 rounded-xl object-cover bg-slate-800 flex-shrink-0" unoptimized />
         ) : (
           <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center flex-shrink-0">
             <Gamepad2 className="w-6 h-6 text-slate-600" />

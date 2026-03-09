@@ -1,5 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { gameService } from '@/services/gameService'
 import { Plus, X, Upload, Loader2 } from 'lucide-react'
@@ -460,7 +461,7 @@ export default function UploadGamePage() {
                 <input ref={thumbnailRef} type="file" className="hidden" accept="image/*" onChange={handleThumbnailChange} />
                 {thumbnailPreview ? (
                   <div className="flex flex-col items-center gap-2">
-                    <img src={thumbnailPreview} alt="미리보기" className="w-40 h-24 object-cover rounded-lg" />
+                    <Image src={thumbnailPreview} alt="미리보기" width={160} height={96} className="w-40 h-24 object-cover rounded-lg" unoptimized />
                     <span className="text-green-400 text-sm">{thumbnail?.name}</span>
                   </div>
                 ) : (

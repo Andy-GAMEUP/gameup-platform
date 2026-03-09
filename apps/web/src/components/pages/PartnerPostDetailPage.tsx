@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
@@ -131,7 +132,7 @@ export default function PartnerPostDetailPage() {
           {post.images?.length > 0 && (
             <div className="grid grid-cols-2 gap-2 mb-5">
               {post.images.map((img, i) => (
-                <img key={i} src={img} alt={`이미지 ${i + 1}`} className="w-full rounded-lg border border-slate-700 object-cover max-h-64" />
+                <Image key={i} src={img} alt={`이미지 ${i + 1}`} width={800} height={256} className="w-full rounded-lg border border-slate-700 object-cover max-h-64" unoptimized />
               ))}
             </div>
           )}

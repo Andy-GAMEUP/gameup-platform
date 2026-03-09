@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Loader2, Rocket } from 'lucide-react'
 import supportService, { SupportBanner, SupportTab, Season } from '@/services/supportService'
@@ -37,10 +38,12 @@ function BannerCarousel({ banners }: { banners: SupportBanner[] }) {
       <a href={banner.linkUrl || '#'} target={banner.linkUrl ? '_blank' : '_self'} rel="noreferrer">
         <div className="relative h-72 md:h-96 bg-slate-900">
           {banner.imageUrl && (
-            <img
+            <Image
               src={banner.imageUrl}
               alt={banner.title}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              unoptimized
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />

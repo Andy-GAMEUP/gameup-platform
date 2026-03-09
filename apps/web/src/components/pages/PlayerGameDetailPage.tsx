@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
@@ -260,8 +261,7 @@ export default function PlayerGameDetailPage() {
 
       {/* Hero Banner */}
       <div className="relative h-64 md:h-80 overflow-hidden">
-        <img src={thumbUrl} alt={game.title as string} className="w-full h-full object-cover"
-          onError={(e) => { (e.target as HTMLImageElement).src = GENRE_IMG.default }} />
+        <Image src={thumbUrl} alt={game.title as string} fill className="object-cover" unoptimized />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <div className="max-w-5xl mx-auto flex items-end justify-between gap-4">

@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Gamepad2, Camera, ArrowRight, SkipForward } from 'lucide-react'
@@ -59,7 +60,7 @@ export default function ProfileSetupPage() {
             <div className="relative">
               <div className="w-24 h-24 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center overflow-hidden">
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt="프로필 이미지" className="w-full h-full object-cover" />
+                  <Image src={avatarPreview} alt="프로필 이미지" width={96} height={96} className="w-full h-full object-cover" unoptimized />
                 ) : (
                   <Camera className="w-8 h-8 text-slate-500" />
                 )}

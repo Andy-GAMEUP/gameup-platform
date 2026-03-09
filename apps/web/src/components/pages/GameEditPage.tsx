@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { RefreshCw, Save, ArrowLeft, Plus, X, Upload } from 'lucide-react'
@@ -482,7 +483,7 @@ export default function GameEditPage() {
               <input ref={thumbnailRef} type="file" className="hidden" accept="image/*" onChange={handleThumbnailChange} />
               {thumbnailPreview ? (
                 <div className="flex flex-col items-center gap-2">
-                  <img src={thumbnailPreview} alt="썸네일 미리보기" className="w-48 h-28 object-cover rounded-lg" />
+                  <Image src={thumbnailPreview} alt="썸네일 미리보기" width={192} height={112} className="w-48 h-28 object-cover rounded-lg" unoptimized />
                   <span className="text-green-400 text-xs">{thumbnail?.name || '현재 썸네일'} · 클릭하여 변경</span>
                 </div>
               ) : (

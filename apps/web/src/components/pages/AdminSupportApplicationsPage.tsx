@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import AdminLayout from '@/components/AdminLayout'
 import supportService, { Season, GameApplication } from '@/services/supportService'
 import {
@@ -178,7 +179,7 @@ function ApplicationRow({
           <div className="grid grid-cols-2 gap-4">
             {app.iconUrl && (
               <div className="col-span-2 flex items-center gap-3">
-                <img src={app.iconUrl} alt={app.gameName} className="w-16 h-16 rounded-xl object-cover bg-slate-800" />
+                <Image src={app.iconUrl} alt={app.gameName} width={64} height={64} className="w-16 h-16 rounded-xl object-cover bg-slate-800" unoptimized />
                 <div>
                   <p className="text-white font-medium">{app.gameName}</p>
                   <p className="text-slate-400 text-sm">{app.genre} · {app.userId?.username}</p>

@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
@@ -87,8 +88,7 @@ function PartnerCard({ partner, onClick }: { partner: PartnerProfile; onClick: (
       className="block w-full text-left bg-slate-900 border border-slate-800 hover:border-cyan-500/40 rounded-xl p-5 transition-all group">
       <div className="flex items-start gap-4 mb-3">
         {partner.profileImage ? (
-          <img src={partner.profileImage} alt={username}
-            className="w-14 h-14 rounded-full object-cover border border-slate-700 flex-shrink-0" />
+          <Image src={partner.profileImage} alt={username} width={56} height={56} className="w-14 h-14 rounded-full object-cover border border-slate-700 flex-shrink-0" unoptimized />
         ) : (
           <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0 ${avatarBg}`}>
             {username[0].toUpperCase()}

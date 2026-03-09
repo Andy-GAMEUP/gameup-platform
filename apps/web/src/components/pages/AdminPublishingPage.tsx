@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import AdminLayout from '@/components/AdminLayout'
 import publishingService, {
@@ -59,7 +60,7 @@ function SortableBannerRow({
         </button>
 
         {imageUrl && (
-          <img src={imageUrl} alt={title} className="w-20 h-14 object-cover rounded-lg flex-shrink-0 bg-slate-800" />
+          <Image src={imageUrl} alt={title} width={80} height={56} className="w-20 h-14 object-cover rounded-lg flex-shrink-0 bg-slate-800" unoptimized />
         )}
 
         <div className="flex-1 grid grid-cols-1 gap-2">
@@ -298,14 +299,14 @@ function SuggestsTab({ type }: { type: PublishingType }) {
                     <p className="text-slate-300 text-sm">{suggest.gameDescription}</p>
                     {suggest.appIcon && (
                       <div className="flex items-center gap-2">
-                        <img src={suggest.appIcon} alt="icon" className="w-12 h-12 rounded-xl object-cover bg-slate-800" />
+                        <Image src={suggest.appIcon} alt="icon" width={48} height={48} className="w-12 h-12 rounded-xl object-cover bg-slate-800" unoptimized />
                         <span className="text-slate-400 text-xs">앱 아이콘</span>
                       </div>
                     )}
                     {suggest.screenshots?.length > 0 && (
                       <div className="flex gap-2 overflow-x-auto">
                         {suggest.screenshots.map((s, i) => (
-                          <img key={i} src={s} alt={`스크린샷 ${i + 1}`} className="w-28 h-16 object-cover rounded-lg flex-shrink-0 bg-slate-800" />
+                          <Image key={i} src={s} alt={`스크린샷 ${i + 1}`} width={112} height={64} className="w-28 h-16 object-cover rounded-lg flex-shrink-0 bg-slate-800" unoptimized />
                         ))}
                       </div>
                     )}

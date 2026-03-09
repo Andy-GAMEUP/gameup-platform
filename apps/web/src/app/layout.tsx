@@ -15,8 +15,24 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "GAMEUP BETAZONE",
-  description: "베타 테스트 플랫폼",
+  title: {
+    default: 'GAMEUP - 게임 베타테스트 플랫폼',
+    template: '%s | GAMEUP',
+  },
+  description: '인디 게임 개발자와 플레이어를 연결하는 베타 테스트 플랫폼. 커뮤니티, 파트너 채널, 미니홈, 솔루션 마켓플레이스.',
+  keywords: ['게임', '베타테스트', '인디게임', '게임개발', 'GAMEUP', '게임업'],
+  authors: [{ name: 'GAMEUP' }],
+  openGraph: {
+    type: 'website',
+    locale: 'ko_KR',
+    siteName: 'GAMEUP',
+    title: 'GAMEUP - 게임 베타테스트 플랫폼',
+    description: '인디 게임 개발자와 플레이어를 연결하는 베타 테스트 플랫폼',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export default function RootLayout({

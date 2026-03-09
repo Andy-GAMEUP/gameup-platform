@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { X, Loader2, Shield, Wrench } from 'lucide-react'
 import playerService, { FollowUser } from '@/services/playerService'
 
@@ -19,7 +20,7 @@ function RoleBadge({ role }: { role: string }) {
 function UserAvatar({ user }: { user: FollowUser }) {
   const bg = user.role === 'admin' ? 'bg-purple-600' : user.role === 'developer' ? 'bg-cyan-600' : 'bg-slate-600'
   if (user.profileImage) {
-    return <img src={user.profileImage} alt={user.username} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+    return <Image src={user.profileImage} alt={user.username} width={40} height={40} className="w-10 h-10 rounded-full object-cover flex-shrink-0" unoptimized />
   }
   return (
     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white flex-shrink-0 ${bg}`}>

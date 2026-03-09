@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Star, Play, Plus, Loader2 } from 'lucide-react'
@@ -45,10 +46,12 @@ function BannerCarousel({ banners }: { banners: PublishingBanner[] }) {
       <a href={banner.linkUrl || '#'} target={banner.linkUrl ? '_blank' : '_self'} rel="noreferrer">
         <div className="relative h-72 md:h-96 bg-slate-900">
           {banner.imageUrl && (
-            <img
+            <Image
               src={banner.imageUrl}
               alt={banner.title}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
+              unoptimized
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -93,7 +96,7 @@ function GameCard({ game, type }: { game: FeaturedGame; type: PublishingType }) 
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden hover:border-slate-600 transition-all group cursor-pointer">
         <div className="h-36 bg-slate-800 overflow-hidden">
           {game.thumbnail ? (
-            <img src={game.thumbnail} alt={game.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            <Image src={game.thumbnail} alt={game.title} width={400} height={144} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Play className="w-8 h-8 text-slate-600" />

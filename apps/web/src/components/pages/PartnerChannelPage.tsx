@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
@@ -77,8 +78,7 @@ export default function PartnerChannelPage() {
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-6">
           <div className="flex items-start gap-5">
             {partner.profileImage ? (
-              <img src={partner.profileImage} alt={username}
-                className="w-20 h-20 rounded-full object-cover border border-slate-700 flex-shrink-0" />
+              <Image src={partner.profileImage} alt={username} width={80} height={80} className="w-20 h-20 rounded-full object-cover border border-slate-700 flex-shrink-0" unoptimized />
             ) : (
               <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-2xl flex-shrink-0 ${avatarBg}`}>
                 {username[0].toUpperCase()}

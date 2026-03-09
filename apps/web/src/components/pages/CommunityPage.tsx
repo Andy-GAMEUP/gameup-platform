@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
@@ -229,7 +230,7 @@ function PostCard({ post, currentUserId }: { post: PostSummary; currentUserId?: 
           {post.images?.length > 0 && (
             <div className="flex gap-1 mt-2">
               {post.images.slice(0,3).map((img, i) => (
-                <img key={i} src={img} alt="" className="w-12 h-12 rounded object-cover border border-slate-700" />
+                <Image key={i} src={img} alt="" width={48} height={48} className="w-12 h-12 rounded object-cover border border-slate-700" unoptimized />
               ))}
               {post.images.length > 3 && <div className="w-12 h-12 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-slate-400">+{post.images.length-3}</div>}
             </div>

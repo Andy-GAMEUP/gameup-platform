@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import AdminLayout from '@/components/AdminLayout'
 import minihomeService, { MiniHome } from '@/services/minihomeService'
 import { ChevronLeft, ChevronRight, Loader2, Search, Trash2, Building2 } from 'lucide-react'
@@ -156,7 +157,7 @@ export default function AdminMiniHomePage() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             {mh.userId?.profileImage ? (
-                              <img src={mh.userId.profileImage} alt="" className="w-6 h-6 rounded-full object-cover" />
+                              <Image src={mh.userId.profileImage} alt="" width={24} height={24} className="w-6 h-6 rounded-full object-cover" unoptimized />
                             ) : (
                               <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center">
                                 <span className="text-slate-400 text-xs">{mh.userId?.username?.[0]?.toUpperCase()}</span>
@@ -168,7 +169,7 @@ export default function AdminMiniHomePage() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             {mh.profileImage && (
-                              <img src={mh.profileImage} alt="" className="w-6 h-6 rounded object-cover" />
+                              <Image src={mh.profileImage} alt="" width={24} height={24} className="w-6 h-6 rounded object-cover" unoptimized />
                             )}
                             <span className="text-white text-sm font-medium">{mh.companyName}</span>
                           </div>
@@ -177,7 +178,7 @@ export default function AdminMiniHomePage() {
                           {mh.representativeGameId ? (
                             <div className="flex items-center gap-2">
                               {mh.representativeGameId.iconUrl && (
-                                <img src={mh.representativeGameId.iconUrl} alt="" className="w-5 h-5 rounded object-cover" />
+                                <Image src={mh.representativeGameId.iconUrl} alt="" width={20} height={20} className="w-5 h-5 rounded object-cover" unoptimized />
                               )}
                               <span className="text-slate-300 text-sm">{mh.representativeGameId.title}</span>
                             </div>

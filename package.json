@@ -8,9 +8,16 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
-    "clean": "turbo clean && rm -rf node_modules"
+    "clean": "turbo clean && rm -rf node_modules",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "migrate": "npx tsx scripts/migrate-mysql-to-mongodb.ts"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.4.0",
+    "mongoose": "^8.23.0",
+    "mysql2": "^3.19.1",
     "turbo": "^2.8.13",
     "typescript": "^5.7.3"
   }

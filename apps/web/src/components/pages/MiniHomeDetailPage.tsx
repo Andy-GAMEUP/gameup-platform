@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import minihomeService, { MiniHome, MiniHomeGame, MiniHomeNews, Proposal } from '@/services/minihomeService'
@@ -91,8 +92,7 @@ export default function MiniHomeDetailPage() {
         <div className="relative -mt-16 mb-6 flex items-end gap-5">
           <div className="relative z-10">
             {minihome.profileImage ? (
-              <img src={minihome.profileImage} alt={minihome.companyName}
-                className="w-24 h-24 rounded-2xl object-cover border-4 border-[#0a0a0f] shadow-xl" />
+              <Image src={minihome.profileImage} alt={minihome.companyName} width={96} height={96} className="w-24 h-24 rounded-2xl object-cover border-4 border-[#0a0a0f] shadow-xl" unoptimized />
             ) : (
               <div className="w-24 h-24 rounded-2xl bg-red-600/20 border-4 border-[#0a0a0f] flex items-center justify-center shadow-xl">
                 <Building2 className="w-10 h-10 text-red-400" />
@@ -262,7 +262,7 @@ function GameCard({ game, isOwner, onRefresh }: { game: MiniHomeGame; isOwner: b
   return (
     <div className="flex-shrink-0 w-44 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden group">
       {game.coverUrl ? (
-        <img src={game.coverUrl} alt={game.title} className="w-full h-24 object-cover" />
+        <Image src={game.coverUrl} alt={game.title} width={400} height={96} className="w-full h-24 object-cover" unoptimized />
       ) : (
         <div className="w-full h-24 bg-slate-800 flex items-center justify-center">
           <Gamepad2 className="w-8 h-8 text-slate-600" />
@@ -270,7 +270,7 @@ function GameCard({ game, isOwner, onRefresh }: { game: MiniHomeGame; isOwner: b
       )}
       <div className="p-3">
         <div className="flex items-center gap-2 mb-1">
-          {game.iconUrl && <img src={game.iconUrl} alt="" className="w-6 h-6 rounded object-cover" />}
+          {game.iconUrl && <Image src={game.iconUrl} alt="" width={24} height={24} className="w-6 h-6 rounded object-cover" unoptimized />}
           <p className="text-white text-xs font-semibold truncate flex-1">{game.title}</p>
         </div>
         <p className="text-slate-500 text-xs mb-1">{game.genre}</p>

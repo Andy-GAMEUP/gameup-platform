@@ -1,5 +1,10 @@
-'use client'
+import type { Metadata } from 'next'
 import LoginPage from '@/components/pages/LoginPage'
+
+export const metadata: Metadata = {
+  title: '로그인',
+  description: 'GAMEUP에 로그인하세요',
+}
 
 export default function Page() {
   return <LoginPage />

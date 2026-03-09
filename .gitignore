@@ -36,3 +36,12 @@ apps/api/uploads/*
 
 # misc
 *.tsbuildinfo
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Migration
+scripts/*.log

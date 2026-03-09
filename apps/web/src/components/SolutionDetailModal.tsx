@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { X, CheckCircle, ChevronRight } from 'lucide-react'
 import solutionService, { Solution } from '@/services/solutionService'
 
@@ -80,7 +81,7 @@ export default function SolutionDetailModal({ isOpen, onClose, solutionId }: Pro
           <div>
             {solution.imageUrl && (
               <div className="h-48 overflow-hidden rounded-t-2xl">
-                <img src={solution.imageUrl} alt={solution.name} className="w-full h-full object-cover" />
+                <Image src={solution.imageUrl} alt={solution.name} width={800} height={192} className="w-full h-full object-cover" unoptimized />
               </div>
             )}
             <div className="p-6">

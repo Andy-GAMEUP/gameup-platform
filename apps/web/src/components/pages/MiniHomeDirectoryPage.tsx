@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import minihomeService, { MiniHome, KeywordGroup } from '@/services/minihomeService'
@@ -171,7 +172,7 @@ function RecommendedCard({ minihome }: { minihome: MiniHome }) {
     <Link href={`/minihome/${minihome._id}`}
       className="flex-shrink-0 w-48 bg-slate-900 border border-slate-800 hover:border-red-500/40 rounded-xl overflow-hidden transition-all group">
       {minihome.coverImage ? (
-        <img src={minihome.coverImage} alt={minihome.companyName} className="w-full h-24 object-cover" />
+        <Image src={minihome.coverImage} alt={minihome.companyName} width={400} height={96} className="w-full h-24 object-cover" unoptimized />
       ) : (
         <div className="w-full h-24 bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center">
           <Building2 className="w-8 h-8 text-slate-600" />
@@ -180,7 +181,7 @@ function RecommendedCard({ minihome }: { minihome: MiniHome }) {
       <div className="p-3">
         <div className="flex items-center gap-2 mb-1">
           {minihome.profileImage ? (
-            <img src={minihome.profileImage} alt="" className="w-7 h-7 rounded-full object-cover border border-slate-700" />
+            <Image src={minihome.profileImage} alt="" width={28} height={28} className="w-7 h-7 rounded-full object-cover border border-slate-700" unoptimized />
           ) : (
             <div className="w-7 h-7 rounded-full bg-red-600/30 flex items-center justify-center">
               <Building2 className="w-3.5 h-3.5 text-red-400" />
@@ -201,9 +202,9 @@ function MiniHomeCard({ minihome }: { minihome: MiniHome }) {
     <Link href={`/minihome/${minihome._id}`}
       className="block bg-slate-900 border border-slate-800 hover:border-red-500/40 rounded-xl overflow-hidden transition-all group">
       {repGame?.coverUrl ? (
-        <img src={repGame.coverUrl} alt={repGame.title} className="w-full h-36 object-cover" />
+        <Image src={repGame.coverUrl} alt={repGame.title} width={400} height={144} className="w-full h-36 object-cover" unoptimized />
       ) : minihome.coverImage ? (
-        <img src={minihome.coverImage} alt={minihome.companyName} className="w-full h-36 object-cover" />
+        <Image src={minihome.coverImage} alt={minihome.companyName} width={400} height={144} className="w-full h-36 object-cover" unoptimized />
       ) : (
         <div className="w-full h-36 bg-gradient-to-br from-slate-800 to-slate-700 flex items-center justify-center">
           <Building2 className="w-10 h-10 text-slate-600" />
@@ -213,7 +214,7 @@ function MiniHomeCard({ minihome }: { minihome: MiniHome }) {
       <div className="p-4">
         <div className="flex items-center gap-3 mb-2">
           {minihome.profileImage ? (
-            <img src={minihome.profileImage} alt="" className="w-9 h-9 rounded-full object-cover border border-slate-700 flex-shrink-0" />
+            <Image src={minihome.profileImage} alt="" width={36} height={36} className="w-9 h-9 rounded-full object-cover border border-slate-700 flex-shrink-0" unoptimized />
           ) : (
             <div className="w-9 h-9 rounded-full bg-red-600/20 flex items-center justify-center flex-shrink-0">
               <Building2 className="w-4 h-4 text-red-400" />

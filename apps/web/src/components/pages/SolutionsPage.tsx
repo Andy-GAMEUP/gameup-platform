@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Shield, Zap, HeadphonesIcon, ArrowRight } from 'lucide-react'
 import solutionService, { Solution } from '@/services/solutionService'
 import SolutionDetailModal from '@/components/SolutionDetailModal'
@@ -22,7 +23,7 @@ function SolutionCard({ solution, onClick }: { solution: Solution; onClick: () =
     >
       <div className="h-44 overflow-hidden bg-slate-800">
         {solution.imageUrl ? (
-          <img src={solution.imageUrl} alt={solution.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <Image src={solution.imageUrl} alt={solution.name} width={400} height={176} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-slate-600 text-4xl font-bold">
             {solution.name[0]}
