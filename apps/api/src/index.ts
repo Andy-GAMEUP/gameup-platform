@@ -25,6 +25,8 @@ import adminSupportRoutes from './routes/adminSupportRoutes'
 import messageRoutes from './routes/messageRoutes'
 import notificationRoutes from './routes/notificationRoutes'
 import adminNotificationRoutes from './routes/adminNotificationRoutes'
+import solutionRoutes from './routes/solutionRoutes'
+import adminSolutionRoutes from './routes/adminSolutionRoutes'
 import { errorHandler, notFound } from './middleware/errorHandler'
 import { initSocket } from './socket'
 
@@ -102,6 +104,8 @@ app.use('/api', adminSupportRoutes)
 app.use('/api', messageRoutes)
 app.use('/api', notificationRoutes)
 app.use('/api', adminNotificationRoutes)
+app.use('/api', solutionRoutes)
+app.use('/api', adminSolutionRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' })
