@@ -8,6 +8,7 @@ import {
   MessageSquare, ChevronLeft, ChevronRight,
   Home, LogOut, Shield, UserPlus, Handshake, Tags,
   Smartphone, Globe, Hash, Calendar, FileCheck, ImageIcon, Bell, Package,
+  BarChart3, PieChart, UserCircle, Building2, Award, Activity, FileText,
 } from 'lucide-react'
 
 interface AdminLayoutProps { children: ReactNode }
@@ -30,6 +31,13 @@ const navItems = [
   { path: '/admin/support-banners', label: '지원 배너/탭', icon: ImageIcon },
   { path: '/admin/notifications', label: '알림 관리', icon: Bell },
   { path: '/admin/solutions', label: '솔루션 관리', icon: Package },
+  { path: '/admin/analytics', label: '방문 통계', icon: BarChart3 },
+  { path: '/admin/analytics/menu', label: '메뉴별 통계', icon: PieChart },
+  { path: '/admin/users-enhanced/individual', label: '개인회원', icon: UserCircle },
+  { path: '/admin/users-enhanced/corporate', label: '기업회원', icon: Building2 },
+  { path: '/admin/levels', label: '레벨 관리', icon: Award },
+  { path: '/admin/activity-scores', label: '활동점수', icon: Activity },
+  { path: '/admin/terms', label: '약관 관리', icon: FileText },
 ]
 
 export default function AdminLayout({ children }: AdminLayoutProps) {

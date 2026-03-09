@@ -27,6 +27,11 @@ import notificationRoutes from './routes/notificationRoutes'
 import adminNotificationRoutes from './routes/adminNotificationRoutes'
 import solutionRoutes from './routes/solutionRoutes'
 import adminSolutionRoutes from './routes/adminSolutionRoutes'
+import adminAnalyticsRoutes from './routes/adminAnalyticsRoutes'
+import adminUserEnhancedRoutes from './routes/adminUserEnhancedRoutes'
+import adminLevelRoutes from './routes/adminLevelRoutes'
+import adminActivityScoreRoutes from './routes/adminActivityScoreRoutes'
+import adminTermsRoutes from './routes/adminTermsRoutes'
 import { errorHandler, notFound } from './middleware/errorHandler'
 import { initSocket } from './socket'
 
@@ -106,6 +111,11 @@ app.use('/api', notificationRoutes)
 app.use('/api', adminNotificationRoutes)
 app.use('/api', solutionRoutes)
 app.use('/api', adminSolutionRoutes)
+app.use('/api/admin/analytics', adminAnalyticsRoutes)
+app.use('/api/admin/users-enhanced', adminUserEnhancedRoutes)
+app.use('/api/admin/levels', adminLevelRoutes)
+app.use('/api/admin/activity-scores', adminActivityScoreRoutes)
+app.use('/api/admin/terms', adminTermsRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' })

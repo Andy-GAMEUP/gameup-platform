@@ -6,6 +6,25 @@ interface IOAuthProvider {
   connectedAt: Date
 }
 
+interface ICompanyInfo {
+  companyName?: string
+  phone?: string
+  companyEmail?: string
+  employeeCount?: number
+  businessNumber?: string
+  companyLogo?: string
+  businessLicense?: string
+  companyType?: string[]
+  homepageUrl?: string
+  isApproved?: boolean
+  description?: string
+}
+
+interface IContactPerson {
+  name?: string
+  email?: string
+}
+
 export interface IUser extends Document {
   email: string
   username: string
@@ -19,6 +38,13 @@ export interface IUser extends Document {
   oauthProviders?: IOAuthProvider[]
   memberType?: 'individual' | 'corporate'
   profileImage?: string
+  level?: number
+  activityScore?: number
+  points?: number
+  companyInfo?: ICompanyInfo
+  contactPerson?: IContactPerson
+  adminMemo?: string
+  lastLoginAt?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -76,6 +102,37 @@ const userSchema = new Schema<IUser>(
       default: 'individual',
     },
     profileImage: { type: String },
+    level: {
+      type: Number,
+      default: 1,
+    },
+    activityScore: {
+      type: Number,
+      default: 0,
+    },
+    points: {
+      type: Number,
+      default: 0,
+    },
+    companyInfo: {
+      companyName: { type: String },
+      phone: { type: String },
+      companyEmail: { type: String },
+      employeeCount: { type: Number },
+      businessNumber: { type: String },
+      companyLogo: { type: String },
+      businessLicense: { type: String },
+      companyType: { type: [String] },
+      homepageUrl: { type: String },
+      isApproved: { type: Boolean },
+      description: { type: String },
+    },
+    contactPerson: {
+      name: { type: String },
+      email: { type: String },
+    },
+    adminMemo: { type: String },
+    lastLoginAt: { type: Date },
   },
   {
     timestamps: true

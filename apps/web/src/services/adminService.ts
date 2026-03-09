@@ -50,6 +50,79 @@ export interface Announcement {
   createdAt: string
 }
 
+export interface VisitorStatsParams {
+  startDate?: string
+  endDate?: string
+  period?: string
+  platform?: string
+}
+
+export interface MenuStatsParams {
+  menu?: string
+  startDate?: string
+  endDate?: string
+  platform?: string
+}
+
+export interface IndividualMembersParams {
+  page?: number
+  limit?: number
+  search?: string
+  startDate?: string
+  endDate?: string
+  status?: string
+  levelMin?: number
+  levelMax?: number
+  sortBy?: string
+  sortOrder?: string
+}
+
+export interface CorporateMembersParams {
+  page?: number
+  limit?: number
+  search?: string
+  startDate?: string
+  endDate?: string
+  status?: string
+  sortBy?: string
+  sortOrder?: string
+}
+
+export interface ActivityScoresParams {
+  page?: number
+  limit?: number
+  search?: string
+  startDate?: string
+  endDate?: string
+  sortBy?: string
+  sortOrder?: string
+}
+
+export interface LevelData {
+  level: number
+  name: string
+  minScore: number
+  icon?: string
+  memberCount?: number
+}
+
+export interface BulkNotifyData {
+  userIds: string[]
+  title: string
+  message: string
+  type?: string
+}
+
+export interface GrantScoreData {
+  amount: number
+  reason: string
+}
+
+export interface GrantPointsData {
+  amount: number
+  reason: string
+}
+
 export const adminService = {
   getStats: async (): Promise<AdminStats> => {
     const res = await apiClient.get('/admin/stats')
@@ -139,7 +212,52 @@ export const adminService = {
   getPublicAnnouncements: async () => {
     const res = await apiClient.get('/admin/announcements/public')
     return res.data
-  }
+  },
+
+  getAnalyticsDashboard: () =>
+    apiClient.get('/admin/analytics/dashboard-summary').then(r => r.data),
+
+  getVisitorStats: (params: VisitorStatsParams) =>
+    apiClient.get('/admin/analytics/visitor-stats', { params }).then(r => r.data),
+
+  getMenuStats: (params: MenuStatsParams) =>
+    apiClient.get('/admin/analytics/menu-stats', { params }).then(r => r.data),
+
+  getIndividualMembers: (params: IndividualMembersParams) =>
+    apiClient.get('/admin/users-enhanced/individual', { params }).then(r => r.data),
+
+  getCorporateMembers: (params: CorporateMembersParams) =>
+    apiClient.get('/admin/users-enhanced/corporate', { params }).then(r => r.data),
+
+  getUserDetail: (id: string) =>
+    apiClient.get(`/admin/users-enhanced/${id}/detail`).then(r => r.data),
+
+  updateUserDetail: (id: string, data: Record<string, unknown>) =>
+    apiClient.patch(`/admin/users-enhanced/${id}`, data).then(r => r.data),
+
+  grantActivityScore: (id: string, data: GrantScoreData) =>
+    apiClient.post(`/admin/users-enhanced/${id}/activity-score`, data).then(r => r.data),
+
+  grantPoints: (id: string, data: GrantPointsData) =>
+    apiClient.post(`/admin/users-enhanced/${id}/points`, data).then(r => r.data),
+
+  bulkNotify: (data: BulkNotifyData) =>
+    apiClient.post('/admin/users-enhanced/bulk-notify', data).then(r => r.data),
+
+  getLevels: () =>
+    apiClient.get('/admin/levels').then(r => r.data),
+
+  updateLevels: (levels: LevelData[]) =>
+    apiClient.post('/admin/levels', { levels }).then(r => r.data),
+
+  getActivityScores: (params: ActivityScoresParams) =>
+    apiClient.get('/admin/activity-scores', { params }).then(r => r.data),
+
+  getTerms: (type: 'privacy' | 'service') =>
+    apiClient.get('/admin/terms', { params: { type } }).then(r => r.data),
+
+  updateTerms: (type: 'privacy' | 'service', content: string) =>
+    apiClient.post('/admin/terms', { type, content }).then(r => r.data),
 }
 
 export default adminService
