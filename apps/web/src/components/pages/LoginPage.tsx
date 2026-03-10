@@ -43,7 +43,11 @@ export default function LoginPage() {
       else if (role === 'developer') router.push('/dashboard')
       else router.push('/games')
     } catch (error: any) {
-      setServerError(error.message || '이메일 또는 비밀번호가 올바르지 않습니다')
+      const msg = error.message
+      const friendlyMsg = (msg === 'CredentialsSignin' || msg === 'Configuration')
+        ? '이메일 또는 비밀번호가 올바르지 않습니다'
+        : msg || '로그인 중 오류가 발생했습니다'
+      setServerError(friendlyMsg)
     } finally {
       setLoading(false)
     }
