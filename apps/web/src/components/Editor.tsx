@@ -33,6 +33,7 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-cyan-400 underline hover:text-cyan-300' } }),
     ],
     content,
+    immediatelyRender: false,
     editorProps: {
       attributes: {
         class: 'min-h-[300px] outline-none text-slate-200 text-sm leading-relaxed p-4',

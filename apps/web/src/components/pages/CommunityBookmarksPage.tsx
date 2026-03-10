@@ -8,18 +8,19 @@ import { useAuth } from '@/lib/useAuth'
 import { Bookmark, ArrowLeft, ThumbsUp, MessageSquare, Eye, Loader2 } from 'lucide-react'
 
 export default function CommunityBookmarksPage() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [posts, setPosts] = useState<PostSummary[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (authLoading) return
     if (!isAuthenticated) { router.push('/login'); return }
     communityService.getMyBookmarks(1, 50)
       .then(({ posts: p, total: t }) => { setPosts(p); setTotal(t) })
       .finally(() => setLoading(false))
-  }, [isAuthenticated])
+  }, [isAuthenticated, authLoading])
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">

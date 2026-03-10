@@ -21,7 +21,7 @@ const CHANNELS = [
 export default function CommunityWritePage() {
   const { id } = useParams<{ id?: string }>()
   const router = useRouter()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading } = useAuth()
   const isEdit = !!id
 
   const [title, setTitle] = useState('')
@@ -38,6 +38,7 @@ export default function CommunityWritePage() {
   const [tempSaveMsg, setTempSaveMsg] = useState('')
 
   useEffect(() => {
+    if (isLoading) return
     if (!isAuthenticated) { router.push('/login'); return }
     if (isEdit) {
       communityService.getPost(id!).then(p => {
@@ -49,7 +50,7 @@ export default function CommunityWritePage() {
         setImages(p.images || [])
       }).catch(() => router.push('/community'))
     }
-  }, [id, isAuthenticated])
+  }, [id, isAuthenticated, isLoading])
 
   const addTag = () => {
     const t = tagInput.trim().replace(/^#/, '')

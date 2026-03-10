@@ -11,7 +11,7 @@ export default function PartnerPostWritePage() {
   const params = useParams<{ id?: string }>()
   const editId = params?.id
   const router = useRouter()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const isEdit = !!editId
 
   const [title, setTitle] = useState('')
@@ -27,6 +27,7 @@ export default function PartnerPostWritePage() {
   const [isApprovedPartner, setIsApprovedPartner] = useState(false)
 
   useEffect(() => {
+    if (authLoading) return
     if (!isAuthenticated) { router.push('/login'); return }
     partnerService.getMyStatus()
       .then((data: { partner?: { status: string } }) => {
@@ -38,7 +39,7 @@ export default function PartnerPostWritePage() {
     partnerService.getTopics()
       .then((data: { groups: TopicGroup[] }) => setTopicGroups(data.groups ?? []))
       .catch(() => {})
-  }, [isAuthenticated])
+  }, [isAuthenticated, authLoading])
 
   useEffect(() => {
     if (isEdit && editId) {
