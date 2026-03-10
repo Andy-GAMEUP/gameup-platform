@@ -186,7 +186,7 @@ export default function AdminGamesPage() {
       <div className="space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="text-white text-xl font-bold">게임 관리</h2>
-          <span className="text-slate-500 text-sm">총 {total}개</span>
+          <span className="text-slate-500 text-sm">{loading ? '로딩 중...' : `총 ${total}개`}</span>
         </div>
 
         {/* 필터 */}

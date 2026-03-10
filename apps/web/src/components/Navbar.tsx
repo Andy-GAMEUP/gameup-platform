@@ -19,6 +19,19 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!isAuthenticated) return
+    const token = typeof window !== 'undefined' && localStorage.getItem('token')
+    if (!token) {
+      // Token not yet stored after hard refresh — retry after session recovery
+      const timer = setTimeout(() => {
+        const retryToken = localStorage.getItem('token')
+        if (retryToken) {
+          notificationService.getUnreadCount()
+            .then((data) => setUnreadCount(data.count ?? 0))
+            .catch(() => {})
+        }
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
     notificationService.getUnreadCount()
       .then((data) => setUnreadCount(data.count ?? 0))
       .catch(() => {})

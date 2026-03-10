@@ -23,7 +23,7 @@ import {
 import { gameService } from '@/services/gameService'
 import { Game } from '@gameup/types'
 
-const PLACEHOLDER = 'https://via.placeholder.com/400x300/1e293b/334155?text=Game'
+const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect fill='%231e293b' width='400' height='300'/%3E%3Ctext fill='%23334155' font-family='sans-serif' font-size='24' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3EGame%3C/text%3E%3C/svg%3E"
 
 function FeaturedGameCard({ game }: { game: Game }) {
   const router = useRouter()

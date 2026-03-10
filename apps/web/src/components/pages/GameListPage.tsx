@@ -10,7 +10,7 @@ import { Heart, Star, Search, Filter, Loader2, Gamepad2, ChevronLeft, ChevronRig
 import { gameService } from '@/services/gameService'
 import { Game } from '@gameup/types'
 
-const PLACEHOLDER = 'https://via.placeholder.com/400x256/1e293b/334155?text=Game'
+const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='256' viewBox='0 0 400 256'%3E%3Crect fill='%231e293b' width='400' height='256'/%3E%3Ctext fill='%23334155' font-family='sans-serif' font-size='24' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3EGame%3C/text%3E%3C/svg%3E"
 
 const GENRES = ['전체', 'RPG', '액션', 'FPS', '전략', '퍼즐', '스포츠', '레이싱', '어드벤처', '시뮬레이션']
 const SORT_OPTIONS = [

@@ -94,7 +94,7 @@ export default function AdminMiniHomePage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-white font-bold text-xl">미니홈 관리</h1>
-          <p className="text-slate-400 text-sm mt-1">총 {total}개의 미니홈</p>
+          <p className="text-slate-400 text-sm mt-1">{loading ? '로딩 중...' : `총 ${total}개의 미니홈`}</p>
         </div>
 
         <div className="flex flex-wrap items-end gap-3">

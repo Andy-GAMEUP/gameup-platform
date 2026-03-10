@@ -84,7 +84,7 @@ export default function AdminUsersPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-white text-xl font-bold">회원 관리</h2>
-          <span className="text-slate-400 text-sm">총 {total}명</span>
+          <span className="text-slate-400 text-sm">{loading ? '로딩 중...' : `총 ${total}명`}</span>
         </div>
 
         <div className="flex flex-wrap gap-3">

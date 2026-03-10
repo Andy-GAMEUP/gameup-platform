@@ -116,7 +116,7 @@ export default function AdminCorporateMembersPage() {
         <div className="flex items-center gap-3">
           <Building2 className="w-5 h-5 text-red-400" />
           <h2 className="text-white text-xl font-bold">기업회원 관리</h2>
-          <span className="text-slate-400 text-sm ml-auto">총 {total.toLocaleString()}개사</span>
+          <span className="text-slate-400 text-sm ml-auto">{loading ? '로딩 중...' : `총 ${total.toLocaleString()}개사`}</span>
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">

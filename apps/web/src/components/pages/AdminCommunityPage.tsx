@@ -130,7 +130,7 @@ export default function AdminCommunityPage() {
             <MessageSquare className="w-5 h-5 text-purple-400" /> 커뮤니티 모니터링
           </h2>
           <div className="flex gap-3 text-sm">
-            <span className="text-slate-400">총 <span className="text-white font-semibold">{total}</span>개</span>
+            <span className="text-slate-400">{loading ? '로딩 중...' : <>총 <span className="text-white font-semibold">{total}</span>개</>}</span>
             {blockedCount > 0 && <span className="text-red-400">이 페이지 차단: {blockedCount}개</span>}
           </div>
         </div>
