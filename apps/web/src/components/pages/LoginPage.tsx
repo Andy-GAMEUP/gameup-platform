@@ -51,7 +51,7 @@ export default function LoginPage() {
 
   const fillTestAccount = (type: 'admin' | 'developer' | 'player') => {
     const accounts = {
-      admin: { email: 'admin@gameup.com', password: 'Admin1234!' },
+      admin: { email: 'admin@gameup.com', password: 'test123456' },
       developer: { email: 'developer@test.com', password: 'test123456' },
       player: { email: 'player@test.com', password: 'test123456' },
     }

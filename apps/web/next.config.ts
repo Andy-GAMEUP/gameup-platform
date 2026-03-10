@@ -14,16 +14,21 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'http://localhost:5000/api/:path*',
-      },
-      {
-        source: '/uploads/:path*',
-        destination: 'http://localhost:5000/uploads/:path*',
-      },
-    ]
+    return {
+      beforeFiles: [
+        {
+          source: '/uploads/:path*',
+          destination: 'http://localhost:5000/uploads/:path*',
+        },
+      ],
+      afterFiles: [],
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: 'http://localhost:5000/api/:path*',
+        },
+      ],
+    }
   },
 }
 

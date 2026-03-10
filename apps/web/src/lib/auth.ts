@@ -27,6 +27,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: data.user.username,
           role: data.user.role,
           image: data.user.profileImage || null,
+          accessToken: data.token,
         }
       },
     }),
@@ -59,6 +60,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         user.id = data.user.id
         ;(user as any).role = data.user.role
         ;(user as any).username = data.user.username
+        ;(user as any).accessToken = data.token
       }
       return true
     },
@@ -67,6 +69,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id as string
         token.role = (user as any).role || 'player'
         token.username = (user as any).username || user.name || ''
+        token.accessToken = (user as any).accessToken || ''
       }
       return token
     },
@@ -75,6 +78,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string
         ;(session.user as any).role = token.role
         ;(session.user as any).username = token.username
+        ;(session.user as any).accessToken = token.accessToken
       }
       return session
     },

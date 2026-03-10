@@ -23,7 +23,7 @@ const createAdminUser = async () => {
       email: 'admin@gameup.com',
       username: 'admin',
       password: 'admin123456',
-      role: 'developer' as const
+      role: 'admin' as const
     }
 
     // 기존 admin 계정 확인

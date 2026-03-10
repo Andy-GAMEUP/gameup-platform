@@ -1,10 +1,19 @@
 'use client'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export function useAuth() {
   const { data: session, status } = useSession()
   const router = useRouter()
+
+  const accessToken = (session?.user as any)?.accessToken as string | undefined
+
+  useEffect(() => {
+    if (accessToken) {
+      localStorage.setItem('token', accessToken)
+    }
+  }, [accessToken])
 
   const user = session?.user ? {
     id: session.user.id,
@@ -26,6 +35,10 @@ export function useAuth() {
         redirect: false,
       })
       if (result?.error) throw new Error(result.error)
+      const sessionRes = await fetch('/api/auth/session')
+      const freshSession = await sessionRes.json()
+      const token = freshSession?.user?.accessToken
+      if (token) localStorage.setItem('token', token)
       router.refresh()
     },
     register: async (email: string, username: string, password: string, role: 'developer' | 'player') => {
@@ -39,9 +52,14 @@ export function useAuth() {
         throw new Error(data.message || 'Registration failed')
       }
       await signIn('credentials', { email, password, redirect: false })
+      const sessionRes = await fetch('/api/auth/session')
+      const freshSession = await sessionRes.json()
+      const token = freshSession?.user?.accessToken
+      if (token) localStorage.setItem('token', token)
       router.refresh()
     },
     logout: () => {
+      localStorage.removeItem('token')
       signOut({ callbackUrl: '/' })
     },
     updateUser: (_partial: Record<string, any>) => {
