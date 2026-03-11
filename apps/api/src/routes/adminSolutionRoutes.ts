@@ -16,16 +16,16 @@ import { authenticateToken, requireAdmin } from '../middleware/auth'
 const router = Router()
 router.use(authenticateToken, requireAdmin)
 
-router.get('/admin/solutions', getSolutions)
-router.post('/admin/solutions', createSolution)
-router.put('/admin/solutions/reorder', reorderSolutions)
-router.put('/admin/solutions/:id', updateSolution)
-router.delete('/admin/solutions/:id', deleteSolution)
+router.get('/solutions', getSolutions)
+router.post('/solutions', createSolution)
+router.put('/solutions/reorder', reorderSolutions)
+router.put('/solutions/:id', updateSolution)
+router.delete('/solutions/:id', deleteSolution)
 
-router.get('/admin/solutions/subscriptions', getSubscriptions)
-router.get('/admin/solutions/subscriptions/:id', getSubscriptionDetail)
-router.patch('/admin/solutions/subscriptions/:id/status', updateSubscriptionStatus)
-router.patch('/admin/solutions/subscriptions/:id/confirm', confirmSubscription)
-router.delete('/admin/solutions/subscriptions/:id', deleteSubscription)
+router.get('/solutions/subscriptions', getSubscriptions)
+router.get('/solutions/subscriptions/:id', getSubscriptionDetail)
+router.patch('/solutions/subscriptions/:id/status', updateSubscriptionStatus)
+router.patch('/solutions/subscriptions/:id/confirm', confirmSubscription)
+router.delete('/solutions/subscriptions/:id', deleteSubscription)
 
 export default router

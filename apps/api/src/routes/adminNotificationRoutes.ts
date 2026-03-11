@@ -6,7 +6,7 @@ const router = Router()
 
 router.use(authenticateToken, requireAdmin)
 
-router.get('/admin/notifications', getNotifications)
-router.post('/admin/notifications/send', sendNotification)
+router.get('/notifications', getNotifications)
+router.post('/notifications/send', sendNotification)
 
 export default router
