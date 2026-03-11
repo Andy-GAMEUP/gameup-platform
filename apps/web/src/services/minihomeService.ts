@@ -201,7 +201,7 @@ export const minihomeService = {
 
     createKeywordGroup: async (data: { name: string; keywords?: { name: string; isActive: boolean }[]; sortOrder?: number }) => {
       const res = await apiClient.post('/admin/minihome/keywords', data)
-      return res.data as KeywordGroup
+      return res.data.group as KeywordGroup
     },
 
     updateKeywordGroup: async (id: string, data: { name?: string; keywords?: { name: string; isActive: boolean }[]; sortOrder?: number }) => {

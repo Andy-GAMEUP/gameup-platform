@@ -39,12 +39,15 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
 
   const [keywordGroups, setKeywordGroups] = useState<KeywordGroup[]>([])
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([])
+  const [keywordsLoading, setKeywordsLoading] = useState(false)
 
   useEffect(() => {
     if (step === 3) {
+      setKeywordsLoading(true)
       minihomeService.getKeywords()
         .then(data => setKeywordGroups(data.groups ?? []))
-        .catch(() => {})
+        .catch(() => setKeywordGroups([]))
+        .finally(() => setKeywordsLoading(false))
     }
   }, [step])
 
@@ -283,10 +286,12 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
                   <h3 className="text-white font-semibold text-sm">Step 3: 키워드 선택</h3>
                   <p className="text-slate-400 text-xs">관련 키워드를 선택하면 검색과 매칭에 활용됩니다</p>
 
-                  {keywordGroups.length === 0 ? (
+                  {keywordsLoading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
                     </div>
+                  ) : keywordGroups.length === 0 ? (
+                    <p className="text-slate-500 text-sm text-center py-8">등록된 키워드가 없습니다. 키워드 없이 진행할 수 있습니다.</p>
                   ) : (
                     <div className="space-y-4">
                       {keywordGroups.map(group => (
