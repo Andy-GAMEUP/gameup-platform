@@ -20,6 +20,8 @@ export function useAuth() {
     email: session.user.email ?? '',
     username: (session.user as any).username ?? session.user.name ?? '',
     role: ((session.user as any).role ?? 'player') as 'developer' | 'player' | 'admin',
+    memberType: ((session.user as any).memberType ?? 'individual') as 'individual' | 'corporate',
+    companyInfo: (session.user as any).companyInfo as any,
     bio: undefined as string | undefined,
     favoriteGenres: undefined as string[] | undefined,
   } : null
@@ -41,17 +43,17 @@ export function useAuth() {
       if (token) localStorage.setItem('token', token)
       router.refresh()
     },
-    register: async (email: string, username: string, password: string, role: 'developer' | 'player') => {
+    register: async (data: { email: string; username: string; password: string; role: 'developer' | 'player'; memberType?: string; companyInfo?: any; contactPerson?: any }) => {
       const res = await fetch('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, username, password, role }),
+        body: JSON.stringify(data),
       })
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.message || 'Registration failed')
+        const resData = await res.json()
+        throw new Error(resData.message || 'Registration failed')
       }
-      await signIn('credentials', { email, password, redirect: false })
+      await signIn('credentials', { email: data.email, password: data.password, redirect: false })
       const sessionRes = await fetch('/api/auth/session')
       const freshSession = await sessionRes.json()
       const token = freshSession?.user?.accessToken

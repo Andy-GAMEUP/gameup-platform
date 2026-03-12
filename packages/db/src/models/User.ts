@@ -17,12 +17,15 @@ interface ICompanyInfo {
   companyType?: string[]
   homepageUrl?: string
   isApproved?: boolean
+  approvalStatus?: 'pending' | 'approved' | 'rejected'
+  rejectedReason?: string
   description?: string
 }
 
 interface IContactPerson {
   name?: string
   email?: string
+  phone?: string
 }
 
 export interface IUser extends Document {
@@ -122,14 +125,17 @@ const userSchema = new Schema<IUser>(
       businessNumber: { type: String },
       companyLogo: { type: String },
       businessLicense: { type: String },
-      companyType: { type: [String] },
+      companyType: { type: [String], enum: ['developer', 'publisher', 'game_solution', 'game_service', 'operations', 'qa', 'marketing', 'other'] },
       homepageUrl: { type: String },
-      isApproved: { type: Boolean },
+      isApproved: { type: Boolean, default: false },
+      approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+      rejectedReason: { type: String },
       description: { type: String },
     },
     contactPerson: {
       name: { type: String },
       email: { type: String },
+      phone: { type: String },
     },
     adminMemo: { type: String },
     lastLoginAt: { type: Date },

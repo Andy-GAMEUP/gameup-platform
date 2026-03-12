@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Gamepad2, Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare } from 'lucide-react'
+import { Gamepad2, Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare, Building2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import Button from './Button'
 import { useAuth } from '@/lib/useAuth'
@@ -16,6 +16,12 @@ export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const { isAuthenticated, user, logout } = useAuth()
+
+  const isCorporateApproved = user?.memberType === 'corporate' && user?.companyInfo?.approvalStatus === 'approved'
+  const isCorporateDeveloper = isCorporateApproved && user?.companyInfo?.companyType?.includes('developer')
+  const isCorporatePartner = isCorporateApproved && !isCorporateDeveloper
+  const showDeveloperCenter = user?.role === 'developer' || isCorporateDeveloper
+  const showPartnerCenter = isCorporatePartner
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -89,11 +95,19 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             {isAuthenticated && user ? (
               <>
-                {user.role === 'developer' && (
+                {showDeveloperCenter && (
                   <Link href="/dashboard">
                     <Button variant="ghost" className="text-slate-300 hover:text-white gap-2">
                       <LayoutDashboard className="w-4 h-4" />
                       개발자 센터
+                    </Button>
+                  </Link>
+                )}
+                {showPartnerCenter && (
+                  <Link href="/partner-console">
+                    <Button variant="ghost" className="text-slate-300 hover:text-white gap-2">
+                      <Building2 className="w-4 h-4" />
+                      파트너 센터
                     </Button>
                   </Link>
                 )}
@@ -127,7 +141,7 @@ export default function Navbar() {
                         <p className="text-xs text-slate-400">로그인 중</p>
                         <p className="text-sm font-medium text-white truncate">{user.email}</p>
                       </div>
-                      {user.role === 'developer' && (
+                      {showDeveloperCenter && (
                         <Link
                           href="/dashboard"
                           onClick={() => setProfileMenuOpen(false)}
@@ -135,6 +149,16 @@ export default function Navbar() {
                         >
                           <LayoutDashboard className="w-4 h-4" />
                           개발자 센터
+                        </Link>
+                      )}
+                      {showPartnerCenter && (
+                        <Link
+                          href="/partner-console"
+                          onClick={() => setProfileMenuOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-blue-400 hover:text-blue-300 hover:bg-slate-800 transition-colors"
+                        >
+                          <Building2 className="w-4 h-4" />
+                          파트너 센터
                         </Link>
                       )}
                       {user.role === 'admin' && (
@@ -223,10 +247,16 @@ export default function Navbar() {
               {isAuthenticated && user ? (
                 <>
                   <div className="px-3 py-2 text-sm text-slate-400">{user.email}</div>
-                  {user.role === 'developer' && (
+                  {showDeveloperCenter && (
                     <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}
                       className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800">
                       <LayoutDashboard className="w-4 h-4" /> 개발자 센터
+                    </Link>
+                  )}
+                  {showPartnerCenter && (
+                    <Link href="/partner-console" onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-slate-800">
+                      <Building2 className="w-4 h-4" /> 파트너 센터
                     </Link>
                   )}
                   <button onClick={handleLogout}

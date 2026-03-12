@@ -5,38 +5,72 @@ import { AuthRequest } from '../middleware/auth'
 
 export const register = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, username, role } = req.body
+    const { email, password, username, role, memberType, companyInfo, contactPerson } = req.body
 
     if (!email || !password || !username) {
-      return res.status(400).json({ 
-        message: '이메일, 비밀번호, 사용자명은 필수입니다' 
+      return res.status(400).json({
+        message: '이메일, 비밀번호, 사용자명은 필수입니다'
       })
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ 
-        message: '비밀번호는 최소 6자 이상이어야 합니다' 
+      return res.status(400).json({
+        message: '비밀번호는 최소 6자 이상이어야 합니다'
       })
     }
 
-    const existingUser = await User.findOne({ 
-      $or: [{ email }, { username }] 
+    // 기업회원 필수 필드 검증
+    if (memberType === 'corporate') {
+      if (!companyInfo?.companyName) {
+        return res.status(400).json({ message: '회사명은 필수입니다' })
+      }
+      if (!companyInfo?.companyType || companyInfo.companyType.length === 0) {
+        return res.status(400).json({ message: '기업유형을 선택해주세요' })
+      }
+      if (!contactPerson?.name) {
+        return res.status(400).json({ message: '담당자명은 필수입니다' })
+      }
+      if (!contactPerson?.phone) {
+        return res.status(400).json({ message: '담당자 연락처는 필수입니다' })
+      }
+    }
+
+    const existingUser = await User.findOne({
+      $or: [{ email }, { username }]
     })
 
     if (existingUser) {
-      return res.status(400).json({ 
-        message: '이미 존재하는 이메일 또는 사용자명입니다' 
+      return res.status(400).json({
+        message: '이미 존재하는 이메일 또는 사용자명입니다'
       })
     }
 
     const hashedPassword = await hashPassword(password)
 
-    const user = await User.create({
+    const userData: any = {
       email,
       username,
       password: hashedPassword,
-      role: role || 'player'
-    })
+      role: role || 'player',
+      memberType: memberType || 'individual',
+    }
+
+    // 기업회원 정보 설정
+    if (memberType === 'corporate') {
+      userData.companyInfo = {
+        companyName: companyInfo.companyName,
+        companyType: companyInfo.companyType,
+        isApproved: false,
+        approvalStatus: 'pending',
+      }
+      userData.contactPerson = {
+        name: contactPerson.name,
+        phone: contactPerson.phone,
+        email: contactPerson.email || undefined,
+      }
+    }
+
+    const user = await User.create(userData)
 
     const token = generateToken({
       id: user._id.toString(),
@@ -46,12 +80,16 @@ export const register = async (req: AuthRequest, res: Response) => {
 
     res.status(201).json({
       success: true,
-      message: '회원가입이 완료되었습니다',
+      message: memberType === 'corporate'
+        ? '기업회원 가입 신청이 완료되었습니다. 관리자 승인 후 기업 기능을 이용하실 수 있습니다.'
+        : '회원가입이 완료되었습니다',
       user: {
         id: user._id,
         email: user.email,
         username: user.username,
-        role: user.role
+        role: user.role,
+        memberType: user.memberType,
+        companyInfo: user.companyInfo,
       },
       token
     })
@@ -100,7 +138,9 @@ export const login = async (req: AuthRequest, res: Response) => {
         id: user._id,
         email: user.email,
         username: user.username,
-        role: user.role
+        role: user.role,
+        memberType: user.memberType || 'individual',
+        companyInfo: user.companyInfo,
       },
       token
     })
@@ -129,9 +169,12 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
         email: user.email,
         username: user.username,
         role: user.role,
+        memberType: user.memberType || 'individual',
         bio: user.bio || '',
         favoriteGenres: user.favoriteGenres || [],
         isActive: user.isActive,
+        companyInfo: user.companyInfo,
+        contactPerson: user.contactPerson,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }

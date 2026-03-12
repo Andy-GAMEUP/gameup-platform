@@ -85,6 +85,11 @@ export const getCorporateMembers = async (req: AuthRequest, res: Response) => {
     }
     if (status === 'active') filter.isActive = true
     if (status === 'inactive') filter.isActive = false
+
+    const { approvalStatus } = req.query
+    if (approvalStatus && ['pending', 'approved', 'rejected'].includes(String(approvalStatus))) {
+      filter['companyInfo.approvalStatus'] = String(approvalStatus)
+    }
     if (startDate || endDate) {
       const dateFilter: Record<string, Date> = {}
       if (startDate) dateFilter.$gte = new Date(String(startDate))
@@ -156,6 +161,36 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     res.json({ message: '사용자 정보가 업데이트되었습니다', user })
   } catch {
     res.status(500).json({ message: '사용자 업데이트 실패' })
+  }
+}
+
+export const updateCorporateApproval = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const { approvalStatus, rejectedReason } = req.body
+
+    if (!approvalStatus || !['approved', 'rejected'].includes(approvalStatus)) {
+      return res.status(400).json({ message: 'approvalStatus는 approved 또는 rejected여야 합니다' })
+    }
+
+    const user = await UserModel.findById(id)
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (user.memberType !== 'corporate') {
+      return res.status(400).json({ message: '기업회원만 승인/거절 처리가 가능합니다' })
+    }
+
+    const update: Record<string, unknown> = {
+      'companyInfo.approvalStatus': approvalStatus,
+      'companyInfo.isApproved': approvalStatus === 'approved',
+    }
+    if (approvalStatus === 'rejected' && rejectedReason) {
+      update['companyInfo.rejectedReason'] = rejectedReason
+    }
+
+    const updatedUser = await UserModel.findByIdAndUpdate(id, update, { new: true }).select('-password')
+    res.json({ message: approvalStatus === 'approved' ? '기업회원이 승인되었습니다' : '기업회원이 거절되었습니다', user: updatedUser })
+  } catch {
+    res.status(500).json({ message: '기업회원 승인 처리 실패' })
   }
 }
 

@@ -84,6 +84,7 @@ export interface CorporateMembersParams {
   startDate?: string
   endDate?: string
   status?: string
+  approvalStatus?: string
   sortBy?: string
   sortOrder?: string
 }
@@ -234,6 +235,9 @@ export const adminService = {
 
   updateUserDetail: (id: string, data: Record<string, unknown>) =>
     apiClient.patch(`/admin/users-enhanced/${id}`, data).then(r => r.data),
+
+  updateCorporateApproval: (id: string, data: { approvalStatus: 'approved' | 'rejected'; rejectedReason?: string }) =>
+    apiClient.patch(`/admin/users-enhanced/${id}/approval`, data).then(r => r.data),
 
   grantActivityScore: (id: string, data: GrantScoreData) =>
     apiClient.post(`/admin/users-enhanced/${id}/activity-score`, data).then(r => r.data),

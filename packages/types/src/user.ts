@@ -1,11 +1,19 @@
 export type UserRole = 'player' | 'developer' | 'admin'
 export type MemberType = 'individual' | 'corporate'
 export type UserStatus = 'active' | 'suspended' | 'withdrawn' | 'deleted'
+export type CompanyType = 'developer' | 'publisher' | 'game_solution' | 'game_service' | 'operations' | 'qa' | 'marketing' | 'other'
+export type CorporateApprovalStatus = 'pending' | 'approved' | 'rejected'
 
 export interface OAuthProvider {
   provider: 'kakao' | 'naver'
   providerId: string
   connectedAt: Date
+}
+
+export interface ContactPerson {
+  name?: string
+  email?: string
+  phone?: string
 }
 
 export interface CompanyInfo {
@@ -16,12 +24,14 @@ export interface CompanyInfo {
   email?: string
   logo?: string
   employeeCount?: string
-  companyType?: ('developer' | 'publisher')[]
+  companyType?: CompanyType[]
   homepage?: string
   contactName?: string
   contactEmail?: string
   introduction?: string
   isApproved: boolean
+  approvalStatus?: CorporateApprovalStatus
+  rejectedReason?: string
 }
 
 export interface User {
@@ -40,6 +50,7 @@ export interface User {
   points?: number
   oauthProviders?: OAuthProvider[]
   companyInfo?: CompanyInfo
+  contactPerson?: ContactPerson
   isActive?: boolean
   bannedUntil?: Date
   banReason?: string

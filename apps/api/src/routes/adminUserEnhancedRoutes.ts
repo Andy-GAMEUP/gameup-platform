@@ -4,6 +4,7 @@ import {
   getCorporateMembers,
   getUserDetail,
   updateUser,
+  updateCorporateApproval,
   grantActivityScore,
   grantPoints,
   bulkNotify,
@@ -18,6 +19,7 @@ router.get('/individual', getIndividualMembers)
 router.get('/corporate', getCorporateMembers)
 router.get('/:id/detail', getUserDetail)
 router.patch('/:id', updateUser)
+router.patch('/:id/approval', updateCorporateApproval)
 router.post('/:id/activity-score', grantActivityScore)
 router.post('/:id/points', grantPoints)
 
