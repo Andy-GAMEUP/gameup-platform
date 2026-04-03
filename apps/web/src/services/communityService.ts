@@ -5,10 +5,12 @@ export interface PostSummary {
   _id: string
   title: string
   content: string
-  author: { _id: string; username: string; role: string }
+  author: { _id: string; username: string; role: string; level?: number }
   gameId?: { _id: string; title: string }
   channel: string
   images: string[]
+  videoUrl?: string
+  thumbnailIndex: number
   links: { url: string; label?: string }[]
   tags: string[]
   likes: string[]
@@ -27,10 +29,18 @@ export interface PostSummary {
   updatedAt: string
 }
 
+export interface HotGame {
+  _id: string
+  postCount: number
+  totalLikes: number
+  gameTitle?: string
+  gameThumbnail?: string
+}
+
 export interface CommentItem {
   _id: string
   postId: string
-  author: { _id: string; username: string; role: string }
+  author: { _id: string; username: string; role: string; level?: number }
   content: string
   parentId: string | null
   likes: string[]
@@ -57,7 +67,8 @@ const communityService = {
 
   createPost: async (data: {
     title: string; content: string; channel?: string
-    gameId?: string; images?: string[]; links?: { url: string; label?: string }[]; tags?: string[]
+    gameId?: string; images?: string[]; videoUrl?: string; thumbnailIndex?: number
+    links?: { url: string; label?: string }[]; tags?: string[]
   }) => {
     const res = await apiClient.post('/community/posts', data)
     return res.data.post as PostSummary
@@ -65,7 +76,8 @@ const communityService = {
 
   updatePost: async (id: string, data: Partial<{
     title: string; content: string; channel: string
-    images: string[]; links: { url: string; label?: string }[]; tags: string[]
+    images: string[]; videoUrl: string; thumbnailIndex: number
+    links: { url: string; label?: string }[]; tags: string[]
   }>) => {
     const res = await apiClient.put(`/community/posts/${id}`, data)
     return res.data.post as PostSummary
@@ -98,7 +110,20 @@ const communityService = {
 
   getStats: async () => {
     const res = await apiClient.get('/community/stats')
-    return res.data
+    return res.data as {
+      totalPosts: number; totalComments: number
+      hotPosts: (PostSummary & { likeCount: number })[]
+      hotGames: HotGame[]
+    }
+  },
+
+  uploadImages: async (files: File[]) => {
+    const formData = new FormData()
+    files.forEach(f => formData.append('communityImages', f))
+    const res = await apiClient.post('/community/upload-images', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return res.data as { success: boolean; images: string[] }
   },
 
   tempSave: async (data: { title: string; content: string; channel?: string; tags?: string[] }) => {

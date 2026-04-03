@@ -29,7 +29,7 @@ export function Avatar({ src, alt = '', size = 'md', fallback, className = '' }:
   }
 
   return (
-    <div className={`${sizeStyles[size]} rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-medium ${className}`}>
+    <div className={`${sizeStyles[size]} rounded-full bg-accent-light text-accent flex items-center justify-center font-medium ${className}`}>
       {initials}
     </div>
   )

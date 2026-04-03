@@ -25,6 +25,17 @@ export interface IGame extends Document {
   tags: string[]
   adminNote?: string
   rejectionReason?: string
+  platform?: string
+  engine?: string
+  startDate?: Date
+  endDate?: Date
+  maxTesters?: number
+  testType?: string
+  requirements?: string
+  trailer?: string
+  website?: string
+  discord?: string
+  notes?: string
   approvedAt?: Date
   approvedBy?: mongoose.Types.ObjectId
   createdAt: Date

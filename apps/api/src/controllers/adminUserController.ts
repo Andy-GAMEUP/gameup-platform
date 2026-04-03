@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
-import { UserModel, ActivityScoreModel, PointHistoryModel, LevelModel, NotificationModel } from '@gameup/db'
+import { UserModel, ActivityScoreModel, PointHistoryModel, LevelModel, NotificationModel, PostModel } from '@gameup/db'
 import { emitToUser } from '../socket'
 
 export const getIndividualMembers = async (req: AuthRequest, res: Response) => {
@@ -86,9 +86,12 @@ export const getCorporateMembers = async (req: AuthRequest, res: Response) => {
     if (status === 'active') filter.isActive = true
     if (status === 'inactive') filter.isActive = false
 
-    const { approvalStatus } = req.query
+    const { approvalStatus, companyType } = req.query
     if (approvalStatus && ['pending', 'approved', 'rejected'].includes(String(approvalStatus))) {
       filter['companyInfo.approvalStatus'] = String(approvalStatus)
+    }
+    if (companyType) {
+      filter['companyInfo.companyType'] = { $in: [String(companyType)] }
     }
     if (startDate || endDate) {
       const dateFilter: Record<string, Date> = {}
@@ -122,7 +125,15 @@ export const getUserDetail = async (req: AuthRequest, res: Response) => {
     const { id } = req.params
     const user = await UserModel.findById(id).select('-password')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
-    res.json({ user })
+
+    // 최근 게시물 10개 조회
+    const recentPosts = await PostModel.find({ author: id, status: 'active' })
+      .select('title channel views commentCount createdAt')
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean()
+
+    res.json({ user, recentPosts })
   } catch {
     res.status(500).json({ message: '사용자 상세 조회 실패' })
   }
@@ -140,12 +151,22 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       banReason,
       adminMemo,
       memberType,
+      type,
+      isPartner,
       companyInfo,
       contactPerson,
+      nickname,
+      name,
+      profileImage,
+      bio,
+      company,
+      contact,
     } = req.body
 
     const update: Record<string, unknown> = {}
     if (username !== undefined) update.username = username
+    if (name !== undefined) update.username = name
+    if (nickname !== undefined) update.nickname = nickname
     if (email !== undefined) update.email = email
     if (role !== undefined) update.role = role
     if (isActive !== undefined) update.isActive = isActive
@@ -153,8 +174,14 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     if (banReason !== undefined) update.banReason = banReason
     if (adminMemo !== undefined) update.adminMemo = adminMemo
     if (memberType !== undefined) update.memberType = memberType
+    if (type !== undefined) update.memberType = type
+    if (isPartner !== undefined) update.isPartner = isPartner
+    if (profileImage !== undefined) update.profileImage = profileImage
+    if (bio !== undefined) update.bio = bio
     if (companyInfo !== undefined) update.companyInfo = companyInfo
     if (contactPerson !== undefined) update.contactPerson = contactPerson
+    if (company !== undefined) update['companyInfo.companyName'] = company.name
+    if (contact !== undefined) update.contactPerson = contact
 
     const user = await UserModel.findByIdAndUpdate(id, update, { new: true }).select('-password')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })

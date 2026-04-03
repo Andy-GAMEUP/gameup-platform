@@ -3,6 +3,7 @@ import mongoose from 'mongoose'
 import { PostModel as Post, CommentModel as Comment } from '@gameup/db'
 // 🔒 중복 AuthRequest 제거 - middleware/auth.ts의 것을 사용
 import { AuthRequest } from '../middleware/auth'
+import { grantPoints, deductPoints } from '../services/pointService'
 
 // 핫 스코어 계산: likes*3 + comments*2 + views*0.1 - 시간 감쇠
 function calcHotScore(likes: number, comments: number, views: number, createdAt: Date): number {
@@ -27,14 +28,14 @@ export const getPosts = async (req: Request, res: Response) => {
       ]
     }
 
-    let sortObj: Record<string, unknown> = { isPinned: -1, createdAt: -1 }
+    let sortObj: Record<string, 1 | -1> = { isPinned: -1, createdAt: -1 }
     if (sort === 'popular') sortObj = { isPinned: -1, hotScore: -1 }
     else if (sort === 'trending') sortObj = { isPinned: -1, hotScore: -1, createdAt: -1 }
     else if (sort === 'most_liked') sortObj = { isPinned: -1, 'likes.length': -1, createdAt: -1 }
 
     const total = await Post.countDocuments(filter)
     const posts = await Post.find(filter)
-      .populate('author', 'username role')
+      .populate('author', 'username role level')
       .populate('gameId', 'title')
       .sort(sortObj)
       .skip((Number(page) - 1) * limitNum)
@@ -60,7 +61,7 @@ export const getPost = async (req: Request, res: Response) => {
       { _id: id, status: 'active' },
       { $inc: { views: 1 } },
       { new: true }
-    ).populate('author', 'username role').populate('gameId', 'title')
+    ).populate('author', 'username role level').populate('gameId', 'title')
     if (!post) return res.status(404).json({ message: '게시글을 찾을 수 없습니다' })
     const updated = { ...post.toObject(), likeCount: post.likes.length, bookmarkCount: post.bookmarks.length }
     res.json({ post: updated })
@@ -71,22 +72,29 @@ export const getPost = async (req: Request, res: Response) => {
 
 export const createPost = async (req: AuthRequest, res: Response) => {
   try {
-    const { title, content, channel, gameId, images, links, tags } = req.body
+    const { title, content, channel, gameId, images, links, tags, videoUrl, thumbnailIndex } = req.body
     if (!title?.trim() || !content?.trim()) {
       return res.status(400).json({ message: '제목과 내용을 입력해주세요' })
     }
     const validLinks = (links || []).filter((l: { url: string }) => /^https?:\/\//i.test(l.url))
+    const validVideoUrl = videoUrl && /^https?:\/\//i.test(videoUrl) ? videoUrl.trim() : ''
     const post = await Post.create({
       title: title.trim(),
       content: content.trim(),
       author: req.user!.id,
-      channel: channel || 'general',
+      channel: channel || 'free',
       gameId: gameId || undefined,
       images: images || [],
+      videoUrl: validVideoUrl,
+      thumbnailIndex: thumbnailIndex || 0,
       links: validLinks,
       tags: tags || []
     })
-    const populated = await Post.findById(post._id).populate('author', 'username role')
+    const populated = await Post.findById(post._id).populate('author', 'username role level')
+
+    // 포인트 적립: 게시물 작성
+    grantPoints(req.user!.id, 'post_write', '게시물 작성 포인트', post._id.toString()).catch(() => {})
+
     res.status(201).json({ success: true, post: populated })
   } catch {
     res.status(500).json({ message: '게시글 작성 실패' })
@@ -96,7 +104,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 export const updatePost = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
-    const { title, content, channel, images, links, tags } = req.body
+    const { title, content, channel, images, links, tags, videoUrl, thumbnailIndex } = req.body
     const post = await Post.findById(id)
     if (!post) return res.status(404).json({ message: '게시글을 찾을 수 없습니다' })
     if (post.author.toString() !== req.user!.id && req.user!.role !== 'admin') {
@@ -108,8 +116,10 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
     if (images !== undefined) post.images = images
     if (links !== undefined) post.links = links.filter((l: { url: string }) => /^https?:\/\//i.test(l.url))
     if (tags !== undefined) post.tags = tags
+    if (videoUrl !== undefined) post.videoUrl = videoUrl && /^https?:\/\//i.test(videoUrl) ? videoUrl.trim() : ''
+    if (thumbnailIndex !== undefined) post.thumbnailIndex = thumbnailIndex
     await post.save()
-    const populated = await Post.findById(id).populate('author', 'username role')
+    const populated = await Post.findById(id).populate('author', 'username role level')
     res.json({ success: true, post: populated })
   } catch {
     res.status(500).json({ message: '게시글 수정 실패' })
@@ -126,6 +136,10 @@ export const deletePost = async (req: AuthRequest, res: Response) => {
     }
     post.status = 'deleted'
     await post.save()
+
+    // 포인트 차감: 게시물 삭제
+    deductPoints(post.author.toString(), 'post_delete', '게시물 삭제 포인트 차감', post._id.toString()).catch(() => {})
+
     res.json({ success: true, message: '게시글이 삭제되었습니다' })
   } catch {
     res.status(500).json({ message: '게시글 삭제 실패' })
@@ -147,6 +161,17 @@ export const toggleLike = async (req: AuthRequest, res: Response) => {
     updated.hotScore = calcHotScore(updated.likes.length, updated.commentCount, updated.views, updated.createdAt)
     updated.isHot = updated.hotScore > 5
     await updated.save()
+
+    // 포인트: 게시물 작성자에게 좋아요 포인트 적립/차감 (자기 자신 제외)
+    const postAuthorId = updated.author.toString()
+    if (postAuthorId !== req.user!.id) {
+      if (!isLiked) {
+        grantPoints(postAuthorId, 'recommend_received', '게시물 좋아요 포인트', updated._id.toString()).catch(() => {})
+      } else {
+        deductPoints(postAuthorId, 'recommend_cancelled', '게시물 좋아요 취소 차감', updated._id.toString()).catch(() => {})
+      }
+    }
+
     res.json({ liked: !isLiked, likeCount: updated.likes.length })
   } catch {
     res.status(500).json({ message: '좋아요 처리 실패' })
@@ -201,7 +226,7 @@ export const getMyBookmarks = async (req: AuthRequest, res: Response) => {
     const { page = 1, limit = 10 } = req.query
     const total = await Post.countDocuments({ bookmarks: userId, status: 'active' })
     const posts = await Post.find({ bookmarks: userId, status: 'active' })
-      .populate('author', 'username role')
+      .populate('author', 'username role level')
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
@@ -216,14 +241,14 @@ export const getComments = async (req: Request, res: Response) => {
   try {
     const { postId } = req.params
     const comments = await Comment.find({ postId, parentId: null })
-      .populate('author', 'username role')
+      .populate('author', 'username role level')
       .sort({ isOfficial: -1, createdAt: 1 })
     const replies = await Comment.find({ postId, status: 'active', parentId: { $ne: null } })
-      .populate('author', 'username role')
+      .populate('author', 'username role level')
       .sort({ createdAt: 1 })
 
     const tree = comments.map((c) => {
-      const obj: Record<string, unknown> = c.toObject()
+      const obj: Record<string, any> = c.toObject()
       if (c.status !== 'active') {
         obj.content = '[삭제된 댓글입니다]'
         obj.author = null
@@ -263,7 +288,11 @@ export const createComment = async (req: AuthRequest, res: Response) => {
       const newHot = calcHotScore(updatedPost.likes.length, updatedPost.commentCount, updatedPost.views, updatedPost.createdAt)
       await Post.findByIdAndUpdate(postId, { hotScore: newHot, isHot: newHot > 5 })
     }
-    const populated = await Comment.findById(comment._id).populate('author', 'username role')
+    const populated = await Comment.findById(comment._id).populate('author', 'username role level')
+
+    // 포인트 적립: 댓글 작성
+    grantPoints(req.user!.id, 'comment_write', '댓글 작성 포인트', comment._id.toString()).catch(() => {})
+
     res.status(201).json({ success: true, comment: { ...populated!.toObject(), likeCount: 0 } })
   } catch {
     res.status(500).json({ message: '댓글 작성 실패' })
@@ -282,7 +311,7 @@ export const updateComment = async (req: AuthRequest, res: Response) => {
     }
     comment.content = content.trim()
     await comment.save()
-    const populated = await Comment.findById(id).populate('author', 'username role')
+    const populated = await Comment.findById(id).populate('author', 'username role level')
     res.json({ success: true, comment: { ...populated!.toObject(), likeCount: comment.likes.length } })
   } catch {
     res.status(500).json({ message: '댓글 수정 실패' })
@@ -300,6 +329,10 @@ export const deleteComment = async (req: AuthRequest, res: Response) => {
     comment.status = 'deleted'
     await comment.save()
     await Post.findByIdAndUpdate(comment.postId, { $inc: { commentCount: -1 } })
+
+    // 포인트 차감: 댓글 삭제
+    deductPoints(comment.author.toString(), 'comment_delete', '댓글 삭제 포인트 차감', comment._id.toString()).catch(() => {})
+
     res.json({ success: true, message: '댓글이 삭제되었습니다' })
   } catch {
     res.status(500).json({ message: '댓글 삭제 실패' })
@@ -320,6 +353,17 @@ export const toggleCommentLike = async (req: AuthRequest, res: Response) => {
     if (idx > -1) comment.likes.splice(idx, 1)
     else comment.likes.push(userId)
     await comment.save()
+
+    // 포인트: 댓글 작성자에게 좋아요 포인트 적립/차감
+    const commentAuthorId = comment.author.toString()
+    if (commentAuthorId !== req.user!.id) {
+      if (idx === -1) {
+        grantPoints(commentAuthorId, 'recommend_received', '댓글 좋아요 포인트', comment._id.toString()).catch(() => {})
+      } else {
+        deductPoints(commentAuthorId, 'recommend_cancelled', '댓글 좋아요 취소 차감', comment._id.toString()).catch(() => {})
+      }
+    }
+
     res.json({ liked: idx === -1, likeCount: comment.likes.length })
   } catch {
     res.status(500).json({ message: '좋아요 처리 실패' })
@@ -374,10 +418,19 @@ export const adminUpdatePostStatus = async (req: AuthRequest, res: Response) => 
     if (!['active', 'hidden', 'deleted'].includes(status)) {
       return res.status(400).json({ message: '올바른 상태값이 아닙니다' })
     }
+    // 삭제 전 작성자 ID 확인 (포인트 차감용)
+    const existingPost = status === 'deleted' ? await Post.findById(id).select('author status') : null
+
     const updateOp: Record<string, unknown> = { $set: { status } }
     if (clearReports) (updateOp.$set as Record<string, unknown>).reports = []
     const post = await Post.findByIdAndUpdate(id, updateOp, { new: true }).populate('author', 'username')
     if (!post) return res.status(404).json({ message: '게시글을 찾을 수 없습니다' })
+
+    // 관리자 강제삭제 시 작성자 포인트 차감
+    if (status === 'deleted' && existingPost && existingPost.status !== 'deleted') {
+      deductPoints(existingPost.author.toString(), 'post_delete', '관리자 강제삭제 포인트 차감', id).catch(() => {})
+    }
+
     res.json({ success: true, post })
   } catch {
     res.status(500).json({ message: '상태 변경 실패' })
@@ -391,7 +444,7 @@ export const tempSave = async (req: AuthRequest, res: Response) => {
     if (existing) {
       existing.title = title?.trim() || '임시저장'
       existing.content = content?.trim() || ''
-      existing.channel = channel || 'general'
+      existing.channel = channel || 'free'
       existing.tags = tags || []
       await existing.save()
       return res.json({ success: true, post: existing })
@@ -400,7 +453,7 @@ export const tempSave = async (req: AuthRequest, res: Response) => {
       title: title?.trim() || '임시저장',
       content: content?.trim() || '',
       author: req.user!.id,
-      channel: channel || 'general',
+      channel: channel || 'free',
       tags: tags || [],
       isTempSave: true
     })
@@ -422,14 +475,44 @@ export const getMyDrafts = async (req: AuthRequest, res: Response) => {
 
 export const getCommunityStats = async (_req: Request, res: Response) => {
   try {
-    const [totalPosts, totalComments, hotPosts] = await Promise.all([
+    const [totalPosts, totalComments, hotPosts, hotGames] = await Promise.all([
       Post.countDocuments({ status: 'active' }),
       Comment.countDocuments({ status: 'active' }),
-      Post.find({ isHot: true, status: 'active' }).sort({ hotScore: -1 }).limit(5)
-        .populate('author', 'username').select('title hotScore commentCount createdAt')
+      Post.find({ status: 'active', isTempSave: { $ne: true } })
+        .sort({ hotScore: -1 }).limit(5)
+        .populate('author', 'username')
+        .select('title hotScore commentCount likes channel createdAt'),
+      // 인기 게임 커뮤니티: gameId별 게시글 수 집계
+      Post.aggregate([
+        { $match: { status: 'active', isTempSave: { $ne: true }, gameId: { $ne: null } } },
+        { $group: { _id: '$gameId', postCount: { $sum: 1 }, totalLikes: { $sum: { $size: '$likes' } } } },
+        { $sort: { postCount: -1 } },
+        { $limit: 5 },
+        { $lookup: { from: 'games', localField: '_id', foreignField: '_id', as: 'game' } },
+        { $unwind: { path: '$game', preserveNullAndEmptyArrays: true } },
+        { $project: { _id: 1, postCount: 1, totalLikes: 1, gameTitle: '$game.title', gameThumbnail: '$game.thumbnail' } }
+      ])
     ])
-    res.json({ totalPosts, totalComments, hotPosts })
+    res.json({
+      totalPosts, totalComments,
+      hotPosts: hotPosts.map(p => ({ ...p.toObject(), likeCount: p.likes.length })),
+      hotGames
+    })
   } catch {
     res.status(500).json({ message: '통계 조회 실패' })
+  }
+}
+
+// 커뮤니티 이미지 업로드
+export const uploadCommunityImages = async (req: AuthRequest, res: Response) => {
+  try {
+    const files = req.files as Express.Multer.File[]
+    if (!files || files.length === 0) {
+      return res.status(400).json({ message: '업로드할 이미지를 선택해주세요' })
+    }
+    const imageUrls = files.map(f => `/uploads/community/${f.filename}`)
+    res.json({ success: true, images: imageUrls })
+  } catch {
+    res.status(500).json({ message: '이미지 업로드 실패' })
   }
 }

@@ -33,9 +33,33 @@ export interface PartnerPostItem {
   updatedAt: string
 }
 
+export interface PartnerMinihomeInfo {
+  _id: string
+  userId: string
+  companyName: string
+  introduction: string
+  isPublic: boolean
+  expertiseArea: string[]
+  skills: string[]
+  availability: 'available' | 'busy' | 'unavailable'
+  location: string
+  contactEmail: string
+  contactPhone: string
+  website: string
+  hourlyRate: string
+  rating: number
+  reviewCount: number
+  completedProjectCount: number
+  isVerified: boolean
+}
+
 export interface PartnerApplication {
   _id: string
-  userId: { _id: string; username: string; email: string; level?: number; profileImage?: string; createdAt: string }
+  userId: {
+    _id: string; username: string; email: string; level?: number; profileImage?: string; createdAt: string
+    companyInfo?: { companyName?: string; companyType?: string[]; employeeCount?: number; businessNumber?: string; description?: string }
+    contactPerson?: { name?: string; email?: string; phone?: string }
+  }
   status: 'pending' | 'approved' | 'suspended' | 'rejected'
   slogan: string
   introduction: string
@@ -44,6 +68,8 @@ export interface PartnerApplication {
   selectedTopics: string[]
   profileImage: string
   postCount: number
+  isProfilePublic: boolean
+  minihome?: PartnerMinihomeInfo | null
   approvedAt?: string
   rejectedReason?: string
   createdAt: string
@@ -158,7 +184,7 @@ export const partnerService = {
       return res.data
     },
 
-    getPartners: async (params?: { page?: number; limit?: number; search?: string }) => {
+    getPartners: async (params?: { page?: number; limit?: number; search?: string; sort?: string; status?: string }) => {
       const res = await apiClient.get('/admin/partner/list', { params })
       return res.data
     },
@@ -170,6 +196,20 @@ export const partnerService = {
 
     updatePartnerStatus: async (id: string, status: 'approved' | 'suspended') => {
       const res = await apiClient.patch(`/admin/partner/${id}/status`, { status })
+      return res.data
+    },
+
+    togglePartnerVisibility: async (id: string) => {
+      const res = await apiClient.patch(`/admin/partner/${id}/visibility`)
+      return res.data
+    },
+
+    updatePartnerProfile: async (id: string, data: Partial<{
+      slogan: string; introduction: string; externalUrl: string; selectedTopics: string[]; profileImage: string
+      companyName: string; skills: string[]; expertiseArea: string[]; availability: string
+      location: string; contactEmail: string; contactPhone: string; website: string; hourlyRate: string
+    }>) => {
+      const res = await apiClient.put(`/admin/partner/${id}/profile`, data)
       return res.data
     },
 
@@ -210,6 +250,29 @@ export const partnerService = {
 
     reorderPosts: async (posts: { id: string; sortOrder: number }[]) => {
       const res = await apiClient.put('/admin/partner/posts/reorder', { posts })
+      return res.data
+    },
+
+    getProjects: async (params?: {
+      page?: number; limit?: number; search?: string;
+      category?: string; status?: string; sort?: string;
+    }) => {
+      const res = await apiClient.get('/admin/partner/projects', { params })
+      return res.data
+    },
+
+    getProjectStats: async () => {
+      const res = await apiClient.get('/admin/partner/projects/stats')
+      return res.data
+    },
+
+    updateProjectStatus: async (id: string, status: string) => {
+      const res = await apiClient.patch(`/admin/partner/projects/${id}/status`, { status })
+      return res.data
+    },
+
+    getProjectApplicants: async (id: string) => {
+      const res = await apiClient.get(`/admin/partner/projects/${id}/applicants`)
       return res.data
     },
   },

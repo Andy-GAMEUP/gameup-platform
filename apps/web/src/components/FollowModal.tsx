@@ -18,12 +18,12 @@ function RoleBadge({ role }: { role: string }) {
 }
 
 function UserAvatar({ user }: { user: FollowUser }) {
-  const bg = user.role === 'admin' ? 'bg-purple-600' : user.role === 'developer' ? 'bg-cyan-600' : 'bg-slate-600'
+  const bg = user.role === 'admin' ? 'bg-purple-600' : user.role === 'developer' ? 'bg-cyan-600' : 'bg-bg-tertiary'
   if (user.profileImage) {
     return <Image src={user.profileImage} alt={user.username} width={40} height={40} className="w-10 h-10 rounded-full object-cover flex-shrink-0" unoptimized />
   }
   return (
-    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white flex-shrink-0 ${bg}`}>
+    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-text-primary flex-shrink-0 ${bg}`}>
       {user.username[0]?.toUpperCase()}
     </div>
   )
@@ -76,16 +76,16 @@ export default function FollowModal({ userId, type, isOpen, onClose }: FollowMod
   const hasMore = users.length < total
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-bg-overlay z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-sm shadow-2xl flex flex-col max-h-[80vh]"
+        className="bg-bg-secondary border border-line rounded-xl w-full max-w-sm shadow-2xl flex flex-col max-h-[80vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 flex-shrink-0">
-          <h2 className="text-white font-bold text-base">
-            {title} <span className="text-slate-400 font-normal text-sm">{total}</span>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
+          <h2 className="text-text-primary font-bold text-base">
+            {title} <span className="text-text-secondary font-normal text-sm">{total}</span>
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors rounded-lg p-1 hover:bg-slate-800">
+          <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors rounded-lg p-1 hover:bg-bg-tertiary">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -93,21 +93,21 @@ export default function FollowModal({ userId, type, isOpen, onClose }: FollowMod
         <div className="overflow-y-auto flex-1">
           {loading ? (
             <div className="flex justify-center py-10">
-              <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-text-secondary" />
             </div>
           ) : users.length === 0 ? (
-            <div className="text-center py-10 text-slate-500 text-sm">
+            <div className="text-center py-10 text-text-muted text-sm">
               {type === 'followers' ? '팔로워가 없습니다' : '팔로잉하는 사람이 없습니다'}
             </div>
           ) : (
-            <ul className="divide-y divide-slate-800">
+            <ul className="divide-y divide-line">
               {users.map((u) => (
-                <li key={u._id} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-800/50 transition-colors">
+                <li key={u._id} className="flex items-center gap-3 px-5 py-3 hover:bg-bg-tertiary/50 transition-colors">
                   <UserAvatar user={u} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-sm font-semibold truncate ${
-                        u.role === 'admin' ? 'text-purple-300' : u.role === 'developer' ? 'text-cyan-300' : 'text-white'
+                        u.role === 'admin' ? 'text-purple-300' : u.role === 'developer' ? 'text-cyan-300' : 'text-text-primary'
                       }`}>
                         {u.username}
                       </span>

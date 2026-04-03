@@ -13,14 +13,14 @@ import {
 const APPROVAL_STATUS: Record<string, { label: string; cls: string }> = {
   pending:  { label: '심사대기', cls: 'bg-yellow-600/20 text-yellow-300 border-yellow-500/40' },
   review:   { label: '검토중',   cls: 'bg-blue-600/20 text-blue-300 border-blue-500/40' },
-  approved: { label: '승인됨',   cls: 'bg-green-600/20 text-green-300 border-green-500/40' },
-  rejected: { label: '거부됨',   cls: 'bg-red-600/20 text-red-300 border-red-500/40' },
+  approved: { label: '승인됨',   cls: 'bg-accent-light text-accent border-green-500/40' },
+  rejected: { label: '거부됨',   cls: 'bg-accent-light text-accent-text border-red-500/40' },
 }
 const GAME_STATUS: Record<string, { label: string; cls: string }> = {
-  draft:     { label: '드래프트', cls: 'bg-slate-600/40 text-slate-400' },
+  draft:     { label: '드래프트', cls: 'bg-bg-muted/40 text-text-secondary' },
   beta:      { label: '베타',     cls: 'bg-cyan-600/20 text-cyan-300' },
   published: { label: '출시',     cls: 'bg-purple-600/20 text-purple-300' },
-  archived:  { label: '종료',     cls: 'bg-slate-700/60 text-slate-500' },
+  archived:  { label: '종료',     cls: 'bg-bg-tertiary/60 text-text-muted' },
 }
 
 function ConfirmModal({ title, desc, onConfirm, onCancel, danger = true }: {
@@ -29,17 +29,17 @@ function ConfirmModal({ title, desc, onConfirm, onCancel, danger = true }: {
 }) {
   const [reason, setReason] = useState('')
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-md p-6 shadow-2xl">
-        <h3 className="text-white font-bold text-lg mb-2">{title}</h3>
-        <p className="text-slate-400 text-sm mb-4">{desc}</p>
+    <div className="fixed inset-0 bg-bg-overlay z-50 flex items-center justify-center p-4">
+      <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-md p-6 shadow-2xl">
+        <h3 className="text-text-primary font-bold text-lg mb-2">{title}</h3>
+        <p className="text-text-secondary text-sm mb-4">{desc}</p>
         <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2}
           placeholder="사유 입력 (선택)"
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500 mb-4 resize-none" />
+          className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-line mb-4 resize-none" />
         <div className="flex justify-end gap-3">
-          <button onClick={onCancel} className="px-4 py-2 text-sm text-slate-400 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors">취소</button>
+          <button onClick={onCancel} className="px-4 py-2 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
           <button onClick={() => onConfirm(reason)}
-            className={`px-4 py-2 text-sm text-white rounded-lg transition-colors ${danger ? 'bg-red-700 hover:bg-red-800' : 'bg-green-700 hover:bg-green-800'}`}>
+            className={`px-4 py-2 text-sm text-text-primary rounded-lg transition-colors ${danger ? 'bg-red-700 hover:bg-red-800' : 'bg-green-700 hover:bg-green-800'}`}>
             확인
           </button>
         </div>
@@ -123,7 +123,7 @@ export default function AdminGamesPage() {
     if (g.approvalStatus === 'pending' || g.approvalStatus === 'review') return (
       <div className="flex gap-1.5">
         <button onClick={() => handleApprove(g._id, 'approve')}
-          className="flex items-center gap-1 bg-green-700/30 text-green-300 hover:bg-green-700/50 border border-green-600/40 px-2.5 py-1 rounded text-xs transition-colors">
+          className="flex items-center gap-1 bg-green-700/30 text-accent hover:bg-accent-hover/50 border border-green-600/40 px-2.5 py-1 rounded text-xs transition-colors">
           <CheckCircle className="w-3 h-3" /> 승인
         </button>
         <button onClick={() => handleApprove(g._id, 'review')}
@@ -131,7 +131,7 @@ export default function AdminGamesPage() {
           <Clock className="w-3 h-3" /> 검토
         </button>
         <button onClick={() => handleApprove(g._id, 'reject')}
-          className="flex items-center gap-1 bg-red-700/30 text-red-300 hover:bg-red-700/50 border border-red-600/40 px-2.5 py-1 rounded text-xs transition-colors">
+          className="flex items-center gap-1 bg-red-700/30 text-accent-text hover:bg-red-700/50 border border-red-600/40 px-2.5 py-1 rounded text-xs transition-colors">
           <XCircle className="w-3 h-3" /> 거부
         </button>
       </div>
@@ -162,13 +162,13 @@ export default function AdminGamesPage() {
       )
       btns.push(
         <button key="archive" onClick={() => handleControl(g._id, 'archive', '서비스 종료', true)}
-          className="flex items-center gap-1 bg-slate-700/50 text-slate-400 hover:bg-slate-700 border border-slate-600/40 px-2.5 py-1 rounded text-xs transition-colors">
+          className="flex items-center gap-1 bg-bg-tertiary/50 text-text-secondary hover:bg-line-light border border-line/40 px-2.5 py-1 rounded text-xs transition-colors">
           <Archive className="w-3 h-3" /> 종료
         </button>
       )
     }
     if (g.status === 'archived') btns.push(
-      <span key="done" className="text-slate-500 text-xs px-2 py-1">서비스 종료됨</span>
+      <span key="done" className="text-text-muted text-xs px-2 py-1">서비스 종료됨</span>
     )
     return <div className="flex flex-wrap gap-1.5">{btns}</div>
   }
@@ -176,7 +176,7 @@ export default function AdminGamesPage() {
   return (
     <AdminLayout>
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${toast.ok ? 'bg-green-600' : 'bg-red-600'} text-white`}>
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${toast.ok ? 'bg-accent' : 'bg-red-600'} text-text-primary`}>
           {toast.ok ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
           {toast.msg}
         </div>
@@ -185,20 +185,20 @@ export default function AdminGamesPage() {
 
       <div className="space-y-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-white text-xl font-bold">게임 관리</h2>
-          <span className="text-slate-500 text-sm">{loading ? '로딩 중...' : `총 ${total}개`}</span>
+          <h2 className="text-text-primary text-xl font-bold">게임 관리</h2>
+          <span className="text-text-muted text-sm">{loading ? '로딩 중...' : `총 ${total}개`}</span>
         </div>
 
         {/* 필터 */}
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
             <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }}
               placeholder="게임 이름 검색..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-slate-500" />
+              className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-line" />
           </div>
           <select value={approvalFilter} onChange={(e) => { setApprovalFilter(e.target.value); setPage(1) }}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none">
+            className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
             <option value="">전체 심사상태</option>
             <option value="pending">심사대기</option>
             <option value="review">검토중</option>
@@ -206,7 +206,7 @@ export default function AdminGamesPage() {
             <option value="rejected">거부됨</option>
           </select>
           <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none">
+            className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
             <option value="">전체 서비스상태</option>
             <option value="draft">드래프트</option>
             <option value="beta">베타</option>
@@ -217,9 +217,9 @@ export default function AdminGamesPage() {
 
         {/* 테이블 */}
         {loading ? (
-          <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+          <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-secondary" /></div>
         ) : games.length === 0 ? (
-          <div className="text-center py-16 text-slate-500">게임이 없습니다</div>
+          <div className="text-center py-16 text-text-muted">게임이 없습니다</div>
         ) : (
           <div className="space-y-3">
             {games.map((g) => {
@@ -227,24 +227,24 @@ export default function AdminGamesPage() {
               const stat = GAME_STATUS[g.status] || GAME_STATUS.draft
               const isLoading = actionLoading === g._id
               return (
-                <div key={g._id} className={`bg-slate-900 border border-slate-800 rounded-xl p-4 transition-opacity ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}>
+                <div key={g._id} className={`bg-bg-secondary border border-line rounded-xl p-4 transition-opacity ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}>
                   <div className="flex items-start gap-4">
                     {/* 썸네일 */}
-                    <div className="w-16 h-12 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-16 h-12 bg-bg-tertiary rounded-lg overflow-hidden flex-shrink-0">
                       {g.thumbnail
                         ? <Image src={`/uploads/${g.thumbnail.replace('uploads/','')}`} alt={g.title} width={64} height={48} className="w-full h-full object-cover" unoptimized />
-                        : <div className="w-full h-full flex items-center justify-center text-slate-600 text-xs">No img</div>}
+                        : <div className="w-full h-full flex items-center justify-center text-text-muted text-xs">No img</div>}
                     </div>
 
                     {/* 정보 */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-white font-semibold text-sm truncate max-w-xs">{g.title}</span>
+                        <span className="text-text-primary font-semibold text-sm truncate max-w-xs">{g.title}</span>
                         <span className={`text-xs px-1.5 py-0.5 rounded border ${appr.cls}`}>{appr.label}</span>
                         <span className={`text-xs px-1.5 py-0.5 rounded ${stat.cls}`}>{stat.label}</span>
-                        {g.genre && <span className="text-slate-500 text-xs">{g.genre}</span>}
+                        {g.genre && <span className="text-text-muted text-xs">{g.genre}</span>}
                       </div>
-                      <p className="text-slate-500 text-xs mb-2">
+                      <p className="text-text-muted text-xs mb-2">
                         개발자: {(g.developerId as any)?.username} · 플레이:{(g.playCount||0).toLocaleString()} · ★{(g.rating||0).toFixed(1)} · {new Date(g.createdAt).toLocaleDateString('ko-KR')}
                       </p>
                       {/* 승인 버튼 */}
@@ -255,7 +255,7 @@ export default function AdminGamesPage() {
 
                     {/* 지표 링크 */}
                     <Link href={`/admin/metrics/${g._id}`}
-                      className="flex-shrink-0 flex items-center gap-1 text-xs text-slate-400 hover:text-cyan-300 border border-slate-700 hover:border-cyan-600/40 px-2.5 py-1.5 rounded-lg transition-colors">
+                      className="flex-shrink-0 flex items-center gap-1 text-xs text-text-secondary hover:text-cyan-300 border border-line hover:border-cyan-600/40 px-2.5 py-1.5 rounded-lg transition-colors">
                       <BarChart2 className="w-3 h-3" /> 지표
                     </Link>
                   </div>
@@ -269,13 +269,13 @@ export default function AdminGamesPage() {
         {totalPages > 1 && (
           <div className="flex justify-center items-center gap-2">
             <button onClick={() => setPage((p) => Math.max(1, p-1))} disabled={page===1}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center disabled:opacity-40 transition-colors">
-              <ChevronLeft className="w-4 h-4 text-white" />
+              className="w-8 h-8 rounded-full bg-bg-tertiary hover:bg-line-light flex items-center justify-center disabled:opacity-40 transition-colors">
+              <ChevronLeft className="w-4 h-4 text-text-primary" />
             </button>
-            <span className="text-slate-400 text-sm">{page} / {totalPages}</span>
+            <span className="text-text-secondary text-sm">{page} / {totalPages}</span>
             <button onClick={() => setPage((p) => Math.min(totalPages, p+1))} disabled={page===totalPages}
-              className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center disabled:opacity-40 transition-colors">
-              <ChevronRight className="w-4 h-4 text-white" />
+              className="w-8 h-8 rounded-full bg-bg-tertiary hover:bg-line-light flex items-center justify-center disabled:opacity-40 transition-colors">
+              <ChevronRight className="w-4 h-4 text-text-primary" />
             </button>
           </div>
         )}

@@ -1,10 +1,24 @@
 import mongoose, { Schema, Document } from 'mongoose'
 
 export type ActivityScoreType =
+  | 'login'
+  | 'stay_time'
   | 'post_write'
+  | 'post_delete'
   | 'comment_write'
+  | 'comment_delete'
   | 'recommend_received'
   | 'recommend_cancelled'
+  | 'game_access'
+  | 'game_stay_time'
+  | 'game_event_reward'
+  | 'game_payment_reward'
+  | 'game_account_create'
+  | 'game_daily_login'
+  | 'game_play_time'
+  | 'game_purchase'
+  | 'game_event_participate'
+  | 'game_ranking'
   | 'admin_grant'
   | 'admin_deduct'
 
@@ -35,10 +49,24 @@ const activityScoreSchema = new Schema<IActivityScore>(
     type: {
       type: String,
       enum: [
+        'login',
+        'stay_time',
         'post_write',
+        'post_delete',
         'comment_write',
+        'comment_delete',
         'recommend_received',
         'recommend_cancelled',
+        'game_access',
+        'game_stay_time',
+        'game_event_reward',
+        'game_payment_reward',
+        'game_account_create',
+        'game_daily_login',
+        'game_play_time',
+        'game_purchase',
+        'game_event_participate',
+        'game_ranking',
         'admin_grant',
         'admin_deduct',
       ],

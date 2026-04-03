@@ -20,7 +20,9 @@ export function useAuth() {
     email: session.user.email ?? '',
     username: (session.user as any).username ?? session.user.name ?? '',
     role: ((session.user as any).role ?? 'player') as 'developer' | 'player' | 'admin',
+    adminLevel: ((session.user as any).adminLevel ?? null) as 'super' | 'normal' | 'monitor' | null,
     memberType: ((session.user as any).memberType ?? 'individual') as 'individual' | 'corporate',
+    approvalStatus: ((session.user as any).approvalStatus ?? 'pending') as 'pending' | 'approved' | 'rejected',
     companyInfo: (session.user as any).companyInfo as any,
     bio: undefined as string | undefined,
     favoriteGenres: undefined as string[] | undefined,
@@ -43,7 +45,7 @@ export function useAuth() {
       if (token) localStorage.setItem('token', token)
       router.refresh()
     },
-    register: async (data: { email: string; username: string; password: string; role: 'developer' | 'player'; memberType?: string; companyInfo?: any; contactPerson?: any }) => {
+    register: async (data: { email: string; username: string; password: string; role: 'developer' | 'player'; memberType?: string; companyInfo?: any; contactPerson?: any; skipLogin?: boolean }) => {
       const res = await fetch('/api/users/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -53,6 +55,8 @@ export function useAuth() {
         const resData = await res.json()
         throw new Error(resData.message || 'Registration failed')
       }
+      // 기업회원은 관리자 승인 전까지 로그인하지 않음
+      if (data.skipLogin) return
       await signIn('credentials', { email: data.email, password: data.password, redirect: false })
       const sessionRes = await fetch('/api/auth/session')
       const freshSession = await sessionRes.json()

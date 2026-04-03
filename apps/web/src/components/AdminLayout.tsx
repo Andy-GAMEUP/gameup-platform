@@ -1,43 +1,77 @@
 'use client'
 import { ReactNode, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 import {
   LayoutDashboard, Gamepad2, Users, Megaphone,
-  MessageSquare, ChevronLeft, ChevronRight,
+  MessageSquare, ChevronLeft, ChevronRight, ChevronDown,
   Home, LogOut, Shield, UserPlus, Handshake, Tags,
-  Smartphone, Globe, Hash, Calendar, FileCheck, ImageIcon, Bell, Package,
-  BarChart3, PieChart, UserCircle, Building2, Award, Activity, FileText,
+  Smartphone, Globe, Calendar, FileCheck, ImageIcon, Bell, Package,
+  BarChart3, PieChart, UserCircle, Building2, Award, Activity, FileText, Gift,
 } from 'lucide-react'
 
 interface AdminLayoutProps { children: ReactNode }
 
-const navItems = [
+interface NavItem {
+  path: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  exact?: boolean
+  children?: NavItem[]
+}
+
+const navItems: NavItem[] = [
   { path: '/admin',            label: '대시보드',    icon: LayoutDashboard, exact: true },
   { path: '/admin/games',      label: '게임 관리',   icon: Gamepad2 },
   { path: '/admin/community',  label: '커뮤니티',    icon: MessageSquare },
-  { path: '/admin/users',      label: '회원 관리',   icon: Users },
-  { path: '/admin/announcements', label: '공지사항', icon: Megaphone },
-  { path: '/admin/partner-requests', label: '파트너 신청', icon: UserPlus },
-  { path: '/admin/partner-management', label: '파트너 관리', icon: Handshake },
-  { path: '/admin/partner-topics', label: '주제 관리', icon: Tags },
-  { path: '/admin/publishing/hms', label: 'HMS 퍼블리싱', icon: Globe },
-  { path: '/admin/publishing/hk', label: 'HK 퍼블리싱', icon: Smartphone },
-  { path: '/admin/minihome', label: '미니홈 관리', icon: Home },
-  { path: '/admin/minihome-keywords', label: '미니홈 키워드', icon: Hash },
-  { path: '/admin/support-seasons', label: '시즌 관리', icon: Calendar },
-  { path: '/admin/support-applications', label: '게임 신청', icon: FileCheck },
-  { path: '/admin/support-banners', label: '지원 배너/탭', icon: ImageIcon },
-  { path: '/admin/notifications', label: '알림 관리', icon: Bell },
-  { path: '/admin/solutions', label: '솔루션 관리', icon: Package },
-  { path: '/admin/analytics', label: '방문 통계', icon: BarChart3 },
-  { path: '/admin/analytics/menu', label: '메뉴별 통계', icon: PieChart },
-  { path: '/admin/users-enhanced/individual', label: '개인회원', icon: UserCircle },
-  { path: '/admin/users-enhanced/corporate', label: '기업회원', icon: Building2 },
-  { path: '/admin/levels', label: '레벨 관리', icon: Award },
-  { path: '/admin/activity-scores', label: '활동점수', icon: Activity },
-  { path: '/admin/terms', label: '약관 관리', icon: FileText },
+  {
+    path: '/admin/members',
+    label: '계정관리',
+    icon: Users,
+    children: [
+      { path: '/admin/members/new_account', label: '신규회원승인', icon: UserPlus },
+      { path: '/admin/members/players', label: '게임유저관리', icon: UserCircle },
+      { path: '/admin/members/corporate', label: '기업회원관리', icon: Building2 },
+      { path: '/admin/members/terms', label: '약관관리', icon: FileText },
+      { path: '/admin/levels', label: '레벨 관리', icon: Award },
+      { path: '/admin/activity-scores', label: '활동점수', icon: Activity },
+      { path: '/admin/game-point-policies', label: '게임포인트정책', icon: Gift },
+    ],
+  },
+  {
+    path: '/admin/notice',
+    label: '공지알림',
+    icon: Megaphone,
+    children: [
+      { path: '/admin/announcements', label: '공지관리', icon: Megaphone },
+      { path: '/admin/notifications', label: '알림관리', icon: Bell },
+      { path: '/admin/support-banners', label: '배너관리', icon: ImageIcon },
+    ],
+  },
+  { path: '/admin/partner-topics', label: '프로젝트관리', icon: Tags },
+  {
+    path: '/admin/solution_service',
+    label: '솔루션&서비스',
+    icon: Package,
+    children: [
+      { path: '/admin/publishing/hms', label: 'HMS 퍼블리싱', icon: Globe },
+      { path: '/admin/publishing/hk', label: 'HK 퍼블리싱', icon: Smartphone },
+      { path: '/admin/support-seasons', label: '시즌 관리', icon: Calendar },
+      { path: '/admin/support-applications', label: '게임 신청', icon: FileCheck },
+      { path: '/admin/solutions', label: '솔루션 관리', icon: Package },
+    ],
+  },
+  {
+    path: '/admin/analytics',
+    label: '방문 통계',
+    icon: BarChart3,
+    children: [
+      { path: '/admin/analytics', label: '방문 통계', icon: BarChart3, exact: true },
+      { path: '/admin/analytics/menu', label: '메뉴별 통계', icon: PieChart },
+    ],
+  },
 ]
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -46,57 +80,123 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { logout, user } = useAuth()
   const [open, setOpen] = useState(true)
 
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    navItems.forEach(item => {
+      if (item.children) {
+        const childMatch = item.children.some(c => pathname.startsWith(c.path))
+        if (childMatch) init[item.path] = true
+      }
+    })
+    return init
+  })
+
+  const toggleMenu = (path: string) => {
+    setOpenMenus(prev => ({ ...prev, [path]: !prev[path] }))
+  }
+
   const isActive = (path: string, exact = false) =>
     exact ? pathname === path : pathname.startsWith(path)
 
-  return (
-    <div className="min-h-screen bg-slate-950 flex">
-      {/* Sidebar */}
-      <aside className={`${open ? 'w-56' : 'w-14'} bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-200 flex-shrink-0`}>
-        {/* Logo */}
-        <div className="h-14 flex items-center justify-between px-3 border-b border-slate-800">
-          {open && (
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-red-400" />
-              <span className="text-white font-bold text-sm tracking-wide">관리자 콘솔</span>
+  const renderNavItem = (item: NavItem) => {
+    const { path, label, icon: Icon, exact, children: subs } = item
+
+    if (subs) {
+      const parentActive = subs.some(c => pathname.startsWith(c.path))
+      const isOpen = openMenus[path] ?? false
+
+      return (
+        <div key={path}>
+          <button
+            onClick={() => toggleMenu(path)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+              parentActive
+                ? 'bg-accent-light text-accent-text border border-accent-muted'
+                : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
+            }`}
+            title={!open ? label : undefined}
+          >
+            <Icon className="w-4 h-4 flex-shrink-0" />
+            {open && (
+              <>
+                <span className="flex-1 text-left">{label}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+              </>
+            )}
+          </button>
+          {open && isOpen && (
+            <div className="ml-4 mt-0.5 space-y-0.5 border-l border-line pl-2">
+              {subs.map(sub => {
+                const subActive = isActive(sub.path, sub.exact)
+                const SubIcon = sub.icon
+                return (
+                  <Link key={sub.path} href={sub.path}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      subActive
+                        ? 'bg-accent-light text-accent-text'
+                        : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary/50'
+                    }`}
+                  >
+                    <SubIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{sub.label}</span>
+                  </Link>
+                )
+              })}
             </div>
           )}
-          <button onClick={() => setOpen(!open)} className="text-slate-400 hover:text-white transition-colors ml-auto">
+        </div>
+      )
+    }
+
+    const active = isActive(path, exact)
+    return (
+      <Link key={path} href={path}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+          active
+            ? 'bg-accent-light text-accent-text border border-accent-muted'
+            : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
+        }`}
+        title={!open ? label : undefined}
+      >
+        <Icon className="w-4 h-4 flex-shrink-0" />
+        {open && <span>{label}</span>}
+      </Link>
+    )
+  }
+
+  return (
+    <div className="accent-red min-h-screen bg-bg-primary flex">
+      {/* Sidebar */}
+      <aside className={`${open ? 'w-56' : 'w-14'} bg-bg-secondary border-r border-line flex flex-col transition-all duration-200 flex-shrink-0`}>
+        {/* Logo */}
+        <div className="h-14 flex items-center justify-between px-3 border-b border-line">
+          <Link href="/" className="flex items-center gap-2">
+            <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-7 w-auto object-contain flex-shrink-0" />
+            {open && (
+              <span className="text-base font-bold tracking-tight text-black">GameUp</span>
+            )}
+          </Link>
+          <button onClick={() => setOpen(!open)} className="text-text-muted hover:text-text-primary transition-colors ml-auto">
             {open ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
         </div>
 
         {/* Nav */}
         <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ path, label, icon: Icon, exact }) => {
-            const active = isActive(path, exact)
-            return (
-              <Link key={path} href={path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                  active
-                    ? 'bg-red-600/20 text-red-300 border border-red-500/30'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-                title={!open ? label : undefined}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {open && <span>{label}</span>}
-              </Link>
-            )
-          })}
+          {navItems.map(renderNavItem)}
         </nav>
 
         {/* Footer */}
-        <div className="p-2 border-t border-slate-800 space-y-0.5">
+        <div className="p-2 border-t border-line space-y-0.5">
           <Link href="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 text-sm transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-tertiary text-sm transition-colors"
             title={!open ? '메인으로' : undefined}
           >
             <Home className="w-4 h-4 flex-shrink-0" />
             {open && <span>메인으로</span>}
           </Link>
           <button onClick={() => { logout(); router.push('/') }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/20 text-sm transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 text-sm transition-colors"
             title={!open ? '로그아웃' : undefined}
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
@@ -107,11 +207,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 flex-shrink-0">
-          <h1 className="text-white font-semibold text-base">GAMEUP BETAZONE 관리자</h1>
+        <header className="h-14 bg-bg-secondary border-b border-line flex items-center justify-between px-6 flex-shrink-0">
+          <h1 className="text-text-primary font-semibold text-base">GAMEUP 관리시스템</h1>
           <div className="flex items-center gap-3">
-            <span className="text-slate-400 text-sm">{user?.username}</span>
-            <span className="bg-red-600/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-xs font-bold tracking-wider">ADMIN</span>
+            <span className="text-text-secondary text-sm">{user?.username}</span>
+            <span className="bg-accent-light text-accent-text border border-accent-muted px-2 py-0.5 rounded text-xs font-bold tracking-wider">ADMIN</span>
           </div>
         </header>
         <main className="flex-1 overflow-auto p-6">

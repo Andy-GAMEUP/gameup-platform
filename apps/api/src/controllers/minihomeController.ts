@@ -22,7 +22,7 @@ export const getMiniHomes = async (req: Request, res: Response) => {
     const sortField = sort === 'updatedAt' ? 'updatedAt' : 'createdAt'
     const total = await MiniHome.countDocuments(filter)
     const minihomes = await MiniHome.find(filter)
-      .populate('userId', 'username profileImage')
+      .populate('userId', 'username profileImage level')
       .populate('representativeGameId')
       .sort({ isRecommended: -1, [sortField]: -1 })
       .skip((Number(page) - 1) * Number(limit))
@@ -37,7 +37,7 @@ export const getMiniHomeDetail = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
     const minihome = await MiniHome.findById(id)
-      .populate('userId', 'username profileImage')
+      .populate('userId', 'username profileImage level')
       .populate('representativeGameId')
     if (!minihome) return res.status(404).json({ message: '미니홈을 찾을 수 없습니다' })
     const games = await MiniHomeGame.find({ minihomeId: id, status: 'active' }).sort({ sortOrder: 1 })
@@ -78,12 +78,30 @@ export const getKeywordGroups = async (_req: Request, res: Response) => {
   }
 }
 
+export const getMyMiniHome = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id
+    const minihome = await MiniHome.findOne({ userId })
+      .populate('userId', 'username profileImage level')
+      .populate('representativeGameId')
+    if (!minihome) return res.json({ minihome: null })
+    const games = await MiniHomeGame.find({ minihomeId: minihome._id, status: 'active' }).sort({ sortOrder: 1 })
+    res.json({ minihome, games })
+  } catch {
+    res.status(500).json({ message: '내 미니홈 조회 실패' })
+  }
+}
+
 export const createMiniHome = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id
     const existing = await MiniHome.findOne({ userId })
     if (existing) return res.status(400).json({ message: '이미 미니홈이 존재합니다' })
-    const { companyName, introduction, profileImage, coverImage, website, tags, keywords } = req.body
+    const {
+      companyName, introduction, profileImage, coverImage, website, tags, keywords,
+      expertiseArea, skills, hourlyRate, availability, location,
+      portfolio, certifications, workExperience, contactEmail, contactPhone,
+    } = req.body
     if (!companyName) return res.status(400).json({ message: '회사명은 필수입니다' })
     const minihome = new MiniHome({
       userId,
@@ -94,6 +112,16 @@ export const createMiniHome = async (req: AuthRequest, res: Response) => {
       website: website || '',
       tags: tags || [],
       keywords: keywords || [],
+      expertiseArea: expertiseArea || [],
+      skills: skills || [],
+      hourlyRate: hourlyRate || '',
+      availability: availability || 'available',
+      location: location || '',
+      portfolio: portfolio || [],
+      certifications: certifications || [],
+      workExperience: workExperience || [],
+      contactEmail: contactEmail || '',
+      contactPhone: contactPhone || '',
     })
     await minihome.save()
     res.status(201).json({ message: '미니홈이 생성되었습니다', minihome })
@@ -105,10 +133,34 @@ export const createMiniHome = async (req: AuthRequest, res: Response) => {
 export const updateMiniHome = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id
-    const { companyName, introduction, profileImage, coverImage, website, tags, keywords, isPublic } = req.body
+    const {
+      companyName, introduction, profileImage, coverImage, website, tags, keywords, isPublic,
+      expertiseArea, skills, hourlyRate, availability, location,
+      portfolio, certifications, workExperience, contactEmail, contactPhone,
+    } = req.body
+    const updateData: Record<string, unknown> = {}
+    if (companyName !== undefined) updateData.companyName = companyName
+    if (introduction !== undefined) updateData.introduction = introduction
+    if (profileImage !== undefined) updateData.profileImage = profileImage
+    if (coverImage !== undefined) updateData.coverImage = coverImage
+    if (website !== undefined) updateData.website = website
+    if (tags !== undefined) updateData.tags = tags
+    if (keywords !== undefined) updateData.keywords = keywords
+    if (isPublic !== undefined) updateData.isPublic = isPublic
+    if (expertiseArea !== undefined) updateData.expertiseArea = expertiseArea
+    if (skills !== undefined) updateData.skills = skills
+    if (hourlyRate !== undefined) updateData.hourlyRate = hourlyRate
+    if (availability !== undefined) updateData.availability = availability
+    if (location !== undefined) updateData.location = location
+    if (portfolio !== undefined) updateData.portfolio = portfolio
+    if (certifications !== undefined) updateData.certifications = certifications
+    if (workExperience !== undefined) updateData.workExperience = workExperience
+    if (contactEmail !== undefined) updateData.contactEmail = contactEmail
+    if (contactPhone !== undefined) updateData.contactPhone = contactPhone
+
     const minihome = await MiniHome.findOneAndUpdate(
       { userId },
-      { companyName, introduction, profileImage, coverImage, website, tags, keywords, isPublic },
+      updateData,
       { new: true }
     )
     if (!minihome) return res.status(404).json({ message: '미니홈을 찾을 수 없습니다' })

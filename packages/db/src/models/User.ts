@@ -33,6 +33,7 @@ export interface IUser extends Document {
   username: string
   password?: string
   role: 'developer' | 'player' | 'admin'
+  adminLevel?: 'super' | 'normal' | 'monitor'
   bio?: string
   favoriteGenres?: string[]
   isActive: boolean
@@ -40,6 +41,9 @@ export interface IUser extends Document {
   banReason?: string
   oauthProviders?: IOAuthProvider[]
   memberType?: 'individual' | 'corporate'
+  approvalStatus?: 'pending' | 'approved' | 'rejected'
+  approvalRejectedReason?: string
+  approvedAt?: Date
   profileImage?: string
   level?: number
   activityScore?: number
@@ -74,6 +78,10 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: ['developer', 'player', 'admin'],
       default: 'player'
+    },
+    adminLevel: {
+      type: String,
+      enum: ['super', 'normal', 'monitor'],
     },
     bio: {
       type: String,
@@ -137,6 +145,13 @@ const userSchema = new Schema<IUser>(
       email: { type: String },
       phone: { type: String },
     },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
+    approvalRejectedReason: { type: String },
+    approvedAt: { type: Date },
     adminMemo: { type: String },
     lastLoginAt: { type: Date },
   },

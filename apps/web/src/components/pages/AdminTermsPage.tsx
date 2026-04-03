@@ -50,27 +50,27 @@ export default function AdminTermsPage() {
     <AdminLayout>
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <FileText className="w-5 h-5 text-red-400" />
-          <h2 className="text-white text-xl font-bold">약관 관리</h2>
+          <FileText className="w-5 h-5 text-accent-text" />
+          <h2 className="text-text-primary text-xl font-bold">약관 관리</h2>
           <button
             onClick={handleSave}
             disabled={saving || loading}
-            className="ml-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="ml-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             저장
           </button>
         </div>
 
-        <div className="flex gap-1 border-b border-slate-800">
+        <div className="flex gap-1 border-b border-line">
           {TABS.map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === tab.key
-                  ? 'text-red-300 border-red-500'
-                  : 'text-slate-400 border-transparent hover:text-white'
+                  ? 'text-accent-text border-red-500'
+                  : 'text-text-secondary border-transparent hover:text-text-primary'
               }`}
             >
               {tab.label}
@@ -80,12 +80,12 @@ export default function AdminTermsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
           </div>
         ) : (
           <div className="space-y-4">
-            <p className="text-slate-400 text-sm">
-              현재 편집 중: <span className="text-white font-medium">{TABS.find(t => t.key === activeTab)?.label}</span>
+            <p className="text-text-secondary text-sm">
+              현재 편집 중: <span className="text-text-primary font-medium">{TABS.find(t => t.key === activeTab)?.label}</span>
             </p>
             <Editor
               content={contents[activeTab]}
@@ -99,7 +99,7 @@ export default function AdminTermsPage() {
           <button
             onClick={handleSave}
             disabled={saving || loading}
-            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             저장

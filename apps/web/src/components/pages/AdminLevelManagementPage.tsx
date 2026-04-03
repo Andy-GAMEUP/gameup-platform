@@ -61,7 +61,7 @@ export default function AdminLevelManagementPage() {
   if (loading) return (
     <AdminLayout>
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+        <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
       </div>
     </AdminLayout>
   )
@@ -70,33 +70,33 @@ export default function AdminLevelManagementPage() {
     <AdminLayout>
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <Award className="w-5 h-5 text-red-400" />
-          <h2 className="text-white text-xl font-bold">레벨 관리</h2>
+          <Award className="w-5 h-5 text-accent-text" />
+          <h2 className="text-text-primary text-xl font-bold">레벨 관리</h2>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="ml-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="ml-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             저장
           </button>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800">
-                  <th className="text-left text-slate-400 font-medium px-4 py-3 w-20">등급</th>
-                  <th className="text-center text-slate-400 font-medium px-4 py-3 w-16">아이콘</th>
-                  <th className="text-right text-slate-400 font-medium px-4 py-3 w-24">회원수</th>
-                  <th className="text-left text-slate-400 font-medium px-4 py-3">명칭</th>
-                  <th className="text-right text-slate-400 font-medium px-4 py-3">누적 활동 점수 기준</th>
+                <tr className="border-b border-line">
+                  <th className="text-left text-text-secondary font-medium px-4 py-3 w-20">등급</th>
+                  <th className="text-center text-text-secondary font-medium px-4 py-3 w-16">아이콘</th>
+                  <th className="text-right text-text-secondary font-medium px-4 py-3 w-24">회원수</th>
+                  <th className="text-left text-text-secondary font-medium px-4 py-3">명칭</th>
+                  <th className="text-right text-text-secondary font-medium px-4 py-3">누적 활동 점수 기준</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-line">
                 {levels.map((level, i) => (
-                  <tr key={level.level} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={level.level} className="hover:bg-bg-tertiary/30 transition-colors">
                     <td className="px-4 py-3">
                       <span className="text-violet-400 font-bold">Lv.{level.level}</span>
                     </td>
@@ -104,7 +104,7 @@ export default function AdminLevelManagementPage() {
                       <select
                         value={level.icon ?? LEVEL_ICONS[i] ?? '⭐'}
                         onChange={e => updateLevel(i, 'icon', e.target.value)}
-                        className="bg-slate-800 border border-slate-700 rounded px-2 py-1 text-white text-base focus:outline-none"
+                        className="bg-bg-tertiary border border-line rounded px-2 py-1 text-text-primary text-base focus:outline-none"
                       >
                         {LEVEL_ICONS.map(icon => (
                           <option key={icon} value={icon}>{icon}</option>
@@ -112,13 +112,13 @@ export default function AdminLevelManagementPage() {
                       </select>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="text-slate-300">{(level.memberCount ?? 0).toLocaleString()}명</span>
+                      <span className="text-text-secondary">{(level.memberCount ?? 0).toLocaleString()}명</span>
                     </td>
                     <td className="px-4 py-3">
                       <input
                         value={level.name}
                         onChange={e => updateLevel(i, 'name', e.target.value)}
-                        className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-red-500 w-full max-w-xs"
+                        className="bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-text-primary text-sm focus:outline-none focus:border-accent w-full max-w-xs"
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -128,9 +128,9 @@ export default function AdminLevelManagementPage() {
                           min={0}
                           value={level.minScore}
                           onChange={e => updateLevel(i, 'minScore', Number(e.target.value))}
-                          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-red-500 w-32 text-right"
+                          className="bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-text-primary text-sm focus:outline-none focus:border-accent w-32 text-right"
                         />
-                        <span className="text-slate-400 text-sm">점</span>
+                        <span className="text-text-secondary text-sm">점</span>
                       </div>
                     </td>
                   </tr>
@@ -144,7 +144,7 @@ export default function AdminLevelManagementPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             저장

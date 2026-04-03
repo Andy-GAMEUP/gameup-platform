@@ -1,6 +1,5 @@
-'use client'
-import HowItWorksPage from '@/components/pages/HowItWorksPage'
+import { redirect } from 'next/navigation'
 
 export default function Page() {
-  return <HowItWorksPage />
+  redirect('/gameup_platform')
 }

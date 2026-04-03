@@ -2,7 +2,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Gamepad2, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react'
+import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react'
+import Image from 'next/image'
 import { useAuth } from '@/lib/useAuth'
 
 export default function LoginPage() {
@@ -39,8 +40,31 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/session')
       const session = await res.json()
       const role = session?.user?.role
+      const memberType = session?.user?.memberType
+      const approvalStatus = session?.user?.approvalStatus || session?.user?.companyInfo?.approvalStatus
+
+      // 미승인 회원은 대기 페이지로 이동 (관리자 제외 - 기존 관리자는 approved 또는 확인 불필요)
+      if (approvalStatus === 'pending' && role !== 'admin') {
+        router.push('/register/pending')
+        return
+      }
+      if (approvalStatus === 'rejected') {
+        router.push('/register/pending')
+        return
+      }
+
       if (role === 'admin') router.push('/admin')
-      else if (role === 'developer') router.push('/dashboard')
+      else if (role === 'developer') {
+        // 기업회원 중 개발사(companyType에 'developer' 포함)는 개발자 센터로
+        // 파트너(게임서비스관련사)는 서비스 홈으로 이동
+        const companyType = session?.user?.companyInfo?.companyType || []
+        const isDeveloperCompany = companyType.includes('developer')
+        if (memberType === 'corporate' && !isDeveloperCompany) {
+          router.push('/')
+        } else {
+          router.push('/dashboard')
+        }
+      }
       else router.push('/games')
     } catch (error: any) {
       const msg = error.message
@@ -64,33 +88,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
-              <Gamepad2 className="w-7 h-7 text-white" />
-            </div>
-            <span className="text-2xl font-bold">
-              <span className="text-green-400">GAME</span>
-              <span className="text-white">UP</span>
-            </span>
+          <Link href="/" className="inline-flex items-center gap-2 mb-6">
+            <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-12 w-auto object-contain" />
+            <span className="text-3xl font-bold tracking-tight text-black">GameUp</span>
           </Link>
-          <h1 className="text-3xl font-bold text-white mb-2">로그인</h1>
-          <p className="text-slate-400">
+          <h1 className="text-3xl font-bold text-text-primary mb-2">로그인</h1>
+          <p className="text-text-secondary">
             계정이 없으신가요?{' '}
-            <Link href="/register" className="text-green-400 hover:text-green-300 font-medium">
+            <Link href="/register" className="text-accent hover:text-accent font-medium">
               가입하기
             </Link>
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8">
+        <div className="bg-bg-secondary border border-line rounded-2xl p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             {serverError && (
-              <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg">
+              <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/30 text-danger px-4 py-3 rounded-lg">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm">{serverError}</span>
               </div>
@@ -98,43 +117,43 @@ export default function LoginPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">이메일</label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">이메일</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="example@email.com"
-                  className={`w-full bg-slate-800 border rounded-lg pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors ${errors.email ? 'border-red-500' : 'border-slate-700'}`}
+                  className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.email ? 'border-red-500' : 'border-line'}`}
                 />
               </div>
-              {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email}</p>}
+              {errors.email && <p className="mt-1 text-xs text-danger">{errors.email}</p>}
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">비밀번호</label>
+              <label className="block text-sm font-medium text-text-secondary mb-2">비밀번호</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
                 <input
                   type="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className={`w-full bg-slate-800 border rounded-lg pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors ${errors.password ? 'border-red-500' : 'border-slate-700'}`}
+                  className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.password ? 'border-red-500' : 'border-line'}`}
                 />
               </div>
-              {errors.password && <p className="mt-1 text-xs text-red-400">{errors.password}</p>}
+              {errors.password && <p className="mt-1 text-xs text-danger">{errors.password}</p>}
             </div>
 
             {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-accent hover:bg-accent-hover disabled:bg-green-800 disabled:cursor-not-allowed text-text-primary font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               {loading ? (
                 <><Loader2 className="w-5 h-5 animate-spin" /> 로그인 중...</>
@@ -145,10 +164,10 @@ export default function LoginPage() {
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-700" />
+                <div className="w-full border-t border-line" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-slate-900 text-slate-400">또는</span>
+                <span className="px-2 bg-bg-secondary text-text-secondary">또는</span>
               </div>
             </div>
             <div className="mt-4 space-y-3">
@@ -162,7 +181,7 @@ export default function LoginPage() {
               <button
                 onClick={loginWithNaver}
                 type="button"
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#03C75A] text-white font-medium hover:bg-[#02b351] transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#03C75A] text-text-primary font-medium hover:bg-[#02b351] transition-colors"
               >
                 네이버로 시작하기
               </button>
@@ -173,10 +192,10 @@ export default function LoginPage() {
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-700" />
+                <div className="w-full border-t border-line" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-3 bg-slate-900 text-slate-500">테스트 계정</span>
+                <span className="px-3 bg-bg-secondary text-text-muted">테스트 계정</span>
               </div>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2">
@@ -185,7 +204,7 @@ export default function LoginPage() {
                   key={type}
                   type="button"
                   onClick={() => fillTestAccount(type)}
-                  className="py-2 px-3 rounded-lg border border-slate-700 text-slate-400 hover:border-green-500/50 hover:text-green-400 text-xs font-medium transition-colors"
+                  className="py-2 px-3 rounded-lg border border-line text-text-secondary hover:border-accent-muted hover:text-accent text-xs font-medium transition-colors"
                 >
                   {type === 'admin' ? '관리자' : type === 'developer' ? '개발자' : '플레이어'}
                 </button>

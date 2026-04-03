@@ -1,6 +1,7 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
 import { UserModel as User, GameModel as Game, AnnouncementModel as Announcement, ReviewModel as Review, PlayerActivityModel as PlayerActivity } from '@gameup/db'
+import { hashPassword } from '../services/authService'
 
 // ── 플랫폼 전체 통계 ──────────────────────────────────────────────
 export const getAdminStats = async (req: AuthRequest, res: Response) => {
@@ -59,10 +60,15 @@ export const getAdminStats = async (req: AuthRequest, res: Response) => {
 // ── 전체 사용자 목록 ──────────────────────────────────────────────
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
-    const { page = 1, limit = 20, role, search, isActive } = req.query
+    const { page = 1, limit = 20, role, search, isActive, memberType, isPartner, approvalStatus } = req.query
     const filter: Record<string, unknown> = {}
     if (role) filter.role = role
     if (isActive !== undefined) filter.isActive = isActive === 'true'
+    if (memberType) filter.memberType = memberType
+    if (isPartner === 'true') filter.isPartner = true
+    if (approvalStatus && ['pending', 'approved', 'rejected'].includes(String(approvalStatus))) {
+      filter.approvalStatus = String(approvalStatus)
+    }
     if (search) {
       filter.$or = [
         { username: { $regex: search, $options: 'i' } },
@@ -115,6 +121,20 @@ export const banUser = async (req: AuthRequest, res: Response) => {
     res.json({ message: isActive ? '정지가 해제되었습니다' : '정지되었습니다', user })
   } catch {
     res.status(500).json({ message: '정지 처리 실패' })
+  }
+}
+
+// ── 사용자 삭제 (소프트 삭제) ──────────────────────────────────────
+export const deleteUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(id)
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (user.role === 'admin') return res.status(400).json({ message: '관리자 계정은 삭제할 수 없습니다' })
+    await User.findByIdAndUpdate(id, { $set: { isActive: false, deletedAt: new Date() } })
+    res.json({ message: '사용자가 삭제되었습니다' })
+  } catch {
+    res.status(500).json({ message: '사용자 삭제 실패' })
   }
 }
 
@@ -526,5 +546,114 @@ export const getPublicAnnouncements = async (req: AuthRequest, res: Response) =>
     res.json({ announcements })
   } catch {
     res.status(500).json({ message: '공지사항 조회 실패' })
+  }
+}
+
+// ── 신규 회원 승인/거절 (전체 회원 유형) ──────────────────────────
+export const approveUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const { approvalStatus, rejectedReason } = req.body
+
+    if (!approvalStatus || !['approved', 'rejected'].includes(approvalStatus)) {
+      return res.status(400).json({ message: 'approvalStatus는 approved 또는 rejected여야 합니다' })
+    }
+
+    const user = await User.findById(id)
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+
+    const update: Record<string, unknown> = {
+      approvalStatus,
+      approvedAt: approvalStatus === 'approved' ? new Date() : undefined,
+    }
+    if (approvalStatus === 'rejected' && rejectedReason) {
+      update.approvalRejectedReason = rejectedReason
+    }
+
+    // 기업회원인 경우 companyInfo.approvalStatus도 동기화
+    if (user.memberType === 'corporate') {
+      update['companyInfo.approvalStatus'] = approvalStatus
+      update['companyInfo.isApproved'] = approvalStatus === 'approved'
+      if (approvalStatus === 'rejected' && rejectedReason) {
+        update['companyInfo.rejectedReason'] = rejectedReason
+      }
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(id, update, { new: true }).select('-password')
+    res.json({
+      message: approvalStatus === 'approved' ? '회원이 승인되었습니다' : '회원이 거절되었습니다',
+      user: updatedUser,
+    })
+  } catch {
+    res.status(500).json({ message: '회원 승인 처리 실패' })
+  }
+}
+
+// ── 승인 대기 회원 수 통계 ──────────────────────────────────────
+export const getPendingMemberCounts = async (req: AuthRequest, res: Response) => {
+  try {
+    const [total, admin, corporate, individual] = await Promise.all([
+      User.countDocuments({ approvalStatus: 'pending' }),
+      User.countDocuments({ approvalStatus: 'pending', role: 'admin' }),
+      User.countDocuments({ approvalStatus: 'pending', memberType: 'corporate' }),
+      User.countDocuments({ approvalStatus: 'pending', memberType: 'individual' }),
+    ])
+    res.json({ total, admin, corporate, individual })
+  } catch {
+    res.status(500).json({ message: '대기 회원 수 조회 실패' })
+  }
+}
+
+// ── 관리자 계정 생성 ────────────────────────────────────────────
+export const createAdminUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { email, username, password, adminLevel } = req.body
+
+    // super 관리자만 관리자 계정 생성 가능
+    const currentUser = await User.findById(req.user!.id)
+    if (!currentUser || currentUser.adminLevel !== 'super') {
+      return res.status(403).json({ message: 'Super 관리자만 관리자 계정을 생성할 수 있습니다' })
+    }
+
+    if (!email || !username || !password) {
+      return res.status(400).json({ message: '이메일, 사용자명, 비밀번호는 필수입니다' })
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: '비밀번호는 최소 6자 이상이어야 합니다' })
+    }
+    if (!adminLevel || !['super', 'normal', 'monitor'].includes(adminLevel)) {
+      return res.status(400).json({ message: '관리자 등급을 선택해주세요 (super/normal/monitor)' })
+    }
+
+    const existing = await User.findOne({ $or: [{ email }, { username }] })
+    if (existing) {
+      return res.status(400).json({ message: '이미 존재하는 이메일 또는 사용자명입니다' })
+    }
+
+    const hashedPw = await hashPassword(password)
+    const user = await User.create({
+      email,
+      username,
+      password: hashedPw,
+      role: 'admin',
+      adminLevel,
+      memberType: 'individual',
+      approvalStatus: 'approved',
+      approvedAt: new Date(),
+      isActive: true,
+    })
+
+    res.status(201).json({
+      message: '관리자 계정이 생성되었습니다',
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        adminLevel: user.adminLevel,
+      },
+    })
+  } catch {
+    res.status(500).json({ message: '관리자 계정 생성 실패' })
   }
 }

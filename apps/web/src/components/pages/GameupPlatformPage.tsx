@@ -1,0 +1,530 @@
+'use client'
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import Navbar from '@/components/Navbar'
+import Button from '@/components/Button'
+import Badge from '@/components/Badge'
+import { Card } from '@/components/Card'
+import {
+  Play,
+  Users,
+  MessageSquare,
+  MessageCircle,
+  Trophy,
+  Zap,
+  Shield,
+  Star,
+  ChevronRight,
+  Heart,
+  Gamepad2,
+  Loader2,
+  UserPlus,
+  Search,
+  Gift,
+} from 'lucide-react'
+import { gameService } from '@/services/gameService'
+import { Game } from '@gameup/types'
+
+const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect fill='%231e293b' width='400' height='300'/%3E%3Ctext fill='%23334155' font-family='sans-serif' font-size='24' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3EGame%3C/text%3E%3C/svg%3E"
+
+function FeaturedGameCard({ game }: { game: Game }) {
+  const router = useRouter()
+  const id = (game as any)._id || game.id
+
+  const statusLabel =
+    game.status === 'beta' ? '진행중' : game.status === 'published' ? '공개중' : '준비중'
+  const statusClass =
+    game.status === 'beta'
+      ? 'bg-accent-light text-accent border-accent-muted'
+      : 'bg-blue-500/20 text-blue-300 border-blue-500/50'
+
+  return (
+    <Card
+      className="bg-bg-secondary border-2 border-accent-muted overflow-hidden hover:border-accent transition-all cursor-pointer group"
+      onClick={() => router.push(`/games/${id}`)}
+    >
+      <div className="relative h-48 overflow-hidden">
+        <Image
+          src={game.thumbnail || PLACEHOLDER}
+          alt={game.title}
+          fill
+          className="object-cover group-hover:scale-110 transition-transform duration-300"
+          unoptimized
+        />
+        <div className="absolute top-4 left-4">
+          <Badge className={statusClass}>{statusLabel}</Badge>
+        </div>
+        <div className="absolute top-4 right-4">
+          <button
+            className="w-8 h-8 rounded-full bg-bg-primary/70 backdrop-blur-sm flex items-center justify-center hover:bg-bg-tertiary transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Heart className="w-4 h-4 text-text-primary" />
+          </button>
+        </div>
+      </div>
+      <div className="p-6">
+        <h3 className="text-xl font-bold mb-2">{game.title}</h3>
+        <p className="text-text-secondary mb-4 text-sm line-clamp-2">{game.description}</p>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2 text-sm text-text-secondary">
+            <Users className="w-4 h-4" />
+            <span>{(game.playCount || 0).toLocaleString()} 플레이</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {[...Array(5)].map((_, i) => (
+              <Star
+                key={i}
+                className={`w-4 h-4 ${
+                  i < Math.floor(game.rating || 0)
+                    ? 'fill-yellow-400 text-yellow-400'
+                    : 'text-text-muted'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+        <Button size="sm" className="w-full bg-accent hover:bg-accent-hover">
+          참여하기
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+export default function GameupPlatformPage() {
+  const [featuredGames, setFeaturedGames] = useState<Game[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    gameService
+      .getAllGames({ sort: 'popular', limit: 3 } as any)
+      .then((data) => setFeaturedGames(data.games || []))
+      .catch(() => setFeaturedGames([]))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const features = [
+    {
+      icon: <Play className="w-6 h-6" />,
+      title: '최신 게임 미리 플레이',
+      description: '정식 출시 전 독점적으로 게임을 체험하세요',
+    },
+    {
+      icon: <MessageSquare className="w-6 h-6" />,
+      title: '개발진과 직접 소통',
+      description: '피드백을 통해 게임 개발에 직접 참여하세요',
+    },
+    {
+      icon: <Trophy className="w-6 h-6" />,
+      title: '특별 보상 획득',
+      description: '베타 참여자 전용 아이템과 특전을 받으세요',
+    },
+    {
+      icon: <Users className="w-6 h-6" />,
+      title: '게이머 커뮤니티',
+      description: '같은 관심사를 가진 게이머들과 연결되세요',
+    },
+  ]
+
+  const steps = [
+    {
+      icon: <UserPlus className="w-8 h-8" />,
+      title: '1. 가입하기',
+      description: '무료로 계정을 만들고 프로필을 설정하세요',
+      details: [
+        '이메일 또는 소셜 계정으로 간편 가입',
+        '관심 게임 장르 선택',
+        '플레이 스타일 및 경험 설정',
+        '베타 테스트 알림 설정',
+      ],
+    },
+    {
+      icon: <Search className="w-8 h-8" />,
+      title: '2. 게임 탐색',
+      description: '다양한 베타 테스트 게임을 둘러보세요',
+      details: [
+        '장르별, 플랫폼별 게임 검색',
+        '게임 상세 정보 및 트레일러 확인',
+        '다른 테스터들의 리뷰 읽기',
+        '테스트 일정 및 조건 확인',
+      ],
+    },
+    {
+      icon: <Play className="w-8 h-8" />,
+      title: '3. 베타 참여',
+      description: '선정되면 게임을 다운로드하고 플레이하세요',
+      details: [
+        '원하는 게임에 베타 신청',
+        '선정 결과 이메일 확인',
+        '게임 클라이언트 다운로드',
+        '베타 테스트 가이드 숙지',
+      ],
+    },
+    {
+      icon: <MessageCircle className="w-8 h-8" />,
+      title: '4. 피드백 제공',
+      description: '경험을 공유하고 게임 개선에 기여하세요',
+      details: [
+        '버그 및 이슈 리포트 작성',
+        '게임 플레이 피드백 제출',
+        '개발진과 직접 소통',
+        '설문조사 및 인터뷰 참여',
+      ],
+    },
+  ]
+
+  const benefits = [
+    { icon: <Trophy className="w-6 h-6" />, title: '조기 액세스', description: '정식 출시 전 게임을 먼저 경험하세요' },
+    { icon: <Gift className="w-6 h-6" />, title: '특별 보상', description: '베타 전용 아이템과 특전을 받으세요' },
+    { icon: <MessageCircle className="w-6 h-6" />, title: '개발진 소통', description: '게임 개발자와 직접 대화하세요' },
+    { icon: <Star className="w-6 h-6" />, title: '게임에 영향력', description: '여러분의 의견이 게임을 만들어갑니다' },
+  ]
+
+  const requirements = [
+    { title: '시스템 요구사항', items: ['안정적인 인터넷 연결', '게임별 최소 사양 충족', '충분한 저장 공간'] },
+    { title: '테스터 자격', items: ['만 14세 이상', '게임에 대한 열정', '건설적인 피드백 제공 의지'] },
+    { title: '참여 의무', items: ['정기적인 플레이', '피드백 제출', 'NDA(비밀유지계약) 준수'] },
+  ]
+
+  const faqs = [
+    { question: '베타 테스트 참여는 무료인가요?', answer: '네, 모든 베타 테스트는 완전 무료입니다. 오히려 참여에 대한 보상을 받으실 수 있습니다.' },
+    { question: '모든 게임에 참여할 수 있나요?', answer: '각 게임마다 테스터 수가 제한되어 있어 선착순 또는 선발 과정을 거칩니다. 프로필을 잘 작성하면 선정 확률이 높아집니다.' },
+    { question: '베타 테스트 기간은 얼마나 되나요?', answer: '게임마다 다르지만 일반적으로 2주에서 3개월 사이입니다. 각 게임의 상세 페이지에서 확인하실 수 있습니다.' },
+    { question: '모바일 게임도 테스트할 수 있나요?', answer: '네, PC, 콘솔, 모바일 등 다양한 플랫폼의 게임이 있습니다. 원하는 플랫폼으로 필터링할 수 있습니다.' },
+  ]
+
+  const testimonials = [
+    { name: '김게이머', role: '베타 테스터', content: '정식 출시 전에 게임을 플레이하고 개발에 참여할 수 있어서 정말 뜻깊었습니다!', rating: 5 },
+    { name: '이플레이어', role: '베타 테스터', content: '개발팀과 소통하며 내 의견이 실제 게임에 반영되는 걸 보니 자부심이 느껴져요.', rating: 5 },
+    { name: '박유저', role: '베타 테스터', content: '베타 전용 보상과 커뮤니티 활동이 정말 재밌어요. 새로운 게임 친구들도 많이 만났습니다!', rating: 5 },
+  ]
+
+  return (
+    <div className="min-h-screen bg-bg-primary text-text-primary">
+      <Navbar />
+
+      {/* Hero Section */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-accent/10 to-bg-primary z-10" />
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="https://images.unsplash.com/photo-1766052631095-c16328022120?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+            alt="Gaming Setup"
+            fill
+            className="object-cover opacity-30"
+            unoptimized
+          />
+        </div>
+        <div className="container mx-auto px-4 py-32 relative z-20">
+          <div className="max-w-3xl mx-auto text-center">
+            <Badge variant="success" className="mb-6 bg-accent-light text-accent border-accent-muted">
+              <Zap className="w-3 h-3 mr-1" />
+              게임의 미래를 함께 만들어요
+            </Badge>
+            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+              <span className="text-accent">베타 테스트의</span>
+              <br />
+              <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                새로운 기준
+              </span>
+            </h1>
+            <p className="text-xl text-text-secondary mb-8">
+              최신 게임을 가장 먼저 플레이하고, 개발 과정에 참여하며,
+              <br />
+              특별한 보상을 받으세요
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/register">
+                <Button size="lg" className="bg-accent hover:bg-accent-hover text-lg">
+                  무료로 시작하기
+                  <ChevronRight className="w-5 h-5 ml-1" />
+                </Button>
+              </Link>
+              <Link href="/">
+                <Button size="lg" variant="outline" className="border-line text-text-primary hover:bg-bg-tertiary text-lg">
+                  베타존 둘러보기
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features - 왜 GameUP인가 */}
+      <section className="bg-bg-secondary/50 py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              <span className="text-accent">GameUP</span>를 선택해야 하는 이유
+            </h2>
+            <p className="text-text-secondary">게이머와 개발자를 연결하는 최고의 플랫폼</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <Card key={index} className="bg-bg-secondary border-line hover:border-accent-muted transition-all">
+                <div className="p-6 text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-accent to-accent-hover rounded-lg flex items-center justify-center mx-auto mb-4">
+                    {feature.icon}
+                  </div>
+                  <h3 className="font-bold mb-2">{feature.title}</h3>
+                  <p className="text-sm text-text-secondary">{feature.description}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works - 상세 4단계 */}
+      <section className="container mx-auto px-4 py-20">
+        <div className="text-center mb-16">
+          <Badge variant="secondary" className="mb-4 bg-purple-500/20 text-purple-300 border-purple-500/50">
+            가이드
+          </Badge>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            베타 테스트 참여 방법
+          </h2>
+          <p className="text-xl text-text-secondary max-w-2xl mx-auto">
+            4단계로 간단하게 시작하고 게임의 미래를 함께 만들어가세요
+          </p>
+        </div>
+
+        <div className="space-y-12 mb-20">
+          {steps.map((step, index) => (
+            <div
+              key={index}
+              className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center"
+            >
+              <div className={index % 2 === 1 ? 'lg:order-2' : ''}>
+                <Card className="bg-bg-secondary border-line h-full">
+                  <div className="p-8">
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center mb-6">
+                      {step.icon}
+                    </div>
+                    <h3 className="text-2xl font-bold mb-4">{step.title}</h3>
+                    <p className="text-text-secondary mb-6">{step.description}</p>
+                    <ul className="space-y-3">
+                      {step.details.map((detail, idx) => (
+                        <li key={idx} className="flex items-start gap-3">
+                          <ChevronRight className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+                          <span className="text-text-secondary">{detail}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </Card>
+              </div>
+              <div className={index % 2 === 1 ? 'lg:order-1' : ''}>
+                <div className="text-center lg:text-left">
+                  <div className="text-8xl md:text-9xl font-bold text-purple-500/10 select-none">
+                    0{index + 1}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Benefits */}
+      <section className="bg-bg-secondary/50 py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">베타 테스터의 혜택</h2>
+            <p className="text-text-secondary">단순한 게임 플레이를 넘어선 특별한 경험</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {benefits.map((benefit, index) => (
+              <Card key={index} className="bg-bg-secondary border-line hover:border-purple-500/50 transition-all">
+                <div className="p-6 text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    {benefit.icon}
+                  </div>
+                  <h3 className="font-bold mb-2">{benefit.title}</h3>
+                  <p className="text-sm text-text-secondary">{benefit.description}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Requirements */}
+      <section className="container mx-auto px-4 py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">참여 요건</h2>
+          <p className="text-text-secondary">베타 테스트 참여를 위한 기본 조건</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {requirements.map((req, index) => (
+            <Card key={index} className="bg-bg-secondary border-line">
+              <div className="p-6">
+                <h3 className="font-bold mb-4 text-purple-400">{req.title}</h3>
+                <ul className="space-y-3">
+                  {req.items.map((item, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mt-2 flex-shrink-0" />
+                      <span className="text-text-secondary text-sm">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Featured Games */}
+      <section className="bg-bg-secondary/50 py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">현재 진행중인 베타</h2>
+            <p className="text-text-secondary">가장 인기있는 베타 테스트에 지금 참여하세요</p>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center items-center h-48">
+              <Loader2 className="w-8 h-8 animate-spin text-accent" />
+            </div>
+          ) : featuredGames.length === 0 ? (
+            <div className="text-center py-16 text-text-secondary">
+              <Gamepad2 className="w-16 h-16 mx-auto mb-4 opacity-30" />
+              <p className="text-lg">현재 진행 중인 베타 게임이 없습니다.</p>
+              <p className="text-sm mt-2">곧 새로운 게임이 등록될 예정입니다!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {featuredGames.map((game) => (
+                <FeaturedGameCard key={(game as any)._id || game.id} game={game} />
+              ))}
+            </div>
+          )}
+
+          <div className="text-center mt-8">
+            <Link href="/">
+              <Button variant="outline" className="border-line hover:bg-bg-tertiary">
+                모든 베타 게임 보기
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="container mx-auto px-4 py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">자주 묻는 질문</h2>
+          <p className="text-text-secondary">궁금한 점을 빠르게 해결하세요</p>
+        </div>
+        <div className="max-w-3xl mx-auto space-y-4">
+          {faqs.map((faq, index) => (
+            <Card key={index} className="bg-bg-secondary border-line">
+              <div className="p-6">
+                <h3 className="font-bold mb-3 text-lg">{faq.question}</h3>
+                <p className="text-text-secondary">{faq.answer}</p>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="bg-bg-secondary/50 py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">테스터 후기</h2>
+            <p className="text-text-secondary">실제 베타 테스터들의 생생한 경험담</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {testimonials.map((testimonial, index) => (
+              <Card key={index} className="bg-bg-secondary border-line">
+                <div className="p-6">
+                  <div className="flex gap-1 mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <p className="text-text-secondary mb-4">&ldquo;{testimonial.content}&rdquo;</p>
+                  <div>
+                    <p className="font-bold">{testimonial.name}</p>
+                    <p className="text-sm text-text-secondary">{testimonial.role}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="container mx-auto px-4 py-20">
+        <Card className="bg-gradient-to-r from-accent/20 to-emerald-900/20 border-accent-muted">
+          <div className="p-12 text-center">
+            <Shield className="w-16 h-16 mx-auto mb-6 text-accent" />
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">지금 바로 시작하세요</h2>
+            <p className="text-text-secondary mb-8 max-w-2xl mx-auto">
+              수천 명의 게이머들과 함께 최신 게임의 베타 테스트에 참여하고, 개발 과정에서 중요한 역할을 담당하세요
+            </p>
+            <Link href="/register">
+              <Button size="lg" className="bg-white text-text-primary hover:bg-bg-tertiary">
+                무료로 가입하기
+                <ChevronRight className="w-5 h-5 ml-1" />
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-bg-secondary border-t border-line mt-20">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-accent to-accent-hover rounded-lg flex items-center justify-center">
+                  <Gamepad2 className="w-5 h-5" />
+                </div>
+                <span className="font-bold">
+                  <span className="text-accent">GAME</span>
+                  <span className="text-text-primary">UP</span>
+                </span>
+              </div>
+              <p className="text-sm text-text-secondary">게임의 미래를 함께 만들어가는 베타 테스트 플랫폼</p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-4">플랫폼</h3>
+              <ul className="space-y-2 text-sm text-text-secondary">
+                <li><Link href="/" className="hover:text-text-primary transition-colors">베타존</Link></li>
+                <li><Link href="/live_games" className="hover:text-text-primary transition-colors">라이브게임</Link></li>
+                <li><Link href="/community" className="hover:text-text-primary transition-colors">커뮤니티</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-4">지원</h3>
+              <ul className="space-y-2 text-sm text-text-secondary">
+                <li><a href="#" className="hover:text-text-primary transition-colors">FAQ</a></li>
+                <li><a href="#" className="hover:text-text-primary transition-colors">고객센터</a></li>
+                <li><Link href="/dashboard" className="hover:text-text-primary transition-colors">개발자 센터</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-4">법적 고지</h3>
+              <ul className="space-y-2 text-sm text-text-secondary">
+                <li><a href="#" className="hover:text-text-primary transition-colors">이용약관</a></li>
+                <li><a href="#" className="hover:text-text-primary transition-colors">개인정보처리방침</a></li>
+                <li><a href="#" className="hover:text-text-primary transition-colors">쿠키 정책</a></li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-12 pt-8 border-t border-line text-center text-sm text-text-secondary">
+            <p>&copy; 2026 GameUP. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}

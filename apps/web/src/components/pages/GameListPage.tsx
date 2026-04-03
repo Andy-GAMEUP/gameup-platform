@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/Card'
 import { Heart, Star, Search, Filter, Loader2, Gamepad2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { gameService } from '@/services/gameService'
 import { Game } from '@gameup/types'
+import EventBannerCarousel from '@/components/EventBannerCarousel'
 
 const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='256' viewBox='0 0 400 256'%3E%3Crect fill='%231e293b' width='400' height='256'/%3E%3Ctext fill='%23334155' font-family='sans-serif' font-size='24' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3EGame%3C/text%3E%3C/svg%3E"
 
@@ -27,12 +28,12 @@ function GameCard({ game }: { game: Game }) {
   const statusLabel = game.status === 'beta' ? '베타' : game.status === 'published' ? '공개' : game.status
   const statusClass =
     game.status === 'beta'
-      ? 'bg-green-600/80 text-white'
-      : 'bg-blue-600/80 text-white'
+      ? 'bg-accent text-text-primary'
+      : 'bg-blue-600/80 text-text-primary'
 
   return (
     <div className="cursor-pointer group" onClick={() => router.push(`/games/${id}`)}>
-      <Card className="bg-slate-900/50 border-2 border-green-500/30 overflow-hidden hover:border-green-500 transition-all h-full">
+      <Card className="bg-bg-secondary/50 border-2 border-accent-muted overflow-hidden hover:border-accent transition-all h-full">
         <div className="relative h-48 overflow-hidden">
           <Image
             src={game.thumbnail || PLACEHOLDER}
@@ -46,7 +47,7 @@ function GameCard({ game }: { game: Game }) {
           </div>
           <div className="absolute top-3 right-3">
             <button
-              className="w-8 h-8 rounded-full bg-slate-950/70 backdrop-blur-sm flex items-center justify-center hover:bg-slate-900 transition-colors"
+              className="w-8 h-8 rounded-full bg-bg-primary/70 backdrop-blur-sm flex items-center justify-center hover:bg-bg-tertiary transition-colors"
               onClick={(e) => { e.stopPropagation(); setFavorite((f) => !f) }}
             >
               <Heart className={`w-4 h-4 ${favorite ? 'fill-red-500 text-red-500' : 'text-white'}`} />
@@ -54,25 +55,25 @@ function GameCard({ game }: { game: Game }) {
           </div>
         </div>
         <CardContent className="p-4">
-          <h3 className="font-bold text-lg mb-1 text-white truncate">{game.title}</h3>
-          <p className="text-sm text-slate-400 line-clamp-2 mb-3">{game.description}</p>
+          <h3 className="font-bold text-lg mb-1 text-text-primary truncate">{game.title}</h3>
+          <p className="text-sm text-text-secondary line-clamp-2 mb-3">{game.description}</p>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
                   className={`w-3.5 h-3.5 ${
-                    i < Math.floor(game.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-600'
+                    i < Math.floor(game.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-text-muted'
                   }`}
                 />
               ))}
-              <span className="text-xs text-slate-400 ml-1">{(game.rating || 0).toFixed(1)}</span>
+              <span className="text-xs text-text-secondary ml-1">{(game.rating || 0).toFixed(1)}</span>
             </div>
-            <span className="text-xs text-slate-500">{(game.playCount || 0).toLocaleString()} 플레이</span>
+            <span className="text-xs text-text-muted">{(game.playCount || 0).toLocaleString()} 플레이</span>
           </div>
           {game.genre && (
             <div className="mt-2">
-              <Badge variant="outline" className="text-xs border-green-500/40 text-green-400">
+              <Badge variant="outline" className="text-xs border-accent-muted text-accent">
                 {game.genre}
               </Badge>
             </div>
@@ -80,7 +81,7 @@ function GameCard({ game }: { game: Game }) {
           {game.isPaid && game.price ? (
             <div className="mt-2 text-sm font-semibold text-yellow-400">₩{game.price.toLocaleString()}</div>
           ) : (
-            <div className="mt-2 text-sm font-semibold text-green-400">무료</div>
+            <div className="mt-2 text-sm font-semibold text-accent">무료</div>
           )}
         </CardContent>
       </Card>
@@ -97,6 +98,14 @@ export default function GameListPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
+  const [eventBanners, setEventBanners] = useState<any[]>([])
+
+  useEffect(() => {
+    fetch('/api/event-banners')
+      .then(r => r.json())
+      .then(data => setEventBanners(data.banners || []))
+      .catch(() => {})
+  }, [])
 
   const loadGames = useCallback(async () => {
     setLoading(true)
@@ -129,35 +138,42 @@ export default function GameListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-bg-primary text-text-primary">
       <Navbar />
 
+      {/* Event Banner Carousel */}
+      {eventBanners.length > 0 && (
+        <section className="container mx-auto px-4 pt-6">
+          <EventBannerCarousel banners={eventBanners} />
+        </section>
+      )}
+
       {/* Header */}
-      <section className="bg-gradient-to-b from-slate-900 to-slate-950 border-b border-slate-800 py-12">
+      <section className="bg-gradient-to-b from-bg-secondary to-bg-primary border-b border-line py-12">
         <div className="container mx-auto px-4">
           <div className="text-center mb-8">
-            <Badge className="mb-4 bg-green-600/20 text-green-400 border border-green-600/50 px-4 py-1">
+            <Badge className="mb-4 bg-accent-light text-accent border border-green-600/50 px-4 py-1">
               ⚡ 베타 테스트 진행중
             </Badge>
             <h1 className="text-4xl font-bold mb-3">
-              <span className="text-green-400">베타존</span> 게임 목록
+              <span className="text-accent">베타존</span> 게임 목록
             </h1>
-            <p className="text-slate-400">승인된 모든 베타 게임을 탐색하고 참여하세요</p>
+            <p className="text-text-secondary">승인된 모든 베타 게임을 탐색하고 참여하세요</p>
           </div>
 
           {/* Search */}
           <form onSubmit={handleSearch} className="max-w-xl mx-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="게임 이름 또는 설명 검색..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-green-500"
+              className="w-full bg-bg-tertiary border border-line rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-secondary focus:outline-none focus:border-accent"
             />
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-green-600 hover:bg-green-700 px-4 py-1.5 rounded text-sm font-medium transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-accent hover:bg-accent-hover px-4 py-1.5 rounded text-sm font-medium transition-colors"
             >
               검색
             </button>
@@ -170,15 +186,15 @@ export default function GameListPage() {
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-8">
           {/* Genre Filter */}
           <div className="flex flex-wrap gap-2">
-            <Filter className="w-4 h-4 text-slate-400 self-center" />
+            <Filter className="w-4 h-4 text-text-secondary self-center" />
             {GENRES.map((genre) => (
               <button
                 key={genre}
                 onClick={() => { setSelectedGenre(genre); setPage(1) }}
                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   selectedGenre === genre
-                    ? 'bg-green-600 text-white'
-                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                    ? 'bg-accent text-text-primary'
+                    : 'bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary'
                 }`}
               >
                 {genre}
@@ -188,15 +204,15 @@ export default function GameListPage() {
 
           {/* Sort */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-slate-400">정렬:</span>
+            <span className="text-sm text-text-secondary">정렬:</span>
             {SORT_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => { setSort(opt.value); setPage(1) }}
                 className={`px-3 py-1.5 rounded text-sm transition-colors ${
                   sort === opt.value
-                    ? 'bg-slate-700 text-white'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-bg-tertiary text-text-primary'
+                    : 'text-text-secondary hover:text-text-primary'
                 }`}
               >
                 {opt.label}
@@ -207,18 +223,18 @@ export default function GameListPage() {
 
         {/* Count */}
         {!loading && (
-          <p className="text-sm text-slate-400 mb-6">
-            총 <span className="text-white font-semibold">{totalCount}</span>개의 게임
+          <p className="text-sm text-text-secondary mb-6">
+            총 <span className="text-text-primary font-semibold">{totalCount}</span>개의 게임
           </p>
         )}
 
         {/* Game Grid */}
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <Loader2 className="w-10 h-10 animate-spin text-green-400" />
+            <Loader2 className="w-10 h-10 animate-spin text-accent" />
           </div>
         ) : games.length === 0 ? (
-          <div className="text-center py-24 text-slate-400">
+          <div className="text-center py-24 text-text-secondary">
             <Gamepad2 className="w-20 h-20 mx-auto mb-6 opacity-20" />
             <p className="text-xl font-semibold mb-2">게임을 찾을 수 없습니다</p>
             <p className="text-sm">
@@ -228,7 +244,7 @@ export default function GameListPage() {
             </p>
             {(search || selectedGenre !== '전체') && (
               <Button
-                className="mt-6 bg-green-600 hover:bg-green-700"
+                className="mt-6 bg-accent hover:bg-accent-hover"
                 onClick={() => { setSearch(''); setSelectedGenre('전체'); setPage(1) }}
               >
                 필터 초기화
@@ -249,7 +265,7 @@ export default function GameListPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center disabled:opacity-40 transition-colors"
+                  className="w-10 h-10 rounded-full bg-bg-tertiary hover:bg-line-light flex items-center justify-center disabled:opacity-40 transition-colors"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
@@ -259,8 +275,8 @@ export default function GameListPage() {
                     onClick={() => setPage(i + 1)}
                     className={`w-10 h-10 rounded-full text-sm font-medium transition-colors ${
                       page === i + 1
-                        ? 'bg-green-600 text-white'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        ? 'bg-accent text-text-primary'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'
                     }`}
                   >
                     {i + 1}
@@ -269,7 +285,7 @@ export default function GameListPage() {
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="w-10 h-10 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center disabled:opacity-40 transition-colors"
+                  className="w-10 h-10 rounded-full bg-bg-tertiary hover:bg-line-light flex items-center justify-center disabled:opacity-40 transition-colors"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -280,8 +296,8 @@ export default function GameListPage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800 mt-20">
-        <div className="container mx-auto px-4 py-8 text-center text-sm text-slate-400">
+      <footer className="bg-bg-secondary border-t border-line mt-20">
+        <div className="container mx-auto px-4 py-8 text-center text-sm text-text-secondary">
           <p>&copy; 2026 GameUP. All rights reserved.</p>
         </div>
       </footer>

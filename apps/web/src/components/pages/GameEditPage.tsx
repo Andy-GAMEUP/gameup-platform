@@ -38,7 +38,7 @@ interface GameData {
 }
 
 const approvalBadge: Record<string, string> = {
-  approved: 'bg-green-500/20 text-green-400 border border-green-500/50',
+  approved: 'bg-accent-light text-accent border border-accent-muted',
   pending:  'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50',
   review:   'bg-blue-500/20 text-blue-400 border border-blue-500/50',
   rejected: 'bg-red-500/20 text-red-400 border border-red-500/50',
@@ -202,7 +202,7 @@ export default function GameEditPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-32 text-slate-400">
+      <div className="flex items-center justify-center py-32 text-text-secondary">
         <RefreshCw className="w-6 h-6 animate-spin mr-3" /> 게임 정보 불러오는 중...
       </div>
     )
@@ -213,7 +213,7 @@ export default function GameEditPage() {
       <div className="p-6 text-center">
         <p className="text-red-400 mb-4">{error || '게임을 찾을 수 없습니다.'}</p>
         <Link href="/games-management">
-          <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-md text-sm">게임 목록으로</button>
+          <button className="px-4 py-2 bg-bg-tertiary hover:bg-line-light rounded-md text-sm">게임 목록으로</button>
         </Link>
       </div>
     )
@@ -225,7 +225,7 @@ export default function GameEditPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/games-management">
-            <button className="flex items-center gap-1 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md text-sm transition-colors">
+            <button className="flex items-center gap-1 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-md text-sm transition-colors">
               <ArrowLeft className="w-4 h-4" /> 게임 목록
             </button>
           </Link>
@@ -235,14 +235,14 @@ export default function GameEditPage() {
               <span className={`text-xs px-2 py-0.5 rounded-full ${approvalBadge[game.approvalStatus] || ''}`}>
                 {approvalLabel[game.approvalStatus] || game.approvalStatus}
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-text-muted">
                 등록일: {new Date(game.createdAt).toLocaleDateString('ko-KR')}
               </span>
             </div>
           </div>
         </div>
         <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-md text-sm font-semibold transition-colors">
+          className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-md text-sm font-semibold transition-colors">
           {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? '저장 중...' : '변경사항 저장'}
         </button>
@@ -252,8 +252,8 @@ export default function GameEditPage() {
       {game.approvalStatus === 'rejected' && game.rejectionReason && (
         <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 text-sm">
           <p className="text-red-400 font-medium mb-1">⚠️ 반려 사유</p>
-          <p className="text-slate-300">{game.rejectionReason}</p>
-          <p className="text-slate-400 mt-2 text-xs">내용을 수정 후 저장하면 재검토 요청이 됩니다.</p>
+          <p className="text-text-secondary">{game.rejectionReason}</p>
+          <p className="text-text-secondary mt-2 text-xs">내용을 수정 후 저장하면 재검토 요청이 됩니다.</p>
         </div>
       )}
 
@@ -264,13 +264,13 @@ export default function GameEditPage() {
         </svg>
         <div className="text-sm">
           <p className="text-yellow-400 font-medium mb-1">수정 시 재승인 필요</p>
-          <p className="text-slate-300">게임 정보를 수정하면 관리자의 재승인이 필요합니다. 저장 후 승인 상태가 <span className="text-yellow-400 font-medium">승인대기</span>로 변경되며, 승인 완료 전까지 변경 내용은 검토 중 상태로 유지됩니다.</p>
+          <p className="text-text-secondary">게임 정보를 수정하면 관리자의 재승인이 필요합니다. 저장 후 승인 상태가 <span className="text-yellow-400 font-medium">승인대기</span>로 변경되며, 승인 완료 전까지 변경 내용은 검토 중 상태로 유지됩니다.</p>
         </div>
       </div>
 
       {/* ── 서비스 유형 및 수익 모델 ── */}
-      <div className="bg-slate-900 border border-slate-800 rounded-lg">
-        <div className="p-6 border-b border-slate-800">
+      <div className="bg-bg-secondary border border-line rounded-lg">
+        <div className="p-6 border-b border-line">
           <h2 className="text-xl font-bold">서비스 유형 및 수익 모델</h2>
         </div>
         <div className="p-6 space-y-6">
@@ -279,16 +279,16 @@ export default function GameEditPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 { value: 'beta', label: '베타 서비스', desc: '개발 중인 게임을 테스트하고 피드백을 수집합니다', color: 'text-blue-400' },
-                { value: 'live', label: '라이브 서비스', desc: '정식 출시된 게임을 서비스합니다', color: 'text-green-400' },
+                { value: 'live', label: '라이브 서비스', desc: '정식 출시된 게임을 서비스합니다', color: 'text-accent' },
               ].map(opt => (
                 <div key={opt.value}
-                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${serviceType === opt.value ? 'border-green-500 bg-green-500/10' : 'border-slate-700 hover:border-slate-600'}`}
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${serviceType === opt.value ? 'border-accent bg-accent-light' : 'border-line hover:border-line'}`}
                   onClick={() => setServiceType(opt.value)}>
                   <div className="flex items-start gap-3">
                     <input type="radio" checked={serviceType === opt.value} onChange={() => setServiceType(opt.value)} className="mt-1" />
                     <div>
                       <p className={`font-semibold mb-1 ${opt.color}`}>{opt.label}</p>
-                      <p className="text-sm text-slate-400">{opt.desc}</p>
+                      <p className="text-sm text-text-secondary">{opt.desc}</p>
                     </div>
                   </div>
                 </div>
@@ -296,7 +296,7 @@ export default function GameEditPage() {
             </div>
           </div>
 
-          <div className="h-px bg-slate-800" />
+          <div className="h-px bg-bg-tertiary" />
 
           <div className="space-y-3">
             <label className="text-base font-medium block">수익 모델 *</label>
@@ -307,19 +307,19 @@ export default function GameEditPage() {
                 { value: 'paid', label: '유료 (Premium)', desc: '구매가 필요한 프리미엄 게임' },
               ].map(opt => (
                 <div key={opt.value}
-                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${monetization === opt.value ? 'border-green-500 bg-green-500/10' : 'border-slate-700 hover:border-slate-600'}`}
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${monetization === opt.value ? 'border-accent bg-accent-light' : 'border-line hover:border-line'}`}
                   onClick={() => setMonetization(opt.value)}>
                   <div className="flex items-start gap-3">
                     <input type="radio" checked={monetization === opt.value} onChange={() => setMonetization(opt.value)} className="mt-1" />
                     <div className="flex-1">
                       <p className="font-semibold mb-1">{opt.label}</p>
-                      <p className="text-sm text-slate-400">{opt.desc}</p>
+                      <p className="text-sm text-text-secondary">{opt.desc}</p>
                       {opt.value === 'paid' && monetization === 'paid' && (
                         <div className="mt-3 grid grid-cols-2 gap-3">
                           <div>
-                            <label className="text-xs text-slate-400 mb-1 block">판매 가격 *</label>
+                            <label className="text-xs text-text-secondary mb-1 block">판매 가격 *</label>
                             <input type="number" placeholder="29900" value={price} onChange={e => setPrice(e.target.value)}
-                              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm" />
+                              className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm" />
                           </div>
                         </div>
                       )}
@@ -333,8 +333,8 @@ export default function GameEditPage() {
       </div>
 
       {/* ── 기본 정보 ── */}
-      <div className="bg-slate-900 border border-slate-800 rounded-lg">
-        <div className="p-6 border-b border-slate-800">
+      <div className="bg-bg-secondary border border-line rounded-lg">
+        <div className="p-6 border-b border-line">
           <h2 className="text-xl font-bold">기본 정보</h2>
         </div>
         <div className="p-6 space-y-4">
@@ -342,12 +342,12 @@ export default function GameEditPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium block">게임명 *</label>
               <input value={title} onChange={e => setTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:border-green-500" />
+                className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm focus:outline-none focus:border-accent" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium block">장르 *</label>
               <select value={genre} onChange={e => setGenre(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm">
+                className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm">
                 <option value="">장르 선택</option>
                 {[['action','액션'],['rpg','RPG'],['fps','FPS'],['racing','레이싱'],['strategy','전략'],['simulation','시뮬레이션'],['adventure','어드벤처'],['horror','호러'],['puzzle','퍼즐'],['sports','스포츠']].map(([v,l]) => (
                   <option key={v} value={v}>{l}</option>
@@ -359,14 +359,14 @@ export default function GameEditPage() {
           <div className="space-y-2">
             <label className="text-sm font-medium block">게임 설명 *</label>
             <textarea value={description} onChange={e => setDescription(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm min-h-32 focus:outline-none focus:border-green-500" />
+              className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm min-h-32 focus:outline-none focus:border-accent" />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium block">플랫폼</label>
               <select value={platform} onChange={e => setPlatform(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm">
+                className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm">
                 <option value="">플랫폼 선택</option>
                 {[['pc','PC'],['console','콘솔'],['mobile','모바일'],['multi','멀티 플랫폼'],['web','웹 브라우저']].map(([v,l]) => (
                   <option key={v} value={v}>{l}</option>
@@ -376,7 +376,7 @@ export default function GameEditPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium block">게임 엔진</label>
               <input value={engine} onChange={e => setEngine(e.target.value)} placeholder="예: Unreal Engine 5"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:border-green-500" />
+                className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent" />
             </div>
           </div>
 
@@ -384,7 +384,7 @@ export default function GameEditPage() {
           <div className="space-y-2">
             <label className="text-sm font-medium block">게임 상태</label>
             <select value={status} onChange={e => setStatus(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm">
+              className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm">
               <option value="draft">초안</option>
               <option value="beta">베타</option>
               <option value="published">라이브</option>
@@ -394,24 +394,24 @@ export default function GameEditPage() {
 
           {/* 태그 */}
           <div className="space-y-2">
-            <label className="text-sm font-medium block">태그 <span className="text-slate-500 font-normal">(최대 10개)</span></label>
+            <label className="text-sm font-medium block">태그 <span className="text-text-muted font-normal">(최대 10개)</span></label>
             <div className="flex flex-wrap gap-2 mb-2 min-h-8">
               {tags.map(tag => (
-                <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-green-500/20 text-green-400 border border-green-500/50 rounded-full text-xs">
+                <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-accent-light text-accent border border-accent-muted rounded-full text-xs">
                   {tag}
-                  <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-white">
+                  <button type="button" onClick={() => setTags(tags.filter(t => t !== tag))} className="hover:text-text-primary">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
               ))}
-              {tags.length === 0 && <span className="text-slate-500 text-xs py-1">태그 없음</span>}
+              {tags.length === 0 && <span className="text-text-muted text-xs py-1">태그 없음</span>}
             </div>
             <div className="flex gap-2">
               <input placeholder="태그 입력 후 Enter" value={newTag} onChange={e => setNewTag(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag() } }}
-                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:border-green-500" />
+                className="flex-1 px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent" />
               <button type="button" onClick={handleAddTag}
-                className="px-3 py-2 border border-slate-700 hover:bg-slate-800 rounded-md transition-colors text-slate-400 hover:text-white">
+                className="px-3 py-2 border border-line hover:bg-bg-tertiary rounded-md transition-colors text-text-secondary hover:text-text-primary">
                 <Plus className="w-4 h-4" />
               </button>
             </div>
@@ -421,8 +421,8 @@ export default function GameEditPage() {
 
       {/* ── 베타 테스트 정보 ── */}
       {serviceType === 'beta' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-lg">
-          <div className="p-6 border-b border-slate-800">
+        <div className="bg-bg-secondary border border-line rounded-lg">
+          <div className="p-6 border-b border-line">
             <h2 className="text-xl font-bold">베타 테스트 정보</h2>
           </div>
           <div className="p-6 space-y-4">
@@ -431,25 +431,25 @@ export default function GameEditPage() {
                 <label className="text-sm font-medium block">시작일</label>
                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
                   style={{ colorScheme: 'dark' }}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:border-green-500 cursor-pointer" />
+                  className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm focus:outline-none focus:border-accent cursor-pointer" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium block">종료일</label>
                 <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
                   style={{ colorScheme: 'dark' }}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:border-green-500 cursor-pointer" />
+                  className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm focus:outline-none focus:border-accent cursor-pointer" />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium block">최대 테스터 수</label>
                 <input type="number" placeholder="1000" value={maxTesters} onChange={e => setMaxTesters(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500" />
+                  className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium block">테스트 유형</label>
                 <select value={testType} onChange={e => setTestType(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm">
+                  className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm">
                   <option value="">유형 선택</option>
                   <option value="closed">비공개 베타</option>
                   <option value="open">공개 베타</option>
@@ -461,15 +461,15 @@ export default function GameEditPage() {
               <label className="text-sm font-medium block">시스템 요구사항</label>
               <textarea value={requirements} onChange={e => setRequirements(e.target.value)}
                 placeholder="최소 및 권장 시스템 요구사항"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 min-h-24" />
+                className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted min-h-24" />
             </div>
           </div>
         </div>
       )}
 
       {/* ── 미디어 & 파일 ── */}
-      <div className="bg-slate-900 border border-slate-800 rounded-lg">
-        <div className="p-6 border-b border-slate-800">
+      <div className="bg-bg-secondary border border-line rounded-lg">
+        <div className="p-6 border-b border-line">
           <h2 className="text-xl font-bold">미디어 & 파일</h2>
         </div>
         <div className="p-6 space-y-5">
@@ -478,19 +478,19 @@ export default function GameEditPage() {
           <div className="space-y-2">
             <label className="text-sm font-medium block">게임 썸네일 이미지</label>
             <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${thumbnailPreview ? 'border-green-500/50 bg-green-500/5' : 'border-slate-700 hover:border-slate-600'}`}
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${thumbnailPreview ? 'border-accent-muted bg-accent/5' : 'border-line hover:border-line'}`}
               onClick={() => thumbnailRef.current?.click()}>
               <input ref={thumbnailRef} type="file" className="hidden" accept="image/*" onChange={handleThumbnailChange} />
               {thumbnailPreview ? (
                 <div className="flex flex-col items-center gap-2">
                   <Image src={thumbnailPreview} alt="썸네일 미리보기" width={192} height={112} className="w-48 h-28 object-cover rounded-lg" unoptimized />
-                  <span className="text-green-400 text-xs">{thumbnail?.name || '현재 썸네일'} · 클릭하여 변경</span>
+                  <span className="text-accent text-xs">{thumbnail?.name || '현재 썸네일'} · 클릭하여 변경</span>
                 </div>
               ) : (
                 <>
-                  <Upload className="w-10 h-10 mx-auto mb-2 text-slate-500" />
-                  <p className="text-slate-400 text-sm mb-1">클릭하여 이미지 업로드</p>
-                  <p className="text-xs text-slate-500">PNG, JPG (최대 5MB, 권장 1920x1080)</p>
+                  <Upload className="w-10 h-10 mx-auto mb-2 text-text-muted" />
+                  <p className="text-text-secondary text-sm mb-1">클릭하여 이미지 업로드</p>
+                  <p className="text-xs text-text-muted">PNG, JPG (최대 5MB, 권장 1920x1080)</p>
                 </>
               )}
             </div>
@@ -499,23 +499,23 @@ export default function GameEditPage() {
           {/* 게임 파일 교체 (선택) */}
           <div className="space-y-2">
             <label className="text-sm font-medium block">
-              게임 파일 교체 <span className="text-slate-500 font-normal">(변경 시에만 업로드)</span>
+              게임 파일 교체 <span className="text-text-muted font-normal">(변경 시에만 업로드)</span>
             </label>
             <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${gameFile ? 'border-green-500/50 bg-green-500/5' : 'border-slate-700 hover:border-slate-600'}`}
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${gameFile ? 'border-accent-muted bg-accent/5' : 'border-line hover:border-line'}`}
               onClick={() => gameFileRef.current?.click()}>
               <input ref={gameFileRef} type="file" className="hidden" accept=".html,.zip,.js" onChange={handleGameFileChange} />
               {gameFile ? (
-                <div className="flex items-center justify-center gap-2 text-green-400">
+                <div className="flex items-center justify-center gap-2 text-accent">
                   <Upload className="w-5 h-5" />
                   <span className="text-sm font-medium">{gameFile.name}</span>
-                  <span className="text-xs text-slate-500">({(gameFile.size / 1024 / 1024).toFixed(2)}MB)</span>
+                  <span className="text-xs text-text-muted">({(gameFile.size / 1024 / 1024).toFixed(2)}MB)</span>
                 </div>
               ) : (
                 <>
-                  <Upload className="w-10 h-10 mx-auto mb-2 text-slate-500" />
-                  <p className="text-slate-400 text-sm mb-1">클릭하여 새 게임 파일 업로드</p>
-                  <p className="text-xs text-slate-500">HTML, ZIP, JS (최대 50MB) · 업로드 안 하면 기존 파일 유지</p>
+                  <Upload className="w-10 h-10 mx-auto mb-2 text-text-muted" />
+                  <p className="text-text-secondary text-sm mb-1">클릭하여 새 게임 파일 업로드</p>
+                  <p className="text-xs text-text-muted">HTML, ZIP, JS (최대 50MB) · 업로드 안 하면 기존 파일 유지</p>
                 </>
               )}
             </div>
@@ -526,40 +526,40 @@ export default function GameEditPage() {
             <label className="text-sm font-medium block">트레일러 URL</label>
             <input value={trailer} onChange={e => setTrailer(e.target.value)}
               placeholder="https://youtube.com/..."
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:border-green-500" />
+              className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent" />
           </div>
         </div>
       </div>
 
       {/* ── 추가 정보 ── */}
-      <div className="bg-slate-900 border border-slate-800 rounded-lg">
-        <div className="p-6 border-b border-slate-800">
+      <div className="bg-bg-secondary border border-line rounded-lg">
+        <div className="p-6 border-b border-line">
           <h2 className="text-xl font-bold">추가 정보</h2>
         </div>
         <div className="p-6 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium block">공식 웹사이트</label>
             <input value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://..."
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:border-green-500" />
+              className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent" />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium block">디스코드 서버</label>
             <input value={discord} onChange={e => setDiscord(e.target.value)} placeholder="https://discord.gg/..."
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:border-green-500" />
+              className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent" />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium block">테스터 안내사항</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
               placeholder="베타 테스터들이 알아야 할 특별한 사항"
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 min-h-24" />
+              className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted min-h-24" />
           </div>
         </div>
       </div>
 
       {/* ── 게임 통계 (읽기 전용) ── */}
-      <div className="bg-slate-900 border border-slate-800 rounded-lg">
-        <div className="p-6 border-b border-slate-800">
-          <h2 className="text-lg font-bold">게임 통계 <span className="text-slate-500 text-sm font-normal">(읽기 전용)</span></h2>
+      <div className="bg-bg-secondary border border-line rounded-lg">
+        <div className="p-6 border-b border-line">
+          <h2 className="text-lg font-bold">게임 통계 <span className="text-text-muted text-sm font-normal">(읽기 전용)</span></h2>
         </div>
         <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
@@ -568,9 +568,9 @@ export default function GameEditPage() {
             { label: '승인 상태', value: approvalLabel[game.approvalStatus] || game.approvalStatus },
             { label: '등록일', value: new Date(game.createdAt).toLocaleDateString('ko-KR') },
           ].map(s => (
-            <div key={s.label} className="text-center p-3 bg-slate-800/50 rounded-lg">
-              <div className="text-xl font-bold text-white mb-1">{s.value}</div>
-              <div className="text-xs text-slate-400">{s.label}</div>
+            <div key={s.label} className="text-center p-3 bg-bg-tertiary/50 rounded-lg">
+              <div className="text-xl font-bold text-text-primary mb-1">{s.value}</div>
+              <div className="text-xs text-text-secondary">{s.label}</div>
             </div>
           ))}
         </div>
@@ -579,10 +579,10 @@ export default function GameEditPage() {
       {/* 하단 버튼 */}
       <div className="flex justify-between">
         <Link href="/games-management">
-          <button className="px-4 py-2 border border-slate-700 hover:bg-slate-800 rounded-md text-sm transition-colors">취소</button>
+          <button className="px-4 py-2 border border-line hover:bg-bg-tertiary rounded-md text-sm transition-colors">취소</button>
         </Link>
         <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 rounded-md text-sm font-semibold transition-colors">
+          className="flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-md text-sm font-semibold transition-colors">
           {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? '저장 중...' : '변경사항 저장'}
         </button>

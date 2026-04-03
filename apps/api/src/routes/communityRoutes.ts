@@ -5,9 +5,10 @@ import {
   getComments, createComment, updateComment, deleteComment,
   toggleCommentLike, reportComment,
   getReportedPosts, adminUpdatePostStatus, getCommunityStats,
-  tempSave, getMyDrafts
+  tempSave, getMyDrafts, uploadCommunityImages
 } from '../controllers/communityController'
 import { authenticateToken, requireAdmin } from '../middleware/auth'
+import { communityUpload } from '../middleware/upload'
 
 const router = Router()
 
@@ -18,6 +19,7 @@ router.get('/posts/:id', getPost)
 router.get('/posts/:postId/comments', getComments)
 
 router.use(authenticateToken)
+router.post('/upload-images', communityUpload, uploadCommunityImages)
 router.post('/posts/temp-save', tempSave)
 router.get('/my/drafts', getMyDrafts)
 router.post('/posts', createPost)

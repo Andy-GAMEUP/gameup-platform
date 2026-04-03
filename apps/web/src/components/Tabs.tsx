@@ -63,7 +63,7 @@ export function Tabs({ defaultValue = '', value, onValueChange, children, classN
 
 export function TabsList({ children, className = '' }: TabsListProps) {
   return (
-    <div className={`flex space-x-1 border-b border-gray-200 ${className}`}>
+    <div className={`flex space-x-1 border-b border-line ${className}`}>
       {children}
     </div>
   )

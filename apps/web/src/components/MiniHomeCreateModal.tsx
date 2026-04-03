@@ -110,21 +110,21 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-          <h2 className="text-white font-bold text-lg">미니홈 만들기</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+    <div className="fixed inset-0 bg-bg-overlay z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line">
+          <h2 className="text-text-primary font-bold text-lg">미니홈 만들기</h2>
+          <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {submitState === 'success' ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <CheckCircle className="w-12 h-12 text-green-400 mb-4" />
-            <p className="text-white font-semibold text-lg mb-2">미니홈이 생성되었습니다!</p>
-            <p className="text-slate-400 text-sm mb-6">게임 포트폴리오 페이지를 통해 투자자와 퍼블리셔를 만나보세요.</p>
-            <button onClick={onSuccess} className="bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-colors">
+            <CheckCircle className="w-12 h-12 text-accent mb-4" />
+            <p className="text-text-primary font-semibold text-lg mb-2">미니홈이 생성되었습니다!</p>
+            <p className="text-text-secondary text-sm mb-6">게임 포트폴리오 페이지를 통해 투자자와 퍼블리셔를 만나보세요.</p>
+            <button onClick={onSuccess} className="bg-red-600 hover:bg-red-700 text-text-primary px-6 py-2.5 rounded-xl text-sm font-medium transition-colors">
               확인
             </button>
           </div>
@@ -140,16 +140,16 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
                     <div key={n} className="flex items-center gap-2 flex-1 last:flex-none">
                       <div className="flex flex-col items-center">
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
-                          done ? 'bg-red-600 border-red-600 text-white' :
+                          done ? 'bg-red-600 border-red-600 text-text-primary' :
                           active ? 'border-red-500 text-red-400 bg-red-600/10' :
-                          'border-slate-700 text-slate-500'
+                          'border-line text-text-muted'
                         }`}>
                           {done ? '✓' : n}
                         </div>
-                        <span className={`text-xs mt-1 ${active ? 'text-red-400' : done ? 'text-slate-300' : 'text-slate-500'}`}>{label}</span>
+                        <span className={`text-xs mt-1 ${active ? 'text-red-400' : done ? 'text-text-secondary' : 'text-text-muted'}`}>{label}</span>
                       </div>
                       {i < STEPS.length - 1 && (
-                        <div className={`flex-1 h-0.5 mb-5 ${done ? 'bg-red-600' : 'bg-slate-700'}`} />
+                        <div className={`flex-1 h-0.5 mb-5 ${done ? 'bg-red-600' : 'bg-bg-tertiary'}`} />
                       )}
                     </div>
                   )
@@ -164,59 +164,59 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
 
               {step === 1 && (
                 <>
-                  <h3 className="text-white font-semibold text-sm">Step 1: 게임 정보 등록</h3>
+                  <h3 className="text-text-primary font-semibold text-sm">Step 1: 게임 정보 등록</h3>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">게임 이름 <span className="text-red-400">*</span></label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">게임 이름 <span className="text-red-400">*</span></label>
                     <input value={gameTitle} onChange={e => setGameTitle(e.target.value)}
                       placeholder="게임 이름을 입력하세요"
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">장르</label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">장르</label>
                     <select value={gameGenre} onChange={e => setGameGenre(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors">
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors">
                       {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
                     </select>
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">게임 설명 <span className="text-red-400">*</span></label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">게임 설명 <span className="text-red-400">*</span></label>
                     <textarea value={gameDescription} onChange={e => setGameDescription(e.target.value)} rows={3}
                       placeholder="게임에 대한 설명을 입력하세요"
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl resize-none focus:outline-none focus:border-red-500 transition-colors" />
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl resize-none focus:outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">아이콘 URL</label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">아이콘 URL</label>
                     <input value={gameIconUrl} onChange={e => setGameIconUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">커버 이미지 URL</label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">커버 이미지 URL</label>
                     <input value={gameCoverUrl} onChange={e => setGameCoverUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">스크린샷 URL (쉼표로 구분)</label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">스크린샷 URL (쉼표로 구분)</label>
                     <input value={gameScreenshots} onChange={e => setGameScreenshots(e.target.value)}
                       placeholder="https://img1.jpg, https://img2.jpg"
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-2 block">플랫폼</label>
+                    <label className="text-text-secondary text-sm font-medium mb-2 block">플랫폼</label>
                     <div className="flex gap-3">
                       {PLATFORMS.map(p => (
                         <label key={p} className="flex items-center gap-2 cursor-pointer">
                           <input type="checkbox" checked={gamePlatforms.includes(p)} onChange={() => togglePlatform(p)}
                             className="w-4 h-4 rounded accent-red-500" />
-                          <span className="text-slate-300 text-sm">{p}</span>
+                          <span className="text-text-secondary text-sm">{p}</span>
                         </label>
                       ))}
                     </div>
@@ -226,52 +226,52 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
 
               {step === 2 && (
                 <>
-                  <h3 className="text-white font-semibold text-sm">Step 2: 회사 정보</h3>
+                  <h3 className="text-text-primary font-semibold text-sm">Step 2: 회사 정보</h3>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">회사명 <span className="text-red-400">*</span></label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">회사명 <span className="text-red-400">*</span></label>
                     <input value={companyName} onChange={e => setCompanyName(e.target.value)}
                       placeholder="회사 이름을 입력하세요"
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">회사 소개 <span className="text-red-400">*</span></label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">회사 소개 <span className="text-red-400">*</span></label>
                     <textarea value={introduction} onChange={e => setIntroduction(e.target.value)} rows={4}
                       placeholder="회사를 소개해주세요"
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl resize-none focus:outline-none focus:border-red-500 transition-colors" />
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl resize-none focus:outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">프로필 이미지 URL</label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">프로필 이미지 URL</label>
                     <input value={profileImage} onChange={e => setProfileImage(e.target.value)}
                       placeholder="https://..."
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">커버 이미지 URL</label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">커버 이미지 URL</label>
                     <input value={coverImage} onChange={e => setCoverImage(e.target.value)}
                       placeholder="https://..."
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-1.5 block">웹사이트 URL</label>
+                    <label className="text-text-secondary text-sm font-medium mb-1.5 block">웹사이트 URL</label>
                     <input value={website} onChange={e => setWebsite(e.target.value)}
                       placeholder="https://..."
-                      className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
+                      className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-red-500 transition-colors" />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 text-sm font-medium mb-2 block">태그</label>
+                    <label className="text-text-secondary text-sm font-medium mb-2 block">태그</label>
                     <div className="flex flex-wrap gap-2">
                       {TAGS.map(tag => (
                         <button
                           key={tag}
                           type="button"
                           onClick={() => toggleTag(tag)}
-                          className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${selectedTags.includes(tag) ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-slate-700 text-slate-400 hover:text-white'}`}
+                          className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${selectedTags.includes(tag) ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-line text-text-secondary hover:text-text-primary'}`}
                         >
                           {tag}
                         </button>
@@ -283,27 +283,27 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
 
               {step === 3 && (
                 <>
-                  <h3 className="text-white font-semibold text-sm">Step 3: 키워드 선택</h3>
-                  <p className="text-slate-400 text-xs">관련 키워드를 선택하면 검색과 매칭에 활용됩니다</p>
+                  <h3 className="text-text-primary font-semibold text-sm">Step 3: 키워드 선택</h3>
+                  <p className="text-text-secondary text-xs">관련 키워드를 선택하면 검색과 매칭에 활용됩니다</p>
 
                   {keywordsLoading ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                      <Loader2 className="w-5 h-5 animate-spin text-text-secondary" />
                     </div>
                   ) : keywordGroups.length === 0 ? (
-                    <p className="text-slate-500 text-sm text-center py-8">등록된 키워드가 없습니다. 키워드 없이 진행할 수 있습니다.</p>
+                    <p className="text-text-muted text-sm text-center py-8">등록된 키워드가 없습니다. 키워드 없이 진행할 수 있습니다.</p>
                   ) : (
                     <div className="space-y-4">
                       {keywordGroups.map(group => (
                         <div key={group._id}>
-                          <p className="text-slate-400 text-xs mb-2">{group.name}</p>
+                          <p className="text-text-secondary text-xs mb-2">{group.name}</p>
                           <div className="flex flex-wrap gap-2">
                             {group.keywords.filter(k => k.isActive).map(k => (
                               <button
                                 key={k.name}
                                 type="button"
                                 onClick={() => toggleKeyword(k.name)}
-                                className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${selectedKeywords.includes(k.name) ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-slate-700 text-slate-400 hover:text-white'}`}
+                                className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${selectedKeywords.includes(k.name) ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-line text-text-secondary hover:text-text-primary'}`}
                               >
                                 {k.name}
                               </button>
@@ -317,26 +317,26 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
               )}
             </div>
 
-            <div className="flex justify-between gap-3 px-6 py-4 border-t border-slate-800">
+            <div className="flex justify-between gap-3 px-6 py-4 border-t border-line">
               {step > 1 ? (
                 <button onClick={() => { setErrorMsg(''); setStep(s => s - 1) }}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm text-slate-400 border border-slate-700 rounded-xl hover:bg-slate-800 transition-colors">
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
                   <ChevronLeft className="w-4 h-4" /> 이전
                 </button>
               ) : (
-                <button onClick={onClose} className="px-4 py-2 text-sm text-slate-400 border border-slate-700 rounded-xl hover:bg-slate-800 transition-colors">
+                <button onClick={onClose} className="px-4 py-2 text-sm text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
                   취소
                 </button>
               )}
 
               {step < 3 ? (
                 <button onClick={goNext}
-                  className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors">
+                  className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-text-primary px-5 py-2 rounded-xl text-sm font-medium transition-colors">
                   다음 <ChevronRight className="w-4 h-4" />
                 </button>
               ) : (
                 <button onClick={handleSubmit} disabled={submitState === 'loading'}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors">
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary px-5 py-2 rounded-xl text-sm font-medium transition-colors">
                   {submitState === 'loading' && <Loader2 className="w-4 h-4 animate-spin" />}
                   완료
                 </button>

@@ -2,10 +2,11 @@ import { Response } from 'express'
 import fs from 'fs'
 import { GameModel as Game } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
+import { grantGameAccessPoint } from '../services/pointService'
 
 export const getAllGames = async (req: AuthRequest, res: Response) => {
   try {
-    const { status, genre, search, sort = 'newest', page = 1, limit = 12 } = req.query
+    const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType } = req.query
 
     const filter: Record<string, unknown> = {
       approvalStatus: 'approved',
@@ -14,6 +15,10 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
 
     if (status && status !== 'all') {
       filter.status = status
+    }
+
+    if (serviceType && serviceType !== 'all') {
+      filter.serviceType = serviceType
     }
 
     if (genre && genre !== 'all') {
@@ -70,10 +75,15 @@ export const getGameById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     }
 
-    const game = await Game.findById(id).populate('developerId', 'username email')
+    const game = await Game.findById(id).populate('developerId', 'username email companyInfo')
 
     if (!game) {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    }
+
+    // 게임 접속 포인트 (로그인 유저, 게임별 1일 1회)
+    if (req.user?.id) {
+      grantGameAccessPoint(req.user.id, id).catch(() => {})
     }
 
     res.json({ success: true, game })

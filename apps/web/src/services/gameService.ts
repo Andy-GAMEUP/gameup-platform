@@ -3,7 +3,7 @@ import apiClient from './api'
 import { Game } from '@gameup/types'
 
 export const gameService = {
-  getAllGames: async (params?: { genre?: string; search?: string; sort?: string; page?: number; limit?: number }) => {
+  getAllGames: async (params?: { genre?: string; search?: string; sort?: string; page?: number; limit?: number; serviceType?: string }) => {
     const response = await apiClient.get<{ games: Game[]; pagination?: { page: number; limit: number; total: number; pages: number } }>('/games', { params })
     return response.data
   },
@@ -45,6 +45,68 @@ export const gameService = {
 
   incrementPlayCount: async (id: string) => {
     const response = await apiClient.post(`/games/${id}/play`)
+    return response.data
+  },
+
+  // Q&A
+  getGameQAs: async (gameId: string, params?: { page?: number; limit?: number }) => {
+    const response = await apiClient.get(`/games/${gameId}/qas`, { params })
+    return response.data
+  },
+
+  createGameQA: async (gameId: string, question: string) => {
+    const response = await apiClient.post(`/games/${gameId}/qas`, { question })
+    return response.data
+  },
+
+  // 개발자 Q&A 관리
+  getDeveloperQAs: async (params?: { page?: number; limit?: number; gameId?: string; answered?: string }) => {
+    const response = await apiClient.get('/games/developer/qas', { params })
+    return response.data
+  },
+
+  answerGameQA: async (qaId: string, answer: string) => {
+    const response = await apiClient.put(`/games/developer/qas/${qaId}/answer`, { answer })
+    return response.data
+  },
+
+  // 내 Q&A 조회
+  getMyQAs: async (params?: { page?: number; limit?: number }) => {
+    const response = await apiClient.get('/games/my-qas', { params })
+    return response.data
+  },
+
+  // ── 게임 포인트 정책 (개발사) ──────────────────────────────────
+  getGamePointPolicies: async (gameId: string) => {
+    const response = await apiClient.get(`/games/${gameId}/point-policies`)
+    return response.data
+  },
+
+  upsertGamePointPolicy: async (gameId: string, data: {
+    type: string; label: string; description?: string;
+    amount: number; multiplier?: number; dailyLimit?: number | null;
+  }) => {
+    const response = await apiClient.post(`/games/${gameId}/point-policies`, data)
+    return response.data
+  },
+
+  submitPointPolicies: async (gameId: string) => {
+    const response = await apiClient.post(`/games/${gameId}/point-policies/submit`)
+    return response.data
+  },
+
+  deleteGamePointPolicy: async (gameId: string, type: string) => {
+    const response = await apiClient.delete(`/games/${gameId}/point-policies/${type}`)
+    return response.data
+  },
+
+  getGamePointStats: async (gameId: string) => {
+    const response = await apiClient.get(`/game-points/${gameId}/stats`)
+    return response.data
+  },
+
+  getGamePointLogs: async (gameId: string, params?: { page?: number; limit?: number; type?: string }) => {
+    const response = await apiClient.get(`/game-points/${gameId}/logs`, { params })
     return response.data
   },
 }

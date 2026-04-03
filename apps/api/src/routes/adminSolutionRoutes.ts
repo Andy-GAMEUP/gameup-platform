@@ -11,21 +11,25 @@ import {
   deleteSolution,
   reorderSolutions,
 } from '../controllers/adminSolutionController'
-import { authenticateToken, requireAdmin } from '../middleware/auth'
+import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
 
 const router = Router()
 router.use(authenticateToken, requireAdmin)
 
+// 조회 (모든 관리자)
 router.get('/solutions', getSolutions)
-router.post('/solutions', createSolution)
-router.put('/solutions/reorder', reorderSolutions)
-router.put('/solutions/:id', updateSolution)
-router.delete('/solutions/:id', deleteSolution)
-
 router.get('/solutions/subscriptions', getSubscriptions)
 router.get('/solutions/subscriptions/:id', getSubscriptionDetail)
-router.patch('/solutions/subscriptions/:id/status', updateSubscriptionStatus)
-router.patch('/solutions/subscriptions/:id/confirm', confirmSubscription)
-router.delete('/solutions/subscriptions/:id', deleteSubscription)
+
+// 수정 (Normal 이상)
+router.post('/solutions', requireAdminLevel('super', 'normal'), createSolution)
+router.put('/solutions/reorder', requireAdminLevel('super', 'normal'), reorderSolutions)
+router.put('/solutions/:id', requireAdminLevel('super', 'normal'), updateSolution)
+router.patch('/solutions/subscriptions/:id/status', requireAdminLevel('super', 'normal'), updateSubscriptionStatus)
+router.patch('/solutions/subscriptions/:id/confirm', requireAdminLevel('super', 'normal'), confirmSubscription)
+
+// 삭제 (Super만)
+router.delete('/solutions/:id', requireAdminLevel('super'), deleteSolution)
+router.delete('/solutions/subscriptions/:id', requireAdminLevel('super'), deleteSubscription)
 
 export default router

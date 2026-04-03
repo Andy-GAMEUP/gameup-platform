@@ -1,20 +1,20 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
-import PartnerDirectoryPage from '@/components/pages/PartnerDirectoryPage'
+import PartnerMatchingMainPage from '@/components/pages/PartnerMatchingMainPage'
 
 export const metadata: Metadata = {
-  title: '파트너 채널',
-  description: '파트너 개발사의 최신 소식',
+  title: '파트너 매칭',
+  description: '최적의 프로젝트와 파트너를 연결하는 스마트 매칭 서비스',
 }
 
 function Loading() {
-  return <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center"><div className="text-slate-400">Loading...</div></div>
+  return <div className="min-h-screen bg-bg-primary flex items-center justify-center"><div className="text-text-secondary">Loading...</div></div>
 }
 
 export default function Page() {
   return (
     <Suspense fallback={<Loading />}>
-      <PartnerDirectoryPage />
+      <PartnerMatchingMainPage />
     </Suspense>
   )
 }

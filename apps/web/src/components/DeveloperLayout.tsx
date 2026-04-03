@@ -1,5 +1,6 @@
 'use client'
 import React from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -19,6 +20,7 @@ import {
   LogOut,
   Plus,
   Home,
+  Handshake,
 } from 'lucide-react'
 
 export default function DeveloperLayout({ children }: { children: React.ReactNode }) {
@@ -34,6 +36,8 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
     { path: '/testers', label: '테스터 관리', icon: <Users className="w-5 h-5" /> },
     { path: '/feedback', label: '피드백', icon: <MessageSquare className="w-5 h-5" /> },
     { path: '/analytics', label: '분석', icon: <BarChart3 className="w-5 h-5" /> },
+    { path: '/minihome-manage', label: '미니홈 관리', icon: <Home className="w-5 h-5" /> },
+    { path: '/proposals', label: '제안 관리', icon: <Handshake className="w-5 h-5" /> },
     { path: '/settings', label: '설정', icon: <Settings className="w-5 h-5" /> },
   ]
 
@@ -50,28 +54,20 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
+    <div className="accent-green min-h-screen bg-bg-primary text-text-primary flex">
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 h-screen bg-slate-900 border-r border-slate-800 transition-all duration-300 z-40 ${
+        className={`fixed lg:sticky top-0 h-screen bg-bg-secondary border-r border-line transition-all duration-300 z-40 ${
           sidebarOpen ? 'w-64' : 'w-0 lg:w-20'
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-slate-800">
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Gamepad2 className="w-6 h-6" />
-              </div>
+          <div className="p-6 border-b border-line">
+            <Link href="/" className="flex items-center gap-2">
+              <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-8 w-auto object-contain flex-shrink-0" />
               {sidebarOpen && (
-                <div>
-                  <div className="font-bold text-sm">
-                    <span className="text-green-400">GAME</span>
-                    <span className="text-white">UP</span>
-                  </div>
-                  <div className="text-xs text-slate-400">개발자 센터</div>
-                </div>
+                <span className="text-base font-bold tracking-tight text-black">GameUp</span>
               )}
             </Link>
           </div>
@@ -85,8 +81,8 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                   href={item.path}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive(item.path)
-                      ? 'bg-green-600 text-white'
-                      : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-accent text-text-inverse'
+                      : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
                   }`}
                 >
                   {item.icon}
@@ -97,15 +93,15 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
           </nav>
 
           {/* User Info */}
-          <div className="p-4 border-t border-slate-800">
+          <div className="p-4 border-t border-line">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-sm font-bold">개</span>
+              <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-sm font-bold text-text-inverse">개</span>
               </div>
               {sidebarOpen && (
                 <div className="flex-1 overflow-hidden">
                   <p className="text-sm font-semibold truncate">개발사명</p>
-                  <p className="text-xs text-slate-400 truncate">developer@game.com</p>
+                  <p className="text-xs text-text-muted truncate">developer@game.com</p>
                 </div>
               )}
             </div>
@@ -116,12 +112,12 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-lg border-b border-slate-800">
+        <header className="sticky top-0 z-30 bg-bg-primary/95 backdrop-blur-lg border-b border-line">
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="text-slate-400 hover:text-white"
+                className="text-text-muted hover:text-text-primary"
               >
                 {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -132,49 +128,49 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
 
             <div className="flex items-center gap-4">
               <Link href="/upload">
-                <Button className="bg-green-600 hover:bg-green-700">
+                <Button className="bg-accent hover:bg-accent-hover text-text-inverse">
                   <Plus className="w-4 h-4 mr-2" />
                   게임 등록
                 </Button>
               </Link>
 
-              <button className="relative p-2 text-slate-400 hover:text-white">
+              <button className="relative p-2 text-text-muted hover:text-text-primary">
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-danger rounded-full"></span>
               </button>
 
               <div className="relative">
                 <button
                   onClick={() => setProfileOpen(!profileOpen)}
-                  className="flex items-center gap-2 text-slate-400 hover:text-white"
+                  className="flex items-center gap-2 text-text-muted hover:text-text-primary"
                 >
-                  <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
-                    <span className="text-xs font-bold">개</span>
+                  <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
+                    <span className="text-xs font-bold text-text-inverse">개</span>
                   </div>
                   <ChevronDown className="w-4 h-4" />
                 </button>
 
                 {profileOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-slate-900 border border-slate-800 rounded-lg shadow-xl">
+                  <div className="absolute right-0 mt-2 w-48 bg-bg-card border border-line rounded-lg shadow-xl">
                     <div className="p-2">
                       <Link
                         href="/settings"
-                        className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 rounded"
+                        className="block px-4 py-2 text-sm text-text-secondary hover:bg-bg-tertiary rounded"
                         onClick={() => setProfileOpen(false)}
                       >
                         설정
                       </Link>
                       <Link
                         href="/"
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 rounded"
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:bg-bg-tertiary rounded"
                         onClick={() => setProfileOpen(false)}
                       >
                         <Home className="w-4 h-4" />
                         사용자 사이트
                       </Link>
-                      <button 
+                      <button
                         onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-slate-800 rounded flex items-center gap-2"
+                        className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-bg-tertiary rounded flex items-center gap-2"
                       >
                         <LogOut className="w-4 h-4" />
                         로그아웃
@@ -196,7 +192,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          className="fixed inset-0 bg-bg-overlay z-30 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

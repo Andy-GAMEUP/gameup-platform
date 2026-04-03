@@ -11,7 +11,9 @@
     "clean": "turbo clean && rm -rf node_modules",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "migrate": "npx tsx scripts/migrate-mysql-to-mongodb.ts"
+    "migrate": "npx tsx scripts/migrate-mysql-to-mongodb.ts",
+    "restart": "bash scripts/restart-all.sh",
+    "start:all": "bash scripts/restart-all.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

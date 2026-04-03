@@ -59,20 +59,20 @@ export default function ScrapPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
+    <div className="min-h-screen bg-bg-primary text-text-primary">
       <div className="max-w-4xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-bold text-white mb-2">내 스크랩</h1>
-        <p className="text-slate-400 text-sm mb-8">저장한 게임, 커뮤니티 글을 한 곳에서 확인하세요.</p>
+        <h1 className="text-2xl font-bold text-text-primary mb-2">내 스크랩</h1>
+        <p className="text-text-secondary text-sm mb-8">저장한 게임, 커뮤니티 글을 한 곳에서 확인하세요.</p>
 
-        <div className="flex gap-2 mb-6 border-b border-slate-800 pb-3">
+        <div className="flex gap-2 mb-6 border-b border-line pb-3">
           {TABS.map((tab) => (
             <button
               key={tab.value}
               onClick={() => handleTabChange(tab.value)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 activeType === tab.value
-                  ? 'bg-violet-600 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-violet-600 text-text-primary'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
               }`}
             >
               {tab.label}
@@ -87,15 +87,15 @@ export default function ScrapPage() {
         )}
 
         {isError && (
-          <div className="text-center py-20 text-slate-500">
+          <div className="text-center py-20 text-text-muted">
             <p>스크랩 목록을 불러오지 못했습니다.</p>
           </div>
         )}
 
         {!isLoading && !isError && data && data.scraps.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-slate-500 text-lg mb-2">스크랩한 항목이 없습니다.</p>
-            <p className="text-slate-600 text-sm">게임이나 커뮤니티 글에서 스크랩 버튼을 눌러보세요.</p>
+            <p className="text-text-muted text-lg mb-2">스크랩한 항목이 없습니다.</p>
+            <p className="text-text-muted text-sm">게임이나 커뮤니티 글에서 스크랩 버튼을 눌러보세요.</p>
           </div>
         )}
 
@@ -112,17 +112,17 @@ export default function ScrapPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-40 hover:bg-slate-700 transition-colors text-sm"
+                  className="px-4 py-2 rounded-lg bg-bg-tertiary text-text-secondary disabled:opacity-40 hover:bg-line-light transition-colors text-sm"
                 >
                   이전
                 </button>
-                <span className="px-4 py-2 text-sm text-slate-400">
+                <span className="px-4 py-2 text-sm text-text-secondary">
                   {page} / {data.totalPages}
                 </span>
                 <button
                   onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
                   disabled={page === data.totalPages}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-40 hover:bg-slate-700 transition-colors text-sm"
+                  className="px-4 py-2 rounded-lg bg-bg-tertiary text-text-secondary disabled:opacity-40 hover:bg-line-light transition-colors text-sm"
                 >
                   다음
                 </button>
@@ -139,18 +139,18 @@ function ScrapCard({ scrap }: { scrap: ScrapItem }) {
   const href = getTargetHref(scrap)
   const title = scrap.target?.title ?? '(삭제된 항목)'
   const typeLabel = TYPE_LABELS[scrap.targetType] ?? scrap.targetType
-  const typeColor = TYPE_COLORS[scrap.targetType] ?? 'bg-slate-700/50 text-slate-300 border-slate-600'
+  const typeColor = TYPE_COLORS[scrap.targetType] ?? 'bg-bg-tertiary/50 text-text-secondary border-line'
 
   return (
     <Link href={href} className="block">
-      <div className="bg-slate-900 border border-slate-800 rounded-xl px-5 py-4 hover:border-slate-600 hover:bg-slate-800/60 transition-all duration-200 flex items-center justify-between gap-4">
+      <div className="bg-bg-secondary border border-line rounded-xl px-5 py-4 hover:border-line hover:bg-bg-tertiary/60 transition-all duration-200 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <span className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${typeColor}`}>
             {typeLabel}
           </span>
-          <span className="text-white font-medium truncate">{title}</span>
+          <span className="text-text-primary font-medium truncate">{title}</span>
         </div>
-        <span className="shrink-0 text-slate-500 text-xs">{formatDate(scrap.createdAt)}</span>
+        <span className="shrink-0 text-text-muted text-xs">{formatDate(scrap.createdAt)}</span>
       </div>
     </Link>
   )

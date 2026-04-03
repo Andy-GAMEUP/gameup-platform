@@ -5,187 +5,432 @@ import {
   GameModel,
   PostModel,
   PartnerModel,
+  PartnerPostModel,
+  PublishingModel,
+  MiniHomeModel,
   SeasonModel,
+  GameApplicationModel,
   MessageModel,
   SolutionModel,
+  PageVisitModel,
 } from '@gameup/db'
 
-// ── 방문자/활동 통계 ──────────────────────────────────────────────
+// ── 대시보드 요약 (KPI + 추이 + 인기페이지 + 메뉴별) ──────────────
+export const getDashboardSummary = async (req: AuthRequest, res: Response) => {
+  try {
+    const now = new Date()
+    const todayStart = new Date(now)
+    todayStart.setHours(0, 0, 0, 0)
+    const yesterdayStart = new Date(todayStart.getTime() - 86400000)
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000)
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000)
+
+    // --- 오늘 지표 ---
+    const [
+      todayVisits,
+      todayUniqueVisitors,
+      todayNewSessions,
+      todayAvgDuration,
+      todaySignups,
+      todayLogins,
+      // 어제 비교용
+      yesterdayUniqueVisitors,
+      yesterdayPageViews,
+      yesterdayAvgDuration,
+    ] = await Promise.all([
+      PageVisitModel.countDocuments({ createdAt: { $gte: todayStart } }),
+      PageVisitModel.distinct('sessionId', { createdAt: { $gte: todayStart } }).then(a => a.length),
+      // 신규 방문자: 오늘 처음 등장한 sessionId
+      PageVisitModel.aggregate([
+        { $match: { createdAt: { $gte: todayStart } } },
+        { $group: { _id: '$sessionId', firstVisit: { $min: '$createdAt' } } },
+        { $lookup: { from: 'pagevisits', localField: '_id', foreignField: 'sessionId', pipeline: [{ $match: { createdAt: { $lt: todayStart } } }, { $limit: 1 }], as: 'prev' } },
+        { $match: { prev: { $size: 0 } } },
+        { $count: 'count' },
+      ]).then(r => r[0]?.count ?? 0),
+      PageVisitModel.aggregate([
+        { $match: { createdAt: { $gte: todayStart }, duration: { $gt: 0 } } },
+        { $group: { _id: null, avg: { $avg: '$duration' } } },
+      ]).then(r => Math.round(r[0]?.avg ?? 0)),
+      UserModel.countDocuments({ createdAt: { $gte: todayStart } }),
+      UserModel.countDocuments({ lastLoginAt: { $gte: todayStart } }),
+      // 어제 비교
+      PageVisitModel.distinct('sessionId', { createdAt: { $gte: yesterdayStart, $lt: todayStart } }).then(a => a.length),
+      PageVisitModel.countDocuments({ createdAt: { $gte: yesterdayStart, $lt: todayStart } }),
+      PageVisitModel.aggregate([
+        { $match: { createdAt: { $gte: yesterdayStart, $lt: todayStart }, duration: { $gt: 0 } } },
+        { $group: { _id: null, avg: { $avg: '$duration' } } },
+      ]).then(r => Math.round(r[0]?.avg ?? 0)),
+    ])
+
+    const todayReturning = todayUniqueVisitors - todayNewSessions
+
+    // --- WAU / MAU ---
+    const [wau, mau] = await Promise.all([
+      PageVisitModel.distinct('sessionId', { createdAt: { $gte: sevenDaysAgo } }).then(a => a.length),
+      PageVisitModel.distinct('sessionId', { createdAt: { $gte: thirtyDaysAgo } }).then(a => a.length),
+    ])
+
+    // --- 최근 7일 DAU 추이 ---
+    const dau7d = await PageVisitModel.aggregate([
+      { $match: { createdAt: { $gte: sevenDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          sessions: { $addToSet: '$sessionId' },
+        },
+      },
+      { $project: { _id: 0, date: '$_id', count: { $size: '$sessions' } } },
+      { $sort: { date: 1 } },
+    ])
+
+    // --- 인기 페이지 Top 10 ---
+    const topPages = await PageVisitModel.aggregate([
+      { $match: { createdAt: { $gte: sevenDaysAgo } } },
+      {
+        $group: {
+          _id: '$page',
+          menu: { $first: '$menu' },
+          views: { $sum: 1 },
+          sessions: { $addToSet: '$sessionId' },
+          avgDuration: { $avg: '$duration' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          page: '$_id',
+          menu: 1,
+          views: 1,
+          uniqueVisitors: { $size: '$sessions' },
+          avgDuration: { $round: ['$avgDuration', 0] },
+        },
+      },
+      { $sort: { views: -1 } },
+      { $limit: 10 },
+    ])
+
+    // --- 메뉴별 방문 비율 ---
+    const menuBreakdownRaw = await PageVisitModel.aggregate([
+      { $match: { createdAt: { $gte: sevenDaysAgo } } },
+      { $group: { _id: '$menu', views: { $sum: 1 } } },
+      { $sort: { views: -1 } },
+    ])
+    const totalMenuViews = menuBreakdownRaw.reduce((s, m) => s + m.views, 0)
+    const menuBreakdown = menuBreakdownRaw.map(m => ({
+      menu: m._id,
+      views: m.views,
+      percentage: totalMenuViews > 0 ? Math.round((m.views / totalMenuViews) * 1000) / 10 : 0,
+    }))
+
+    // --- 방문자 구성 (회원 vs 비회원) ---
+    const memberVisits = await PageVisitModel.countDocuments({
+      createdAt: { $gte: sevenDaysAgo },
+      userId: { $ne: null },
+    })
+    const guestVisits = await PageVisitModel.countDocuments({
+      createdAt: { $gte: sevenDaysAgo },
+      userId: null,
+    })
+
+    res.json({
+      today: {
+        dau: todayUniqueVisitors,
+        newVisitors: todayNewSessions,
+        returningVisitors: todayReturning,
+        avgDuration: todayAvgDuration,
+        totalPageViews: todayVisits,
+        newSignups: todaySignups,
+        activeLogins: todayLogins,
+      },
+      yesterday: {
+        dau: yesterdayUniqueVisitors,
+        totalPageViews: yesterdayPageViews,
+        avgDuration: yesterdayAvgDuration,
+      },
+      trends: {
+        dau7d,
+        wau,
+        mau,
+      },
+      topPages,
+      menuBreakdown,
+      visitorComposition: {
+        members: memberVisits,
+        guests: guestVisits,
+      },
+    })
+  } catch (err) {
+    console.error('대시보드 요약 조회 실패:', err)
+    res.status(500).json({ message: '대시보드 요약 조회 실패' })
+  }
+}
+
+// ── 방문자/활동 통계 (기간별 추이) ────────────────────────────────
 export const getVisitorStats = async (req: AuthRequest, res: Response) => {
   try {
-    const {
-      startDate,
-      endDate,
-      period = 'day',
-    } = req.query
+    const { startDate, endDate, period = 'day', platform } = req.query
 
-    const start = startDate ? new Date(String(startDate)) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const start = startDate ? new Date(String(startDate)) : new Date(Date.now() - 30 * 86400000)
     const end = endDate ? new Date(String(endDate)) : new Date()
     end.setHours(23, 59, 59, 999)
 
     let groupFormat: string
-    if (period === 'month') {
-      groupFormat = '%Y-%m'
-    } else if (period === 'week') {
-      groupFormat = '%Y-%U'
-    } else {
-      groupFormat = '%Y-%m-%d'
-    }
+    if (period === 'month') groupFormat = '%Y-%m'
+    else if (period === 'week') groupFormat = '%Y-%U'
+    else groupFormat = '%Y-%m-%d'
 
-    // 날짜별 신규 가입자 집계
-    const newSignupsAgg = await UserModel.aggregate([
-      { $match: { createdAt: { $gte: start, $lte: end } } },
+    const matchFilter: Record<string, unknown> = { createdAt: { $gte: start, $lte: end } }
+    if (platform && platform !== '전체') matchFilter.platform = String(platform)
+
+    // PageVisit 기반 방문자 통계
+    const visitAgg = await PageVisitModel.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: { $dateToString: { format: groupFormat, date: '$createdAt' } },
+          totalPageViews: { $sum: 1 },
+          sessions: { $addToSet: '$sessionId' },
+          memberSessions: {
+            $addToSet: {
+              $cond: [{ $ne: ['$userId', null] }, '$sessionId', '$$REMOVE'],
+            },
+          },
+          guestSessions: {
+            $addToSet: {
+              $cond: [{ $eq: ['$userId', null] }, '$sessionId', '$$REMOVE'],
+            },
+          },
+          avgDuration: { $avg: '$duration' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          date: '$_id',
+          total: { $size: '$sessions' },
+          members: { $size: '$memberSessions' },
+          guests: { $size: '$guestSessions' },
+          avgPageviews: {
+            $cond: [
+              { $gt: [{ $size: '$sessions' }, 0] },
+              { $round: [{ $divide: ['$totalPageViews', { $size: '$sessions' }] }, 1] },
+              0,
+            ],
+          },
+          avgDuration: { $round: ['$avgDuration', 0] },
+        },
+      },
+      { $sort: { date: 1 } },
+    ])
+
+    // User 모델에서 신규 가입/신규 방문자 집계
+    const userMatchFilter: Record<string, unknown> = { createdAt: { $gte: start, $lte: end } }
+    const signupAgg = await UserModel.aggregate([
+      { $match: userMatchFilter },
       {
         $group: {
           _id: { $dateToString: { format: groupFormat, date: '$createdAt' } },
           count: { $sum: 1 },
         },
       },
-      { $sort: { _id: 1 } },
     ])
-
-    // 날짜별 로그인(마지막 접속) 집계
-    const loginAgg = await UserModel.aggregate([
-      { $match: { lastLoginAt: { $gte: start, $lte: end } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: groupFormat, date: '$lastLoginAt' } },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ])
-
-    // 날짜 범위 내 모든 날짜 키 수집
-    const dateSet = new Set<string>()
-    newSignupsAgg.forEach((d) => dateSet.add(d._id))
-    loginAgg.forEach((d) => dateSet.add(d._id))
-
     const signupMap: Record<string, number> = {}
-    newSignupsAgg.forEach((d) => { signupMap[d._id] = d.count })
-    const loginMap: Record<string, number> = {}
-    loginAgg.forEach((d) => { loginMap[d._id] = d.count })
+    signupAgg.forEach(d => { signupMap[d._id] = d.count })
 
-    const stats = Array.from(dateSet)
-      .sort()
-      .map((date) => ({
-        date,
-        totalVisitors: (loginMap[date] ?? 0) + (signupMap[date] ?? 0),
-        newVisitors: signupMap[date] ?? 0,
-        memberAccess: loginMap[date] ?? 0,
-        nonMemberVisit: 0,
-        newSignups: signupMap[date] ?? 0,
-        avgPageViews: 0,
-      }))
+    // 날짜 기반 머지
+    const stats = visitAgg.map(row => ({
+      ...row,
+      newSignups: signupMap[row.date] ?? 0,
+      newVisitors: 0, // 신규 방문자는 세션 첫 등장 기준 — 추후 고도화 가능
+    }))
+
+    // visitAgg에 없지만 가입만 있는 날짜도 포함
+    for (const [date, count] of Object.entries(signupMap)) {
+      if (!stats.find(s => s.date === date)) {
+        stats.push({
+          date,
+          total: 0,
+          members: 0,
+          guests: 0,
+          avgPageviews: 0,
+          avgDuration: 0,
+          newSignups: count,
+          newVisitors: 0,
+        })
+      }
+    }
+    stats.sort((a, b) => a.date.localeCompare(b.date))
 
     res.json({ stats, period })
-  } catch {
+  } catch (err) {
+    console.error('방문자 통계 조회 실패:', err)
     res.status(500).json({ message: '방문자 통계 조회 실패' })
   }
 }
 
 // ── 메뉴별 통계 ──────────────────────────────────────────────────
+const MENU_LABELS: Record<string, string> = {
+  community: '커뮤니티',
+  partner: '파트너 채널',
+  publishing: '퍼블리싱',
+  minihome: '미니홈',
+  support: '지원 프로그램',
+  solution: '솔루션',
+}
+
+const MENU_KEYS = Object.keys(MENU_LABELS)
+
+async function getContentChanges(menu: string, start: Date, end: Date, groupFormat: string) {
+  const dateFilter = { $gte: start, $lte: end }
+
+  let model: typeof PostModel | typeof PartnerPostModel | typeof PublishingModel | typeof MiniHomeModel | typeof SolutionModel | null = null
+  let dateField = 'createdAt'
+
+  switch (menu) {
+    case 'community': model = PostModel; break
+    case 'partner': model = PartnerPostModel; break
+    case 'publishing': model = PublishingModel; break
+    case 'minihome': model = MiniHomeModel; break
+    case 'solution': model = SolutionModel; break
+    case 'support': {
+      // SeasonModel + GameApplicationModel 합산
+      const [seasons, apps] = await Promise.all([
+        SeasonModel.aggregate([
+          { $match: { $or: [{ createdAt: dateFilter }, { updatedAt: dateFilter }] } },
+          { $group: { _id: { $dateToString: { format: groupFormat, date: '$createdAt' } }, count: { $sum: 1 } } },
+        ]),
+        GameApplicationModel.aggregate([
+          { $match: { createdAt: dateFilter } },
+          { $group: { _id: { $dateToString: { format: groupFormat, date: '$createdAt' } }, count: { $sum: 1 } } },
+        ]),
+      ])
+      const map: Record<string, number> = {}
+      for (const s of seasons) map[s._id] = (map[s._id] ?? 0) + s.count
+      for (const a of apps) map[a._id] = (map[a._id] ?? 0) + a.count
+      return map
+    }
+  }
+
+  if (!model) return {}
+
+  const agg = await model.aggregate([
+    { $match: { $or: [{ createdAt: dateFilter }, { updatedAt: dateFilter }] } },
+    { $group: { _id: { $dateToString: { format: groupFormat, date: `$${dateField}` } }, count: { $sum: 1 } } },
+  ])
+  const map: Record<string, number> = {}
+  agg.forEach(d => { map[d._id] = d.count })
+  return map
+}
+
 export const getMenuStats = async (req: AuthRequest, res: Response) => {
   try {
-    const { menu = 'community', startDate, endDate } = req.query
+    const { menu, startDate, endDate, period = 'day', platform } = req.query
 
-    const start = startDate ? new Date(String(startDate)) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const start = startDate ? new Date(String(startDate)) : new Date(Date.now() - 30 * 86400000)
     const end = endDate ? new Date(String(endDate)) : new Date()
     end.setHours(23, 59, 59, 999)
 
-    const dateFilter = { createdAt: { $gte: start, $lte: end } }
+    let groupFormat: string
+    if (period === 'year') groupFormat = '%Y'
+    else if (period === 'month') groupFormat = '%Y-%m'
+    else groupFormat = '%Y-%m-%d'
 
-    let result: Record<string, unknown> = {}
+    const matchBase: Record<string, unknown> = { createdAt: { $gte: start, $lte: end } }
+    if (platform && platform !== '전체') matchBase.platform = String(platform)
 
-    if (menu === 'community') {
-      const [postCount, totalViews] = await Promise.all([
-        PostModel.countDocuments({ ...dateFilter, status: { $ne: 'deleted' } }),
-        PostModel.aggregate([
-          { $match: { ...dateFilter, status: { $ne: 'deleted' } } },
-          { $group: { _id: null, total: { $sum: '$views' } } },
-        ]),
-      ])
-      result = { menu: 'community', postCount, totalViews: totalViews[0]?.total ?? 0 }
-    } else if (menu === 'partner') {
-      const partnerCount = await PartnerModel.countDocuments(dateFilter)
-      result = { menu: 'partner', partnerCount }
-    } else if (menu === 'solutions') {
-      const solutionCount = await SolutionModel.countDocuments(dateFilter)
-      result = { menu: 'solutions', solutionCount }
-    } else {
-      result = { menu, message: '해당 메뉴의 통계를 지원하지 않습니다' }
+    // 특정 메뉴가 지정되지 않은 경우: 전체 메뉴 개요
+    if (!menu) {
+      const stats = await Promise.all(
+        MENU_KEYS.map(async (menuKey) => {
+          const filter = { ...matchBase, menu: menuKey }
+          const [views, uniqueArr, avgDurAgg] = await Promise.all([
+            PageVisitModel.countDocuments(filter),
+            PageVisitModel.distinct('sessionId', filter),
+            PageVisitModel.aggregate([
+              { $match: { ...filter, duration: { $gt: 0 } } },
+              { $group: { _id: null, avg: { $avg: '$duration' } } },
+            ]),
+          ])
+          const contentMap = await getContentChanges(menuKey, start, end, groupFormat)
+          const contentChanges = Object.values(contentMap).reduce((s, n) => s + n, 0)
+
+          return {
+            menu: menuKey,
+            label: MENU_LABELS[menuKey],
+            views,
+            uniqueVisitors: uniqueArr.length,
+            avgDuration: Math.round(avgDurAgg[0]?.avg ?? 0),
+            contentChanges,
+          }
+        }),
+      )
+      return res.json({ stats })
     }
 
-    res.json({ result })
-  } catch {
-    res.status(500).json({ message: '메뉴 통계 조회 실패' })
-  }
-}
+    // 특정 메뉴 지정: 날짜별 추이
+    const menuKey = String(menu)
+    const menuFilter = { ...matchBase, menu: menuKey }
 
-// ── 대시보드 요약 ────────────────────────────────────────────────
-export const getDashboardSummary = async (req: AuthRequest, res: Response) => {
-  try {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-
-    const [
-      totalUsers,
-      individualUsers,
-      corporateUsers,
-      totalGamesByStatus,
-      totalPosts,
-      totalPartners,
-      activeSeasons,
-      totalMessages,
-      totalSolutions,
-      recentSignups,
-      todaySignups,
-      todayLogins,
-    ] = await Promise.all([
-      UserModel.countDocuments(),
-      UserModel.countDocuments({ memberType: 'individual' }),
-      UserModel.countDocuments({ memberType: 'corporate' }),
-      GameModel.aggregate([
-        { $group: { _id: '$status', count: { $sum: 1 } } },
-      ]),
-      PostModel.countDocuments({ status: { $ne: 'deleted' } }),
-      PartnerModel.countDocuments({ status: 'approved' }),
-      SeasonModel.countDocuments({ status: 'active' }),
-      MessageModel.countDocuments(),
-      SolutionModel.countDocuments({ isActive: true }),
-      UserModel.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
-      UserModel.countDocuments({ createdAt: { $gte: todayStart } }),
-      UserModel.countDocuments({ lastLoginAt: { $gte: todayStart } }),
+    const daily = await PageVisitModel.aggregate([
+      { $match: menuFilter },
+      {
+        $group: {
+          _id: { $dateToString: { format: groupFormat, date: '$createdAt' } },
+          views: { $sum: 1 },
+          sessions: { $addToSet: '$sessionId' },
+          avgDuration: { $avg: '$duration' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          date: '$_id',
+          views: 1,
+          uniqueVisitors: { $size: '$sessions' },
+          avgDuration: { $round: ['$avgDuration', 0] },
+        },
+      },
+      { $sort: { date: 1 } },
     ])
 
-    const gamesByStatus: Record<string, number> = {}
-    for (const item of totalGamesByStatus) {
-      gamesByStatus[item._id as string] = item.count
-    }
+    // 콘텐츠 변동 합산
+    const contentMap = await getContentChanges(menuKey, start, end, groupFormat)
+    const dailyWithContent = daily.map(d => ({
+      ...d,
+      contentChanges: contentMap[d.date] ?? 0,
+    }))
+
+    // 인기 하위 페이지 Top 5
+    const topSubPages = await PageVisitModel.aggregate([
+      { $match: menuFilter },
+      {
+        $group: {
+          _id: '$page',
+          views: { $sum: 1 },
+          sessions: { $addToSet: '$sessionId' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          page: '$_id',
+          views: 1,
+          uniqueVisitors: { $size: '$sessions' },
+        },
+      },
+      { $sort: { views: -1 } },
+      { $limit: 5 },
+    ])
 
     res.json({
-      users: {
-        total: totalUsers,
-        individual: individualUsers,
-        corporate: corporateUsers,
-        recentSignups,
-      },
-      games: {
-        total: Object.values(gamesByStatus).reduce((a, b) => a + b, 0),
-        byStatus: gamesByStatus,
-      },
-      totalPosts,
-      totalPartners,
-      activeSeasons,
-      totalMessages,
-      totalSolutions,
-      today: {
-        newSignups: todaySignups,
-        logins: todayLogins,
-      },
+      menu: menuKey,
+      label: MENU_LABELS[menuKey] ?? menuKey,
+      daily: dailyWithContent,
+      topSubPages,
     })
-  } catch {
-    res.status(500).json({ message: '대시보드 요약 조회 실패' })
+  } catch (err) {
+    console.error('메뉴 통계 조회 실패:', err)
+    res.status(500).json({ message: '메뉴 통계 조회 실패' })
   }
 }

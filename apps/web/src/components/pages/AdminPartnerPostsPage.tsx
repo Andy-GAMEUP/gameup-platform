@@ -23,34 +23,34 @@ function SortablePostRow({ post, index, onDelete, saving }: SortablePostRowProps
     <tr
       ref={setNodeRef}
       style={style}
-      className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors"
+      className="border-b border-line/50 hover:bg-bg-tertiary/30 transition-colors"
     >
       <td className="px-3 py-3 w-8">
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 text-slate-500 hover:text-slate-400 transition-colors"
+          className="cursor-grab active:cursor-grabbing p-1 text-text-muted hover:text-text-secondary transition-colors"
           title="드래그하여 순서 변경"
         >
           <GripVertical className="w-4 h-4" />
         </button>
       </td>
-      <td className="px-3 py-3 text-slate-400 text-sm">{index + 1}</td>
-      <td className="px-3 py-3 text-white text-sm max-w-[200px]">
+      <td className="px-3 py-3 text-text-secondary text-sm">{index + 1}</td>
+      <td className="px-3 py-3 text-text-primary text-sm max-w-[200px]">
         <span className="line-clamp-1">{post.title}</span>
       </td>
-      <td className="px-3 py-3 text-slate-300 text-sm">{post.topic || '-'}</td>
-      <td className="px-3 py-3 text-slate-300 text-sm">{post.views ?? 0}</td>
-      <td className="px-3 py-3 text-slate-300 text-sm">{post.likeCount ?? 0}</td>
-      <td className="px-3 py-3 text-slate-300 text-sm">{post.commentCount ?? 0}</td>
-      <td className="px-3 py-3 text-slate-400 text-sm">
+      <td className="px-3 py-3 text-text-secondary text-sm">{post.topic || '-'}</td>
+      <td className="px-3 py-3 text-text-secondary text-sm">{post.views ?? 0}</td>
+      <td className="px-3 py-3 text-text-secondary text-sm">{post.likeCount ?? 0}</td>
+      <td className="px-3 py-3 text-text-secondary text-sm">{post.commentCount ?? 0}</td>
+      <td className="px-3 py-3 text-text-secondary text-sm">
         {new Date(post.createdAt).toLocaleDateString('ko-KR')}
       </td>
       <td className="px-3 py-3">
         <button
           onClick={() => onDelete(post._id)}
           disabled={saving}
-          className="p-1.5 text-red-400 hover:text-red-300 disabled:opacity-30 transition-colors"
+          className="p-1.5 text-accent-text hover:text-accent-text disabled:opacity-30 transition-colors"
           title="삭제"
         >
           <Trash2 className="w-4 h-4" />
@@ -139,44 +139,44 @@ export default function AdminPartnerPostsPage() {
       <div className="space-y-6">
         <button
           onClick={() => router.push('/admin/partner-management')}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm"
+          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors text-sm"
         >
           <ChevronLeft className="w-4 h-4" />
           파트너 관리로 돌아가기
         </button>
 
         {partner && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <h1 className="text-white font-bold text-xl">{partner.userId?.username}</h1>
+          <div className="bg-bg-secondary border border-line rounded-xl p-6">
+            <h1 className="text-text-primary font-bold text-xl">{partner.userId?.username}</h1>
             {partner.slogan && (
-              <p className="text-slate-400 text-sm mt-1 italic">&ldquo;{partner.slogan}&rdquo;</p>
+              <p className="text-text-secondary text-sm mt-1 italic">&ldquo;{partner.slogan}&rdquo;</p>
             )}
-            <p className="text-slate-500 text-sm mt-2">총 {posts.length}개 포스트</p>
+            <p className="text-text-muted text-sm mt-2">총 {posts.length}개 포스트</p>
           </div>
         )}
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-text-secondary" />
             </div>
           ) : posts.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-sm">포스트가 없습니다</div>
+            <div className="py-12 text-center text-text-secondary text-sm">포스트가 없습니다</div>
           ) : (
             <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={posts.map(p => p._id)} strategy={verticalListSortingStrategy}>
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-slate-800">
-                      <th className="px-3 py-3 text-left text-slate-400 text-xs font-medium w-8"></th>
-                      <th className="px-3 py-3 text-left text-slate-400 text-xs font-medium">#</th>
-                      <th className="px-3 py-3 text-left text-slate-400 text-xs font-medium">제목</th>
-                      <th className="px-3 py-3 text-left text-slate-400 text-xs font-medium">주제</th>
-                      <th className="px-3 py-3 text-left text-slate-400 text-xs font-medium">조회</th>
-                      <th className="px-3 py-3 text-left text-slate-400 text-xs font-medium">좋아요</th>
-                      <th className="px-3 py-3 text-left text-slate-400 text-xs font-medium">댓글</th>
-                      <th className="px-3 py-3 text-left text-slate-400 text-xs font-medium">날짜</th>
-                      <th className="px-3 py-3 text-left text-slate-400 text-xs font-medium">작업</th>
+                    <tr className="border-b border-line">
+                      <th className="px-3 py-3 text-left text-text-secondary text-xs font-medium w-8"></th>
+                      <th className="px-3 py-3 text-left text-text-secondary text-xs font-medium">#</th>
+                      <th className="px-3 py-3 text-left text-text-secondary text-xs font-medium">제목</th>
+                      <th className="px-3 py-3 text-left text-text-secondary text-xs font-medium">주제</th>
+                      <th className="px-3 py-3 text-left text-text-secondary text-xs font-medium">조회</th>
+                      <th className="px-3 py-3 text-left text-text-secondary text-xs font-medium">좋아요</th>
+                      <th className="px-3 py-3 text-left text-text-secondary text-xs font-medium">댓글</th>
+                      <th className="px-3 py-3 text-left text-text-secondary text-xs font-medium">날짜</th>
+                      <th className="px-3 py-3 text-left text-text-secondary text-xs font-medium">작업</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -198,7 +198,7 @@ export default function AdminPartnerPostsPage() {
       </div>
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg text-sm text-white shadow-lg z-50 ${toast.ok ? 'bg-green-700' : 'bg-red-700'}`}>
+        <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg text-sm text-text-primary shadow-lg z-50 ${toast.ok ? 'bg-green-700' : 'bg-red-700'}`}>
           {toast.msg}
         </div>
       )}

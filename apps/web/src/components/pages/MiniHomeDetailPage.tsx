@@ -11,6 +11,7 @@ import {
   Gamepad2, Newspaper, TrendingUp, Globe, Building2
 } from 'lucide-react'
 import ProposalModal from '@/components/ProposalModal'
+import LevelBadge from '@/components/LevelBadge'
 
 const TABS = [
   { id: 'game-news', label: '게임 뉴스' },
@@ -57,10 +58,10 @@ export default function MiniHomeDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f]">
+      <div className="min-h-screen bg-bg-primary">
         <Navbar />
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+          <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
         </div>
       </div>
     )
@@ -68,24 +69,24 @@ export default function MiniHomeDetailPage() {
 
   if (!minihome) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f]">
+      <div className="min-h-screen bg-bg-primary">
         <Navbar />
         <div className="flex items-center justify-center py-20">
-          <p className="text-slate-400">미니홈을 찾을 수 없습니다</p>
+          <p className="text-text-secondary">미니홈을 찾을 수 없습니다</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-bg-primary">
       <Navbar />
 
       <div
         className="relative h-52 bg-gradient-to-br from-slate-800 to-slate-900"
         style={minihome.coverImage ? { backgroundImage: `url(${minihome.coverImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
       >
-        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-bg-overlay" />
       </div>
 
       <div className="max-w-5xl mx-auto px-4">
@@ -100,24 +101,27 @@ export default function MiniHomeDetailPage() {
             )}
           </div>
           <div className="relative z-10 pb-2 flex-1 min-w-0">
-            <h1 className="text-white text-2xl font-bold">{minihome.companyName}</h1>
-            <p className="text-slate-400 text-sm">{minihome.userId?.username}</p>
+            <div className="flex items-center gap-2">
+              <h1 className="text-text-primary text-2xl font-bold">{minihome.companyName}</h1>
+              <LevelBadge level={minihome.userId?.level} size="md" />
+            </div>
+            <p className="text-text-secondary text-sm">{minihome.userId?.username}</p>
           </div>
           <div className="relative z-10 pb-2 flex gap-2">
             {!isOwner && user?.role === 'developer' && (
               <button onClick={() => setShowProposal(true)}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-text-primary px-4 py-2 rounded-xl text-sm font-medium transition-colors">
                 <TrendingUp className="w-4 h-4" /> 제안 보내기
               </button>
             )}
             {isOwner && (
               <>
                 <button onClick={() => setShowAddGame(true)}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-xl text-sm transition-colors border border-slate-700">
+                  className="flex items-center gap-2 bg-bg-tertiary hover:bg-line-light text-text-primary px-3 py-2 rounded-xl text-sm transition-colors border border-line">
                   <Gamepad2 className="w-4 h-4" /> 게임 관리
                 </button>
                 <button onClick={() => setShowNewsForm(true)}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-xl text-sm transition-colors border border-slate-700">
+                  className="flex items-center gap-2 bg-bg-tertiary hover:bg-line-light text-text-primary px-3 py-2 rounded-xl text-sm transition-colors border border-line">
                   <Plus className="w-4 h-4" /> 뉴스 작성
                 </button>
               </>
@@ -126,11 +130,11 @@ export default function MiniHomeDetailPage() {
         </div>
 
         <div className="mb-6">
-          <p className="text-slate-300 text-sm leading-relaxed mb-4">{minihome.introduction}</p>
+          <p className="text-text-secondary text-sm leading-relaxed mb-4">{minihome.introduction}</p>
           <div className="flex flex-wrap items-center gap-3">
             {minihome.website && (
               <a href={minihome.website} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 text-slate-400 hover:text-white text-sm transition-colors">
+                className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-sm transition-colors">
                 <Globe className="w-4 h-4" /> {minihome.website}
                 <ExternalLink className="w-3 h-3" />
               </a>
@@ -139,14 +143,14 @@ export default function MiniHomeDetailPage() {
               <span key={tag} className="bg-red-600/20 text-red-400 border border-red-500/30 text-xs px-2.5 py-1 rounded-full">{tag}</span>
             ))}
             {minihome.keywords.map(kw => (
-              <span key={kw} className="bg-slate-800 text-slate-400 text-xs px-2 py-0.5 rounded border border-slate-700">{kw}</span>
+              <span key={kw} className="bg-bg-tertiary text-text-secondary text-xs px-2 py-0.5 rounded border border-line">{kw}</span>
             ))}
           </div>
         </div>
 
         {games.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-white font-semibold text-sm mb-3">게임 포트폴리오</h2>
+            <h2 className="text-text-primary font-semibold text-sm mb-3">게임 포트폴리오</h2>
             <div className="flex gap-4 overflow-x-auto pb-2">
               {games.map(game => (
                 <GameCard key={game._id} game={game} isOwner={!!isOwner} onRefresh={() => qc.invalidateQueries({ queryKey: ['minihomeDetail', id] })} />
@@ -169,13 +173,13 @@ export default function MiniHomeDetailPage() {
           />
         )}
 
-        <div className="border-b border-slate-800 mb-6">
+        <div className="border-b border-line mb-6">
           <div className="flex gap-0">
             {TABS.map(tab => {
               if ((tab.id === 'investment' || tab.id === 'publishing') && !isOwner) return null
               return (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === tab.id ? 'border-red-500 text-red-400' : 'border-transparent text-slate-400 hover:text-white'}`}>
+                  className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === tab.id ? 'border-red-500 text-red-400' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>
                   {tab.label}
                 </button>
               )
@@ -186,11 +190,11 @@ export default function MiniHomeDetailPage() {
         <div className="pb-12">
           {(activeTab === 'game-news' || activeTab === 'company-news') && (
             loadingNews ? (
-              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-text-secondary" /></div>
             ) : (newsData?.news ?? []).length === 0 ? (
               <div className="text-center py-12">
-                <Newspaper className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-                <p className="text-slate-400 text-sm">등록된 뉴스가 없습니다</p>
+                <Newspaper className="w-10 h-10 text-text-muted mx-auto mb-2" />
+                <p className="text-text-secondary text-sm">등록된 뉴스가 없습니다</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -203,11 +207,11 @@ export default function MiniHomeDetailPage() {
 
           {(activeTab === 'investment' || activeTab === 'publishing') && isOwner && (
             loadingProposals ? (
-              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+              <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-text-secondary" /></div>
             ) : (proposalData?.proposals ?? []).length === 0 ? (
               <div className="text-center py-12">
-                <TrendingUp className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-                <p className="text-slate-400 text-sm">받은 제안이 없습니다</p>
+                <TrendingUp className="w-10 h-10 text-text-muted mx-auto mb-2" />
+                <p className="text-text-secondary text-sm">받은 제안이 없습니다</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -260,32 +264,32 @@ function GameCard({ game, isOwner, onRefresh }: { game: MiniHomeGame; isOwner: b
   }
 
   return (
-    <div className="flex-shrink-0 w-44 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden group">
+    <div className="flex-shrink-0 w-44 bg-bg-secondary border border-line rounded-xl overflow-hidden group">
       {game.coverUrl ? (
         <Image src={game.coverUrl} alt={game.title} width={400} height={96} className="w-full h-24 object-cover" unoptimized />
       ) : (
-        <div className="w-full h-24 bg-slate-800 flex items-center justify-center">
-          <Gamepad2 className="w-8 h-8 text-slate-600" />
+        <div className="w-full h-24 bg-bg-tertiary flex items-center justify-center">
+          <Gamepad2 className="w-8 h-8 text-text-muted" />
         </div>
       )}
       <div className="p-3">
         <div className="flex items-center gap-2 mb-1">
           {game.iconUrl && <Image src={game.iconUrl} alt="" width={24} height={24} className="w-6 h-6 rounded object-cover" unoptimized />}
-          <p className="text-white text-xs font-semibold truncate flex-1">{game.title}</p>
+          <p className="text-text-primary text-xs font-semibold truncate flex-1">{game.title}</p>
         </div>
-        <p className="text-slate-500 text-xs mb-1">{game.genre}</p>
-        <p className="text-slate-400 text-xs line-clamp-2">{game.description}</p>
+        <p className="text-text-muted text-xs mb-1">{game.genre}</p>
+        <p className="text-text-secondary text-xs line-clamp-2">{game.description}</p>
         {game.platforms.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
             {game.platforms.map(p => (
-              <span key={p} className="text-xs bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">{p}</span>
+              <span key={p} className="text-xs bg-bg-tertiary text-text-secondary px-1.5 py-0.5 rounded border border-line">{p}</span>
             ))}
           </div>
         )}
         {isOwner && (
           <div className="flex gap-1 mt-2">
             <button onClick={handleSetRepresentative} title="대표 게임으로 설정"
-              className="flex-1 text-xs py-1 bg-slate-800 hover:bg-red-600/20 text-slate-400 hover:text-red-400 rounded transition-colors border border-slate-700">
+              className="flex-1 text-xs py-1 bg-bg-tertiary hover:bg-red-600/20 text-text-secondary hover:text-red-400 rounded transition-colors border border-line">
               대표
             </button>
             <button onClick={handleDelete} disabled={deleting}
@@ -332,37 +336,37 @@ function AddGameForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 space-y-3">
+    <div className="bg-bg-secondary border border-line rounded-xl p-5 mb-6 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-white font-semibold text-sm">게임 추가</h3>
-        <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+        <h3 className="text-text-primary font-semibold text-sm">게임 추가</h3>
+        <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors"><X className="w-4 h-4" /></button>
       </div>
       <input value={title} onChange={e => setTitle(e.target.value)} placeholder="게임 이름 *"
-        className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors" />
+        className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors" />
       <select value={genre} onChange={e => setGenre(e.target.value)}
-        className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors">
+        className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors">
         {GENRES.map(g => <option key={g} value={g}>{g}</option>)}
       </select>
       <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="게임 설명"
-        className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg resize-none focus:outline-none focus:border-red-500 transition-colors" />
+        className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg resize-none focus:outline-none focus:border-red-500 transition-colors" />
       <input value={iconUrl} onChange={e => setIconUrl(e.target.value)} placeholder="아이콘 URL"
-        className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors" />
+        className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors" />
       <input value={coverUrl} onChange={e => setCoverUrl(e.target.value)} placeholder="커버 이미지 URL"
-        className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors" />
+        className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors" />
       <input value={screenshots} onChange={e => setScreenshots(e.target.value)} placeholder="스크린샷 URL (쉼표로 구분)"
-        className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors" />
+        className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors" />
       <div className="flex gap-3">
         {['iOS', 'Android', 'PC'].map(p => (
           <label key={p} className="flex items-center gap-1.5 cursor-pointer">
             <input type="checkbox" checked={platforms.includes(p)} onChange={() => togglePlatform(p)} className="w-3.5 h-3.5 accent-red-500" />
-            <span className="text-slate-300 text-xs">{p}</span>
+            <span className="text-text-secondary text-xs">{p}</span>
           </label>
         ))}
       </div>
       <div className="flex justify-end gap-2">
-        <button onClick={onClose} className="px-3 py-1.5 text-sm text-slate-400 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors">취소</button>
+        <button onClick={onClose} className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
         <button onClick={handleSubmit} disabled={saving || !title.trim()}
-          className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
+          className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary text-sm rounded-lg transition-colors">
           {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} 추가
         </button>
       </div>
@@ -389,27 +393,27 @@ function AddNewsForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 space-y-3">
+    <div className="bg-bg-secondary border border-line rounded-xl p-5 mb-6 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-white font-semibold text-sm">뉴스 작성</h3>
-        <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+        <h3 className="text-text-primary font-semibold text-sm">뉴스 작성</h3>
+        <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors"><X className="w-4 h-4" /></button>
       </div>
       <div className="flex gap-2">
         {(['game', 'company'] as const).map(t => (
           <button key={t} onClick={() => setType(t)}
-            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${type === t ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-slate-700 text-slate-400 hover:text-white'}`}>
+            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${type === t ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-line text-text-secondary hover:text-text-primary'}`}>
             {t === 'game' ? '게임 뉴스' : '회사 뉴스'}
           </button>
         ))}
       </div>
       <input value={title} onChange={e => setTitle(e.target.value)} placeholder="제목 *"
-        className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors" />
+        className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-red-500 transition-colors" />
       <textarea value={content} onChange={e => setContent(e.target.value)} rows={4} placeholder="내용 *"
-        className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg resize-none focus:outline-none focus:border-red-500 transition-colors" />
+        className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg resize-none focus:outline-none focus:border-red-500 transition-colors" />
       <div className="flex justify-end gap-2">
-        <button onClick={onClose} className="px-3 py-1.5 text-sm text-slate-400 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors">취소</button>
+        <button onClick={onClose} className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
         <button onClick={handleSubmit} disabled={saving || !title.trim() || !content.trim()}
-          className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors">
+          className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary text-sm rounded-lg transition-colors">
           {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} 등록
         </button>
       </div>
@@ -420,23 +424,23 @@ function AddNewsForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
 function NewsItem({ news }: { news: MiniHomeNews }) {
   const [expanded, setExpanded] = useState(false)
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+    <div className="bg-bg-secondary border border-line rounded-xl p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className={`text-xs px-2 py-0.5 rounded ${news.type === 'game' ? 'bg-blue-600/20 text-blue-400' : 'bg-green-600/20 text-green-400'}`}>
+            <span className={`text-xs px-2 py-0.5 rounded ${news.type === 'game' ? 'bg-blue-600/20 text-blue-400' : 'bg-accent-light text-accent'}`}>
               {news.type === 'game' ? '게임' : '회사'}
             </span>
-            <p className="text-white font-semibold text-sm">{news.title}</p>
+            <p className="text-text-primary font-semibold text-sm">{news.title}</p>
           </div>
-          <p className={`text-slate-400 text-sm leading-relaxed ${!expanded ? 'line-clamp-2' : ''}`}>{news.content}</p>
+          <p className={`text-text-secondary text-sm leading-relaxed ${!expanded ? 'line-clamp-2' : ''}`}>{news.content}</p>
           {news.content.length > 120 && (
-            <button onClick={() => setExpanded(!expanded)} className="text-slate-500 hover:text-slate-300 text-xs mt-1 transition-colors">
+            <button onClick={() => setExpanded(!expanded)} className="text-text-muted hover:text-text-secondary text-xs mt-1 transition-colors">
               {expanded ? '접기' : '더 보기'}
             </button>
           )}
         </div>
-        <p className="text-slate-500 text-xs flex-shrink-0">{new Date(news.createdAt).toLocaleDateString('ko-KR')}</p>
+        <p className="text-text-muted text-xs flex-shrink-0">{new Date(news.createdAt).toLocaleDateString('ko-KR')}</p>
       </div>
     </div>
   )
@@ -458,31 +462,31 @@ function ProposalItem({ proposal, onRefresh }: { proposal: Proposal; onRefresh: 
 
   const statusMap = {
     pending: { label: '검토중', cls: 'bg-yellow-600/20 text-yellow-300' },
-    accepted: { label: '수락됨', cls: 'bg-green-600/20 text-green-300' },
+    accepted: { label: '수락됨', cls: 'bg-accent-light text-accent' },
     rejected: { label: '거절됨', cls: 'bg-red-600/20 text-red-300' },
   }
   const st = statusMap[proposal.status]
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+    <div className="bg-bg-secondary border border-line rounded-xl p-5">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1.5">
             <span className={`text-xs px-2 py-0.5 rounded ${st.cls}`}>{st.label}</span>
-            <p className="text-white font-semibold text-sm">{proposal.title}</p>
+            <p className="text-text-primary font-semibold text-sm">{proposal.title}</p>
           </div>
-          <p className="text-slate-400 text-xs mb-1">보낸 사람: {proposal.fromUserId?.username}</p>
+          <p className="text-text-secondary text-xs mb-1">보낸 사람: {proposal.fromUserId?.username}</p>
           {proposal.gameId && (
-            <p className="text-slate-400 text-xs">대상 게임: {proposal.gameId.title}</p>
+            <p className="text-text-secondary text-xs">대상 게임: {proposal.gameId.title}</p>
           )}
-          <p className="text-slate-400 text-sm mt-2 leading-relaxed line-clamp-3">{proposal.content}</p>
+          <p className="text-text-secondary text-sm mt-2 leading-relaxed line-clamp-3">{proposal.content}</p>
         </div>
-        <p className="text-slate-500 text-xs flex-shrink-0">{new Date(proposal.createdAt).toLocaleDateString('ko-KR')}</p>
+        <p className="text-text-muted text-xs flex-shrink-0">{new Date(proposal.createdAt).toLocaleDateString('ko-KR')}</p>
       </div>
       {proposal.status === 'pending' && (
         <div className="flex gap-2">
           <button onClick={() => handleStatus('accepted')} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700/30 hover:bg-green-700/50 text-green-300 text-xs rounded-lg border border-green-700/40 transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700/30 hover:bg-accent-hover/50 text-accent text-xs rounded-lg border border-green-700/40 transition-colors disabled:opacity-50">
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} 수락
           </button>
           <button onClick={() => handleStatus('rejected')} disabled={loading}

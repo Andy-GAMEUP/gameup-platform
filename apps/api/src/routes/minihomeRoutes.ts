@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
   getMiniHomes,
   getMiniHomeDetail,
+  getMyMiniHome,
   getMiniHomeNews,
   getKeywordGroups,
   createMiniHome,
@@ -21,6 +22,7 @@ const router = Router()
 
 router.get('/minihome', getMiniHomes)
 router.get('/minihome/keywords', getKeywordGroups)
+router.get('/minihome/me', authenticateToken, getMyMiniHome)
 router.get('/minihome/proposals/me', authenticateToken, getMyProposals)
 router.get('/minihome/:id', getMiniHomeDetail)
 router.get('/minihome/:id/news', getMiniHomeNews)

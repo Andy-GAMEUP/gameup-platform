@@ -51,7 +51,7 @@ export function DashboardPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      color: 'text-green-400',
+      color: 'text-accent',
     },
     {
       label: '활성 유저',
@@ -220,20 +220,20 @@ export function DashboardPage() {
       {/* Welcome Section */}
       <div>
         <h1 className="text-3xl font-bold mb-2">대시보드</h1>
-        <p className="text-slate-400">게임 성과를 한눈에 확인하세요</p>
+        <p className="text-text-secondary">게임 성과를 한눈에 확인하세요</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
-          <Card key={index} className="bg-slate-900 border border-slate-800">
+          <Card key={index} className="bg-bg-secondary border border-line">
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className={stat.color}>{stat.icon}</div>
                 <Badge
                   className={`${
                     stat.trend === 'up'
-                      ? 'bg-green-500/20 text-green-400 border-green-500/50'
+                      ? 'bg-accent-light text-accent border-accent-muted'
                       : 'bg-red-500/20 text-red-400 border-red-500/50'
                   }`}
                 >
@@ -241,7 +241,7 @@ export function DashboardPage() {
                 </Badge>
               </div>
               <div className="text-3xl font-bold mb-1">{stat.value}</div>
-              <div className="text-sm text-slate-400">{stat.label}</div>
+              <div className="text-sm text-text-secondary">{stat.label}</div>
             </div>
           </Card>
         ))}
@@ -249,7 +249,7 @@ export function DashboardPage() {
 
       {/* 게임 탭 */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-slate-900 border border-slate-800">
+        <TabsList className="bg-bg-secondary border border-line">
           <TabsTrigger value="all">
             전체 게임 ({allGames.length})
           </TabsTrigger>
@@ -270,25 +270,25 @@ export function DashboardPage() {
         <TabsContent value={activeTab} className="space-y-6 mt-6">
           {/* 매출 요약 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="bg-slate-900 border border-slate-800">
+            <Card className="bg-bg-secondary border border-line">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-slate-400 text-sm">총 매출</div>
-                  <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <div className="text-text-secondary text-sm">총 매출</div>
+                  <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <div className="text-3xl font-bold text-green-400 mb-1">
+                <div className="text-3xl font-bold text-accent mb-1">
                   ₩{totalRevenue.toLocaleString()}
                 </div>
-                <div className="text-xs text-slate-500">이번 달</div>
+                <div className="text-xs text-text-muted">이번 달</div>
               </div>
             </Card>
 
-            <Card className="bg-slate-900 border border-slate-800">
+            <Card className="bg-bg-secondary border border-line">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-slate-400 text-sm">유료 판매</div>
+                  <div className="text-text-secondary text-sm">유료 판매</div>
                   <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -296,16 +296,16 @@ export function DashboardPage() {
                 <div className="text-3xl font-bold mb-1">
                   ₩{paidRevenue.toLocaleString()}
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-text-muted">
                   전체의 {totalRevenue > 0 ? ((paidRevenue / totalRevenue) * 100).toFixed(1) : 0}%
                 </div>
               </div>
             </Card>
 
-            <Card className="bg-slate-900 border border-slate-800">
+            <Card className="bg-bg-secondary border border-line">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-slate-400 text-sm">광고 매출</div>
+                  <div className="text-text-secondary text-sm">광고 매출</div>
                   <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -314,7 +314,7 @@ export function DashboardPage() {
                 <div className="text-3xl font-bold mb-1">
                   ₩{adRevenue.toLocaleString()}
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-text-muted">
                   전체의 {totalRevenue > 0 ? ((adRevenue / totalRevenue) * 100).toFixed(1) : 0}%
                 </div>
               </div>
@@ -324,21 +324,21 @@ export function DashboardPage() {
           {/* 리텐션 & 전환율 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 평균 리텐션 */}
-            <Card className="bg-slate-900 border border-slate-800">
+            <Card className="bg-bg-secondary border border-line">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold">평균 리텐션</h2>
-                  <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                 </div>
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-400">D+1 리텐션</span>
+                      <span className="text-sm text-text-secondary">D+1 리텐션</span>
                       <span className="font-semibold text-lg">{avgRetention.d1}%</span>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-2">
+                    <div className="w-full bg-bg-tertiary rounded-full h-2">
                       <div
                         className="bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full"
                         style={{ width: `${avgRetention.d1}%` }}
@@ -348,10 +348,10 @@ export function DashboardPage() {
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-400">D+7 리텐션</span>
+                      <span className="text-sm text-text-secondary">D+7 리텐션</span>
                       <span className="font-semibold text-lg">{avgRetention.d7}%</span>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-2">
+                    <div className="w-full bg-bg-tertiary rounded-full h-2">
                       <div
                         className="bg-gradient-to-r from-blue-500 to-cyan-600 h-2 rounded-full"
                         style={{ width: `${avgRetention.d7}%` }}
@@ -361,10 +361,10 @@ export function DashboardPage() {
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-400">D+14 리텐션</span>
+                      <span className="text-sm text-text-secondary">D+14 리텐션</span>
                       <span className="font-semibold text-lg">{avgRetention.d14}%</span>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-2">
+                    <div className="w-full bg-bg-tertiary rounded-full h-2">
                       <div
                         className="bg-gradient-to-r from-purple-500 to-pink-600 h-2 rounded-full"
                         style={{ width: `${avgRetention.d14}%` }}
@@ -374,10 +374,10 @@ export function DashboardPage() {
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-400">D+30 리텐션</span>
+                      <span className="text-sm text-text-secondary">D+30 리텐션</span>
                       <span className="font-semibold text-lg">{avgRetention.d30}%</span>
                     </div>
-                    <div className="w-full bg-slate-800 rounded-full h-2">
+                    <div className="w-full bg-bg-tertiary rounded-full h-2">
                       <div
                         className="bg-gradient-to-r from-orange-500 to-red-600 h-2 rounded-full"
                         style={{ width: `${avgRetention.d30}%` }}
@@ -389,40 +389,40 @@ export function DashboardPage() {
             </Card>
 
             {/* ARPPU 및 전환율 */}
-            <Card className="bg-slate-900 border border-slate-800">
+            <Card className="bg-bg-secondary border border-line">
               <div className="p-6">
                 <h2 className="text-xl font-bold mb-6">수익화 지표</h2>
                 <div className="space-y-6">
-                  <div className="p-4 bg-slate-800/50 rounded-lg">
+                  <div className="p-4 bg-bg-tertiary/50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <svg className="w-5 h-5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="text-sm text-slate-400">평균 ARPPU</span>
+                        <span className="text-sm text-text-secondary">평균 ARPPU</span>
                       </div>
-                      <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+                      <Badge className="bg-accent-light text-accent border-accent-muted">
                         +5.3%
                       </Badge>
                     </div>
-                    <div className="text-3xl font-bold text-green-400">
+                    <div className="text-3xl font-bold text-accent">
                       ₩{Math.round(
                         filteredGames.reduce((sum, game) => sum + game.arppu, 0) /
                           (filteredGames.filter((g) => g.arppu > 0).length || 1)
                       ).toLocaleString()}
                     </div>
-                    <div className="text-xs text-slate-500 mt-1">
+                    <div className="text-xs text-text-muted mt-1">
                       결제 유저당 평균 매출
                     </div>
                   </div>
 
-                  <div className="p-4 bg-slate-800/50 rounded-lg">
+                  <div className="p-4 bg-bg-tertiary/50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
-                        <span className="text-sm text-slate-400">평균 결제전환율</span>
+                        <span className="text-sm text-text-secondary">평균 결제전환율</span>
                       </div>
                       <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/50">
                         +2.1%
@@ -434,22 +434,22 @@ export function DashboardPage() {
                         (filteredGames.filter((g) => g.conversion > 0).length || 1)
                       ).toFixed(1)}%
                     </div>
-                    <div className="text-xs text-slate-500 mt-1">
+                    <div className="text-xs text-text-muted mt-1">
                       무료 유저 대비 결제 유저 비율
                     </div>
                   </div>
 
-                  <div className="p-4 bg-slate-800/50 rounded-lg">
+                  <div className="p-4 bg-bg-tertiary/50 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <svg className="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                       </svg>
-                      <span className="text-sm text-slate-400">총 활성 유저</span>
+                      <span className="text-sm text-text-secondary">총 활성 유저</span>
                     </div>
                     <div className="text-3xl font-bold">
                       {filteredGames.reduce((sum, game) => sum + game.testers, 0).toLocaleString()}
                     </div>
-                    <div className="text-xs text-slate-500 mt-1">
+                    <div className="text-xs text-text-muted mt-1">
                       결제 유저: {Math.round(
                         filteredGames.reduce((sum, game) => sum + (game.testers * game.conversion / 100), 0)
                       ).toLocaleString()}명
@@ -461,7 +461,7 @@ export function DashboardPage() {
           </div>
 
           {/* 게임 성과 */}
-          <Card className="bg-slate-900 border border-slate-800">
+          <Card className="bg-bg-secondary border border-line">
             <div className="p-6">
               <h2 className="text-xl font-bold mb-6">게임별 성과</h2>
               <div className="space-y-4">
@@ -469,7 +469,7 @@ export function DashboardPage() {
                   <Link
                     key={game.id}
                     href={`/developer/games/${game.id}`}
-                    className="block p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors"
+                    className="block p-4 bg-bg-tertiary/50 rounded-lg hover:bg-bg-tertiary transition-colors"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
@@ -480,12 +480,12 @@ export function DashboardPage() {
                               className={`text-xs ${
                                 game.serviceType === 'beta'
                                   ? 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                                  : 'bg-green-500/20 text-green-400 border-green-500/50'
+                                  : 'bg-accent-light text-accent border-accent-muted'
                               }`}
                             >
                               {game.serviceType === 'beta' ? '베타' : '라이브'}
                             </Badge>
-                            <Badge variant="outline" className="text-xs border-slate-700">
+                            <Badge variant="outline" className="text-xs border-line">
                               {game.monetization === 'free'
                                 ? '무료'
                                 : game.monetization === 'ad'
@@ -502,41 +502,41 @@ export function DashboardPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xl font-bold text-green-400">
+                        <div className="text-xl font-bold text-accent">
                           ₩{game.revenue.toLocaleString()}
                         </div>
-                        <div className="text-xs text-slate-500">매출</div>
+                        <div className="text-xs text-text-muted">매출</div>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                      <div className="p-2 bg-slate-800/50 rounded">
-                        <p className="text-slate-400 text-xs mb-1">활성 유저</p>
+                      <div className="p-2 bg-bg-tertiary/50 rounded">
+                        <p className="text-text-secondary text-xs mb-1">활성 유저</p>
                         <p className="font-semibold">{game.testers.toLocaleString()}</p>
                       </div>
-                      <div className="p-2 bg-slate-800/50 rounded">
-                        <p className="text-slate-400 text-xs mb-1">D+1 리텐션</p>
-                        <p className="font-semibold text-green-400">{game.retention.d1}%</p>
+                      <div className="p-2 bg-bg-tertiary/50 rounded">
+                        <p className="text-text-secondary text-xs mb-1">D+1 리텐션</p>
+                        <p className="font-semibold text-accent">{game.retention.d1}%</p>
                       </div>
-                      <div className="p-2 bg-slate-800/50 rounded">
-                        <p className="text-slate-400 text-xs mb-1">D+30 리텐션</p>
+                      <div className="p-2 bg-bg-tertiary/50 rounded">
+                        <p className="text-text-secondary text-xs mb-1">D+30 리텐션</p>
                         <p className="font-semibold text-blue-400">{game.retention.d30}%</p>
                       </div>
                       {game.arppu > 0 && (
                         <>
-                          <div className="p-2 bg-slate-800/50 rounded">
-                            <p className="text-slate-400 text-xs mb-1">ARPPU</p>
+                          <div className="p-2 bg-bg-tertiary/50 rounded">
+                            <p className="text-text-secondary text-xs mb-1">ARPPU</p>
                             <p className="font-semibold">₩{game.arppu.toLocaleString()}</p>
                           </div>
-                          <div className="p-2 bg-slate-800/50 rounded">
-                            <p className="text-slate-400 text-xs mb-1">전환율</p>
+                          <div className="p-2 bg-bg-tertiary/50 rounded">
+                            <p className="text-text-secondary text-xs mb-1">전환율</p>
                             <p className="font-semibold text-purple-400">{game.conversion}%</p>
                           </div>
                         </>
                       )}
                       {game.arppu === 0 && (
-                        <div className="col-span-2 p-2 bg-slate-800/50 rounded">
-                          <p className="text-slate-400 text-xs mb-1">수익 모델</p>
+                        <div className="col-span-2 p-2 bg-bg-tertiary/50 rounded">
+                          <p className="text-text-secondary text-xs mb-1">수익 모델</p>
                           <p className="font-semibold">광고 기반</p>
                         </div>
                       )}
@@ -550,11 +550,11 @@ export function DashboardPage() {
       </Tabs>
 
       {/* Recent Feedback */}
-      <Card className="bg-slate-900 border border-slate-800">
+      <Card className="bg-bg-secondary border border-line">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold">최근 피드백</h2>
-            <Link href="/feedback" className="text-sm text-green-400 hover:text-green-300">
+            <Link href="/feedback" className="text-sm text-accent hover:text-accent">
               모두 보기 →
             </Link>
           </div>
@@ -562,7 +562,7 @@ export function DashboardPage() {
             {recentFeedback.map((feedback) => (
               <div
                 key={feedback.id}
-                className="flex items-start gap-4 p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                className="flex items-start gap-4 p-4 bg-bg-tertiary/50 rounded-lg hover:bg-bg-tertiary transition-colors cursor-pointer"
               >
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -591,7 +591,7 @@ export function DashboardPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold">{feedback.user}</span>
-                    <span className="text-sm text-slate-500">•</span>
+                    <span className="text-sm text-text-muted">•</span>
                     <Badge variant="outline" className="text-xs">
                       {feedback.game}
                     </Badge>
@@ -602,14 +602,14 @@ export function DashboardPage() {
                           ? 'border-red-500/50 text-red-400'
                           : feedback.type === '제안'
                           ? 'border-yellow-500/50 text-yellow-400'
-                          : 'border-green-500/50 text-green-400'
+                          : 'border-accent-muted text-accent'
                       }`}
                     >
                       {feedback.type}
                     </Badge>
                   </div>
-                  <p className="text-sm text-slate-300 mb-2">{feedback.message}</p>
-                  <span className="text-xs text-slate-500">{feedback.time}</span>
+                  <p className="text-sm text-text-secondary mb-2">{feedback.message}</p>
+                  <span className="text-xs text-text-muted">{feedback.time}</span>
                 </div>
               </div>
             ))}

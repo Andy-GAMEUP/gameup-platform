@@ -1,7 +1,8 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Gamepad2, Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare, Building2 } from 'lucide-react'
+import Image from 'next/image'
+import { Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare, Building2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import Button from './Button'
 import { useAuth } from '@/lib/useAuth'
@@ -43,12 +44,27 @@ export default function Navbar() {
       .catch(() => {})
   }, [isAuthenticated])
 
-  const navLinks = [
-    { path: '/', label: '홈' },
-    { path: '/games', label: '베타존' },
-    { path: '/how-it-works', label: '플랫폼 소개' },
-    { path: '/community', label: '커뮤니티' },
-  ]
+  const isAdmin = user?.role === 'admin'
+
+  const navLinks = (() => {
+    const links = [
+      { path: '/', label: '베타존' },
+      { path: '/live_games', label: '라이브게임' },
+    ]
+    if (!isAuthenticated) {
+      // 비로그인: 베타존, 라이브게임, 플랫폼 소개, 커뮤니티
+      links.push({ path: '/gameup_platform', label: '플랫폼 소개' })
+      links.push({ path: '/community', label: '커뮤니티' })
+    } else if (isCorporateApproved || isAdmin) {
+      // 기업회원(승인) 또는 관리자: 베타존, 라이브게임, 커뮤니티, 파트너라운지
+      links.push({ path: '/community', label: '커뮤니티' })
+      links.push({ path: '/partner', label: '파트너라운지' })
+    } else {
+      // 개인회원(플레이어): 베타존, 라이브게임, 커뮤니티
+      links.push({ path: '/community', label: '커뮤니티' })
+    }
+    return links
+  })()
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/'
@@ -64,18 +80,13 @@ export default function Navbar() {
 
   return (
     <>
-    <nav className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-lg border-b border-slate-800">
+    <nav className="sticky top-0 z-50 bg-bg-primary/95 backdrop-blur-lg border-b border-line">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
-              <Gamepad2 className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-bold">
-              <span className="text-green-400">GAME</span>
-              <span className="text-white">UP</span>
-            </span>
+          <Link href="/" className="flex items-center gap-1.5">
+            <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-9 w-auto object-contain" />
+            <span className="text-xl font-bold tracking-tight text-black">Game<span className="text-black">Up</span></span>
           </Link>
 
           {/* Desktop Nav Links */}
@@ -84,7 +95,7 @@ export default function Navbar() {
               <Link
                 key={link.path}
                 href={link.path}
-                className={`transition-colors text-sm font-medium ${isActive(link.path) ? 'text-green-400' : 'text-slate-300 hover:text-white'}`}
+                className={`transition-colors text-sm font-medium ${isActive(link.path) ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
               >
                 {link.label}
               </Link>
@@ -97,30 +108,22 @@ export default function Navbar() {
               <>
                 {showDeveloperCenter && (
                   <Link href="/dashboard">
-                    <Button variant="ghost" className="text-slate-300 hover:text-white gap-2">
+                    <Button variant="ghost" className="text-text-secondary hover:text-text-primary gap-2">
                       <LayoutDashboard className="w-4 h-4" />
                       개발자 센터
                     </Button>
                   </Link>
                 )}
-                {showPartnerCenter && (
-                  <Link href="/partner-console">
-                    <Button variant="ghost" className="text-slate-300 hover:text-white gap-2">
-                      <Building2 className="w-4 h-4" />
-                      파트너 센터
-                    </Button>
-                  </Link>
-                )}
-                <Link href="/messages" className="relative text-slate-400 hover:text-white transition-colors p-1.5">
+                <Link href="/messages" className="relative text-text-muted hover:text-text-primary transition-colors p-1.5">
                   <MessageSquare className="w-5 h-5" />
                 </Link>
                 <button
                   onClick={() => setNotifOpen((v) => !v)}
-                  className="relative text-slate-400 hover:text-white transition-colors p-1.5"
+                  className="relative text-text-muted hover:text-text-primary transition-colors p-1.5"
                 >
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-text-primary text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
@@ -128,54 +131,44 @@ export default function Navbar() {
                 <div className="relative">
                   <button
                     onClick={() => setProfileMenuOpen((v) => !v)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-tertiary hover:bg-line-light transition-colors"
                   >
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white text-sm font-bold">
+                    <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-text-inverse text-sm font-bold">
                       {user.username[0].toUpperCase()}
                     </div>
-                    <span className="text-sm text-white">{user.username}</span>
+                    <span className="text-sm text-text-primary">{user.username}</span>
                   </button>
                   {profileMenuOpen && (
-                    <div className="absolute right-0 top-12 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-xl py-1 z-50">
-                      <div className="px-4 py-2 border-b border-slate-700">
-                        <p className="text-xs text-slate-400">로그인 중</p>
-                        <p className="text-sm font-medium text-white truncate">{user.email}</p>
+                    <div className="absolute right-0 top-12 w-44 bg-bg-card border border-line rounded-xl shadow-xl py-1 z-50">
+                      <div className="px-4 py-2 border-b border-line">
+                        <p className="text-xs text-text-muted">로그인 중</p>
+                        <p className="text-sm font-medium text-text-primary truncate">{user.email}</p>
                       </div>
                       {showDeveloperCenter && (
                         <Link
                           href="/dashboard"
                           onClick={() => setProfileMenuOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
                         >
                           <LayoutDashboard className="w-4 h-4" />
                           개발자 센터
-                        </Link>
-                      )}
-                      {showPartnerCenter && (
-                        <Link
-                          href="/partner-console"
-                          onClick={() => setProfileMenuOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-blue-400 hover:text-blue-300 hover:bg-slate-800 transition-colors"
-                        >
-                          <Building2 className="w-4 h-4" />
-                          파트너 센터
                         </Link>
                       )}
                       {user.role === 'admin' && (
                         <Link
                           href="/admin"
                           onClick={() => setProfileMenuOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-slate-800 transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-danger hover:text-danger/80 hover:bg-bg-tertiary transition-colors"
                         >
                           <LayoutDashboard className="w-4 h-4" />
                           관리자 콘솔
                         </Link>
                       )}
-                      {user.role === 'player' && (
+                      {(user.role === 'player' || isCorporatePartner) && (
                         <Link
                           href="/my"
                           onClick={() => setProfileMenuOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
                         >
                           <User className="w-4 h-4" />
                           마이페이지
@@ -184,14 +177,14 @@ export default function Navbar() {
                       <Link
                         href="/profile"
                         onClick={() => setProfileMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
                       >
                         <User className="w-4 h-4" />
                         프로필
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-slate-800 transition-colors"
+                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-danger hover:text-danger/80 hover:bg-bg-tertiary transition-colors"
                       >
                         <LogOut className="w-4 h-4" />
                         로그아웃
@@ -203,17 +196,17 @@ export default function Navbar() {
             ) : (
               <>
                 <Link href="/dashboard">
-                  <Button variant="ghost" className="text-slate-300 hover:text-white">
+                  <Button variant="ghost" className="text-text-secondary hover:text-text-primary">
                     개발자 센터
                   </Button>
                 </Link>
                 <Link href="/login">
-                  <Button variant="ghost" className="text-slate-300 hover:text-white">
+                  <Button variant="ghost" className="text-text-secondary hover:text-text-primary">
                     로그인
                   </Button>
                 </Link>
                 <Link href="/register">
-                  <Button className="bg-green-600 hover:bg-green-700">
+                  <Button className="bg-accent hover:bg-accent-hover">
                     가입하기
                   </Button>
                 </Link>
@@ -223,7 +216,7 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-white"
+            className="md:hidden text-text-primary"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -232,50 +225,50 @@ export default function Navbar() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden pb-4 space-y-1 border-t border-slate-800 pt-4">
+          <div className="md:hidden pb-4 space-y-1 border-t border-line pt-4">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 href={link.path}
-                className={`block px-3 py-2 rounded-lg transition-colors ${isActive(link.path) ? 'text-green-400 bg-green-500/10' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`}
+                className={`block px-3 py-2 rounded-lg transition-colors ${isActive(link.path) ? 'text-accent bg-accent-light' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {link.label}
               </Link>
             ))}
-            <div className="pt-2 border-t border-slate-800 space-y-1">
+            <div className="pt-2 border-t border-line space-y-1">
               {isAuthenticated && user ? (
                 <>
-                  <div className="px-3 py-2 text-sm text-slate-400">{user.email}</div>
+                  <div className="px-3 py-2 text-sm text-text-muted">{user.email}</div>
                   {showDeveloperCenter && (
                     <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800">
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary">
                       <LayoutDashboard className="w-4 h-4" /> 개발자 센터
                     </Link>
                   )}
-                  {showPartnerCenter && (
-                    <Link href="/partner-console" onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-slate-800">
-                      <Building2 className="w-4 h-4" /> 파트너 센터
+                  {(user?.role === 'player' || isCorporatePartner) && (
+                    <Link href="/my" onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary">
+                      <User className="w-4 h-4" /> 마이페이지
                     </Link>
                   )}
                   <button onClick={handleLogout}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-400 hover:bg-slate-800 text-left">
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-danger hover:bg-bg-tertiary text-left">
                     <LogOut className="w-4 h-4" /> 로그아웃
                   </button>
                 </>
               ) : (
                 <>
                   <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800">
+                    className="block px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary">
                     개발자 센터
                   </Link>
                   <Link href="/login" onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800">
+                    className="block px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary">
                     로그인
                   </Link>
                   <Link href="/register" onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-center font-medium mt-2">
+                    className="block px-3 py-2 rounded-lg bg-accent hover:bg-accent-hover text-text-primary text-center font-medium mt-2">
                     가입하기
                   </Link>
                 </>

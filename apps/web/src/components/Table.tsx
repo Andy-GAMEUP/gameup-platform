@@ -53,7 +53,7 @@ export function TableHeader({ children, className = '' }: TableHeaderProps) {
 
 export function TableBody({ children, className = '' }: TableBodyProps) {
   return (
-    <tbody className={`bg-white divide-y divide-gray-200 ${className}`}>
+    <tbody className={`bg-bg-card divide-y divide-gray-200 ${className}`}>
       {children}
     </tbody>
   )
@@ -73,7 +73,7 @@ export function TableRow({ children, className = '', onClick }: TableRowProps) {
 export function TableHead({ children, className = '' }: TableHeadProps) {
   return (
     <th
-      className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${className}`}
+      className={`px-6 py-3 text-left text-xs font-medium text-text-muted uppercase tracking-wider ${className}`}
     >
       {children}
     </th>

@@ -21,26 +21,26 @@ export default function PartnerDirectoryPage() {
   const totalPages = data?.totalPages ?? 1
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-bg-primary">
       <Navbar />
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-white text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-text-primary text-2xl font-bold flex items-center gap-2">
             <Users className="w-6 h-6 text-cyan-400" /> 파트너 채널
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-text-secondary text-sm mt-1">
             게임업 공식 파트너들의 채널을 만나보세요 · 총 {data?.total ?? 0}명의 파트너
           </p>
         </div>
 
         {isLoading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
           </div>
         ) : partners.length === 0 ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-16 text-center">
-            <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <p className="text-slate-400">등록된 파트너가 없습니다</p>
+          <div className="bg-bg-secondary border border-line rounded-xl p-16 text-center">
+            <Users className="w-12 h-12 text-text-muted mx-auto mb-3" />
+            <p className="text-text-secondary">등록된 파트너가 없습니다</p>
           </div>
         ) : (
           <>
@@ -53,20 +53,20 @@ export default function PartnerDirectoryPage() {
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 pt-8">
                 <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                  className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
                   const p = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i
                   return (
                     <button key={p} onClick={() => setPage(p)}
-                      className={`w-8 h-8 rounded-lg text-sm transition-colors ${p === page ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                      className={`w-8 h-8 rounded-lg text-sm transition-colors ${p === page ? 'bg-cyan-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
                       {p}
                     </button>
                   )
                 })}
                 <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
-                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                  className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -81,22 +81,22 @@ export default function PartnerDirectoryPage() {
 function PartnerCard({ partner, onClick }: { partner: PartnerProfile; onClick: () => void }) {
   const username = partner.userId?.username ?? '?'
   const role = partner.userId?.role ?? ''
-  const avatarBg = role === 'admin' ? 'bg-purple-600' : role === 'developer' ? 'bg-cyan-600' : 'bg-slate-600'
+  const avatarBg = role === 'admin' ? 'bg-purple-600' : role === 'developer' ? 'bg-cyan-600' : 'bg-bg-muted'
 
   return (
     <button onClick={onClick}
-      className="block w-full text-left bg-slate-900 border border-slate-800 hover:border-cyan-500/40 rounded-xl p-5 transition-all group">
+      className="block w-full text-left bg-bg-secondary border border-line hover:border-cyan-500/40 rounded-xl p-5 transition-all group">
       <div className="flex items-start gap-4 mb-3">
         {partner.profileImage ? (
-          <Image src={partner.profileImage} alt={username} width={56} height={56} className="w-14 h-14 rounded-full object-cover border border-slate-700 flex-shrink-0" unoptimized />
+          <Image src={partner.profileImage} alt={username} width={56} height={56} className="w-14 h-14 rounded-full object-cover border border-line flex-shrink-0" unoptimized />
         ) : (
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0 ${avatarBg}`}>
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-text-primary font-bold text-xl flex-shrink-0 ${avatarBg}`}>
             {username[0].toUpperCase()}
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-white font-semibold text-sm group-hover:text-cyan-300 transition-colors truncate">{username}</p>
-          <p className="text-slate-400 text-xs mt-0.5 line-clamp-2 leading-relaxed">
+          <p className="text-text-primary font-semibold text-sm group-hover:text-cyan-300 transition-colors truncate">{username}</p>
+          <p className="text-text-secondary text-xs mt-0.5 line-clamp-2 leading-relaxed">
             {partner.slogan || '파트너 채널'}
           </p>
         </div>
@@ -108,12 +108,12 @@ function PartnerCard({ partner, onClick }: { partner: PartnerProfile; onClick: (
             <span key={topic} className="bg-cyan-600/20 text-cyan-400 text-xs px-1.5 py-0.5 rounded">{topic}</span>
           ))}
           {partner.selectedTopics.length > 3 && (
-            <span className="text-slate-500 text-xs">+{partner.selectedTopics.length - 3}</span>
+            <span className="text-text-muted text-xs">+{partner.selectedTopics.length - 3}</span>
           )}
         </div>
       )}
 
-      <div className="flex items-center gap-1 text-slate-500 text-xs">
+      <div className="flex items-center gap-1 text-text-muted text-xs">
         <FileText className="w-3 h-3" />
         <span>{partner.postCount}개 게시글</span>
       </div>

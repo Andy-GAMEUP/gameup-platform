@@ -25,8 +25,8 @@ function BannerCarousel({ banners }: { banners: SupportBanner[] }) {
 
   if (banners.length === 0) {
     return (
-      <div className="w-full h-64 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center">
-        <p className="text-slate-500 text-sm">등록된 배너가 없습니다</p>
+      <div className="w-full h-64 bg-bg-secondary border border-line rounded-2xl flex items-center justify-center">
+        <p className="text-text-muted text-sm">등록된 배너가 없습니다</p>
       </div>
     )
   }
@@ -36,7 +36,7 @@ function BannerCarousel({ banners }: { banners: SupportBanner[] }) {
   return (
     <div className="relative w-full overflow-hidden rounded-2xl group">
       <a href={banner.linkUrl || '#'} target={banner.linkUrl ? '_blank' : '_self'} rel="noreferrer">
-        <div className="relative h-72 md:h-96 bg-slate-900">
+        <div className="relative h-72 md:h-96 bg-bg-secondary">
           {banner.imageUrl && (
             <Image
               src={banner.imageUrl}
@@ -48,7 +48,7 @@ function BannerCarousel({ banners }: { banners: SupportBanner[] }) {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           <div className="absolute bottom-6 left-6">
-            <h3 className="text-white font-bold text-xl drop-shadow">{banner.title}</h3>
+            <h3 className="text-text-primary font-bold text-xl drop-shadow">{banner.title}</h3>
           </div>
         </div>
       </a>
@@ -57,13 +57,13 @@ function BannerCarousel({ banners }: { banners: SupportBanner[] }) {
         <>
           <button
             onClick={() => go(current - 1)}
-            className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-bg-overlay hover:bg-bg-overlay text-text-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={() => go(current + 1)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-bg-overlay hover:bg-bg-overlay text-text-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -109,21 +109,21 @@ export default function SupportIntroPage() {
   const allTabs = [{ _id: 'intro', name: '소개' }, ...tabs]
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
-      <div className="bg-gradient-to-br from-red-900/30 to-slate-900/60 border-b border-slate-800">
+    <div className="min-h-screen bg-bg-primary">
+      <div className="bg-gradient-to-br from-red-900/30 to-slate-900/60 border-b border-line">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <span className="inline-block px-2.5 py-0.5 rounded text-xs font-bold border bg-red-600/20 text-red-300 border-red-500/30 mb-2">
                 SUPPORT PROGRAM
               </span>
-              <h1 className="text-white text-3xl font-bold">GAMEUP 인큐베이션</h1>
-              <p className="text-slate-400 mt-1 text-sm">게임 개발사를 위한 시즌 기반 지원 프로그램</p>
+              <h1 className="text-text-primary text-3xl font-bold">GAMEUP 인큐베이션</h1>
+              <p className="text-text-secondary mt-1 text-sm">게임 개발사를 위한 시즌 기반 지원 프로그램</p>
             </div>
             {currentSeason && (
               <Link
                 href={`/support/season/${currentSeason._id}`}
-                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm font-medium transition-colors"
               >
                 <Rocket className="w-4 h-4" />
                 현재 시즌 보기
@@ -133,7 +133,7 @@ export default function SupportIntroPage() {
 
           {loading ? (
             <div className="flex items-center justify-center h-72 md:h-96">
-              <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+              <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
             </div>
           ) : (
             <BannerCarousel banners={banners} />
@@ -141,7 +141,7 @@ export default function SupportIntroPage() {
         </div>
       </div>
 
-      <div className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur border-b border-slate-800">
+      <div className="sticky top-0 z-30 bg-bg-secondary/90 backdrop-blur border-b border-line">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex gap-0 overflow-x-auto scrollbar-hide">
             {allTabs.map(tab => (
@@ -151,7 +151,7 @@ export default function SupportIntroPage() {
                 className={`px-5 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === tab._id
                     ? 'border-red-500 text-red-400'
-                    : 'border-transparent text-slate-400 hover:text-white'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
                 }`}
               >
                 {tab.name}
@@ -165,26 +165,26 @@ export default function SupportIntroPage() {
         {activeTab === 'intro' && (
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <div className="bg-bg-secondary border border-line rounded-xl p-6">
                 <div className="w-10 h-10 bg-red-600/20 rounded-xl flex items-center justify-center mb-4">
                   <span className="text-red-400 font-bold text-lg">01</span>
                 </div>
-                <h3 className="text-white font-bold mb-2">게임 신청</h3>
-                <p className="text-slate-400 text-sm">모집 기간 내 게임 정보를 제출하고 인큐베이션 참가를 신청하세요.</p>
+                <h3 className="text-text-primary font-bold mb-2">게임 신청</h3>
+                <p className="text-text-secondary text-sm">모집 기간 내 게임 정보를 제출하고 인큐베이션 참가를 신청하세요.</p>
               </div>
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <div className="bg-bg-secondary border border-line rounded-xl p-6">
                 <div className="w-10 h-10 bg-red-600/20 rounded-xl flex items-center justify-center mb-4">
                   <span className="text-red-400 font-bold text-lg">02</span>
                 </div>
-                <h3 className="text-white font-bold mb-2">선발 & 지원</h3>
-                <p className="text-slate-400 text-sm">심사를 통해 선발된 게임은 마일스톤 기반 집중 지원을 받습니다.</p>
+                <h3 className="text-text-primary font-bold mb-2">선발 & 지원</h3>
+                <p className="text-text-secondary text-sm">심사를 통해 선발된 게임은 마일스톤 기반 집중 지원을 받습니다.</p>
               </div>
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <div className="bg-bg-secondary border border-line rounded-xl p-6">
                 <div className="w-10 h-10 bg-red-600/20 rounded-xl flex items-center justify-center mb-4">
                   <span className="text-red-400 font-bold text-lg">03</span>
                 </div>
-                <h3 className="text-white font-bold mb-2">데모데이</h3>
-                <p className="text-slate-400 text-sm">시즌 완료 후 투자사 및 퍼블리셔 앞 데모데이를 진행합니다.</p>
+                <h3 className="text-text-primary font-bold mb-2">데모데이</h3>
+                <p className="text-text-secondary text-sm">시즌 완료 후 투자사 및 퍼블리셔 앞 데모데이를 진행합니다.</p>
               </div>
             </div>
 
@@ -192,8 +192,8 @@ export default function SupportIntroPage() {
               <div className="bg-gradient-to-r from-red-900/20 to-slate-900 border border-red-800/40 rounded-xl p-6 flex items-center justify-between">
                 <div>
                   <span className="text-red-400 text-xs font-bold uppercase tracking-wider">현재 진행중</span>
-                  <h3 className="text-white font-bold text-lg mt-1">{currentSeason.title}</h3>
-                  <p className="text-slate-400 text-sm mt-1">
+                  <h3 className="text-text-primary font-bold text-lg mt-1">{currentSeason.title}</h3>
+                  <p className="text-text-secondary text-sm mt-1">
                     {currentSeason.status === 'recruiting' && '지금 참가 신청 접수 중'}
                     {currentSeason.status === 'in-progress' && '진행 중인 시즌'}
                     {currentSeason.status === 'completed' && '완료된 시즌'}
@@ -202,7 +202,7 @@ export default function SupportIntroPage() {
                 </div>
                 <Link
                   href={`/support/season/${currentSeason._id}`}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-text-primary rounded-lg text-sm font-medium transition-colors"
                 >
                   자세히 보기
                 </Link>

@@ -5,8 +5,10 @@ export interface IPost extends Document {
   content: string
   author: mongoose.Types.ObjectId
   gameId?: mongoose.Types.ObjectId
-  channel: 'notice' | 'general' | 'dev' | 'daily' | 'game-talk' | 'info-share' | 'new-game'
+  channel: 'notice' | 'new-game-intro' | 'beta-game' | 'live-game' | 'free'
   images: string[]
+  videoUrl?: string
+  thumbnailIndex: number
   links: { url: string; label?: string }[]
   tags: string[]
   likes: mongoose.Types.ObjectId[]
@@ -34,8 +36,10 @@ const postSchema = new Schema<IPost>(
     content: { type: String, required: true, maxlength: 50000 },
     author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     gameId: { type: Schema.Types.ObjectId, ref: 'Game' },
-    channel: { type: String, enum: ['notice', 'general', 'dev', 'daily', 'game-talk', 'info-share', 'new-game'], default: 'general' },
+    channel: { type: String, enum: ['notice', 'new-game-intro', 'beta-game', 'live-game', 'free'], default: 'free' },
     images: [{ type: String }],
+    videoUrl: { type: String, default: '' },
+    thumbnailIndex: { type: Number, default: 0 },
     links: [{ url: String, label: String }],
     tags: [{ type: String }],
     likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],

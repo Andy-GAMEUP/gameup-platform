@@ -67,28 +67,28 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" aria-modal="true">
-      <div ref={panelRef} className="w-96 max-w-full h-full bg-slate-900 border-l border-slate-700 flex flex-col shadow-2xl">
-        <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between flex-shrink-0">
+      <div ref={panelRef} className="w-96 max-w-full h-full bg-bg-secondary border-l border-line flex flex-col shadow-2xl">
+        <div className="px-4 py-3 border-b border-line flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-red-400" />
-            <span className="text-white font-bold">알림</span>
+            <span className="text-text-primary font-bold">알림</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={handleMarkAll} className="text-xs text-slate-400 hover:text-white transition-colors">
+            <button onClick={handleMarkAll} className="text-xs text-text-secondary hover:text-text-primary transition-colors">
               모두 읽음
             </button>
-            <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+            <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        <div className="px-3 py-2 border-b border-slate-700 flex gap-1 flex-wrap flex-shrink-0">
+        <div className="px-3 py-2 border-b border-line flex gap-1 flex-wrap flex-shrink-0">
           {Object.keys(TYPE_LABELS).map((key) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filter === key ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filter === key ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}
             >
               {TYPE_LABELS[key]}
             </button>
@@ -97,7 +97,7 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
 
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-slate-500 text-sm">
+            <div className="flex items-center justify-center h-32 text-text-muted text-sm">
               알림이 없습니다
             </div>
           ) : (
@@ -107,15 +107,15 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
                 <button
                   key={n._id}
                   onClick={() => handleClick(n)}
-                  className={`w-full flex items-start gap-3 px-4 py-3 border-b border-slate-800 hover:bg-slate-800/50 transition-colors text-left ${!n.isRead ? 'bg-slate-800/30' : ''}`}
+                  className={`w-full flex items-start gap-3 px-4 py-3 border-b border-line hover:bg-bg-tertiary/50 transition-colors text-left ${!n.isRead ? 'bg-bg-tertiary/30' : ''}`}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!n.isRead ? 'bg-red-600/20' : 'bg-slate-700'}`}>
-                    <Icon className={`w-4 h-4 ${!n.isRead ? 'text-red-400' : 'text-slate-400'}`} />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!n.isRead ? 'bg-red-600/20' : 'bg-bg-tertiary'}`}>
+                    <Icon className={`w-4 h-4 ${!n.isRead ? 'text-red-400' : 'text-text-secondary'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm truncate ${!n.isRead ? 'text-white font-medium' : 'text-slate-300'}`}>{n.title}</p>
-                    <p className="text-slate-400 text-xs mt-0.5 truncate">{n.content}</p>
-                    <p className="text-slate-500 text-xs mt-1">{relativeTime(n.createdAt)}</p>
+                    <p className={`text-sm truncate ${!n.isRead ? 'text-text-primary font-medium' : 'text-text-secondary'}`}>{n.title}</p>
+                    <p className="text-text-secondary text-xs mt-0.5 truncate">{n.content}</p>
+                    <p className="text-text-muted text-xs mt-1">{relativeTime(n.createdAt)}</p>
                   </div>
                   {!n.isRead && <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1" />}
                 </button>

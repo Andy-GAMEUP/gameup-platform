@@ -9,7 +9,7 @@ interface CardProps {
 
 export function Card({ children, className = '', onClick }: CardProps) {
   return (
-    <div className={`bg-slate-900 border border-slate-800 rounded-lg ${className}`} onClick={onClick}>
+    <div className={`bg-bg-card border border-line rounded-lg ${className}`} onClick={onClick}>
       {children}
     </div>
   )
@@ -39,5 +39,5 @@ interface CardTitleProps {
 }
 
 export function CardTitle({ children, className = '' }: CardTitleProps) {
-  return <h3 className={`text-xl font-bold text-white ${className}`}>{children}</h3>
+  return <h3 className={`text-xl font-bold text-text-primary ${className}`}>{children}</h3>
 }

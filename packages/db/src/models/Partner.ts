@@ -10,6 +10,7 @@ export interface IPartner extends Document {
   selectedTopics: string[]
   profileImage: string
   postCount: number
+  isProfilePublic: boolean
   approvedAt?: Date
   rejectedReason?: string
   createdAt: Date
@@ -27,6 +28,7 @@ const partnerSchema = new Schema<IPartner>(
     selectedTopics: [{ type: String }],
     profileImage: { type: String, default: '' },
     postCount: { type: Number, default: 0 },
+    isProfilePublic: { type: Boolean, default: true },
     approvedAt: { type: Date },
     rejectedReason: { type: String, default: '' },
   },

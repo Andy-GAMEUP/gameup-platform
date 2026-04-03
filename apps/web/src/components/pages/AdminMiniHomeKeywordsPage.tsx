@@ -50,12 +50,12 @@ function SortableGroupCard({
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-3 p-4 border-b border-slate-800">
+    <div ref={setNodeRef} style={style} className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 p-4 border-b border-line">
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 text-slate-500 hover:text-slate-400 transition-colors flex-shrink-0"
+          className="cursor-grab active:cursor-grabbing p-1 text-text-muted hover:text-text-secondary transition-colors flex-shrink-0"
           title="드래그하여 순서 변경"
         >
           <GripVertical className="w-4 h-4" />
@@ -65,14 +65,14 @@ function SortableGroupCard({
           type="text"
           value={group.name}
           onChange={e => onGroupChange({ ...group, name: e.target.value })}
-          className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-slate-500"
+          className="flex-1 bg-bg-tertiary border border-line rounded px-3 py-1.5 text-text-primary text-sm focus:outline-none focus:border-line"
           placeholder="그룹 이름"
         />
 
         <button
           onClick={() => onUpdateGroup(group._id, { name: group.name, keywords: group.keywords })}
           disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded text-xs transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded text-xs transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
           저장
@@ -81,7 +81,7 @@ function SortableGroupCard({
         <button
           onClick={() => onDeleteGroup(group._id)}
           disabled={saving}
-          className="p-1.5 text-red-400 hover:text-red-300 disabled:opacity-30 transition-colors"
+          className="p-1.5 text-accent-text hover:text-accent-text disabled:opacity-30 transition-colors"
           title="삭제"
         >
           <Trash2 className="w-4 h-4" />
@@ -89,24 +89,24 @@ function SortableGroupCard({
 
         <button
           onClick={() => setExpandedId(expandedId === group._id ? null : group._id)}
-          className="text-slate-400 hover:text-white transition-colors"
+          className="text-text-secondary hover:text-text-primary transition-colors"
         >
           {expandedId === group._id ? '▼' : '▶'}
         </button>
       </div>
 
       {expandedId === group._id && (
-        <div className="p-4 space-y-3 bg-slate-950/50">
+        <div className="p-4 space-y-3 bg-bg-primary/50">
           {group.keywords.length === 0 ? (
-            <p className="text-slate-500 text-sm text-center py-4">키워드가 없습니다</p>
+            <p className="text-text-muted text-sm text-center py-4">키워드가 없습니다</p>
           ) : (
             group.keywords.map((keyword, idx) => (
-              <div key={idx} className="flex items-center gap-3 bg-slate-800 rounded-lg p-3">
+              <div key={idx} className="flex items-center gap-3 bg-bg-tertiary rounded-lg p-3">
                 <input
                   type="text"
                   value={keyword.name}
                   onChange={e => handleUpdateKeyword(idx, { name: e.target.value })}
-                  className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:border-slate-500"
+                  className="flex-1 bg-bg-tertiary border border-line rounded px-2 py-1 text-text-primary text-sm focus:outline-none focus:border-line"
                   placeholder="키워드 이름"
                 />
 
@@ -115,14 +115,14 @@ function SortableGroupCard({
                     type="checkbox"
                     checked={keyword.isActive}
                     onChange={e => handleUpdateKeyword(idx, { isActive: e.target.checked })}
-                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-green-600 focus:ring-0"
+                    className="w-4 h-4 rounded border-line bg-bg-tertiary text-green-600 focus:ring-0"
                   />
-                  <span className="text-slate-300 text-xs">활성</span>
+                  <span className="text-text-secondary text-xs">활성</span>
                 </label>
 
                 <button
                   onClick={() => handleRemoveKeyword(idx)}
-                  className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                  className="p-1 text-accent-text hover:text-accent-text transition-colors"
                   title="삭제"
                 >
                   <X className="w-4 h-4" />
@@ -133,7 +133,7 @@ function SortableGroupCard({
 
           <button
             onClick={handleAddKeyword}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-slate-700 rounded-lg text-slate-400 hover:text-white hover:border-slate-600 text-sm transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-line rounded-lg text-text-secondary hover:text-text-primary hover:border-line text-sm transition-colors"
           >
             <Plus className="w-4 h-4" />
             키워드 추가
@@ -249,13 +249,13 @@ export default function AdminMiniHomeKeywordsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-white font-bold text-xl">미니홈 키워드 관리</h1>
-            <p className="text-slate-400 text-sm mt-1">총 {groups.length}개 그룹</p>
+            <h1 className="text-text-primary font-bold text-xl">미니홈 키워드 관리</h1>
+            <p className="text-text-secondary text-sm mt-1">총 {groups.length}개 그룹</p>
           </div>
           <button
             onClick={handleAddGroup}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg text-sm transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             그룹 추가
@@ -264,10 +264,10 @@ export default function AdminMiniHomeKeywordsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-text-secondary" />
           </div>
         ) : groups.length === 0 ? (
-          <div className="text-center py-12 text-slate-400">
+          <div className="text-center py-12 text-text-secondary">
             <p className="text-sm">키워드 그룹이 없습니다</p>
           </div>
         ) : (
@@ -293,7 +293,7 @@ export default function AdminMiniHomeKeywordsPage() {
       </div>
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg text-sm text-white shadow-lg z-50 ${toast.ok ? 'bg-green-700' : 'bg-red-700'}`}>
+        <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg text-sm text-text-primary shadow-lg z-50 ${toast.ok ? 'bg-green-700' : 'bg-red-700'}`}>
           {toast.msg}
         </div>
       )}

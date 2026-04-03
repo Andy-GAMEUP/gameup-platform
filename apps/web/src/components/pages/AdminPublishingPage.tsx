@@ -23,13 +23,13 @@ const Editor = dynamic(() => import('@/components/Editor'), { ssr: false })
 const STATUS_MAP: Record<PublishingSuggest['status'], { label: string; cls: string }> = {
   pending: { label: '대기중', cls: 'bg-yellow-900/40 text-yellow-400 border-yellow-700/50' },
   reviewing: { label: '검토중', cls: 'bg-blue-900/40 text-blue-400 border-blue-700/50' },
-  approved: { label: '승인', cls: 'bg-green-900/40 text-green-400 border-green-700/50' },
-  rejected: { label: '거절', cls: 'bg-red-900/40 text-red-400 border-red-700/50' },
+  approved: { label: '승인', cls: 'bg-green-900/40 text-accent border-green-700/50' },
+  rejected: { label: '거절', cls: 'bg-red-900/40 text-accent-text border-red-700/50' },
 }
 
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
-    <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg text-sm text-white shadow-lg z-50 ${ok ? 'bg-green-700' : 'bg-red-700'}`}>
+    <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg text-sm text-text-primary shadow-lg z-50 ${ok ? 'bg-green-700' : 'bg-red-700'}`}>
       {msg}
     </div>
   )
@@ -53,14 +53,14 @@ function SortableBannerRow({
   const [linkUrl, setLinkUrl] = useState(banner.linkUrl)
 
   return (
-    <div ref={setNodeRef} style={style} className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+    <div ref={setNodeRef} style={style} className="bg-bg-secondary border border-line rounded-xl p-4">
       <div className="flex items-start gap-3">
-        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-1 text-slate-500 hover:text-slate-400 flex-shrink-0">
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-1 text-text-muted hover:text-text-secondary flex-shrink-0">
           <GripVertical className="w-4 h-4" />
         </button>
 
         {imageUrl && (
-          <Image src={imageUrl} alt={title} width={80} height={56} className="w-20 h-14 object-cover rounded-lg flex-shrink-0 bg-slate-800" unoptimized />
+          <Image src={imageUrl} alt={title} width={80} height={56} className="w-20 h-14 object-cover rounded-lg flex-shrink-0 bg-bg-tertiary" unoptimized />
         )}
 
         <div className="flex-1 grid grid-cols-1 gap-2">
@@ -68,19 +68,19 @@ function SortableBannerRow({
             value={title}
             onChange={e => setTitle(e.target.value)}
             placeholder="배너 제목"
-            className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-slate-500"
+            className="bg-bg-tertiary border border-line rounded px-3 py-1.5 text-text-primary text-sm focus:outline-none focus:border-line"
           />
           <input
             value={imageUrl}
             onChange={e => setImageUrl(e.target.value)}
             placeholder="이미지 URL"
-            className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-slate-500"
+            className="bg-bg-tertiary border border-line rounded px-3 py-1.5 text-text-primary text-sm focus:outline-none focus:border-line"
           />
           <input
             value={linkUrl}
             onChange={e => setLinkUrl(e.target.value)}
             placeholder="링크 URL (선택)"
-            className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-slate-500"
+            className="bg-bg-tertiary border border-line rounded px-3 py-1.5 text-text-primary text-sm focus:outline-none focus:border-line"
           />
         </div>
 
@@ -89,21 +89,21 @@ function SortableBannerRow({
             onClick={() => onUpdate(banner._id, { isActive: !banner.isActive })}
             disabled={saving}
             title={banner.isActive ? '비활성화' : '활성화'}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-text-secondary hover:text-text-primary transition-colors"
           >
-            {banner.isActive ? <Eye className="w-4 h-4 text-green-400" /> : <EyeOff className="w-4 h-4" />}
+            {banner.isActive ? <Eye className="w-4 h-4 text-accent" /> : <EyeOff className="w-4 h-4" />}
           </button>
           <button
             onClick={() => onUpdate(banner._id, { title, imageUrl, linkUrl })}
             disabled={saving}
-            className="p-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded transition-colors disabled:opacity-50"
+            className="p-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded transition-colors disabled:opacity-50"
           >
             <Save className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => onDelete(banner._id)}
             disabled={saving}
-            className="p-1.5 text-red-400 hover:text-red-300 transition-colors disabled:opacity-30"
+            className="p-1.5 text-accent-text hover:text-accent-text transition-colors disabled:opacity-30"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -131,16 +131,16 @@ function SortableTabRow({
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div ref={setNodeRef} style={style} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+    <div ref={setNodeRef} style={style} className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
       <div className="flex items-center gap-3 p-4">
-        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-500 hover:text-slate-400 flex-shrink-0">
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-text-muted hover:text-text-secondary flex-shrink-0">
           <GripVertical className="w-4 h-4" />
         </button>
 
         <input
           value={name}
           onChange={e => setName(e.target.value)}
-          className="flex-1 bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-slate-500"
+          className="flex-1 bg-bg-tertiary border border-line rounded px-3 py-1.5 text-text-primary text-sm focus:outline-none focus:border-line"
           placeholder="탭 이름"
         />
 
@@ -148,15 +148,15 @@ function SortableTabRow({
           onClick={() => onUpdate(tab._id, { isActive: !tab.isActive })}
           disabled={saving}
           title={tab.isActive ? '비활성화' : '활성화'}
-          className="text-slate-400 hover:text-white transition-colors"
+          className="text-text-secondary hover:text-text-primary transition-colors"
         >
-          {tab.isActive ? <Eye className="w-4 h-4 text-green-400" /> : <EyeOff className="w-4 h-4" />}
+          {tab.isActive ? <Eye className="w-4 h-4 text-accent" /> : <EyeOff className="w-4 h-4" />}
         </button>
 
         <button
           onClick={() => onUpdate(tab._id, { name, content })}
           disabled={saving}
-          className="flex items-center gap-1 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded text-xs transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded text-xs transition-colors disabled:opacity-50"
         >
           <Save className="w-3 h-3" />저장
         </button>
@@ -164,18 +164,18 @@ function SortableTabRow({
         <button
           onClick={() => onDelete(tab._id)}
           disabled={saving}
-          className="p-1.5 text-red-400 hover:text-red-300 transition-colors disabled:opacity-30"
+          className="p-1.5 text-accent-text hover:text-accent-text transition-colors disabled:opacity-30"
         >
           <Trash2 className="w-4 h-4" />
         </button>
 
-        <button onClick={() => setExpanded(v => !v)} className="text-slate-400 hover:text-white transition-colors">
+        <button onClick={() => setExpanded(v => !v)} className="text-text-secondary hover:text-text-primary transition-colors">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
 
       {expanded && (
-        <div className="px-4 pb-4 border-t border-slate-800">
+        <div className="px-4 pb-4 border-t border-line">
           <div className="mt-3">
             <Editor content={content} onChange={setContent} placeholder="탭 내용을 입력하세요..." />
           </div>
@@ -233,7 +233,7 @@ function SuggestsTab({ type }: { type: PublishingType }) {
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-slate-500"
+          className="bg-bg-tertiary border border-line text-text-primary text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-line"
         >
           <option value="all">전체</option>
           <option value="pending">대기중</option>
@@ -244,23 +244,23 @@ function SuggestsTab({ type }: { type: PublishingType }) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-text-secondary" /></div>
       ) : suggests.length === 0 ? (
-        <div className="text-center py-12 text-slate-500 text-sm">제안이 없습니다</div>
+        <div className="text-center py-12 text-text-muted text-sm">제안이 없습니다</div>
       ) : (
         <div className="space-y-3">
           {suggests.map(suggest => {
             const st = STATUS_MAP[suggest.status]
             const isOpen = expanded === suggest._id
             return (
-              <div key={suggest._id} className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+              <div key={suggest._id} className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
                 <div className="flex items-center gap-4 p-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-medium text-sm truncate">{suggest.gameName}</span>
+                      <span className="text-text-primary font-medium text-sm truncate">{suggest.gameName}</span>
                       <span className={`text-xs px-2 py-0.5 rounded border ${st.cls}`}>{st.label}</span>
                     </div>
-                    <p className="text-slate-400 text-xs mt-0.5">
+                    <p className="text-text-secondary text-xs mt-0.5">
                       {suggest.userId?.username ?? '-'} · {new Date(suggest.createdAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -269,7 +269,7 @@ function SuggestsTab({ type }: { type: PublishingType }) {
                       onClick={() => handleUpdate(suggest._id, 'approved')}
                       disabled={saving}
                       title="승인"
-                      className="p-1.5 text-green-400 hover:text-green-300 disabled:opacity-30 transition-colors"
+                      className="p-1.5 text-accent hover:text-accent disabled:opacity-30 transition-colors"
                     >
                       <Check className="w-4 h-4" />
                     </button>
@@ -277,49 +277,49 @@ function SuggestsTab({ type }: { type: PublishingType }) {
                       onClick={() => handleUpdate(suggest._id, 'rejected')}
                       disabled={saving}
                       title="거절"
-                      className="p-1.5 text-red-400 hover:text-red-300 disabled:opacity-30 transition-colors"
+                      className="p-1.5 text-accent-text hover:text-accent-text disabled:opacity-30 transition-colors"
                     >
                       <X className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(suggest._id)}
                       disabled={saving}
-                      className="p-1.5 text-slate-400 hover:text-red-400 disabled:opacity-30 transition-colors"
+                      className="p-1.5 text-text-secondary hover:text-accent-text disabled:opacity-30 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
-                    <button onClick={() => setExpanded(isOpen ? null : suggest._id)} className="text-slate-400 hover:text-white transition-colors">
+                    <button onClick={() => setExpanded(isOpen ? null : suggest._id)} className="text-text-secondary hover:text-text-primary transition-colors">
                       {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
                 {isOpen && (
-                  <div className="border-t border-slate-800 p-4 space-y-3 bg-slate-950/40">
-                    <p className="text-slate-300 text-sm">{suggest.gameDescription}</p>
+                  <div className="border-t border-line p-4 space-y-3 bg-bg-primary/40">
+                    <p className="text-text-secondary text-sm">{suggest.gameDescription}</p>
                     {suggest.appIcon && (
                       <div className="flex items-center gap-2">
-                        <Image src={suggest.appIcon} alt="icon" width={48} height={48} className="w-12 h-12 rounded-xl object-cover bg-slate-800" unoptimized />
-                        <span className="text-slate-400 text-xs">앱 아이콘</span>
+                        <Image src={suggest.appIcon} alt="icon" width={48} height={48} className="w-12 h-12 rounded-xl object-cover bg-bg-tertiary" unoptimized />
+                        <span className="text-text-secondary text-xs">앱 아이콘</span>
                       </div>
                     )}
                     {suggest.screenshots?.length > 0 && (
                       <div className="flex gap-2 overflow-x-auto">
                         {suggest.screenshots.map((s, i) => (
-                          <Image key={i} src={s} alt={`스크린샷 ${i + 1}`} width={112} height={64} className="w-28 h-16 object-cover rounded-lg flex-shrink-0 bg-slate-800" unoptimized />
+                          <Image key={i} src={s} alt={`스크린샷 ${i + 1}`} width={112} height={64} className="w-28 h-16 object-cover rounded-lg flex-shrink-0 bg-bg-tertiary" unoptimized />
                         ))}
                       </div>
                     )}
                     {suggest.buildUrl && (
                       <div>
-                        <span className="text-slate-400 text-xs">빌드: </span>
+                        <span className="text-text-secondary text-xs">빌드: </span>
                         <a href={suggest.buildUrl} target="_blank" rel="noreferrer" className="text-cyan-400 text-xs hover:underline">{suggest.buildUrl}</a>
                       </div>
                     )}
                     {suggest.additionalServices?.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {suggest.additionalServices.map(s => (
-                          <span key={s} className="text-xs px-2 py-0.5 bg-slate-800 text-slate-300 rounded-full border border-slate-700">{s}</span>
+                          <span key={s} className="text-xs px-2 py-0.5 bg-bg-tertiary text-text-secondary rounded-full border border-line">{s}</span>
                         ))}
                       </div>
                     )}
@@ -328,7 +328,7 @@ function SuggestsTab({ type }: { type: PublishingType }) {
                         defaultValue={suggest.status}
                         onChange={e => handleUpdate(suggest._id, e.target.value)}
                         disabled={saving}
-                        className="bg-slate-800 border border-slate-700 text-white text-xs rounded px-2 py-1.5 focus:outline-none"
+                        className="bg-bg-tertiary border border-line text-text-primary text-xs rounded px-2 py-1.5 focus:outline-none"
                       >
                         <option value="pending">대기중</option>
                         <option value="reviewing">검토중</option>
@@ -422,7 +422,7 @@ function BannersTab({ type }: { type: PublishingType }) {
         <button
           onClick={handleAdd}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg text-sm transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           배너 추가
@@ -430,9 +430,9 @@ function BannersTab({ type }: { type: PublishingType }) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-text-secondary" /></div>
       ) : banners.length === 0 ? (
-        <div className="text-center py-12 text-slate-500 text-sm">배너가 없습니다</div>
+        <div className="text-center py-12 text-text-muted text-sm">배너가 없습니다</div>
       ) : (
         <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={banners.map(b => b._id)} strategy={verticalListSortingStrategy}>
@@ -529,7 +529,7 @@ function TabsTab({ type }: { type: PublishingType }) {
         <button
           onClick={handleAdd}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg text-sm transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           탭 추가
@@ -537,9 +537,9 @@ function TabsTab({ type }: { type: PublishingType }) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-text-secondary" /></div>
       ) : tabs.length === 0 ? (
-        <div className="text-center py-12 text-slate-500 text-sm">탭이 없습니다</div>
+        <div className="text-center py-12 text-text-muted text-sm">탭이 없습니다</div>
       ) : (
         <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={tabs.map(t => t._id)} strategy={verticalListSortingStrategy}>
@@ -580,11 +580,11 @@ export default function AdminPublishingPage() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-white font-bold text-xl">{platformLabel} 퍼블리싱 관리</h1>
-          <p className="text-slate-400 text-sm mt-1">{platformLabel} 플랫폼 제안, 배너, 탭 관리</p>
+          <h1 className="text-text-primary font-bold text-xl">{platformLabel} 퍼블리싱 관리</h1>
+          <p className="text-text-secondary text-sm mt-1">{platformLabel} 플랫폼 제안, 배너, 탭 관리</p>
         </div>
 
-        <div className="border-b border-slate-800">
+        <div className="border-b border-line">
           <div className="flex gap-0">
             {tabItems.map(item => (
               <button
@@ -593,7 +593,7 @@ export default function AdminPublishingPage() {
                 className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === item.key
                     ? 'border-cyan-500 text-cyan-400'
-                    : 'border-transparent text-slate-400 hover:text-white'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
                 }`}
               >
                 {item.label}

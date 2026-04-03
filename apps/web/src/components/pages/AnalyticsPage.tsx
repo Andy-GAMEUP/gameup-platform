@@ -32,7 +32,7 @@ export default function AnalyticsPage() {
       change: '+8.2%',
       trend: 'up',
       icon: <Download className="w-6 h-6" />,
-      color: 'text-green-400',
+      color: 'text-accent',
     },
     {
       label: '매출',
@@ -106,7 +106,7 @@ export default function AnalyticsPage() {
   ]
 
   const retentionData = [
-    { period: 'D+1', rate: 75, color: 'bg-green-500' },
+    { period: 'D+1', rate: 75, color: 'bg-accent' },
     { period: 'D+3', rate: 58, color: 'bg-blue-500' },
     { period: 'D+7', rate: 45, color: 'bg-purple-500' },
     { period: 'D+14', rate: 32, color: 'bg-orange-500' },
@@ -120,16 +120,16 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2 text-white">분석</h1>
-          <p className="text-slate-400">게임 성과 및 사용자 행동을 분석하세요</p>
+          <h1 className="text-3xl font-bold mb-2 text-text-primary">분석</h1>
+          <p className="text-text-secondary">게임 성과 및 사용자 행동을 분석하세요</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setTimeRange('7d')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               timeRange === '7d'
-                ? 'bg-green-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                ? 'bg-accent text-text-primary'
+                : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'
             }`}
           >
             7일
@@ -138,8 +138,8 @@ export default function AnalyticsPage() {
             onClick={() => setTimeRange('30d')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               timeRange === '30d'
-                ? 'bg-green-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                ? 'bg-accent text-text-primary'
+                : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'
             }`}
           >
             30일
@@ -148,8 +148,8 @@ export default function AnalyticsPage() {
             onClick={() => setTimeRange('90d')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               timeRange === '90d'
-                ? 'bg-green-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                ? 'bg-accent text-text-primary'
+                : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'
             }`}
           >
             90일
@@ -165,7 +165,7 @@ export default function AnalyticsPage() {
               <div className="flex items-start justify-between mb-4">
                 <div className={stat.color}>{stat.icon}</div>
                 <div className={`flex items-center gap-1 text-sm font-medium ${
-                  stat.trend === 'up' ? 'text-green-400' : 'text-red-400'
+                  stat.trend === 'up' ? 'text-accent' : 'text-red-400'
                 }`}>
                   {stat.trend === 'up' ? (
                     <ArrowUpRight className="w-4 h-4" />
@@ -175,8 +175,8 @@ export default function AnalyticsPage() {
                   {stat.change}
                 </div>
               </div>
-              <div className="text-3xl font-bold mb-1 text-white">{stat.value}</div>
-              <div className="text-sm text-slate-400">{stat.label}</div>
+              <div className="text-3xl font-bold mb-1 text-text-primary">{stat.value}</div>
+              <div className="text-sm text-text-secondary">{stat.label}</div>
             </CardContent>
           </Card>
         ))}
@@ -194,10 +194,10 @@ export default function AnalyticsPage() {
               {weeklyData.map((data, index) => (
                 <div key={index}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-400">{data.day}</span>
-                    <span className="text-sm font-semibold text-white">{data.plays.toLocaleString()}</span>
+                    <span className="text-sm font-medium text-text-secondary">{data.day}</span>
+                    <span className="text-sm font-semibold text-text-primary">{data.plays.toLocaleString()}</span>
                   </div>
-                  <div className="w-full bg-slate-800 rounded-full h-2">
+                  <div className="w-full bg-bg-tertiary rounded-full h-2">
                     <div
                       className="bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all"
                       style={{ width: `${(data.plays / maxValue) * 100}%` }}
@@ -219,10 +219,10 @@ export default function AnalyticsPage() {
               {retentionData.map((data, index) => (
                 <div key={index}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-400">{data.period}</span>
-                    <span className="text-sm font-semibold text-white">{data.rate}%</span>
+                    <span className="text-sm font-medium text-text-secondary">{data.period}</span>
+                    <span className="text-sm font-semibold text-text-primary">{data.rate}%</span>
                   </div>
-                  <div className="w-full bg-slate-800 rounded-full h-2">
+                  <div className="w-full bg-bg-tertiary rounded-full h-2">
                     <div
                       className={`${data.color} h-2 rounded-full transition-all`}
                       style={{ width: `${data.rate}%` }}
@@ -248,14 +248,14 @@ export default function AnalyticsPage() {
             {topGames.map((game, index) => (
               <div
                 key={game.id}
-                className="flex items-center gap-4 p-4 bg-slate-800/50 rounded-lg hover:bg-slate-800 transition-colors"
+                className="flex items-center gap-4 p-4 bg-bg-tertiary/50 rounded-lg hover:bg-bg-tertiary transition-colors"
               >
-                <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center text-white font-bold">
+                <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center text-text-primary font-bold">
                   {index + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-white mb-1">{game.title}</h3>
-                  <div className="flex items-center gap-4 text-sm text-slate-400">
+                  <h3 className="font-semibold text-text-primary mb-1">{game.title}</h3>
+                  <div className="flex items-center gap-4 text-sm text-text-secondary">
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4" />
                       {game.plays.toLocaleString()}
@@ -267,10 +267,10 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-bold text-green-400">
+                  <div className="text-lg font-bold text-accent">
                     ₩{(game.revenue / 10000).toFixed(0)}만
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-green-400">
+                  <div className="flex items-center gap-1 text-sm text-accent">
                     <ArrowUpRight className="w-3 h-3" />
                     {game.change}%
                   </div>
@@ -286,15 +286,15 @@ export default function AnalyticsPage() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-green-400" />
+              <div className="w-12 h-12 bg-accent-light rounded-lg flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-accent" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">유료 판매</p>
-                <p className="text-2xl font-bold text-white">₩38.2M</p>
+                <p className="text-sm text-text-secondary">유료 판매</p>
+                <p className="text-2xl font-bold text-text-primary">₩38.2M</p>
               </div>
             </div>
-            <div className="text-sm text-green-400">전체의 84.4%</div>
+            <div className="text-sm text-accent">전체의 84.4%</div>
           </CardContent>
         </Card>
 
@@ -305,8 +305,8 @@ export default function AnalyticsPage() {
                 <Eye className="w-6 h-6 text-yellow-400" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">광고 수익</p>
-                <p className="text-2xl font-bold text-white">₩7.1M</p>
+                <p className="text-sm text-text-secondary">광고 수익</p>
+                <p className="text-2xl font-bold text-text-primary">₩7.1M</p>
               </div>
             </div>
             <div className="text-sm text-yellow-400">전체의 15.6%</div>
@@ -320,8 +320,8 @@ export default function AnalyticsPage() {
                 <BarChart3 className="w-6 h-6 text-blue-400" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">평균 ARPPU</p>
-                <p className="text-2xl font-bold text-white">₩28.4K</p>
+                <p className="text-sm text-text-secondary">평균 ARPPU</p>
+                <p className="text-2xl font-bold text-text-primary">₩28.4K</p>
               </div>
             </div>
             <div className="text-sm text-blue-400">+5.3% 증가</div>

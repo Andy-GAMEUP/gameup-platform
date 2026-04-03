@@ -61,6 +61,7 @@ export interface MenuStatsParams {
   menu?: string
   startDate?: string
   endDate?: string
+  period?: string
   platform?: string
 }
 
@@ -85,6 +86,7 @@ export interface CorporateMembersParams {
   endDate?: string
   status?: string
   approvalStatus?: string
+  companyType?: string
   sortBy?: string
   sortOrder?: string
 }
@@ -130,8 +132,23 @@ export const adminService = {
     return res.data
   },
 
-  getUsers: async (params?: { page?: number; limit?: number; role?: string; search?: string; isActive?: boolean }) => {
+  getUsers: async (params?: { page?: number; limit?: number; role?: string; search?: string; isActive?: boolean; memberType?: string; isPartner?: boolean; approvalStatus?: string }) => {
     const res = await apiClient.get('/admin/users', { params })
+    return res.data
+  },
+
+  approveUser: async (id: string, data: { approvalStatus: 'approved' | 'rejected'; rejectedReason?: string }) => {
+    const res = await apiClient.patch(`/admin/users/${id}/approve`, data)
+    return res.data
+  },
+
+  getPendingMemberCounts: async () => {
+    const res = await apiClient.get('/admin/members/pending-counts')
+    return res.data
+  },
+
+  createAdminUser: async (data: { email: string; username: string; password: string; adminLevel: 'super' | 'normal' | 'monitor' }) => {
+    const res = await apiClient.post('/admin/users/create-admin', data)
     return res.data
   },
 
@@ -142,6 +159,11 @@ export const adminService = {
 
   banUser: async (id: string, data: { isActive: boolean; banReason?: string; bannedUntil?: string }) => {
     const res = await apiClient.patch(`/admin/users/${id}/ban`, data)
+    return res.data
+  },
+
+  deleteUser: async (id: string) => {
+    const res = await apiClient.delete(`/admin/users/${id}`)
     return res.data
   },
 
@@ -257,11 +279,52 @@ export const adminService = {
   getActivityScores: (params: ActivityScoresParams) =>
     apiClient.get('/admin/activity-scores', { params }).then(r => r.data),
 
+  getPointPolicies: () =>
+    apiClient.get('/admin/activity-scores/policies').then(r => r.data),
+
+  updatePointPolicy: (id: string, data: { label?: string; description?: string; amount?: number; multiplier?: number; dailyLimit?: number | null; isActive?: boolean }) =>
+    apiClient.put(`/admin/activity-scores/policies/${id}`, data).then(r => r.data),
+
+  seedPointPolicies: () =>
+    apiClient.post('/admin/activity-scores/policies/seed').then(r => r.data),
+
   getTerms: (type: 'privacy' | 'service') =>
     apiClient.get('/admin/terms', { params: { type } }).then(r => r.data),
 
   updateTerms: (type: 'privacy' | 'service', content: string) =>
     apiClient.post('/admin/terms', { type, content }).then(r => r.data),
+
+  // ── 이벤트 배너 ───────────────────────────────────────────────
+  getEventBanners: () =>
+    apiClient.get('/admin/event-banners').then(r => r.data),
+
+  createEventBanner: (data: { title: string; description?: string; imageUrl: string; linkUrl?: string }) =>
+    apiClient.post('/admin/event-banners', data).then(r => r.data),
+
+  updateEventBanner: (id: string, data: { title?: string; description?: string; imageUrl?: string; linkUrl?: string; isActive?: boolean }) =>
+    apiClient.put(`/admin/event-banners/${id}`, data).then(r => r.data),
+
+  deleteEventBanner: (id: string) =>
+    apiClient.delete(`/admin/event-banners/${id}`).then(r => r.data),
+
+  reorderEventBanners: (banners: { _id: string; sortOrder: number }[]) =>
+    apiClient.put('/admin/event-banners/reorder', { banners }).then(r => r.data),
+
+  getEventRegistrations: (params?: { eventBannerId?: string; page?: number; limit?: number }) =>
+    apiClient.get('/admin/event-registrations', { params }).then(r => r.data),
+
+  // ── 게임 포인트 정책 관리 ──────────────────────────────────────
+  getGamePointPolicies: (params?: { status?: string; gameId?: string; page?: number; limit?: number }) =>
+    apiClient.get('/admin/game-point-policies', { params }).then(r => r.data),
+
+  approveGamePointPolicy: (id: string, adminNote?: string) =>
+    apiClient.put(`/admin/game-point-policies/${id}/approve`, { adminNote }).then(r => r.data),
+
+  rejectGamePointPolicy: (id: string, rejectionReason: string) =>
+    apiClient.put(`/admin/game-point-policies/${id}/reject`, { rejectionReason }).then(r => r.data),
+
+  toggleGamePointPolicy: (id: string) =>
+    apiClient.put(`/admin/game-point-policies/${id}/toggle`).then(r => r.data),
 }
 
 export default adminService

@@ -31,12 +31,13 @@ export const generateToken = (payload: {
   id: string
   email: string
   role: 'developer' | 'player' | 'admin'
+  adminLevel?: 'super' | 'normal' | 'monitor' | null
 }): string => {
   const JWT_SECRET = getJwtSecret()
   const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d'
 
   return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN as string
+    expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn']
   })
 }
 

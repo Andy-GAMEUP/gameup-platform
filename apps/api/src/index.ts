@@ -32,6 +32,16 @@ import adminUserEnhancedRoutes from './routes/adminUserEnhancedRoutes'
 import adminLevelRoutes from './routes/adminLevelRoutes'
 import adminActivityScoreRoutes from './routes/adminActivityScoreRoutes'
 import adminTermsRoutes from './routes/adminTermsRoutes'
+import eventBannerRoutes from './routes/eventBannerRoutes'
+import adminEventBannerRoutes from './routes/adminEventBannerRoutes'
+import partnerMatchingRoutes from './routes/partnerMatchingRoutes'
+import partnerProjectRoutes from './routes/partnerProjectRoutes'
+import analyticsTrackRoutes from './routes/analyticsRoutes'
+import sessionRoutes from './routes/sessionRoutes'
+import gameEventRoutes from './routes/gameEventRoutes'
+import gamePointRoutes from './routes/gamePointRoutes'
+import adminGamePointRoutes from './routes/adminGamePointRoutes'
+import { TermsModel } from '@gameup/db'
 import { errorHandler, notFound } from './middleware/errorHandler'
 import { initSocket } from './socket'
 
@@ -98,6 +108,8 @@ app.use('/api/payments', paymentRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api', playerRoutes)
 app.use('/api/community', communityRoutes)
+app.use('/api', partnerMatchingRoutes)
+app.use('/api', partnerProjectRoutes)
 app.use('/api', partnerRoutes)
 app.use('/api/admin', adminPartnerRoutes)
 app.use('/api', publishingRoutes)
@@ -111,11 +123,31 @@ app.use('/api', notificationRoutes)
 app.use('/api/admin', adminNotificationRoutes)
 app.use('/api', solutionRoutes)
 app.use('/api/admin', adminSolutionRoutes)
+app.use('/api', sessionRoutes)
+app.use('/api', gameEventRoutes)
+app.use('/api/analytics', analyticsTrackRoutes)
 app.use('/api/admin/analytics', adminAnalyticsRoutes)
 app.use('/api/admin/users-enhanced', adminUserEnhancedRoutes)
 app.use('/api/admin/levels', adminLevelRoutes)
 app.use('/api/admin/activity-scores', adminActivityScoreRoutes)
 app.use('/api/admin/terms', adminTermsRoutes)
+app.use('/api', eventBannerRoutes)
+app.use('/api/admin', adminEventBannerRoutes)
+app.use('/api', gamePointRoutes)
+app.use('/api/admin', adminGamePointRoutes)
+
+// 공개 약관 조회 (회원가입 시 사용)
+app.get('/api/terms', async (req, res) => {
+  try {
+    const { type } = req.query
+    const filter: Record<string, unknown> = {}
+    if (type) filter.type = type
+    const terms = await TermsModel.find(filter).select('type content updatedAt')
+    res.json({ terms })
+  } catch {
+    res.status(500).json({ message: '약관 조회 실패' })
+  }
+})
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' })

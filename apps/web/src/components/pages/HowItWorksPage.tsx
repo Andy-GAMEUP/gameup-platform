@@ -139,7 +139,7 @@ export default function HowItWorksPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-bg-primary text-text-primary">
       <Navbar />
 
       <div className="min-h-screen py-12">
@@ -152,7 +152,7 @@ export default function HowItWorksPage() {
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               베타 테스트 참여 방법
             </h1>
-            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+            <p className="text-xl text-text-secondary max-w-2xl mx-auto">
               4단계로 간단하게 시작하고 게임의 미래를 함께 만들어가세요
             </p>
           </div>
@@ -165,18 +165,18 @@ export default function HowItWorksPage() {
                 className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center"
               >
                 <div className={index % 2 === 1 ? "lg:order-2" : ""}>
-                  <Card className="bg-slate-900 border-slate-800 h-full">
+                  <Card className="bg-bg-secondary border-line h-full">
                     <div className="p-8">
                       <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center mb-6">
                         {step.icon}
                       </div>
                       <h2 className="text-2xl font-bold mb-4">{step.title}</h2>
-                      <p className="text-slate-400 mb-6">{step.description}</p>
+                      <p className="text-text-secondary mb-6">{step.description}</p>
                       <ul className="space-y-3">
                         {step.details.map((detail, idx) => (
                           <li key={idx} className="flex items-start gap-3">
                             <ChevronRight className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
-                            <span className="text-slate-300">{detail}</span>
+                            <span className="text-text-secondary">{detail}</span>
                           </li>
                         ))}
                       </ul>
@@ -200,7 +200,7 @@ export default function HowItWorksPage() {
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 베타 테스터의 혜택
               </h2>
-              <p className="text-slate-400">
+              <p className="text-text-secondary">
                 단순한 게임 플레이를 넘어선 특별한 경험
               </p>
             </div>
@@ -208,14 +208,14 @@ export default function HowItWorksPage() {
               {benefits.map((benefit, index) => (
                 <Card
                   key={index}
-                  className="bg-slate-900 border-slate-800 hover:border-purple-500/50 transition-all"
+                  className="bg-bg-secondary border-line hover:border-purple-500/50 transition-all"
                 >
                   <div className="p-6 text-center">
                     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-4">
                       {benefit.icon}
                     </div>
                     <h3 className="font-bold mb-2">{benefit.title}</h3>
-                    <p className="text-sm text-slate-400">{benefit.description}</p>
+                    <p className="text-sm text-text-secondary">{benefit.description}</p>
                   </div>
                 </Card>
               ))}
@@ -226,11 +226,11 @@ export default function HowItWorksPage() {
           <section className="mb-20">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">참여 요건</h2>
-              <p className="text-slate-400">베타 테스트 참여를 위한 기본 조건</p>
+              <p className="text-text-secondary">베타 테스트 참여를 위한 기본 조건</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {requirements.map((req, index) => (
-                <Card key={index} className="bg-slate-900 border-slate-800">
+                <Card key={index} className="bg-bg-secondary border-line">
                   <div className="p-6">
                     <h3 className="font-bold mb-4 text-purple-400">
                       {req.title}
@@ -239,7 +239,7 @@ export default function HowItWorksPage() {
                       {req.items.map((item, idx) => (
                         <li key={idx} className="flex items-start gap-3">
                           <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mt-2 flex-shrink-0" />
-                          <span className="text-slate-300 text-sm">{item}</span>
+                          <span className="text-text-secondary text-sm">{item}</span>
                         </li>
                       ))}
                     </ul>
@@ -253,14 +253,14 @@ export default function HowItWorksPage() {
           <section className="mb-20">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">자주 묻는 질문</h2>
-              <p className="text-slate-400">궁금한 점을 빠르게 해결하세요</p>
+              <p className="text-text-secondary">궁금한 점을 빠르게 해결하세요</p>
             </div>
             <div className="max-w-3xl mx-auto space-y-4">
               {faqs.map((faq, index) => (
-                <Card key={index} className="bg-slate-900 border-slate-800">
+                <Card key={index} className="bg-bg-secondary border-line">
                   <div className="p-6">
                     <h3 className="font-bold mb-3 text-lg">{faq.question}</h3>
-                    <p className="text-slate-400">{faq.answer}</p>
+                    <p className="text-text-secondary">{faq.answer}</p>
                   </div>
                 </Card>
               ))}
@@ -275,13 +275,13 @@ export default function HowItWorksPage() {
                 <h2 className="text-3xl md:text-4xl font-bold mb-4">
                   준비되셨나요?
                 </h2>
-                <p className="text-slate-300 mb-8 max-w-2xl mx-auto">
+                <p className="text-text-secondary mb-8 max-w-2xl mx-auto">
                   지금 바로 가입하고 흥미진진한 베타 게임을 경험해보세요
                 </p>
                 <Link href="/register">
                   <Button
                     size="lg"
-                    className="bg-white text-slate-900 hover:bg-slate-100"
+                    className="bg-white text-text-primary hover:bg-bg-tertiary"
                   >
                     무료로 시작하기
                     <ChevronRight className="w-5 h-5 ml-1" />
@@ -294,39 +294,39 @@ export default function HowItWorksPage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-slate-900 border-t border-slate-800 mt-20">
+      <footer className="bg-bg-secondary border-t border-line mt-20">
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-accent to-accent-hover rounded-lg flex items-center justify-center">
                   <Gamepad2 className="w-5 h-5" />
                 </div>
                 <span className="font-bold">
-                  <span className="text-green-400">GAME</span>
-                  <span className="text-white">UP</span>
+                  <span className="text-accent">GAME</span>
+                  <span className="text-text-primary">UP</span>
                 </span>
               </div>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-text-secondary">
                 게임의 미래를 함께 만들어가는 베타 테스트 플랫폼
               </p>
             </div>
 
             <div>
               <h3 className="font-semibold mb-4">플랫폼</h3>
-              <ul className="space-y-2 text-sm text-slate-400">
+              <ul className="space-y-2 text-sm text-text-secondary">
                 <li>
-                  <Link href="/games" className="hover:text-white transition-colors">
+                  <Link href="/" className="hover:text-text-primary transition-colors">
                     베타존
                   </Link>
                 </li>
                 <li>
-                  <Link href="/how-it-works" className="hover:text-white transition-colors">
+                  <Link href="/gameup_platform" className="hover:text-text-primary transition-colors">
                     플랫폼 소개
                   </Link>
                 </li>
                 <li>
-                  <Link href="/community" className="hover:text-white transition-colors">
+                  <Link href="/community" className="hover:text-text-primary transition-colors">
                     커뮤니티
                   </Link>
                 </li>
@@ -335,19 +335,19 @@ export default function HowItWorksPage() {
 
             <div>
               <h3 className="font-semibold mb-4">지원</h3>
-              <ul className="space-y-2 text-sm text-slate-400">
+              <ul className="space-y-2 text-sm text-text-secondary">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="#" className="hover:text-text-primary transition-colors">
                     FAQ
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="#" className="hover:text-text-primary transition-colors">
                     고객센터
                   </a>
                 </li>
                 <li>
-                  <Link href="/dashboard" className="hover:text-white transition-colors">
+                  <Link href="/dashboard" className="hover:text-text-primary transition-colors">
                     개발자 센터
                   </Link>
                 </li>
@@ -356,19 +356,19 @@ export default function HowItWorksPage() {
 
             <div>
               <h3 className="font-semibold mb-4">법적 고지</h3>
-              <ul className="space-y-2 text-sm text-slate-400">
+              <ul className="space-y-2 text-sm text-text-secondary">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="#" className="hover:text-text-primary transition-colors">
                     이용약관
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="#" className="hover:text-text-primary transition-colors">
                     개인정보처리방침
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="#" className="hover:text-text-primary transition-colors">
                     쿠키 정책
                   </a>
                 </li>
@@ -376,7 +376,7 @@ export default function HowItWorksPage() {
             </div>
           </div>
 
-          <div className="mt-12 pt-8 border-t border-slate-800 text-center text-sm text-slate-400">
+          <div className="mt-12 pt-8 border-t border-line text-center text-sm text-text-secondary">
             <p>&copy; 2026 GameUP. All rights reserved.</p>
           </div>
         </div>

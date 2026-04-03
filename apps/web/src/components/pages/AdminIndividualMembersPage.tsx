@@ -115,77 +115,77 @@ export default function AdminIndividualMembersPage() {
   }
 
   const totalPages = Math.ceil(total / limit) || 1
-  const statusColor = (s: string) => s === '정상' ? 'text-emerald-400' : s === '정지' ? 'text-red-400' : 'text-slate-400'
+  const statusColor = (s: string) => s === '정상' ? 'text-emerald-400' : s === '정지' ? 'text-accent-text' : 'text-text-secondary'
 
   return (
     <AdminLayout>
       <div className="space-y-5">
         <div className="flex items-center gap-3">
-          <UserCircle className="w-5 h-5 text-red-400" />
-          <h2 className="text-white text-xl font-bold">개인회원 관리</h2>
-          <span className="text-slate-400 text-sm ml-auto">총 {total.toLocaleString()}명</span>
+          <UserCircle className="w-5 h-5 text-accent-text" />
+          <h2 className="text-text-primary text-xl font-bold">개인회원 관리</h2>
+          <span className="text-text-secondary text-sm ml-auto">총 {total.toLocaleString()}명</span>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+        <div className="bg-bg-secondary border border-line rounded-xl p-4 space-y-3">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
               <input
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1) }}
                 placeholder="닉네임 / 이메일 / 회원번호 검색"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-white text-sm focus:outline-none focus:border-red-500"
+                className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent"
               />
             </div>
             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500" />
-            <span className="text-slate-400 text-sm">~</span>
+              className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
+            <span className="text-text-secondary text-sm">~</span>
             <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500" />
+              className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
           </div>
           <div className="flex flex-wrap gap-3 items-center">
             <div className="flex gap-1">
               {STATUS_OPTIONS.map(s => (
                 <button key={s} onClick={() => { setStatus(s); setPage(1) }}
-                  className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${status === s ? 'bg-red-600/20 text-red-300 border-red-500/30' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}>
+                  className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${status === s ? 'bg-accent-light text-accent-text border-accent-muted' : 'bg-bg-tertiary text-text-secondary border-line hover:bg-line-light'}`}>
                   {s}
                 </button>
               ))}
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-sm">레벨</span>
+              <span className="text-text-secondary text-sm">레벨</span>
               <input type="number" min={1} max={50} value={levelMin} onChange={e => setLevelMin(Number(e.target.value))}
-                className="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none" />
-              <span className="text-slate-400">~</span>
+                className="w-16 bg-bg-tertiary border border-line rounded px-2 py-1.5 text-text-primary text-sm focus:outline-none" />
+              <span className="text-text-secondary">~</span>
               <input type="number" min={1} max={50} value={levelMax} onChange={e => setLevelMax(Number(e.target.value))}
-                className="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none" />
+                className="w-16 bg-bg-tertiary border border-line rounded px-2 py-1.5 text-text-primary text-sm focus:outline-none" />
             </div>
             <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none">
+              className="bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-text-primary text-sm focus:outline-none">
               <option value="createdAt">최근 가입순</option>
               <option value="lastLoginAt">최근 접속순</option>
               <option value="activityScore">활동점수순</option>
               <option value="points">포인트순</option>
             </select>
             <select value={sortOrder} onChange={e => setSortOrder(e.target.value as 'asc' | 'desc')}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none">
+              className="bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-text-primary text-sm focus:outline-none">
               <option value="desc">역순</option>
               <option value="asc">정순</option>
             </select>
             <select value={limit} onChange={e => { setLimit(Number(e.target.value)); setPage(1) }}
-              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none">
+              className="bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-text-primary text-sm focus:outline-none">
               {LIMIT_OPTIONS.map(l => <option key={l} value={l}>{l}개씩</option>)}
             </select>
             <button onClick={() => { setPage(1); fetchData() }}
-              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors">
+              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-text-primary text-sm rounded-lg transition-colors">
               검색
             </button>
           </div>
         </div>
 
         {selected.size > 0 && (
-          <div className="flex items-center gap-3 bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3">
-            <span className="text-slate-300 text-sm font-medium">{selected.size}명 선택됨</span>
+          <div className="flex items-center gap-3 bg-bg-tertiary/50 border border-line rounded-xl px-4 py-3">
+            <span className="text-text-secondary text-sm font-medium">{selected.size}명 선택됨</span>
             <button onClick={() => openModal('notify')}
               className="px-3 py-1.5 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg text-xs hover:bg-blue-600/30 transition-colors">
               알림 발송
@@ -201,52 +201,52 @@ export default function AdminIndividualMembersPage() {
           </div>
         )}
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center h-48">
-              <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+              <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800">
+                  <tr className="border-b border-line">
                     <th className="px-4 py-3 w-8">
                       <input type="checkbox" checked={selected.size === data.length && data.length > 0}
                         onChange={toggleAll} className="accent-red-500" />
                     </th>
-                    <th className="text-left text-slate-400 font-medium px-4 py-3">번호</th>
-                    <th className="text-left text-slate-400 font-medium px-4 py-3">닉네임</th>
-                    <th className="text-left text-slate-400 font-medium px-4 py-3">이메일</th>
-                    <th className="text-right text-slate-400 font-medium px-4 py-3">활동 레벨</th>
-                    <th className="text-right text-slate-400 font-medium px-4 py-3">활동 점수</th>
-                    <th className="text-right text-slate-400 font-medium px-4 py-3">포인트</th>
-                    <th className="text-left text-slate-400 font-medium px-4 py-3">접속일시</th>
-                    <th className="text-left text-slate-400 font-medium px-4 py-3">상태</th>
-                    <th className="text-left text-slate-400 font-medium px-4 py-3">등록일시</th>
-                    <th className="text-left text-slate-400 font-medium px-4 py-3">상세</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3">번호</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3">닉네임</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3">이메일</th>
+                    <th className="text-right text-text-secondary font-medium px-4 py-3">활동 레벨</th>
+                    <th className="text-right text-text-secondary font-medium px-4 py-3">활동 점수</th>
+                    <th className="text-right text-text-secondary font-medium px-4 py-3">포인트</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3">접속일시</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3">상태</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3">등록일시</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3">상세</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-line">
                   {data.length === 0 ? (
-                    <tr><td colSpan={11} className="text-center text-slate-400 py-12">데이터가 없습니다</td></tr>
+                    <tr><td colSpan={11} className="text-center text-text-secondary py-12">데이터가 없습니다</td></tr>
                   ) : data.map((m, i) => (
-                    <tr key={m._id} className="hover:bg-slate-800/50 transition-colors">
+                    <tr key={m._id} className="hover:bg-bg-tertiary/50 transition-colors">
                       <td className="px-4 py-3">
                         <input type="checkbox" checked={selected.has(m._id)} onChange={() => toggleSelect(m._id)} className="accent-red-500" />
                       </td>
-                      <td className="text-slate-400 px-4 py-3">{(page - 1) * limit + i + 1}</td>
-                      <td className="text-white px-4 py-3 font-medium">{m.nickname}</td>
-                      <td className="text-slate-300 px-4 py-3">{m.email}</td>
+                      <td className="text-text-secondary px-4 py-3">{(page - 1) * limit + i + 1}</td>
+                      <td className="text-text-primary px-4 py-3 font-medium">{m.nickname}</td>
+                      <td className="text-text-secondary px-4 py-3">{m.email}</td>
                       <td className="text-right text-violet-400 px-4 py-3 font-medium">Lv.{m.level}</td>
                       <td className="text-right text-emerald-400 px-4 py-3">{(m.activityScore ?? 0).toLocaleString()}</td>
                       <td className="text-right text-yellow-400 px-4 py-3">{(m.points ?? 0).toLocaleString()}</td>
-                      <td className="text-slate-400 px-4 py-3 text-xs">{m.lastLoginAt ? new Date(m.lastLoginAt).toLocaleString('ko-KR') : '-'}</td>
+                      <td className="text-text-secondary px-4 py-3 text-xs">{m.lastLoginAt ? new Date(m.lastLoginAt).toLocaleString('ko-KR') : '-'}</td>
                       <td className={`px-4 py-3 font-medium text-xs ${statusColor(m.status)}`}>{m.status}</td>
-                      <td className="text-slate-400 px-4 py-3 text-xs">{new Date(m.createdAt).toLocaleString('ko-KR')}</td>
+                      <td className="text-text-secondary px-4 py-3 text-xs">{new Date(m.createdAt).toLocaleString('ko-KR')}</td>
                       <td className="px-4 py-3">
                         <Link href={`/admin/users-enhanced/${m._id}`}
-                          className="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded transition-colors">
+                          className="px-2 py-1 bg-bg-tertiary hover:bg-bg-hover text-text-secondary text-xs rounded transition-colors">
                           더보기
                         </Link>
                       </td>
@@ -261,20 +261,20 @@ export default function AdminIndividualMembersPage() {
         {totalPages > 1 && (
           <div className="flex justify-center gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1.5 text-sm rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 transition-colors">
+              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
               이전
             </button>
             {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
               const p = Math.max(1, Math.min(page - 3, totalPages - 6)) + i
               return p <= totalPages ? (
                 <button key={p} onClick={() => setPage(p)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${page === p ? 'bg-red-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>
                   {p}
                 </button>
               ) : null
             })}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-40 transition-colors">
+              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
               다음
             </button>
           </div>
@@ -283,39 +283,39 @@ export default function AdminIndividualMembersPage() {
 
       {modal.open && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4">
+          <div className="bg-bg-secondary border border-line rounded-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-white font-bold">
+              <h3 className="text-text-primary font-bold">
                 {modal.type === 'notify' ? '알림 발송' : modal.type === 'score' ? '활동점수 지급' : '포인트 지급'}
               </h3>
-              <button onClick={() => setModal({ open: false, type: null })} className="text-slate-400 hover:text-white">
+              <button onClick={() => setModal({ open: false, type: null })} className="text-text-secondary hover:text-text-primary">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-slate-400 text-sm">{selected.size}명에게 일괄 처리합니다</p>
+            <p className="text-text-secondary text-sm">{selected.size}명에게 일괄 처리합니다</p>
             {modal.type === 'notify' ? (
               <>
                 <input value={modalTitle} onChange={e => setModalTitle(e.target.value)} placeholder="알림 제목"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500" />
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
                 <textarea value={modalMessage} onChange={e => setModalMessage(e.target.value)} placeholder="알림 내용" rows={4}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500 resize-none" />
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent resize-none" />
               </>
             ) : (
               <>
                 <input type="number" value={modalAmount} onChange={e => setModalAmount(Number(e.target.value))}
                   placeholder={modal.type === 'score' ? '지급할 활동점수' : '지급할 포인트'}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500" />
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
                 <input value={modalReason} onChange={e => setModalReason(e.target.value)} placeholder="지급 사유"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500" />
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
               </>
             )}
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal({ open: false, type: null })}
-                className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm transition-colors">
+                className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">
                 취소
               </button>
               <button onClick={submitModal} disabled={submitting}
-                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 확인
               </button>

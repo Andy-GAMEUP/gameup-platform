@@ -33,8 +33,8 @@ function BannerCarousel({ banners }: { banners: PublishingBanner[] }) {
 
   if (banners.length === 0) {
     return (
-      <div className="w-full h-64 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center">
-        <p className="text-slate-500 text-sm">등록된 배너가 없습니다</p>
+      <div className="w-full h-64 bg-bg-secondary border border-line rounded-2xl flex items-center justify-center">
+        <p className="text-text-muted text-sm">등록된 배너가 없습니다</p>
       </div>
     )
   }
@@ -44,7 +44,7 @@ function BannerCarousel({ banners }: { banners: PublishingBanner[] }) {
   return (
     <div className="relative w-full overflow-hidden rounded-2xl group">
       <a href={banner.linkUrl || '#'} target={banner.linkUrl ? '_blank' : '_self'} rel="noreferrer">
-        <div className="relative h-72 md:h-96 bg-slate-900">
+        <div className="relative h-72 md:h-96 bg-bg-secondary">
           {banner.imageUrl && (
             <Image
               src={banner.imageUrl}
@@ -56,7 +56,7 @@ function BannerCarousel({ banners }: { banners: PublishingBanner[] }) {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           <div className="absolute bottom-6 left-6">
-            <h3 className="text-white font-bold text-xl drop-shadow">{banner.title}</h3>
+            <h3 className="text-text-primary font-bold text-xl drop-shadow">{banner.title}</h3>
           </div>
         </div>
       </a>
@@ -65,13 +65,13 @@ function BannerCarousel({ banners }: { banners: PublishingBanner[] }) {
         <>
           <button
             onClick={() => go(current - 1)}
-            className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-bg-overlay hover:bg-bg-overlay text-text-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={() => go(current + 1)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-bg-overlay hover:bg-bg-overlay text-text-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -93,24 +93,24 @@ function BannerCarousel({ banners }: { banners: PublishingBanner[] }) {
 function GameCard({ game, type }: { game: FeaturedGame; type: PublishingType }) {
   return (
     <Link href={`/publishing/${type}/${game._id}`}>
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden hover:border-slate-600 transition-all group cursor-pointer">
-        <div className="h-36 bg-slate-800 overflow-hidden">
+      <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden hover:border-line transition-all group cursor-pointer">
+        <div className="h-36 bg-bg-tertiary overflow-hidden">
           {game.thumbnail ? (
             <Image src={game.thumbnail} alt={game.title} width={400} height={144} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" unoptimized />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Play className="w-8 h-8 text-slate-600" />
+              <Play className="w-8 h-8 text-text-muted" />
             </div>
           )}
         </div>
         <div className="p-3">
-          <h4 className="text-white text-sm font-semibold truncate">{game.title}</h4>
-          <p className="text-slate-400 text-xs mt-0.5 line-clamp-2">{game.description}</p>
+          <h4 className="text-text-primary text-sm font-semibold truncate">{game.title}</h4>
+          <p className="text-text-secondary text-xs mt-0.5 line-clamp-2">{game.description}</p>
           <div className="flex items-center justify-between mt-2">
-            <span className="text-slate-500 text-xs">{game.genre}</span>
+            <span className="text-text-muted text-xs">{game.genre}</span>
             <div className="flex items-center gap-1">
               <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-              <span className="text-slate-300 text-xs">{game.rating.toFixed(1)}</span>
+              <span className="text-text-secondary text-xs">{game.rating.toFixed(1)}</span>
             </div>
           </div>
         </div>
@@ -151,28 +151,28 @@ export default function PublishingLandingPage({ type: propType }: { type?: Publi
 
   if (!type || (type !== 'hms' && type !== 'hk')) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <p className="text-slate-400">잘못된 플랫폼 타입입니다</p>
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+        <p className="text-text-secondary">잘못된 플랫폼 타입입니다</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
-      <div className={`bg-gradient-to-br ${info.color} border-b border-slate-800`}>
+    <div className="min-h-screen bg-bg-primary">
+      <div className={`bg-gradient-to-br ${info.color} border-b border-line`}>
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <span className={`inline-block px-2.5 py-0.5 rounded text-xs font-bold border ${info.accent} mb-2`}>
                 {type.toUpperCase()}
               </span>
-              <h1 className="text-white text-3xl font-bold">{info.name}</h1>
-              <p className="text-slate-400 mt-1 text-sm">게임 퍼블리싱 플랫폼</p>
+              <h1 className="text-text-primary text-3xl font-bold">{info.name}</h1>
+              <p className="text-text-secondary mt-1 text-sm">게임 퍼블리싱 플랫폼</p>
             </div>
             {user?.role === 'developer' && (
               <button
                 onClick={() => { setSuggestSuccess(false); setShowSuggest(true) }}
-                className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-text-primary rounded-xl text-sm font-medium transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 게임 제안하기
@@ -182,7 +182,7 @@ export default function PublishingLandingPage({ type: propType }: { type?: Publi
 
           {loading ? (
             <div className="flex items-center justify-center h-72 md:h-96">
-              <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+              <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
             </div>
           ) : (
             <BannerCarousel banners={banners} />
@@ -190,7 +190,7 @@ export default function PublishingLandingPage({ type: propType }: { type?: Publi
         </div>
       </div>
 
-      <div className="sticky top-0 z-30 bg-slate-900/90 backdrop-blur border-b border-slate-800">
+      <div className="sticky top-0 z-30 bg-bg-secondary/90 backdrop-blur border-b border-line">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex gap-0 overflow-x-auto scrollbar-hide">
             {allTabs.map(tab => (
@@ -200,7 +200,7 @@ export default function PublishingLandingPage({ type: propType }: { type?: Publi
                 className={`px-5 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === tab._id
                     ? 'border-cyan-500 text-cyan-400'
-                    : 'border-transparent text-slate-400 hover:text-white'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
                 }`}
               >
                 {tab.name}
@@ -214,13 +214,13 @@ export default function PublishingLandingPage({ type: propType }: { type?: Publi
         {activeTab === 'about' && (
           <div className="space-y-8">
             <div>
-              <h2 className="text-white font-bold text-xl mb-4">추천 게임</h2>
+              <h2 className="text-text-primary font-bold text-xl mb-4">추천 게임</h2>
               {loading ? (
                 <div className="flex items-center justify-center py-16">
-                  <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+                  <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
                 </div>
               ) : games.length === 0 ? (
-                <div className="text-center py-16 text-slate-500 text-sm">
+                <div className="text-center py-16 text-text-muted text-sm">
                   아직 등록된 게임이 없습니다
                 </div>
               ) : (
@@ -254,7 +254,7 @@ export default function PublishingLandingPage({ type: propType }: { type?: Publi
       )}
 
       {suggestSuccess && (
-        <div className="fixed bottom-6 right-6 bg-green-700 text-white px-4 py-3 rounded-lg text-sm shadow-lg z-50">
+        <div className="fixed bottom-6 right-6 bg-green-700 text-text-primary px-4 py-3 rounded-lg text-sm shadow-lg z-50">
           게임 제안이 성공적으로 등록되었습니다!
         </div>
       )}

@@ -111,50 +111,50 @@ export default function AgreementPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3 mb-6">
             <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
-              <Gamepad2 className="w-7 h-7 text-white" />
+              <Gamepad2 className="w-7 h-7 text-text-primary" />
             </div>
             <span className="text-2xl font-bold">
               <span className="text-green-400">GAME</span>
-              <span className="text-white">UP</span>
+              <span className="text-text-primary">UP</span>
             </span>
           </Link>
-          <h1 className="text-3xl font-bold text-white mb-2">서비스 이용 동의</h1>
-          <p className="text-slate-400">회원가입 전 아래 약관에 동의해 주세요</p>
+          <h1 className="text-3xl font-bold text-text-primary mb-2">서비스 이용 동의</h1>
+          <p className="text-text-secondary">회원가입 전 아래 약관에 동의해 주세요</p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <div className="bg-bg-secondary border border-line rounded-2xl p-6 space-y-4">
           <button
             type="button"
             onClick={toggleAll}
             className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
               allChecked
                 ? 'border-emerald-500 bg-emerald-500/10'
-                : 'border-slate-700 hover:border-slate-600'
+                : 'border-line hover:border-line'
             }`}
           >
             <div
               className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
-                allChecked ? 'bg-emerald-500' : 'bg-slate-700'
+                allChecked ? 'bg-emerald-500' : 'bg-bg-tertiary'
               }`}
             >
-              {allChecked && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
+              {allChecked && <Check className="w-4 h-4 text-text-primary" strokeWidth={3} />}
             </div>
-            <span className={`font-semibold text-base ${allChecked ? 'text-emerald-400' : 'text-white'}`}>
+            <span className={`font-semibold text-base ${allChecked ? 'text-emerald-400' : 'text-text-primary'}`}>
               전체 동의
             </span>
-            <span className="ml-auto text-xs text-slate-500">(필수 + 선택 포함)</span>
+            <span className="ml-auto text-xs text-text-muted">(필수 + 선택 포함)</span>
           </button>
 
-          <div className="border-t border-slate-800" />
+          <div className="border-t border-line" />
 
           <div className="space-y-3">
             {AGREEMENT_SECTIONS.map((section) => (
-              <div key={section.key} className="rounded-xl border border-slate-800 overflow-hidden">
+              <div key={section.key} className="rounded-xl border border-line overflow-hidden">
                 <div className="flex items-center gap-3 p-4">
                   <button
                     type="button"
@@ -162,19 +162,19 @@ export default function AgreementPage() {
                     className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 transition-colors border-2 ${
                       agreements[section.key]
                         ? 'bg-emerald-500 border-emerald-500'
-                        : 'bg-transparent border-slate-600 hover:border-slate-400'
+                        : 'bg-transparent border-line hover:border-line'
                     }`}
                   >
                     {agreements[section.key] && (
-                      <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                      <Check className="w-3 h-3 text-text-primary" strokeWidth={3} />
                     )}
                   </button>
-                  <span className="text-white font-medium flex-1">{section.title}</span>
+                  <span className="text-text-primary font-medium flex-1">{section.title}</span>
                   <span
                     className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       section.required
                         ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-slate-700 text-slate-400'
+                        : 'bg-bg-tertiary text-text-secondary'
                     }`}
                   >
                     {section.required ? '필수' : '선택'}
@@ -182,7 +182,7 @@ export default function AgreementPage() {
                   <button
                     type="button"
                     onClick={() => toggleSection(section.key)}
-                    className="ml-1 text-slate-400 hover:text-white transition-colors"
+                    className="ml-1 text-text-secondary hover:text-text-primary transition-colors"
                   >
                     {expandedSection === section.key ? (
                       <ChevronUp className="w-4 h-4" />
@@ -193,9 +193,9 @@ export default function AgreementPage() {
                 </div>
 
                 {expandedSection === section.key && (
-                  <div className="px-4 pb-4 border-t border-slate-800">
-                    <div className="mt-3 bg-slate-950 rounded-lg p-4 max-h-48 overflow-y-auto">
-                      <pre className="text-xs text-slate-400 whitespace-pre-wrap font-sans leading-relaxed">
+                  <div className="px-4 pb-4 border-t border-line">
+                    <div className="mt-3 bg-bg-primary rounded-lg p-4 max-h-48 overflow-y-auto">
+                      <pre className="text-xs text-text-secondary whitespace-pre-wrap font-sans leading-relaxed">
                         {section.content}
                       </pre>
                     </div>
@@ -210,19 +210,19 @@ export default function AgreementPage() {
               type="button"
               onClick={handleProceed}
               disabled={!allRequired}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:cursor-not-allowed disabled:text-slate-500 text-white font-semibold py-3 rounded-xl transition-colors"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-bg-tertiary disabled:cursor-not-allowed disabled:text-text-muted text-text-primary font-semibold py-3 rounded-xl transition-colors"
             >
               다음
             </button>
             {!allRequired && (
-              <p className="text-center text-xs text-slate-500 mt-2">
+              <p className="text-center text-xs text-text-muted mt-2">
                 필수 약관에 동의해야 계속할 수 있습니다
               </p>
             )}
           </div>
         </div>
 
-        <p className="text-center text-sm text-slate-500 mt-6">
+        <p className="text-center text-sm text-text-muted mt-6">
           이미 계정이 있으신가요?{' '}
           <Link href="/login" className="text-emerald-400 hover:text-emerald-300 font-medium">
             로그인하기

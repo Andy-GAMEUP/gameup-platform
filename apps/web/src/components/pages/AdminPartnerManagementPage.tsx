@@ -6,8 +6,8 @@ import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Loader2, X, ExternalLink } from 'lucide-react'
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
-  approved:  { label: '정상',   cls: 'bg-green-600/20 text-green-300 border border-green-500/40' },
-  suspended: { label: '정지됨', cls: 'bg-red-600/20 text-red-300 border border-red-500/40' },
+  approved:  { label: '정상',   cls: 'bg-accent-light text-accent border border-green-500/40' },
+  suspended: { label: '정지됨', cls: 'bg-accent-light text-accent-text border border-red-500/40' },
 }
 
 function PartnerDetailModal({
@@ -22,16 +22,16 @@ function PartnerDetailModal({
   loading: boolean
 }) {
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between p-6 border-b border-slate-800">
+    <div className="fixed inset-0 bg-bg-overlay z-50 flex items-center justify-center p-4">
+      <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="flex items-center justify-between p-6 border-b border-line">
           <div>
-            <h3 className="text-white font-bold text-lg">{partner.userId?.username}</h3>
+            <h3 className="text-text-primary font-bold text-lg">{partner.userId?.username}</h3>
             <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_MAP[partner.status]?.cls}`}>
               {STATUS_MAP[partner.status]?.label}
             </span>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -39,31 +39,31 @@ function PartnerDetailModal({
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">이메일</p>
-              <p className="text-white text-sm">{partner.userId?.email}</p>
+              <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">이메일</p>
+              <p className="text-text-primary text-sm">{partner.userId?.email}</p>
             </div>
             <div>
-              <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">포스트 수</p>
-              <p className="text-white text-sm">{partner.postCount}</p>
+              <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">포스트 수</p>
+              <p className="text-text-primary text-sm">{partner.postCount}</p>
             </div>
             {partner.approvedAt && (
               <div>
-                <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">승인일</p>
-                <p className="text-white text-sm">{new Date(partner.approvedAt).toLocaleDateString('ko-KR')}</p>
+                <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">승인일</p>
+                <p className="text-text-primary text-sm">{new Date(partner.approvedAt).toLocaleDateString('ko-KR')}</p>
               </div>
             )}
           </div>
 
           {partner.slogan && (
             <div>
-              <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">슬로건</p>
-              <p className="text-white text-sm italic">"{partner.slogan}"</p>
+              <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">슬로건</p>
+              <p className="text-text-primary text-sm italic">"{partner.slogan}"</p>
             </div>
           )}
 
           {partner.selectedTopics?.length > 0 && (
             <div>
-              <p className="text-slate-400 text-xs uppercase tracking-wider mb-2">주제</p>
+              <p className="text-text-secondary text-xs uppercase tracking-wider mb-2">주제</p>
               <div className="flex flex-wrap gap-2">
                 {partner.selectedTopics.map((t) => (
                   <span key={t} className="bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 px-2 py-0.5 rounded text-xs">{t}</span>
@@ -73,13 +73,13 @@ function PartnerDetailModal({
           )}
 
           <div>
-            <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">자기소개</p>
-            <p className="text-slate-200 text-sm whitespace-pre-wrap bg-slate-800 rounded-lg p-3">{partner.introduction}</p>
+            <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">자기소개</p>
+            <p className="text-text-primary text-sm whitespace-pre-wrap bg-bg-tertiary rounded-lg p-3">{partner.introduction}</p>
           </div>
 
           {partner.externalUrl && (
             <div>
-              <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">외부 링크</p>
+              <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">외부 링크</p>
               <a href={partner.externalUrl} target="_blank" rel="noopener noreferrer"
                 className="text-cyan-400 hover:underline text-sm flex items-center gap-1">
                 <ExternalLink className="w-3 h-3" /> {partner.externalUrl}
@@ -88,16 +88,16 @@ function PartnerDetailModal({
           )}
         </div>
 
-        <div className="p-6 border-t border-slate-800 flex gap-3">
+        <div className="p-6 border-t border-line flex gap-3">
           {partner.status === 'approved' ? (
             <button onClick={() => onStatusChange('suspended')} disabled={loading}
-              className="flex-1 py-2 text-sm text-red-300 border border-red-500/40 rounded-lg hover:bg-red-900/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+              className="flex-1 py-2 text-sm text-accent-text border border-red-500/40 rounded-lg hover:bg-accent-light transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               파트너 정지
             </button>
           ) : (
             <button onClick={() => onStatusChange('approved')} disabled={loading}
-              className="flex-1 py-2 text-sm text-green-300 border border-green-500/40 rounded-lg hover:bg-green-900/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+              className="flex-1 py-2 text-sm text-accent border border-green-500/40 rounded-lg hover:bg-green-900/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               정지 해제
             </button>
@@ -158,43 +158,43 @@ export default function AdminPartnerManagementPage() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-white font-bold text-xl">파트너 관리</h1>
-          <p className="text-slate-400 text-sm mt-1">총 {total}명</p>
+          <h1 className="text-text-primary font-bold text-xl">파트너 관리</h1>
+          <p className="text-text-secondary text-sm mt-1">총 {total}명</p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-800">
-                <th className="px-4 py-3 text-left text-slate-400 text-xs font-medium">#</th>
-                <th className="px-4 py-3 text-left text-slate-400 text-xs font-medium">사용자명</th>
-                <th className="px-4 py-3 text-left text-slate-400 text-xs font-medium">슬로건</th>
-                <th className="px-4 py-3 text-left text-slate-400 text-xs font-medium">포스트</th>
-                <th className="px-4 py-3 text-left text-slate-400 text-xs font-medium">상태</th>
-                <th className="px-4 py-3 text-left text-slate-400 text-xs font-medium">승인일</th>
-                <th className="px-4 py-3 text-left text-slate-400 text-xs font-medium">작업</th>
+              <tr className="border-b border-line">
+                <th className="px-4 py-3 text-left text-text-secondary text-xs font-medium">#</th>
+                <th className="px-4 py-3 text-left text-text-secondary text-xs font-medium">사용자명</th>
+                <th className="px-4 py-3 text-left text-text-secondary text-xs font-medium">슬로건</th>
+                <th className="px-4 py-3 text-left text-text-secondary text-xs font-medium">포스트</th>
+                <th className="px-4 py-3 text-left text-text-secondary text-xs font-medium">상태</th>
+                <th className="px-4 py-3 text-left text-text-secondary text-xs font-medium">승인일</th>
+                <th className="px-4 py-3 text-left text-text-secondary text-xs font-medium">작업</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="py-12 text-center text-slate-400">
+                <tr><td colSpan={7} className="py-12 text-center text-text-secondary">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto" />
                 </td></tr>
               ) : partners.length === 0 ? (
-                <tr><td colSpan={7} className="py-12 text-center text-slate-400 text-sm">파트너가 없습니다</td></tr>
+                <tr><td colSpan={7} className="py-12 text-center text-text-secondary text-sm">파트너가 없습니다</td></tr>
               ) : (
                 partners.map((p, idx) => (
-                  <tr key={p._id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
-                    <td className="px-4 py-3 text-slate-400 text-sm">{(page - 1) * 20 + idx + 1}</td>
-                    <td className="px-4 py-3 text-white text-sm font-medium">{p.userId?.username ?? '-'}</td>
-                    <td className="px-4 py-3 text-slate-300 text-sm max-w-[200px] truncate">{p.slogan || '-'}</td>
-                    <td className="px-4 py-3 text-slate-300 text-sm">{p.postCount}</td>
+                  <tr key={p._id} className="border-b border-line/50 hover:bg-bg-tertiary/30 transition-colors">
+                    <td className="px-4 py-3 text-text-secondary text-sm">{(page - 1) * 20 + idx + 1}</td>
+                    <td className="px-4 py-3 text-text-primary text-sm font-medium">{p.userId?.username ?? '-'}</td>
+                    <td className="px-4 py-3 text-text-secondary text-sm max-w-[200px] truncate">{p.slogan || '-'}</td>
+                    <td className="px-4 py-3 text-text-secondary text-sm">{p.postCount}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_MAP[p.status]?.cls}`}>
                         {STATUS_MAP[p.status]?.label ?? p.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-slate-400 text-sm">
+                    <td className="px-4 py-3 text-text-secondary text-sm">
                       {p.approvedAt ? new Date(p.approvedAt).toLocaleDateString('ko-KR') : '-'}
                     </td>
                      <td className="px-4 py-3">
@@ -204,7 +204,7 @@ export default function AdminPartnerManagementPage() {
                            관리
                          </button>
                          <Link href={`/admin/partner-posts/${p._id}`}
-                           className="text-xs text-slate-400 hover:text-slate-200 transition-colors border border-slate-600/50 px-2 py-1 rounded">
+                           className="text-xs text-text-secondary hover:text-text-primary transition-colors border border-line/50 px-2 py-1 rounded">
                            글 보기
                          </Link>
                        </div>
@@ -219,12 +219,12 @@ export default function AdminPartnerManagementPage() {
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors">
+              className="p-1.5 text-text-secondary hover:text-text-primary disabled:opacity-30 transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-slate-400 text-sm">{page} / {totalPages}</span>
+            <span className="text-text-secondary text-sm">{page} / {totalPages}</span>
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="p-1.5 text-slate-400 hover:text-white disabled:opacity-30 transition-colors">
+              className="p-1.5 text-text-secondary hover:text-text-primary disabled:opacity-30 transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -241,7 +241,7 @@ export default function AdminPartnerManagementPage() {
       )}
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg text-sm text-white shadow-lg z-50 ${toast.ok ? 'bg-green-700' : 'bg-red-700'}`}>
+        <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg text-sm text-text-primary shadow-lg z-50 ${toast.ok ? 'bg-green-700' : 'bg-red-700'}`}>
           {toast.msg}
         </div>
       )}

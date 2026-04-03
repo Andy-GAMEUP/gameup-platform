@@ -1,11 +1,11 @@
 import { Router } from 'express'
 import { getLevels, updateLevels } from '../controllers/adminLevelController'
-import { authenticateToken, requireAdmin } from '../middleware/auth'
+import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
 
 const router = Router()
 router.use(authenticateToken, requireAdmin)
 
 router.get('/', getLevels)
-router.post('/', updateLevels)
+router.post('/', requireAdminLevel('super'), updateLevels)
 
 export default router

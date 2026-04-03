@@ -91,19 +91,19 @@ export default function PartnerPostWritePage() {
   }
 
   if (!partnerChecked) return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-bg-primary">
       <Navbar />
-      <div className="flex justify-center py-24"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>
+      <div className="flex justify-center py-24"><Loader2 className="w-8 h-8 animate-spin text-text-secondary" /></div>
     </div>
   )
 
   if (!isApprovedPartner) return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-bg-primary">
       <Navbar />
       <div className="max-w-xl mx-auto px-4 py-16 text-center">
-        <p className="text-white font-semibold text-lg mb-2">파트너 전용 기능</p>
-        <p className="text-slate-400 text-sm mb-6">승인된 파트너만 글을 작성할 수 있습니다.</p>
-        <button onClick={() => router.push('/partner')} className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-2 rounded-xl text-sm transition-colors">
+        <p className="text-text-primary font-semibold text-lg mb-2">파트너 전용 기능</p>
+        <p className="text-text-secondary text-sm mb-6">승인된 파트너만 글을 작성할 수 있습니다.</p>
+        <button onClick={() => router.push('/partner')} className="bg-cyan-600 hover:bg-cyan-700 text-text-primary px-4 py-2 rounded-xl text-sm transition-colors">
           파트너 목록으로
         </button>
       </div>
@@ -111,24 +111,24 @@ export default function PartnerPostWritePage() {
   )
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="min-h-screen bg-bg-primary">
       <Navbar />
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-slate-400 hover:text-white text-sm mb-6 transition-colors">
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-sm mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> 뒤로
         </button>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
-          <h1 className="text-white text-xl font-bold">{isEdit ? '게시글 수정' : '파트너 채널 글쓰기'}</h1>
+        <div className="bg-bg-secondary border border-line rounded-xl p-6 space-y-5">
+          <h1 className="text-text-primary text-xl font-bold">{isEdit ? '게시글 수정' : '파트너 채널 글쓰기'}</h1>
 
           {error && <p className="bg-red-900/30 border border-red-700/40 text-red-300 text-sm px-4 py-3 rounded-xl">{error}</p>}
 
           {topicGroups.length > 0 && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-slate-400 text-sm mb-2 block">주제 그룹</label>
+                <label className="text-text-secondary text-sm mb-2 block">주제 그룹</label>
                 <select value={topicGroup} onChange={e => { setTopicGroup(e.target.value); setTopic('') }}
-                  className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500">
+                  className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500">
                   <option value="">선택 안 함</option>
                   {topicGroups.map(g => (
                     <option key={g._id} value={g.name}>{g.name}</option>
@@ -137,9 +137,9 @@ export default function PartnerPostWritePage() {
               </div>
               {topicGroup && availableTopics.length > 0 && (
                 <div>
-                  <label className="text-slate-400 text-sm mb-2 block">주제</label>
+                  <label className="text-text-secondary text-sm mb-2 block">주제</label>
                   <select value={topic} onChange={e => setTopic(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500">
+                    className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2.5 rounded-xl focus:outline-none focus:border-cyan-500">
                     <option value="">선택 안 함</option>
                     {availableTopics.map(t => (
                       <option key={t.name} value={t.name}>{t.name}</option>
@@ -151,52 +151,52 @@ export default function PartnerPostWritePage() {
           )}
 
           <div>
-            <label className="text-slate-400 text-sm mb-2 block">제목 <span className="text-red-400">*</span></label>
+            <label className="text-text-secondary text-sm mb-2 block">제목 <span className="text-red-400">*</span></label>
             <input value={title} onChange={e => setTitle(e.target.value)} maxLength={200}
               placeholder="제목을 입력하세요"
-              className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-cyan-500 transition-colors"
+              className="w-full bg-bg-tertiary border border-line text-text-primary px-4 py-3 rounded-xl focus:outline-none focus:border-cyan-500 transition-colors"
             />
-            <p className="text-slate-600 text-xs mt-1 text-right">{title.length}/200</p>
+            <p className="text-text-muted text-xs mt-1 text-right">{title.length}/200</p>
           </div>
 
           <div>
-            <label className="text-slate-400 text-sm mb-2 block">내용 <span className="text-red-400">*</span></label>
+            <label className="text-text-secondary text-sm mb-2 block">내용 <span className="text-red-400">*</span></label>
             <Editor content={content} onChange={setContent} placeholder="내용을 입력하세요..." />
           </div>
 
           <div>
-            <label className="text-slate-400 text-sm mb-2 flex items-center gap-1.5">
+            <label className="text-text-secondary text-sm mb-2 flex items-center gap-1.5">
               <Tag className="w-4 h-4" /> 태그 ({tags.length}/10)
             </label>
             <div className="flex gap-2 mb-2">
               <input value={tagInput} onChange={e => setTagInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addTag()}
                 placeholder="#태그 입력 후 Enter"
-                className="flex-1 bg-slate-800 border border-slate-700 text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-cyan-500"
+                className="flex-1 bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-cyan-500"
               />
               <button onClick={addTag} disabled={!tagInput.trim() || tags.length >= 10}
-                className="bg-slate-700 hover:bg-slate-600 text-white p-2 rounded-lg disabled:opacity-50 transition-colors">
+                className="bg-bg-tertiary hover:bg-bg-hover text-text-primary p-2 rounded-lg disabled:opacity-50 transition-colors">
                 <Plus className="w-4 h-4" />
               </button>
             </div>
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {tags.map(t => (
-                  <span key={t} className="bg-slate-800 text-slate-300 text-xs px-2 py-1 rounded-full flex items-center gap-1.5">
+                  <span key={t} className="bg-bg-tertiary text-text-secondary text-xs px-2 py-1 rounded-full flex items-center gap-1.5">
                     #{t}
-                    <button onClick={() => setTags(tags.filter(x => x !== t))} className="text-slate-500 hover:text-white transition-colors">✕</button>
+                    <button onClick={() => setTags(tags.filter(x => x !== t))} className="text-text-muted hover:text-text-primary transition-colors">✕</button>
                   </span>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-slate-800">
-            <button onClick={() => router.back()} className="px-5 py-2.5 text-sm text-slate-400 border border-slate-700 rounded-xl hover:bg-slate-800 transition-colors">
+          <div className="flex justify-end gap-3 pt-2 border-t border-line">
+            <button onClick={() => router.back()} className="px-5 py-2.5 text-sm text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
               취소
             </button>
             <button onClick={handleSubmit} disabled={submitting}
-              className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+              className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-text-primary px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {isEdit ? '수정 완료' : '게시하기'}
             </button>

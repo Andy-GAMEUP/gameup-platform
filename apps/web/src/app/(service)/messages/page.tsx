@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full text-slate-400">로딩 중...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-full text-text-secondary">로딩 중...</div>}>
       <MessagesPage />
     </Suspense>
   )

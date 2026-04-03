@@ -26,7 +26,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           email: data.user.email,
           name: data.user.username,
           role: data.user.role,
+          adminLevel: data.user.adminLevel || null,
           memberType: data.user.memberType || 'individual',
+          approvalStatus: data.user.approvalStatus || 'pending',
           companyInfo: data.user.companyInfo || null,
           image: data.user.profileImage || null,
           accessToken: data.token,
@@ -61,7 +63,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const data = await res.json()
         user.id = data.user.id
         ;(user as any).role = data.user.role
+        ;(user as any).adminLevel = data.user.adminLevel || null
         ;(user as any).memberType = data.user.memberType || 'individual'
+        ;(user as any).approvalStatus = data.user.approvalStatus || 'approved'
         ;(user as any).companyInfo = data.user.companyInfo || null
         ;(user as any).username = data.user.username
         ;(user as any).accessToken = data.token
@@ -72,7 +76,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id as string
         token.role = (user as any).role || 'player'
+        token.adminLevel = (user as any).adminLevel || null
         token.memberType = (user as any).memberType || 'individual'
+        token.approvalStatus = (user as any).approvalStatus || 'pending'
         token.companyInfo = (user as any).companyInfo || null
         token.username = (user as any).username || user.name || ''
         token.accessToken = (user as any).accessToken || ''
@@ -83,7 +89,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string
         ;(session.user as any).role = token.role
+        ;(session.user as any).adminLevel = token.adminLevel
         ;(session.user as any).memberType = token.memberType
+        ;(session.user as any).approvalStatus = token.approvalStatus
         ;(session.user as any).companyInfo = token.companyInfo
         ;(session.user as any).username = token.username
         ;(session.user as any).accessToken = token.accessToken

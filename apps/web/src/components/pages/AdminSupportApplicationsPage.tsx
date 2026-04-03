@@ -18,14 +18,14 @@ const APP_STATUS_LABELS: Record<GameApplication['status'], string> = {
 const APP_STATUS_CLS: Record<GameApplication['status'], string> = {
   pending: 'bg-yellow-900/40 text-yellow-400 border-yellow-700/50',
   reviewing: 'bg-blue-900/40 text-blue-400 border-blue-700/50',
-  selected: 'bg-green-900/40 text-green-400 border-green-700/50',
-  rejected: 'bg-red-900/40 text-red-400 border-red-700/50',
-  'on-hold': 'bg-slate-700 text-slate-300 border-slate-600',
+  selected: 'bg-green-900/40 text-accent border-green-700/50',
+  rejected: 'bg-red-900/40 text-accent-text border-red-700/50',
+  'on-hold': 'bg-bg-tertiary text-text-secondary border-line',
 }
 
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
-    <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg text-sm text-white shadow-lg z-50 ${ok ? 'bg-green-700' : 'bg-red-700'}`}>
+    <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg text-sm text-text-primary shadow-lg z-50 ${ok ? 'bg-green-700' : 'bg-red-700'}`}>
       {msg}
     </div>
   )
@@ -152,7 +152,7 @@ function ApplicationRow({
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+    <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
       <div className="flex items-center gap-4 p-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -160,57 +160,57 @@ function ApplicationRow({
               {APP_STATUS_LABELS[app.status]}
             </span>
             {app.isConfirmed && (
-              <span className="text-xs px-2 py-0.5 rounded-full border bg-green-900/40 text-green-400 border-green-700/50">확정</span>
+              <span className="text-xs px-2 py-0.5 rounded-full border bg-green-900/40 text-accent border-green-700/50">확정</span>
             )}
-            <span className="text-white font-medium text-sm truncate">{app.gameName}</span>
+            <span className="text-text-primary font-medium text-sm truncate">{app.gameName}</span>
           </div>
-          <p className="text-slate-500 text-xs">
+          <p className="text-text-muted text-xs">
             {app.userId?.username} · {app.genre} · {new Date(app.createdAt).toLocaleDateString('ko-KR')}
             {app.score?.total > 0 && ` · 점수: ${app.score.total}`}
           </p>
         </div>
-        <button onClick={() => setExpanded(v => !v)} className="text-slate-400 hover:text-white transition-colors flex-shrink-0">
+        <button onClick={() => setExpanded(v => !v)} className="text-text-secondary hover:text-text-primary transition-colors flex-shrink-0">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
 
       {expanded && (
-        <div className="border-t border-slate-800 p-4 space-y-6 bg-slate-950/30">
+        <div className="border-t border-line p-4 space-y-6 bg-bg-primary/30">
           <div className="grid grid-cols-2 gap-4">
             {app.iconUrl && (
               <div className="col-span-2 flex items-center gap-3">
-                <Image src={app.iconUrl} alt={app.gameName} width={64} height={64} className="w-16 h-16 rounded-xl object-cover bg-slate-800" unoptimized />
+                <Image src={app.iconUrl} alt={app.gameName} width={64} height={64} className="w-16 h-16 rounded-xl object-cover bg-bg-tertiary" unoptimized />
                 <div>
-                  <p className="text-white font-medium">{app.gameName}</p>
-                  <p className="text-slate-400 text-sm">{app.genre} · {app.userId?.username}</p>
+                  <p className="text-text-primary font-medium">{app.gameName}</p>
+                  <p className="text-text-secondary text-sm">{app.genre} · {app.userId?.username}</p>
                 </div>
               </div>
             )}
             <div>
-              <p className="text-slate-500 text-xs mb-1">플랫폼</p>
-              <p className="text-slate-300 text-sm">{app.platforms.join(', ') || '-'}</p>
+              <p className="text-text-muted text-xs mb-1">플랫폼</p>
+              <p className="text-text-secondary text-sm">{app.platforms.join(', ') || '-'}</p>
             </div>
             <div>
-              <p className="text-slate-500 text-xs mb-1">스크린샷</p>
-              <p className="text-slate-300 text-sm">{app.screenshots.length}장</p>
+              <p className="text-text-muted text-xs mb-1">스크린샷</p>
+              <p className="text-text-secondary text-sm">{app.screenshots.length}장</p>
             </div>
           </div>
 
           {app.description && (
             <div>
-              <p className="text-slate-500 text-xs mb-1">설명</p>
-              <p className="text-slate-300 text-sm leading-relaxed">{app.description}</p>
+              <p className="text-text-muted text-xs mb-1">설명</p>
+              <p className="text-text-secondary text-sm leading-relaxed">{app.description}</p>
             </div>
           )}
 
-          <div className="border-t border-slate-800 pt-4">
-            <p className="text-slate-400 text-xs font-bold uppercase mb-3">상태 관리</p>
+          <div className="border-t border-line pt-4">
+            <p className="text-text-secondary text-xs font-bold uppercase mb-3">상태 관리</p>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <select
                   value={status}
                   onChange={e => setStatus(e.target.value as GameApplication['status'])}
-                  className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none flex-shrink-0"
+                  className="bg-bg-tertiary border border-line text-text-primary text-sm rounded-lg px-3 py-2 focus:outline-none flex-shrink-0"
                 >
                   {(Object.keys(APP_STATUS_LABELS) as GameApplication['status'][]).map(s => (
                     <option key={s} value={s}>{APP_STATUS_LABELS[s]}</option>
@@ -219,7 +219,7 @@ function ApplicationRow({
                 <button
                   onClick={handleConfirm}
                   disabled={saving || app.isConfirmed}
-                  className="px-3 py-2 bg-green-700 hover:bg-green-800 text-white rounded-lg text-xs transition-colors disabled:opacity-50"
+                  className="px-3 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-xs transition-colors disabled:opacity-50"
                 >
                   확정
                 </button>
@@ -229,12 +229,12 @@ function ApplicationRow({
                 onChange={e => setAdminNote(e.target.value)}
                 rows={2}
                 placeholder="관리자 메모"
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-slate-500 resize-none"
+                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-line resize-none"
               />
               <button
                 onClick={handleSaveStatus}
                 disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 저장
@@ -242,76 +242,76 @@ function ApplicationRow({
             </div>
           </div>
 
-          <div className="border-t border-slate-800 pt-4">
-            <p className="text-slate-400 text-xs font-bold uppercase mb-3">점수 입력 (0~100)</p>
+          <div className="border-t border-line pt-4">
+            <p className="text-text-secondary text-xs font-bold uppercase mb-3">점수 입력 (0~100)</p>
             <div className="grid grid-cols-4 gap-3 mb-3">
               <div>
-                <label className="block text-slate-500 text-xs mb-1">게임플레이</label>
+                <label className="block text-text-muted text-xs mb-1">게임플레이</label>
                 <input type="number" min={0} max={100} value={gameplay} onChange={e => setGameplay(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-slate-500" />
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-line" />
               </div>
               <div>
-                <label className="block text-slate-500 text-xs mb-1">디자인</label>
+                <label className="block text-text-muted text-xs mb-1">디자인</label>
                 <input type="number" min={0} max={100} value={design} onChange={e => setDesign(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-slate-500" />
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-line" />
               </div>
               <div>
-                <label className="block text-slate-500 text-xs mb-1">사운드</label>
+                <label className="block text-text-muted text-xs mb-1">사운드</label>
                 <input type="number" min={0} max={100} value={sound} onChange={e => setSound(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-slate-500" />
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-line" />
               </div>
               <div>
-                <label className="block text-slate-500 text-xs mb-1">비즈니스</label>
+                <label className="block text-text-muted text-xs mb-1">비즈니스</label>
                 <input type="number" min={0} max={100} value={business} onChange={e => setBusiness(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-slate-500" />
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-line" />
               </div>
             </div>
             <button
               onClick={handleSaveScore}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-sm transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               점수 저장
             </button>
           </div>
 
-          <div className="border-t border-slate-800 pt-4">
+          <div className="border-t border-line pt-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-slate-400 text-xs font-bold uppercase">마일스톤</p>
+              <p className="text-text-secondary text-xs font-bold uppercase">마일스톤</p>
               <button
                 onClick={() => setAddingMilestone(v => !v)}
-                className="flex items-center gap-1 text-green-400 hover:text-green-300 text-xs transition-colors"
+                className="flex items-center gap-1 text-accent hover:text-accent text-xs transition-colors"
               >
                 <Plus className="w-3 h-3" />추가
               </button>
             </div>
 
             {addingMilestone && (
-              <div className="bg-slate-800/50 rounded-lg p-3 mb-3 space-y-2">
+              <div className="bg-bg-tertiary/50 rounded-lg p-3 mb-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <input placeholder="제목" value={newMilestone.title}
                     onChange={e => setNewMilestone(p => ({ ...p, title: e.target.value }))}
-                    className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none" />
+                    className="bg-bg-tertiary border border-line rounded px-3 py-2 text-text-primary text-sm focus:outline-none" />
                   <input type="date" value={newMilestone.date}
                     onChange={e => setNewMilestone(p => ({ ...p, date: e.target.value }))}
-                    className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none" />
+                    className="bg-bg-tertiary border border-line rounded px-3 py-2 text-text-primary text-sm focus:outline-none" />
                 </div>
                 <textarea placeholder="설명" value={newMilestone.description} rows={2}
                   onChange={e => setNewMilestone(p => ({ ...p, description: e.target.value }))}
-                  className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none resize-none" />
+                  className="w-full bg-bg-tertiary border border-line rounded px-3 py-2 text-text-primary text-sm focus:outline-none resize-none" />
                 <input placeholder="빌드 URL" value={newMilestone.buildUrl}
                   onChange={e => setNewMilestone(p => ({ ...p, buildUrl: e.target.value }))}
-                  className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none" />
+                  className="w-full bg-bg-tertiary border border-line rounded px-3 py-2 text-text-primary text-sm focus:outline-none" />
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={newMilestone.isCompleted}
                       onChange={e => setNewMilestone(p => ({ ...p, isCompleted: e.target.checked }))}
                       className="accent-green-500" />
-                    <span className="text-slate-300 text-xs">완료됨</span>
+                    <span className="text-text-secondary text-xs">완료됨</span>
                   </label>
                   <button onClick={handleAddMilestone} disabled={saving || !newMilestone.title.trim()}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-white rounded text-xs transition-colors disabled:opacity-50">
+                    className="flex items-center gap-1 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-text-primary rounded text-xs transition-colors disabled:opacity-50">
                     {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                     추가
                   </button>
@@ -355,29 +355,29 @@ function MilestoneEditRow({
   const [isCompleted, setIsCompleted] = useState(milestone.isCompleted)
 
   return (
-    <div className="bg-slate-800/50 rounded-lg p-3 space-y-2">
+    <div className="bg-bg-tertiary/50 rounded-lg p-3 space-y-2">
       <div className="grid grid-cols-2 gap-2">
         <input value={title} onChange={e => setTitle(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none" />
+          className="bg-bg-tertiary border border-line rounded px-3 py-2 text-text-primary text-sm focus:outline-none" />
         <input type="date" value={date} onChange={e => setDate(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none" />
+          className="bg-bg-tertiary border border-line rounded px-3 py-2 text-text-primary text-sm focus:outline-none" />
       </div>
       <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
-        className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none resize-none" />
+        className="w-full bg-bg-tertiary border border-line rounded px-3 py-2 text-text-primary text-sm focus:outline-none resize-none" />
       <input value={buildUrl} onChange={e => setBuildUrl(e.target.value)} placeholder="빌드 URL"
-        className="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-white text-sm focus:outline-none" />
+        className="w-full bg-bg-tertiary border border-line rounded px-3 py-2 text-text-primary text-sm focus:outline-none" />
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" checked={isCompleted} onChange={e => setIsCompleted(e.target.checked)} className="accent-green-500" />
-          <span className="text-slate-300 text-xs">완료됨</span>
+          <span className="text-text-secondary text-xs">완료됨</span>
         </label>
         <div className="flex items-center gap-2">
           <button onClick={() => onUpdate({ title, date, description, buildUrl, isCompleted })} disabled={saving}
-            className="p-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded transition-colors disabled:opacity-50">
+            className="p-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded transition-colors disabled:opacity-50">
             <Save className="w-3.5 h-3.5" />
           </button>
           <button onClick={onDelete} disabled={saving}
-            className="p-1.5 text-red-400 hover:text-red-300 transition-colors disabled:opacity-30">
+            className="p-1.5 text-accent-text hover:text-accent-text transition-colors disabled:opacity-30">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -432,15 +432,15 @@ export default function AdminSupportApplicationsPage() {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-white font-bold text-xl">게임 신청 관리</h1>
-          <p className="text-slate-400 text-sm mt-1">인큐베이션 게임 신청을 검토하고 관리합니다</p>
+          <h1 className="text-text-primary font-bold text-xl">게임 신청 관리</h1>
+          <p className="text-text-secondary text-sm mt-1">인큐베이션 게임 신청을 검토하고 관리합니다</p>
         </div>
 
         <div className="flex items-center gap-4">
           <select
             value={selectedSeasonId}
             onChange={e => setSelectedSeasonId(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-slate-500"
+            className="bg-bg-tertiary border border-line text-text-primary text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-line"
           >
             {seasons.map(s => (
               <option key={s._id} value={s._id}>{s.title}</option>
@@ -450,7 +450,7 @@ export default function AdminSupportApplicationsPage() {
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-slate-500"
+            className="bg-bg-tertiary border border-line text-text-primary text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-line"
           >
             <option value="all">전체</option>
             {(Object.keys(APP_STATUS_LABELS) as GameApplication['status'][]).map(s => (
@@ -461,10 +461,10 @@ export default function AdminSupportApplicationsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-text-secondary" />
           </div>
         ) : applications.length === 0 ? (
-          <div className="text-center py-16 text-slate-500 text-sm">신청이 없습니다</div>
+          <div className="text-center py-16 text-text-muted text-sm">신청이 없습니다</div>
         ) : (
           <div className="space-y-3">
             {applications.map(app => (

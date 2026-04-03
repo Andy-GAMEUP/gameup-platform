@@ -117,7 +117,7 @@ export const login = async (req: AuthRequest, res: Response) => {
       })
     }
 
-    const isPasswordValid = await comparePassword(password, user.password)
+    const isPasswordValid = await comparePassword(password, user.password!)
 
     if (!isPasswordValid) {
       return res.status(401).json({ 
@@ -128,7 +128,8 @@ export const login = async (req: AuthRequest, res: Response) => {
     const token = generateToken({
       id: user._id.toString(),
       email: user.email,
-      role: user.role as 'developer' | 'player' | 'admin'
+      role: user.role as 'developer' | 'player' | 'admin',
+      adminLevel: user.adminLevel || null,
     })
 
     res.json({
@@ -139,7 +140,9 @@ export const login = async (req: AuthRequest, res: Response) => {
         email: user.email,
         username: user.username,
         role: user.role,
+        adminLevel: user.adminLevel || null,
         memberType: user.memberType || 'individual',
+        approvalStatus: user.approvalStatus || 'pending',
         companyInfo: user.companyInfo,
       },
       token
@@ -249,7 +252,7 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     const user = await User.findById(req.user.id)
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
 
-    const isValid = await comparePassword(currentPassword, user.password)
+    const isValid = await comparePassword(currentPassword, user.password!)
     if (!isValid) {
       return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다' })
     }
@@ -274,7 +277,7 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
     const user = await User.findById(req.user.id)
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
 
-    const isValid = await comparePassword(password, user.password)
+    const isValid = await comparePassword(password, user.password!)
     if (!isValid) return res.status(401).json({ message: '비밀번호가 올바르지 않습니다' })
 
     await Promise.all([

@@ -1,6 +1,2 @@
-'use client'
-import AdminTermsPage from '@/components/pages/AdminTermsPage'
-
-export default function Page() {
-  return <AdminTermsPage />
-}
+import { redirect } from 'next/navigation'
+export default function Page() { redirect('/admin/members/terms') }

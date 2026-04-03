@@ -50,7 +50,9 @@ export const oauthCallback = async (req: Request, res: Response) => {
         email: user.email,
         username: user.username,
         role: user.role,
+        adminLevel: user.adminLevel || null,
         memberType: user.memberType || 'individual',
+        approvalStatus: user.approvalStatus || 'approved',
         companyInfo: user.companyInfo,
       },
     })

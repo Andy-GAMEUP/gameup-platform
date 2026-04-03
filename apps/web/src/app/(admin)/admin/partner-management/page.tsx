@@ -1,15 +1,2 @@
-'use client'
-import { Suspense } from 'react'
-import AdminPartnerManagementPage from '@/components/pages/AdminPartnerManagementPage'
-
-function Loading() {
-  return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="text-slate-400">Loading...</div></div>
-}
-
-export default function Page() {
-  return (
-    <Suspense fallback={<Loading />}>
-      <AdminPartnerManagementPage />
-    </Suspense>
-  )
-}
+import { redirect } from 'next/navigation'
+export default function Page() { redirect('/admin/members/corporate') }

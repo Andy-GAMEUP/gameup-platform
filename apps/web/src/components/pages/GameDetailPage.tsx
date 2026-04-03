@@ -46,7 +46,7 @@ export default function GameDetailPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
         </svg>
       ),
-      color: 'text-green-400',
+      color: 'text-accent',
     },
     {
       label: '피드백',
@@ -141,7 +141,7 @@ export default function GameDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/games-management">
-            <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white">
+            <Button variant="ghost" size="sm" className="text-text-secondary hover:text-text-primary">
               <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -154,13 +154,13 @@ export default function GameDetailPage() {
               <Badge
                 className={`${
                   game.status === '진행중'
-                    ? 'bg-green-500/20 text-green-400 border-green-500/50'
+                    ? 'bg-accent-light text-accent border-accent-muted'
                     : 'bg-orange-500/20 text-orange-400 border-orange-500/50'
                 }`}
               >
                 {game.status}
               </Badge>
-              <div className="flex items-center gap-1 text-slate-400">
+              <div className="flex items-center gap-1 text-text-secondary">
                 <svg className="w-4 h-4 fill-yellow-400 text-yellow-400" viewBox="0 0 24 24">
                   <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                 </svg>
@@ -172,7 +172,7 @@ export default function GameDetailPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link href={`/games-management/${game.id}/edit`}>
-            <Button variant="outline" className="border-slate-800 hover:bg-slate-900">
+            <Button variant="outline" className="border-line hover:bg-bg-tertiary">
               편집
             </Button>
           </Link>
@@ -188,13 +188,13 @@ export default function GameDetailPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
-          <Card key={index} className="bg-slate-900 border border-slate-800">
+          <Card key={index} className="bg-bg-secondary border border-line">
             <div className="p-6">
               <div className="flex items-center gap-3">
                 <div className={stat.color}>{stat.icon}</div>
                 <div>
                   <div className="text-2xl font-bold">{stat.value}</div>
-                  <div className="text-sm text-slate-400">{stat.label}</div>
+                  <div className="text-sm text-text-secondary">{stat.label}</div>
                 </div>
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function GameDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-slate-900 border border-slate-800">
+        <TabsList className="bg-bg-secondary border border-line">
           <TabsTrigger value="overview">기본 정보</TabsTrigger>
           <TabsTrigger value="media">미디어</TabsTrigger>
           <TabsTrigger value="feedback">피드백</TabsTrigger>
@@ -218,32 +218,32 @@ export default function GameDetailPage() {
               {/* Main Content */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Game Information */}
-                <Card className="bg-slate-900 border border-slate-800">
+                <Card className="bg-bg-secondary border border-line">
                   <div className="p-6">
                     <h2 className="text-xl font-bold mb-6">게임 정보</h2>
 
                     <div className="space-y-4">
                       <div>
-                        <div className="text-sm text-slate-400 mb-2">게임 제목</div>
-                        <p className="text-white text-lg">{game.title}</p>
+                        <div className="text-sm text-text-secondary mb-2">게임 제목</div>
+                        <p className="text-text-primary text-lg">{game.title}</p>
                       </div>
 
                       <div>
-                        <div className="text-sm text-slate-400 mb-2">게임 설명</div>
-                        <p className="text-slate-300">{game.description}</p>
+                        <div className="text-sm text-text-secondary mb-2">게임 설명</div>
+                        <p className="text-text-secondary">{game.description}</p>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <div className="text-sm text-slate-400 mb-2">장르</div>
-                          <p className="text-white">{game.genre}</p>
+                          <div className="text-sm text-text-secondary mb-2">장르</div>
+                          <p className="text-text-primary">{game.genre}</p>
                         </div>
 
                         <div>
-                          <div className="text-sm text-slate-400 mb-2">플랫폼</div>
+                          <div className="text-sm text-text-secondary mb-2">플랫폼</div>
                           <div className="flex gap-2">
                             {game.platform.map((p) => (
-                              <Badge key={p} variant="outline" className="border-slate-700">
+                              <Badge key={p} variant="outline" className="border-line">
                                 {p}
                               </Badge>
                             ))}
@@ -253,23 +253,23 @@ export default function GameDetailPage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <div className="text-sm text-slate-400 mb-2 flex items-center gap-2">
+                          <div className="text-sm text-text-secondary mb-2 flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                             출시 예정일
                           </div>
-                          <p className="text-white">{game.releaseDate}</p>
+                          <p className="text-text-primary">{game.releaseDate}</p>
                         </div>
 
                         <div>
-                          <div className="text-sm text-slate-400 mb-2 flex items-center gap-2">
+                          <div className="text-sm text-text-secondary mb-2 flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             테스트 기간
                           </div>
-                          <p className="text-white">{game.testPeriod}</p>
+                          <p className="text-text-primary">{game.testPeriod}</p>
                         </div>
                       </div>
                     </div>
@@ -280,7 +280,7 @@ export default function GameDetailPage() {
               {/* Sidebar */}
               <div className="space-y-6">
                 {/* Test Timeline */}
-                <Card className="bg-slate-900 border border-slate-800">
+                <Card className="bg-bg-secondary border border-line">
                   <div className="p-6">
                     <h2 className="text-xl font-bold mb-6">테스트 일정</h2>
 
@@ -291,20 +291,20 @@ export default function GameDetailPage() {
                             <div
                               className={`w-10 h-10 rounded-full flex items-center justify-center ${
                                 milestone.status === 'completed'
-                                  ? 'bg-green-500/20 border-2 border-green-500'
-                                  : 'bg-slate-800 border-2 border-slate-700'
+                                  ? 'bg-accent-light border-2 border-accent'
+                                  : 'bg-bg-tertiary border-2 border-line'
                               }`}
                             >
                               {milestone.status === 'completed' && (
-                                <div className="w-3 h-3 bg-green-500 rounded-full" />
+                                <div className="w-3 h-3 bg-accent rounded-full" />
                               )}
                             </div>
                             {index < testMilestones.length - 1 && (
-                              <div className="absolute top-10 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-slate-800" />
+                              <div className="absolute top-10 left-1/2 -translate-x-1/2 w-0.5 h-8 bg-bg-tertiary" />
                             )}
                           </div>
                           <div className="flex-1 pb-8">
-                            <p className="text-sm text-slate-400 mb-1">{milestone.date}</p>
+                            <p className="text-sm text-text-secondary mb-1">{milestone.date}</p>
                             <p className="font-medium">{milestone.event}</p>
                           </div>
                         </div>
@@ -314,30 +314,30 @@ export default function GameDetailPage() {
                 </Card>
 
                 {/* Quick Actions */}
-                <Card className="bg-slate-900 border border-slate-800">
+                <Card className="bg-bg-secondary border border-line">
                   <div className="p-6">
                     <h2 className="text-xl font-bold mb-6">빠른 작업</h2>
 
                     <div className="space-y-3">
-                      <Button className="w-full justify-start bg-slate-800 hover:bg-slate-700">
+                      <Button className="w-full justify-start bg-bg-tertiary hover:bg-bg-tertiary">
                         <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                         테스터 관리
                       </Button>
-                      <Button className="w-full justify-start bg-slate-800 hover:bg-slate-700">
+                      <Button className="w-full justify-start bg-bg-tertiary hover:bg-bg-tertiary">
                         <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                         피드백 확인
                       </Button>
-                      <Button className="w-full justify-start bg-slate-800 hover:bg-slate-700">
+                      <Button className="w-full justify-start bg-bg-tertiary hover:bg-bg-tertiary">
                         <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                         빌드 업로드
                       </Button>
-                      <Button className="w-full justify-start bg-slate-800 hover:bg-slate-700">
+                      <Button className="w-full justify-start bg-bg-tertiary hover:bg-bg-tertiary">
                         <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -348,7 +348,7 @@ export default function GameDetailPage() {
                 </Card>
 
                 {/* Alerts */}
-                <Card className="bg-slate-900 border border-slate-800">
+                <Card className="bg-bg-secondary border border-line">
                   <div className="p-6">
                     <h2 className="text-xl font-bold mb-6">알림</h2>
 
@@ -359,7 +359,7 @@ export default function GameDetailPage() {
                         </svg>
                         <div className="text-sm">
                           <p className="text-red-400 font-medium mb-1">긴급 버그 리포트</p>
-                          <p className="text-slate-400 text-xs">3건의 긴급 버그가 보고되었습니다</p>
+                          <p className="text-text-secondary text-xs">3건의 긴급 버그가 보고되었습니다</p>
                         </div>
                       </div>
 
@@ -369,7 +369,7 @@ export default function GameDetailPage() {
                         </svg>
                         <div className="text-sm">
                           <p className="text-yellow-400 font-medium mb-1">업데이트 권장</p>
-                          <p className="text-slate-400 text-xs">새 빌드 업로드가 필요합니다</p>
+                          <p className="text-text-secondary text-xs">새 빌드 업로드가 필요합니다</p>
                         </div>
                       </div>
 
@@ -379,7 +379,7 @@ export default function GameDetailPage() {
                         </svg>
                         <div className="text-sm">
                           <p className="text-blue-400 font-medium mb-1">테스터 증가</p>
-                          <p className="text-slate-400 text-xs">이번 주 +150명의 신규 테스터</p>
+                          <p className="text-text-secondary text-xs">이번 주 +150명의 신규 테스터</p>
                         </div>
                       </div>
                     </div>
@@ -391,11 +391,11 @@ export default function GameDetailPage() {
 
           {/* 미디어 탭 */}
           {activeTab === 'media' && (
-            <Card className="bg-slate-900 border border-slate-800">
+            <Card className="bg-bg-secondary border border-line">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold">스크린샷 및 미디어</h2>
-                  <Button variant="outline" size="sm" className="border-slate-800 hover:bg-slate-800">
+                  <Button variant="outline" size="sm" className="border-line hover:bg-bg-tertiary">
                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
@@ -407,24 +407,24 @@ export default function GameDetailPage() {
                   {screenshots.map((screenshot) => (
                     <div
                       key={screenshot.id}
-                      className="aspect-video bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-800 hover:border-slate-700 transition-colors flex items-center justify-center relative group"
+                      className="aspect-video bg-bg-tertiary/50 rounded-lg border-2 border-dashed border-line hover:border-line transition-colors flex items-center justify-center relative group"
                     >
-                      <svg className="w-8 h-8 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-8 h-8 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      <div className="absolute bottom-2 left-2 right-2 text-xs text-slate-400 bg-slate-900/80 px-2 py-1 rounded">
+                      <div className="absolute bottom-2 left-2 right-2 text-xs text-text-secondary bg-bg-secondary/80 px-2 py-1 rounded">
                         {screenshot.title}
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div className="my-6 h-px bg-slate-800" />
+                <div className="my-6 h-px bg-line" />
 
                 <div>
                   <h3 className="font-semibold mb-4">트레일러 동영상</h3>
-                  <div className="aspect-video bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-800 flex items-center justify-center">
-                    <div className="text-center text-slate-500">
+                  <div className="aspect-video bg-bg-tertiary/50 rounded-lg border-2 border-dashed border-line flex items-center justify-center">
+                    <div className="text-center text-text-muted">
                       <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
@@ -444,12 +444,12 @@ export default function GameDetailPage() {
 
           {/* 피드백 탭 */}
           {activeTab === 'feedback' && (
-            <Card className="bg-slate-900 border border-slate-800">
+            <Card className="bg-bg-secondary border border-line">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold">최근 피드백</h2>
                   <Link href={`/feedback?game=${game.id}`}>
-                    <Button variant="ghost" size="sm" className="text-green-400 hover:text-green-300">
+                    <Button variant="ghost" size="sm" className="text-accent hover:text-accent">
                       모두 보기 →
                     </Button>
                   </Link>
@@ -459,16 +459,16 @@ export default function GameDetailPage() {
                   {recentFeedback.map((feedback) => (
                     <div
                       key={feedback.id}
-                      className="p-4 bg-slate-800/30 rounded-lg border border-slate-800 hover:bg-slate-800/50 transition-colors"
+                      className="p-4 bg-bg-tertiary/30 rounded-lg border border-line hover:bg-bg-tertiary/50 transition-colors"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center">
+                          <div className="w-10 h-10 bg-bg-tertiary rounded-full flex items-center justify-center">
                             <span className="text-sm font-semibold">{feedback.user[0]}</span>
                           </div>
                           <div>
                             <p className="font-semibold">{feedback.user}</p>
-                            <p className="text-xs text-slate-500">{feedback.date}</p>
+                            <p className="text-xs text-text-muted">{feedback.date}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -479,7 +479,7 @@ export default function GameDetailPage() {
                                 ? 'border-red-500/50 text-red-400'
                                 : feedback.type === '제안'
                                 ? 'border-yellow-500/50 text-yellow-400'
-                                : 'border-green-500/50 text-green-400'
+                                : 'border-accent-muted text-accent'
                             }`}
                           >
                             {feedback.type}
@@ -491,7 +491,7 @@ export default function GameDetailPage() {
                                 className={`w-3 h-3 ${
                                   i < feedback.rating
                                     ? 'fill-yellow-400 text-yellow-400'
-                                    : 'text-slate-700'
+                                    : 'text-text-secondary'
                                 }`}
                                 viewBox="0 0 24 24"
                               >
@@ -501,7 +501,7 @@ export default function GameDetailPage() {
                           </div>
                         </div>
                       </div>
-                      <p className="text-sm text-slate-300">{feedback.comment}</p>
+                      <p className="text-sm text-text-secondary">{feedback.comment}</p>
                     </div>
                   ))}
                 </div>
@@ -511,16 +511,16 @@ export default function GameDetailPage() {
 
           {/* 공지사항 탭 */}
           {activeTab === 'announcements' && (
-            <Card className="bg-slate-900 border border-slate-800">
+            <Card className="bg-bg-secondary border border-line">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-xl font-bold">공지사항 및 푸시 알림</h2>
-                    <p className="text-sm text-slate-400 mt-1">
+                    <p className="text-sm text-text-secondary mt-1">
                       테스터들에게 중요한 소식을 전달하세요
                     </p>
                   </div>
-                  <Button className="bg-green-600 hover:bg-green-700">
+                  <Button className="bg-accent hover:bg-accent-hover">
                     <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                     </svg>
@@ -532,7 +532,7 @@ export default function GameDetailPage() {
                   {announcements.map((announcement) => (
                     <div
                       key={announcement.id}
-                      className="p-4 bg-slate-800/30 rounded-lg border border-slate-800 hover:bg-slate-800/50 transition-colors"
+                      className="p-4 bg-bg-tertiary/30 rounded-lg border border-line hover:bg-bg-tertiary/50 transition-colors"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-start gap-3 flex-1">
@@ -557,7 +557,7 @@ export default function GameDetailPage() {
                                     ? 'border-orange-500/50 text-orange-400'
                                     : announcement.type === '업데이트'
                                     ? 'border-blue-500/50 text-blue-400'
-                                    : 'border-slate-500/50 text-slate-400'
+                                    : 'border-line/50 text-text-secondary'
                                 }`}
                               >
                                 {announcement.type}
@@ -568,7 +568,7 @@ export default function GameDetailPage() {
                                 </Badge>
                               )}
                               {announcement.sent && (
-                                <Badge className="bg-green-500/20 text-green-400 border-green-500/50 text-xs">
+                                <Badge className="bg-accent-light text-accent border-accent-muted text-xs">
                                   <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                   </svg>
@@ -576,8 +576,8 @@ export default function GameDetailPage() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-sm text-slate-300 mb-2">{announcement.content}</p>
-                            <div className="flex items-center gap-4 text-xs text-slate-400">
+                            <p className="text-sm text-text-secondary mb-2">{announcement.content}</p>
+                            <div className="flex items-center gap-4 text-xs text-text-secondary">
                               <span>{announcement.date}</span>
                               {announcement.sent && (
                                 <>
@@ -603,17 +603,17 @@ export default function GameDetailPage() {
                   <h3 className="font-semibold mb-3">알림 통계</h3>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <p className="text-sm text-slate-400 mb-1">총 공지</p>
+                      <p className="text-sm text-text-secondary mb-1">총 공지</p>
                       <p className="text-2xl font-bold">{announcements.length}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-400 mb-1">푸시 발송</p>
-                      <p className="text-2xl font-bold text-green-400">
+                      <p className="text-sm text-text-secondary mb-1">푸시 발송</p>
+                      <p className="text-2xl font-bold text-accent">
                         {announcements.filter((a) => a.sent).length}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-400 mb-1">도달률</p>
+                      <p className="text-sm text-text-secondary mb-1">도달률</p>
                       <p className="text-2xl font-bold text-blue-400">98.5%</p>
                     </div>
                   </div>

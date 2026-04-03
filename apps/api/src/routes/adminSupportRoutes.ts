@@ -23,35 +23,37 @@ import {
   deleteTab,
   reorderTabs,
 } from '../controllers/adminSupportController'
-import { authenticateToken, requireAdmin } from '../middleware/auth'
+import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
 
 const router = Router()
 router.use(authenticateToken, requireAdmin)
 
+// 조회 (모든 관리자)
 router.get('/support/seasons', getSeasons)
-router.post('/support/seasons', createSeason)
-router.put('/support/seasons/:id', updateSeason)
-router.patch('/support/seasons/:id/status', updateSeasonStatus)
-router.delete('/support/seasons/:id', deleteSeason)
-
 router.get('/support/applications', getApplications)
 router.get('/support/applications/:id', getApplicationDetail)
-router.patch('/support/applications/:id/status', updateApplicationStatus)
-router.patch('/support/applications/:id/confirm', confirmApplication)
-router.patch('/support/applications/:id/score', scoreApplication)
-router.put('/support/applications/:id/milestones', updateMilestone)
-router.delete('/support/applications/:id', deleteApplication)
-
 router.get('/support/banners', getBanners)
-router.post('/support/banners', createBanner)
-router.put('/support/banners/reorder', reorderBanners)
-router.put('/support/banners/:id', updateBanner)
-router.delete('/support/banners/:id', deleteBanner)
-
 router.get('/support/tabs', getTabs)
-router.post('/support/tabs', createTab)
-router.put('/support/tabs/reorder', reorderTabs)
-router.put('/support/tabs/:id', updateTab)
-router.delete('/support/tabs/:id', deleteTab)
+
+// 수정 (Normal 이상)
+router.post('/support/seasons', requireAdminLevel('super', 'normal'), createSeason)
+router.put('/support/seasons/:id', requireAdminLevel('super', 'normal'), updateSeason)
+router.patch('/support/seasons/:id/status', requireAdminLevel('super', 'normal'), updateSeasonStatus)
+router.patch('/support/applications/:id/status', requireAdminLevel('super', 'normal'), updateApplicationStatus)
+router.patch('/support/applications/:id/confirm', requireAdminLevel('super', 'normal'), confirmApplication)
+router.patch('/support/applications/:id/score', requireAdminLevel('super', 'normal'), scoreApplication)
+router.put('/support/applications/:id/milestones', requireAdminLevel('super', 'normal'), updateMilestone)
+router.post('/support/banners', requireAdminLevel('super', 'normal'), createBanner)
+router.put('/support/banners/reorder', requireAdminLevel('super', 'normal'), reorderBanners)
+router.put('/support/banners/:id', requireAdminLevel('super', 'normal'), updateBanner)
+router.post('/support/tabs', requireAdminLevel('super', 'normal'), createTab)
+router.put('/support/tabs/reorder', requireAdminLevel('super', 'normal'), reorderTabs)
+router.put('/support/tabs/:id', requireAdminLevel('super', 'normal'), updateTab)
+
+// 삭제 (Super만)
+router.delete('/support/seasons/:id', requireAdminLevel('super'), deleteSeason)
+router.delete('/support/applications/:id', requireAdminLevel('super'), deleteApplication)
+router.delete('/support/banners/:id', requireAdminLevel('super'), deleteBanner)
+router.delete('/support/tabs/:id', requireAdminLevel('super'), deleteTab)
 
 export default router

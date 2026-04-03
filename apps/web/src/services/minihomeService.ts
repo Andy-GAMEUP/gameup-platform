@@ -1,9 +1,34 @@
 'use client'
 import apiClient from './api'
 
+export interface PortfolioItem {
+  _id?: string
+  title: string
+  description: string
+  imageUrl: string
+  technologies: string[]
+  results: string[]
+  clientName: string
+  duration: string
+  completedAt?: string
+}
+
+export interface CertificationItem {
+  _id?: string
+  name: string
+  issuedAt: string
+}
+
+export interface WorkExperienceItem {
+  _id?: string
+  title: string
+  description: string
+  period: string
+}
+
 export interface MiniHome {
   _id: string
-  userId: { _id: string; username: string; profileImage?: string }
+  userId: { _id: string; username: string; profileImage?: string; level?: number }
   companyName: string
   introduction: string
   profileImage: string
@@ -14,6 +39,20 @@ export interface MiniHome {
   isPublic: boolean
   isRecommended: boolean
   representativeGameId: MiniHomeGame | null
+  expertiseArea: string[]
+  skills: string[]
+  hourlyRate: string
+  availability: 'available' | 'busy' | 'unavailable'
+  location: string
+  isVerified: boolean
+  rating: number
+  reviewCount: number
+  completedProjectCount: number
+  portfolio: PortfolioItem[]
+  certifications: CertificationItem[]
+  workExperience: WorkExperienceItem[]
+  contactEmail: string
+  contactPhone: string
   createdAt: string
   updatedAt: string
 }
@@ -63,6 +102,11 @@ export interface Proposal {
 }
 
 export const minihomeService = {
+  getMyMinihome: async () => {
+    const res = await apiClient.get('/minihome/me')
+    return res.data as { minihome: MiniHome | null; games?: MiniHomeGame[] }
+  },
+
   getList: async (params?: { page?: number; limit?: number; keyword?: string; sort?: string }) => {
     const res = await apiClient.get('/minihome', { params })
     return res.data as { minihomes: MiniHome[]; total: number; page: number; totalPages: number }
@@ -83,29 +127,12 @@ export const minihomeService = {
     return res.data as { news: MiniHomeNews[]; total: number; page: number; totalPages: number }
   },
 
-  create: async (data: {
-    companyName: string
-    introduction: string
-    profileImage?: string
-    coverImage?: string
-    website?: string
-    tags?: string[]
-    keywords?: string[]
-  }) => {
+  create: async (data: Record<string, unknown>) => {
     const res = await apiClient.post('/minihome', data)
     return res.data as { minihome: MiniHome }
   },
 
-  update: async (data: Partial<{
-    companyName: string
-    introduction: string
-    profileImage: string
-    coverImage: string
-    website: string
-    tags: string[]
-    keywords: string[]
-    isPublic: boolean
-  }>) => {
+  update: async (data: Record<string, unknown>) => {
     const res = await apiClient.put('/minihome', data)
     return res.data as { minihome: MiniHome }
   },
@@ -163,7 +190,7 @@ export const minihomeService = {
     return res.data as { proposal: Proposal }
   },
 
-  getMyProposals: async (params?: { page?: number; limit?: number; type?: string }) => {
+  getMyProposals: async (params?: { page?: number; limit?: number; type?: string; direction?: string }) => {
     const res = await apiClient.get('/minihome/proposals/me', { params })
     return res.data as { proposals: Proposal[]; total: number; page: number; totalPages: number }
   },

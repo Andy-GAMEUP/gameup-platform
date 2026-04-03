@@ -1,6 +1,2 @@
-'use client'
-import AdminIndividualMembersPage from '@/components/pages/AdminIndividualMembersPage'
-
-export default function Page() {
-  return <AdminIndividualMembersPage />
-}
+import { redirect } from 'next/navigation'
+export default function Page() { redirect('/admin/members/players') }

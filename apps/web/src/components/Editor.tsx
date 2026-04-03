@@ -36,7 +36,7 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: 'min-h-[300px] outline-none text-slate-200 text-sm leading-relaxed p-4',
+        class: 'min-h-[300px] outline-none text-text-primary text-sm leading-relaxed p-4',
       },
     },
     onUpdate({ editor }) {
@@ -86,15 +86,15 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
       type="button"
       onMouseDown={(e) => { e.preventDefault(); onClick() }}
       title={title}
-      className={`p-1.5 rounded transition-colors ${active ? 'bg-cyan-600/30 text-cyan-300' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+      className={`p-1.5 rounded transition-colors ${active ? 'bg-cyan-600/30 text-cyan-300' : 'text-text-secondary hover:text-text-primary hover:bg-line-light'}`}
     >
       {children}
     </button>
   )
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden focus-within:border-cyan-500 transition-colors">
-      <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-slate-700 bg-slate-800/80">
+    <div className="bg-bg-tertiary border border-line rounded-xl overflow-hidden focus-within:border-cyan-500 transition-colors">
+      <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-line bg-bg-tertiary/80">
         <ToolBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="굵게">
           <Bold className="w-4 h-4" />
         </ToolBtn>
@@ -105,7 +105,7 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
           <Strikethrough className="w-4 h-4" />
         </ToolBtn>
 
-        <div className="w-px h-5 bg-slate-700 mx-1" />
+        <div className="w-px h-5 bg-bg-tertiary mx-1" />
 
         <ToolBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="제목2">
           <Heading2 className="w-4 h-4" />
@@ -114,7 +114,7 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
           <Heading3 className="w-4 h-4" />
         </ToolBtn>
 
-        <div className="w-px h-5 bg-slate-700 mx-1" />
+        <div className="w-px h-5 bg-bg-tertiary mx-1" />
 
         <ToolBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="목록">
           <List className="w-4 h-4" />
@@ -129,7 +129,7 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
           <Code className="w-4 h-4" />
         </ToolBtn>
 
-        <div className="w-px h-5 bg-slate-700 mx-1" />
+        <div className="w-px h-5 bg-bg-tertiary mx-1" />
 
         <ToolBtn onClick={() => setShowLinkInput(v => !v)} active={editor.isActive('link') || showLinkInput} title="링크">
           <Link2 className="w-4 h-4" />
@@ -138,7 +138,7 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
           <ImageIcon className="w-4 h-4" />
         </ToolBtn>
 
-        <div className="w-px h-5 bg-slate-700 mx-1" />
+        <div className="w-px h-5 bg-bg-tertiary mx-1" />
 
         <ToolBtn onClick={() => editor.chain().focus().undo().run()} active={false} title="실행 취소">
           <Undo2 className="w-4 h-4" />
@@ -149,34 +149,34 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
       </div>
 
       {showLinkInput && (
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-900/50">
-          <Link2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-line bg-bg-secondary/50">
+          <Link2 className="w-3.5 h-3.5 text-text-secondary flex-shrink-0" />
           <input
             ref={linkInputRef}
             value={linkUrl}
             onChange={e => setLinkUrl(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') setLink(); if (e.key === 'Escape') { setShowLinkInput(false); setLinkUrl('') } }}
             placeholder="URL 입력 (Enter 확인, Esc 취소)"
-            className="flex-1 bg-transparent text-white text-sm outline-none placeholder-slate-500"
+            className="flex-1 bg-transparent text-text-primary text-sm outline-none placeholder-text-muted"
           />
           <button type="button" onClick={setLink} className="text-xs text-cyan-400 hover:text-cyan-300 font-medium px-2 py-1 rounded hover:bg-cyan-600/10 transition-colors">적용</button>
-          <button type="button" onClick={() => { setShowLinkInput(false); setLinkUrl('') }} className="text-slate-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={() => { setShowLinkInput(false); setLinkUrl('') }} className="text-text-muted hover:text-text-primary transition-colors"><X className="w-3.5 h-3.5" /></button>
         </div>
       )}
 
       {showImageInput && (
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700 bg-slate-900/50">
-          <ImageIcon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-line bg-bg-secondary/50">
+          <ImageIcon className="w-3.5 h-3.5 text-text-secondary flex-shrink-0" />
           <input
             ref={imageInputRef}
             value={imageUrl}
             onChange={e => setImageUrl(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') insertImage(); if (e.key === 'Escape') { setShowImageInput(false); setImageUrl('') } }}
             placeholder="이미지 URL 입력 (Enter 삽입, Esc 취소)"
-            className="flex-1 bg-transparent text-white text-sm outline-none placeholder-slate-500"
+            className="flex-1 bg-transparent text-text-primary text-sm outline-none placeholder-text-muted"
           />
           <button type="button" onClick={insertImage} className="text-xs text-cyan-400 hover:text-cyan-300 font-medium px-2 py-1 rounded hover:bg-cyan-600/10 transition-colors">삽입</button>
-          <button type="button" onClick={() => { setShowImageInput(false); setImageUrl('') }} className="text-slate-500 hover:text-white transition-colors"><X className="w-3.5 h-3.5" /></button>
+          <button type="button" onClick={() => { setShowImageInput(false); setImageUrl('') }} className="text-text-muted hover:text-text-primary transition-colors"><X className="w-3.5 h-3.5" /></button>
         </div>
       )}
 

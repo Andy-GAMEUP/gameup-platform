@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { SessionProvider } from "next-auth/react"
 import QueryProvider from "@/components/QueryProvider"
+import PageTracker from "@/components/PageTracker"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,12 +42,23 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko" className="dark">
+    <html lang="ko" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            try {
+              var t = localStorage.getItem('gameup-theme');
+              if (t === 'dark') document.documentElement.classList.add('dark');
+            } catch(e) {}
+          })();
+        `}} />
+      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-white`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
           <QueryProvider>
+            <PageTracker />
             {children}
           </QueryProvider>
         </SessionProvider>

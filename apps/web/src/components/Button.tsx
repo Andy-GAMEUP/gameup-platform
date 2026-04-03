@@ -18,15 +18,15 @@ export default function Button({
   className = '',
   ...props
 }: ButtonProps) {
-  const baseStyles = 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-green-500'
+  const baseStyles = 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent'
 
   const variantStyles = {
-    default: 'bg-green-600 text-white hover:bg-green-700 shadow-sm',
-    destructive: 'bg-red-600 text-white hover:bg-red-700 shadow-sm',
-    outline: 'border border-slate-700 bg-transparent text-slate-200 hover:bg-slate-800',
-    secondary: 'bg-slate-800 text-slate-100 hover:bg-slate-700',
-    ghost: 'bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white',
-    link: 'text-green-400 underline-offset-4 hover:underline'
+    default: 'bg-accent text-text-inverse hover:bg-accent-hover shadow-sm',
+    destructive: 'bg-danger text-text-primary hover:bg-danger/80 shadow-sm',
+    outline: 'border border-line bg-transparent text-text-secondary hover:bg-bg-tertiary',
+    secondary: 'bg-bg-tertiary text-text-primary hover:bg-line-light',
+    ghost: 'bg-transparent text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',
+    link: 'text-accent underline-offset-4 hover:underline'
   }
 
   const sizeStyles = {

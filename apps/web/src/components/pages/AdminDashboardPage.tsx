@@ -18,12 +18,12 @@ function StatCard({ label, value, sub, icon: Icon, color }: {
   icon: React.ElementType; color: string
 }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+    <div className="bg-bg-secondary border border-line rounded-xl p-5">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-slate-400 text-xs mb-1">{label}</p>
+          <p className="text-text-secondary text-xs mb-1">{label}</p>
           <p className={`text-2xl font-bold ${color}`}>{typeof value === 'number' ? value.toLocaleString() : value}</p>
-          {sub && <p className="text-slate-500 text-xs mt-1">{sub}</p>}
+          {sub && <p className="text-text-muted text-xs mt-1">{sub}</p>}
         </div>
         <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color.replace('text-', 'bg-').replace('-400', '-600/20').replace('-300', '-600/20')}`}>
           <Icon className={`w-5 h-5 ${color}`} />
@@ -37,11 +37,11 @@ function MiniBar({ label, count, max, color }: { label: string; count: number; m
   const pct = max > 0 ? Math.round((count / max) * 100) : 0
   return (
     <div className="flex items-center gap-3">
-      <span className="text-slate-400 text-xs w-16 text-right">{label}</span>
-      <div className="flex-1 bg-slate-800 rounded-full h-1.5">
+      <span className="text-text-secondary text-xs w-16 text-right">{label}</span>
+      <div className="flex-1 bg-bg-tertiary rounded-full h-1.5">
         <div className={`${color} h-1.5 rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-white text-xs w-8 text-right">{count}</span>
+      <span className="text-text-primary text-xs w-8 text-right">{count}</span>
     </div>
   )
 }
@@ -66,14 +66,14 @@ export default function AdminDashboardPage() {
   if (loading) return (
     <AdminLayout>
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+        <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
       </div>
     </AdminLayout>
   )
 
   if (!stats) return (
     <AdminLayout>
-      <p className="text-slate-400 text-center py-12">통계를 불러올 수 없습니다</p>
+      <p className="text-text-secondary text-center py-12">통계를 불러올 수 없습니다</p>
     </AdminLayout>
   )
 
@@ -112,8 +112,8 @@ export default function AdminDashboardPage() {
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-white text-xl font-bold">플랫폼 대시보드</h2>
-          <span className="text-slate-500 text-xs">{new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' })}</span>
+          <h2 className="text-text-primary text-xl font-bold">플랫폼 대시보드</h2>
+          <span className="text-text-muted text-xs">{new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' })}</span>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -133,8 +133,8 @@ export default function AdminDashboardPage() {
         </div>
 
         {visitorTrendData.length > 0 && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+          <div className="bg-bg-secondary border border-line rounded-xl p-5">
+            <h3 className="text-text-primary font-semibold mb-4 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-cyan-400" /> 방문자 트렌드 (최근 7일)
             </h3>
             <ResponsiveContainer width="100%" height={200}>
@@ -155,21 +155,21 @@ export default function AdminDashboardPage() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+          <div className="bg-bg-secondary border border-line rounded-xl p-5">
+            <h3 className="text-text-primary font-semibold mb-4 flex items-center gap-2">
               <Gamepad2 className="w-4 h-4 text-purple-400" /> 게임 상태 현황
             </h3>
             <div className="space-y-2.5">
               <MiniBar label="승인대기" count={games.pending}    max={games.total} color="bg-yellow-500" />
-              <MiniBar label="베타진행" count={games.beta ?? 0}  max={games.total} color="bg-green-500" />
+              <MiniBar label="베타진행" count={games.beta ?? 0}  max={games.total} color="bg-accent" />
               <MiniBar label="정식출시" count={games.published}  max={games.total} color="bg-blue-500" />
               <MiniBar label="거부됨"   count={games.rejected}   max={games.total} color="bg-red-500" />
-              <MiniBar label="아카이브" count={games.archived}   max={games.total} color="bg-slate-500" />
+              <MiniBar label="아카이브" count={games.archived}   max={games.total} color="bg-bg-muted" />
             </div>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+          <div className="bg-bg-secondary border border-line rounded-xl p-5">
+            <h3 className="text-text-primary font-semibold mb-4 flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-400" /> 회원 분포
             </h3>
             <div className="flex items-center gap-4">
@@ -185,9 +185,9 @@ export default function AdminDashboardPage() {
                   <div key={entry.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PIE_COLORS[i] }} />
-                      <span className="text-slate-400 text-xs">{entry.name}</span>
+                      <span className="text-text-secondary text-xs">{entry.name}</span>
                     </div>
-                    <span className="text-white text-xs font-medium">{entry.value}</span>
+                    <span className="text-text-primary text-xs font-medium">{entry.value}</span>
                   </div>
                 ))}
               </div>
@@ -196,17 +196,17 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-green-400" /> 인기 게임 TOP 5
+          <div className="bg-bg-secondary border border-line rounded-xl p-5">
+            <h3 className="text-text-primary font-semibold mb-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-accent" /> 인기 게임 TOP 5
             </h3>
             <div className="space-y-2">
               {(topGames as Array<{ _id: string; title: string; genre: string; playCount: number; rating: number }>).map((g, i) => (
                 <div key={g._id} className="flex items-center gap-3">
-                  <span className={`text-sm font-bold w-5 ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-amber-600' : 'text-slate-500'}`}>{i+1}</span>
+                  <span className={`text-sm font-bold w-5 ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-text-secondary' : i === 2 ? 'text-amber-600' : 'text-text-muted'}`}>{i+1}</span>
                   <div className="flex-1 min-w-0">
-                    <Link href={`/admin/metrics/${g._id}`} className="text-white text-sm hover:text-cyan-300 truncate block">{g.title}</Link>
-                    <span className="text-slate-500 text-xs">{g.genre}</span>
+                    <Link href={`/admin/metrics/${g._id}`} className="text-text-primary text-sm hover:text-cyan-300 truncate block">{g.title}</Link>
+                    <span className="text-text-muted text-xs">{g.genre}</span>
                   </div>
                   <div className="text-right">
                     <p className="text-cyan-400 text-sm font-medium">{(g.playCount||0).toLocaleString()}</p>
@@ -217,12 +217,12 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-            <h3 className="text-white font-semibold mb-4">빠른 메뉴</h3>
+          <div className="bg-bg-secondary border border-line rounded-xl p-5">
+            <h3 className="text-text-primary font-semibold mb-4">빠른 메뉴</h3>
             <div className="grid grid-cols-2 gap-3">
               {[
                 { to: '/admin/games?filter=pending', icon: Clock, label: '승인 대기', value: `${games.pending}건`, color: 'text-yellow-400', bg: 'bg-yellow-600/10 border-yellow-500/30 hover:bg-yellow-600/20' },
-                { to: '/admin/community?filter=blocked', icon: AlertTriangle, label: '차단 리뷰', value: `${reviews.blocked}건`, color: 'text-red-400', bg: 'bg-red-600/10 border-red-500/30 hover:bg-red-600/20' },
+                { to: '/admin/community?filter=blocked', icon: AlertTriangle, label: '차단 리뷰', value: `${reviews.blocked}건`, color: 'text-accent-text', bg: 'bg-red-600/10 border-accent-muted hover:bg-accent-light' },
                 { to: '/admin/users-enhanced/individual', icon: UserCircle, label: '개인회원 관리', value: '→', color: 'text-emerald-400', bg: 'bg-emerald-600/10 border-emerald-500/30 hover:bg-emerald-600/20' },
                 { to: '/admin/users-enhanced/corporate', icon: Building2, label: '기업회원 관리', value: '→', color: 'text-orange-400', bg: 'bg-orange-600/10 border-orange-500/30 hover:bg-orange-600/20' },
                 { to: '/admin/levels', icon: TrendingUp, label: '레벨 관리', value: '→', color: 'text-violet-400', bg: 'bg-violet-600/10 border-violet-500/30 hover:bg-violet-600/20' },

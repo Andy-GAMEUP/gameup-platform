@@ -21,7 +21,7 @@ export default function StatCard({
   className = '' 
 }: StatCardProps) {
   return (
-    <div className={`bg-white rounded-lg shadow p-6 ${className}`}>
+    <div className={`bg-bg-card rounded-lg shadow p-6 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-600 mb-1">{label}</p>

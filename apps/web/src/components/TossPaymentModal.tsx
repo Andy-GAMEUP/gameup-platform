@@ -62,37 +62,37 @@ export default function TossPaymentModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-overlay" onClick={onClose}>
       <div
-        className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md mx-4"
+        className="bg-bg-secondary border border-line rounded-xl w-full max-w-md mx-4"
         onClick={e => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-800">
+        <div className="flex items-center justify-between p-6 border-b border-line">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center">
               <CreditCard className="w-5 h-5 text-blue-400" />
             </div>
             <div>
               <h2 className="font-bold text-lg">결제하기</h2>
-              <p className="text-sm text-slate-400">{gameName}</p>
+              <p className="text-sm text-text-secondary">{gameName}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            className="p-2 hover:bg-bg-tertiary rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-slate-400" />
+            <X className="w-5 h-5 text-text-secondary" />
           </button>
         </div>
 
         <div className="p-6 space-y-5">
           {/* 상품 정보 */}
-          <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+          <div className="p-4 bg-bg-tertiary/50 rounded-lg border border-line">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-white">{itemName}</p>
-                <p className="text-sm text-slate-400 mt-0.5">{gameName}</p>
+                <p className="font-semibold text-text-primary">{itemName}</p>
+                <p className="text-sm text-text-secondary mt-0.5">{gameName}</p>
               </div>
               <p className="text-xl font-bold text-blue-400">₩{amount.toLocaleString()}</p>
             </div>
@@ -118,14 +118,14 @@ export default function TossPaymentModal({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-3 border border-slate-700 hover:bg-slate-800 rounded-lg text-sm transition-colors"
+              className="flex-1 py-3 border border-line hover:bg-bg-tertiary rounded-lg text-sm transition-colors"
             >
               취소
             </button>
             <button
               onClick={handlePayment}
               disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg font-semibold text-sm transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary disabled:cursor-not-allowed rounded-lg font-semibold text-sm transition-colors"
             >
               {loading ? (
                 <><Loader className="w-4 h-4 animate-spin" /> 처리 중...</>
@@ -135,7 +135,7 @@ export default function TossPaymentModal({
             </button>
           </div>
 
-          <p className="text-xs text-center text-slate-500">
+          <p className="text-xs text-center text-text-muted">
             토스페이먼츠 보안 결제
           </p>
         </div>
