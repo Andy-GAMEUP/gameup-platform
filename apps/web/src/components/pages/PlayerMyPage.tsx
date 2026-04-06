@@ -11,9 +11,16 @@ import { gameService } from '@/services/gameService'
 import MiniHomeManagementPage from '@/components/pages/MiniHomeManagementPage'
 import {
   User, Heart, Activity as ActivityIcon, Star,
-  Edit2, Lock, Trash2, Check, X, Loader2, ChevronRight, Eye, EyeOff, HelpCircle, Building2
+  Edit2, Lock, Trash2, Check, X, Loader2, ChevronRight, Eye, EyeOff, HelpCircle, Building2, TrendingUp
 } from 'lucide-react'
 import LevelBadge from '@/components/LevelBadge'
+
+interface LevelTier {
+  level: number
+  name: string
+  icon?: string
+  requiredScore: number
+}
 
 const ACTIVITY_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
   play:      { label: '게임 플레이',  icon: '🎮', color: 'text-cyan-400'   },
@@ -78,6 +85,9 @@ export default function PlayerMyPage() {
   const [qaTotal, setQaTotal] = useState(0)
   const [qaLoading, setQaLoading] = useState(false)
 
+  // ── 레벨 진행률 ──
+  const [levelTiers, setLevelTiers] = useState<LevelTier[]>([])
+
   const [loading, setLoading] = useState(true)
   const qaLoadedRef = useRef(false)
 
@@ -105,16 +115,18 @@ export default function PlayerMyPage() {
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [favData, actData, fsData] = await Promise.all([
+      const [favData, actData, fsData, tiers] = await Promise.all([
         playerService.getMyFavorites({ limit: 12 }),
         playerService.getMyActivity({ limit: 20 }),
         playerService.getMyFollowStats(),
+        authService.getLevelTiers().catch(() => []),
       ])
       setFavorites(favData.favorites)
       setFavTotal(favData.total)
       setActivities(actData.activities)
       setActivityStats(actData.stats)
       setFollowStats(fsData)
+      if (tiers.length > 0) setLevelTiers(tiers)
     } catch (err) {
       console.error(err)
     } finally {
@@ -266,6 +278,40 @@ export default function PlayerMyPage() {
               </div>
               <p className="text-text-secondary text-sm">{user?.email}</p>
               <p className="text-text-secondary text-xs mt-0.5">활동점수: <span className="text-emerald-400 font-medium">{((user as any)?.activityScore || 0).toLocaleString()}</span>P</p>
+              {/* 레벨 진행률 바 */}
+              {levelTiers.length > 0 && (() => {
+                const currentLevel = (user as any)?.level || 1
+                const score = (user as any)?.activityScore || 0
+                const currentTier = levelTiers.find(t => t.level === currentLevel)
+                const nextTier = levelTiers.find(t => t.level === currentLevel + 1)
+                if (!currentTier) return null
+                const currentReq = currentTier.requiredScore
+                const nextReq = nextTier?.requiredScore ?? currentReq
+                const isMaxLevel = !nextTier
+                const progress = isMaxLevel ? 100 : nextReq > currentReq
+                  ? Math.min(100, Math.round(((score - currentReq) / (nextReq - currentReq)) * 100))
+                  : 100
+                return (
+                  <div className="mt-1.5 w-full max-w-xs">
+                    <div className="flex items-center justify-between text-[10px] text-text-muted mb-0.5">
+                      <span>Lv.{currentLevel} {currentTier.name}</span>
+                      {isMaxLevel
+                        ? <span className="text-yellow-400">MAX</span>
+                        : <span>다음: Lv.{nextTier!.level} ({nextReq.toLocaleString()}P)</span>
+                      }
+                    </div>
+                    <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${isMaxLevel ? 'bg-yellow-400' : 'bg-gradient-to-r from-cyan-500 to-emerald-400'}`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    {!isMaxLevel && (
+                      <p className="text-[10px] text-text-muted mt-0.5">{(nextReq - score).toLocaleString()}P 더 필요</p>
+                    )}
+                  </div>
+                )
+              })()}
               {(user as any)?.bio && (
                 <p className="text-text-secondary text-sm mt-1">{(user as any).bio}</p>
               )}

@@ -1,5 +1,5 @@
-import { Response } from 'express'
-import { UserModel as User, ScrapModel as Scrap, PlayerActivityModel as PlayerActivity, ReviewModel as Review } from '@gameup/db'
+import { Request, Response } from 'express'
+import { UserModel as User, ScrapModel as Scrap, PlayerActivityModel as PlayerActivity, ReviewModel as Review, LevelModel } from '@gameup/db'
 import { hashPassword, comparePassword, generateToken } from '../services/authService'
 import { AuthRequest } from '../middleware/auth'
 
@@ -176,6 +176,8 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
         bio: user.bio || '',
         favoriteGenres: user.favoriteGenres || [],
         isActive: user.isActive,
+        activityScore: user.activityScore || 0,
+        level: user.level || 1,
         companyInfo: user.companyInfo,
         contactPerson: user.contactPerson,
         createdAt: user.createdAt,
@@ -291,5 +293,17 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Delete account error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+/**
+ * 공개 레벨 목록 조회 (레벨 진행률 표시용)
+ */
+export const getLevelTiers = async (_req: Request, res: Response) => {
+  try {
+    const levels = await LevelModel.find().sort({ level: 1 }).select('level name icon requiredScore').lean()
+    res.json({ levels })
+  } catch {
+    res.status(500).json({ message: '레벨 목록 조회 실패' })
   }
 }

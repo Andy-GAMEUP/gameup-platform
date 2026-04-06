@@ -8,6 +8,20 @@ import {
 } from '@gameup/db'
 import type { ActivityScoreType } from '@gameup/db'
 
+// 게임 연동 포인트 타입 (GamePointService에서 자체 정책으로 관리)
+const GAME_INTEGRATION_TYPES: Set<string> = new Set([
+  'game_account_create',
+  'game_daily_login',
+  'game_play_time',
+  'game_purchase',
+  'game_event_participate',
+  'game_ranking',
+])
+
+function isGameIntegrationType(type: string): boolean {
+  return GAME_INTEGRATION_TYPES.has(type)
+}
+
 // Level 캐시 (TTL 5분)
 let levelCache: { level: number; requiredScore: number }[] = []
 let levelCacheTime = 0
@@ -114,17 +128,28 @@ export async function grantPoints(
   // 계정 상태 체크
   if (!(await isUserEligible(userId))) return null
 
-  // 정책 조회
-  const policy = await getPolicy(type)
-  const amount = overrideAmount ?? (policy?.amount ?? 1)
+  // 게임 연동 타입은 GamePointService에서 정책/한도/중복 검사를 완료한 상태로
+  // overrideAmount와 함께 호출되므로, 플랫폼 정책 조회를 건너뜀
+  const isGameType = isGameIntegrationType(type)
 
-  // 비활성 정책이면 적립 불가 (관리자 수동 제외)
-  if (type !== 'admin_grant' && policy && !policy.isActive) return null
+  let amount: number
+  if (isGameType) {
+    // gamePointService가 이미 계산한 금액 사용
+    amount = overrideAmount ?? 1
+  } else {
+    // 플랫폼 정책 기반 포인트 계산
+    const policy = await getPolicy(type)
 
-  // 일일 한도 체크
-  if (policy?.dailyLimit) {
-    const dailyEarned = await getDailyEarned(userId, type)
-    if (dailyEarned >= policy.dailyLimit) return null
+    // 비활성 정책이면 적립 불가 (관리자 수동 제외)
+    if (type !== 'admin_grant' && policy && !policy.isActive) return null
+
+    amount = overrideAmount ?? (policy?.amount ?? 1)
+
+    // 일일 한도 체크
+    if (policy?.dailyLimit) {
+      const dailyEarned = await getDailyEarned(userId, type)
+      if (dailyEarned >= policy.dailyLimit) return null
+    }
   }
 
   // ActivityScore 이력 생성
@@ -145,14 +170,17 @@ export async function grantPoints(
 
   if (!user) return null
 
+  const currentScore = user.activityScore ?? 0
+
   // 최소값 0 보장
-  if (user.activityScore < 0) {
+  if (currentScore < 0) {
     user.activityScore = 0
     await user.save()
   }
 
   // 레벨 재계산
-  const newLevel = await calculateLevel(user.activityScore)
+  const finalScore = Math.max(currentScore, 0)
+  const newLevel = await calculateLevel(finalScore)
   if (newLevel !== user.level) {
     user.level = newLevel
     await user.save()
@@ -161,7 +189,7 @@ export async function grantPoints(
   return {
     success: true,
     amount,
-    newScore: user.activityScore,
+    newScore: finalScore,
     newLevel: newLevel,
   }
 }
@@ -176,8 +204,14 @@ export async function deductPoints(
   relatedId?: string,
   overrideAmount?: number
 ): Promise<{ success: boolean; amount: number; newScore: number; newLevel: number } | null> {
-  const policy = await getPolicy(type)
-  const deductAmount = overrideAmount ?? (policy?.amount ?? 1)
+  const isGameType = isGameIntegrationType(type)
+  let deductAmount: number
+  if (isGameType) {
+    deductAmount = overrideAmount ?? 1
+  } else {
+    const policy = await getPolicy(type)
+    deductAmount = overrideAmount ?? (policy?.amount ?? 1)
+  }
 
   // ActivityScore 이력 생성 (음수 금액)
   await ActivityScoreModel.create({
@@ -197,14 +231,17 @@ export async function deductPoints(
 
   if (!user) return null
 
+  const currentScore = user.activityScore ?? 0
+
   // 최소값 0 보장
-  if (user.activityScore < 0) {
+  if (currentScore < 0) {
     user.activityScore = 0
     await user.save()
   }
 
   // 레벨 재계산
-  const newLevel = await calculateLevel(user.activityScore)
+  const finalScore = Math.max(currentScore, 0)
+  const newLevel = await calculateLevel(finalScore)
   if (newLevel !== user.level) {
     user.level = newLevel
     await user.save()
@@ -213,7 +250,7 @@ export async function deductPoints(
   return {
     success: true,
     amount: deductAmount,
-    newScore: user.activityScore,
+    newScore: finalScore,
     newLevel: newLevel,
   }
 }

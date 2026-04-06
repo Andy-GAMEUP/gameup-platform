@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { Eye, ThumbsUp, MessageSquare, Bookmark, Star, Flame, Film, ImageIcon } from 'lucide-react'
 import type { PostSummary } from '@/services/communityService'
 import { getRelativeTime } from '@/lib/relativeTime'
+import LevelBadge from '@/components/LevelBadge'
 
 const CHANNEL_MAP: Record<string, { label: string; className: string }> = {
   notice:           { label: '공지', className: 'bg-violet-100 text-violet-700 dark:bg-violet-600/30 dark:text-violet-300' },
@@ -69,8 +70,9 @@ export default function PostCard({ post, currentUserId, priority = false, viewMo
           <h3 className="text-sm font-medium text-text-primary group-hover:text-accent transition-colors truncate">
             {post.title}
           </h3>
-          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-text-secondary">
+          <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-text-secondary">
             <span>{post.author?.username}</span>
+            <LevelBadge level={post.author?.level} />
             <span>·</span>
             <span>{getRelativeTime(post.createdAt)}</span>
           </div>
@@ -122,6 +124,7 @@ export default function PostCard({ post, currentUserId, priority = false, viewMo
                 {(post.author?.username || '?')[0].toUpperCase()}
               </div>
               <span className="text-xs font-medium text-text-primary">{post.author?.username}</span>
+              <LevelBadge level={post.author?.level} />
               <RoleBadge role={post.author?.role || ''} />
               <span className="text-[11px] text-text-secondary">· {getRelativeTime(post.createdAt)}</span>
             </div>
@@ -196,6 +199,7 @@ export default function PostCard({ post, currentUserId, priority = false, viewMo
             {(post.author?.username || '?')[0].toUpperCase()}
           </div>
           <span className="text-sm font-medium text-text-primary">{post.author?.username}</span>
+          <LevelBadge level={post.author?.level} />
           <RoleBadge role={post.author?.role || ''} />
           {isMyPost && <span className="text-xs text-violet-500">내 글</span>}
           <span className="text-xs text-text-secondary">·</span>

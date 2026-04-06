@@ -58,5 +58,10 @@ export const authService = {
   deleteAccount: async (data: { password: string }) => {
     const response = await apiClient.delete('/users/account', { data })
     return response.data
+  },
+
+  getLevelTiers: async () => {
+    const response = await apiClient.get('/users/levels')
+    return response.data.levels as { level: number; name: string; icon?: string; requiredScore: number }[]
   }
 }
