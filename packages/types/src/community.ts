@@ -1,11 +1,9 @@
 export type CommunityChannel =
-  | 'notice'       // 공지사항
-  | 'general'      // 일반 질문
-  | 'dev'          // 개발 질문
-  | 'daily'        // 일상 이야기
-  | 'game-talk'    // 게임 이야기
-  | 'info-share'   // 정보공유
-  | 'new-game'     // 게임 신작 소개
+  | 'notice'          // 공지사항
+  | 'new-game-intro'  // 신작게임소개
+  | 'beta-game'       // 베타게임
+  | 'live-game'       // 라이브게임
+  | 'free'            // 자유게시판
 
 export interface Post {
   id: string
@@ -35,7 +33,7 @@ export interface Comment {
   updatedAt: Date
 }
 
-export type ScrapType = 'community' | 'partner' | 'minihome' | 'solution'
+export type ScrapType = 'game' | 'community' | 'partner' | 'minihome' | 'solution'
 
 export interface Scrap {
   id: string

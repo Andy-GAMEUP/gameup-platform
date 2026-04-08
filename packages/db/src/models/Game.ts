@@ -157,4 +157,8 @@ const gameSchema = new Schema<IGame>(
   }
 )
 
+gameSchema.index({ developerId: 1, status: 1, createdAt: -1 })
+gameSchema.index({ status: 1, approvalStatus: 1 })
+gameSchema.index({ approvalStatus: 1, createdAt: -1 })
+
 export default mongoose.model<IGame>('Game', gameSchema)

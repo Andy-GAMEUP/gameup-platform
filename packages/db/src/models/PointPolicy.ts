@@ -52,4 +52,6 @@ const pointPolicySchema = new Schema<IPointPolicy>(
   }
 )
 
+pointPolicySchema.index({ isActive: 1 })
+
 export default mongoose.model<IPointPolicy>('PointPolicy', pointPolicySchema)

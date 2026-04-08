@@ -7,45 +7,48 @@ import {
 } from '@gameup/db'
 import type { GamePointType } from '@gameup/db'
 import { grantPoints } from './pointService'
+import { consumeBalance } from './developerBalanceService'
+import { SimpleCache } from '../utils/SimpleCache'
 
-// 게임 포인트 정책 캐시 (gameId:type → policy)
-let gamePolicyCache: Map<string, {
+type GamePolicyEntry = {
   amount: number
   multiplier: number
   dailyLimit: number | null
   isActive: boolean
-}> = new Map()
-let gamePolicyCacheTime = 0
-const GAME_POLICY_CACHE_TTL = 3 * 60 * 1000 // 3분
+  startDate: Date | null
+  endDate: Date | null
+}
+
+const gamePolicyCache = new SimpleCache<GamePolicyEntry>(3 * 60 * 1000)
 
 function cacheKey(gameId: string, type: string) {
   return `${gameId}:${type}`
 }
 
 async function getGamePolicy(gameId: string, type: GamePointType) {
-  if (Date.now() - gamePolicyCacheTime < GAME_POLICY_CACHE_TTL && gamePolicyCache.size > 0) {
+  if (!gamePolicyCache.isExpired()) {
     return gamePolicyCache.get(cacheKey(gameId, type))
   }
-  // 캐시 리프레시 - 승인된 활성 정책만
+  // 캐시 리프레시 - 승인된 정책만
   const policies = await GamePointPolicyModel.find({
     approvalStatus: 'approved',
   }).lean()
-  gamePolicyCache = new Map()
   for (const p of policies) {
     gamePolicyCache.set(cacheKey(p.gameId.toString(), p.type), {
       amount: p.amount,
       multiplier: p.multiplier ?? 1,
       dailyLimit: p.dailyLimit ?? null,
       isActive: p.isActive,
+      startDate: p.startDate ?? null,
+      endDate: p.endDate ?? null,
     })
   }
-  gamePolicyCacheTime = Date.now()
+  gamePolicyCache.markRefreshed()
   return gamePolicyCache.get(cacheKey(gameId, type))
 }
 
 export function invalidateGamePolicyCache() {
-  gamePolicyCacheTime = 0
-  gamePolicyCache = new Map()
+  gamePolicyCache.invalidate()
 }
 
 /**
@@ -85,9 +88,10 @@ export async function grantGamePoint(
   message: string
   newScore?: number
   newLevel?: number
+  remainingBalance?: number
 } | null> {
   // 1. 게임 존재 및 승인 상태 확인
-  const game = await GameModel.findById(gameId).select('title approvalStatus status').lean()
+  const game = await GameModel.findById(gameId).select('title approvalStatus status developerId').lean()
   if (!game) {
     return { success: false, amount: 0, message: '게임을 찾을 수 없습니다' }
   }
@@ -110,23 +114,32 @@ export async function grantGamePoint(
     return { success: false, amount: 0, message: '해당 포인트 정책이 비활성 상태입니다' }
   }
 
+  // 3.5 기간 검증
+  const now = new Date()
+  if (policy.startDate && now < new Date(policy.startDate)) {
+    return { success: false, amount: 0, message: '포인트 지급 기간이 아직 시작되지 않았습니다' }
+  }
+  if (policy.endDate && now > new Date(policy.endDate)) {
+    return { success: false, amount: 0, message: '포인트 지급 기간이 종료되었습니다' }
+  }
+
   // 4. 포인트 계산
   let amount = policy.amount
   if (type === 'game_play_time' && metadata?.minutes) {
-    // 플레이 시간 기반: minutes * multiplier
     amount = Math.floor((metadata.minutes as number) * policy.multiplier)
     if (amount < 1) return { success: false, amount: 0, message: '적립 가능한 최소 포인트에 미달합니다' }
   } else if (type === 'game_purchase' && metadata?.amount) {
-    // 결제 기반: 결제금액 * multiplier
     amount = Math.floor((metadata.amount as number) * policy.multiplier)
     if (amount < 1) return { success: false, amount: 0, message: '적립 가능한 최소 포인트에 미달합니다' }
   } else if (type === 'game_ranking' && metadata?.rank) {
-    // 랭킹: 기본 amount (순위별 추가 보정은 metadata에서)
     const rankMultiplier = metadata.rankMultiplier as number || 1
     amount = Math.floor(policy.amount * rankMultiplier)
+  } else if (type === 'game_level_achieve') {
+    // 레벨 도달: 기본 amount 사용, metadata.level로 중복 체크
+    amount = policy.amount
   }
 
-  // 5. 중복 체크 (계정 생성은 1회만)
+  // 5. 중복 체크 (계정 생성 1회)
   if (type === 'game_account_create') {
     const existing = await GamePointLogModel.findOne({
       gameId: new mongoose.Types.ObjectId(gameId),
@@ -138,13 +151,25 @@ export async function grantGamePoint(
     }
   }
 
+  // 5.5 레벨 도달 중복 체크 (레벨별 1회)
+  if (type === 'game_level_achieve' && metadata?.level) {
+    const existing = await GamePointLogModel.findOne({
+      gameId: new mongoose.Types.ObjectId(gameId),
+      userId: new mongoose.Types.ObjectId(userId),
+      type: 'game_level_achieve',
+      'metadata.level': metadata.level,
+    })
+    if (existing) {
+      return { success: false, amount: 0, message: `레벨 ${metadata.level} 보상을 이미 받았습니다` }
+    }
+  }
+
   // 6. 일일 한도 체크
   if (policy.dailyLimit) {
     const dailyEarned = await getGameDailyEarned(userId, gameId, type)
     if (dailyEarned >= policy.dailyLimit) {
       return { success: false, amount: 0, message: '일일 포인트 한도에 도달했습니다' }
     }
-    // 한도 초과 방지
     const remaining = policy.dailyLimit - dailyEarned
     if (amount > remaining) {
       amount = remaining
@@ -166,7 +191,21 @@ export async function grantGamePoint(
     }
   }
 
-  // 8. GamePointLog 기록
+  // 8. 개발사 포인트 잔액 차감
+  const developerId = game.developerId.toString()
+  const consumeResult = await consumeBalance(
+    developerId,
+    amount,
+    `${game.title} - ${type} (${userId})`,
+    gameId,
+    userId,
+    type
+  )
+  if (!consumeResult.success) {
+    return { success: false, amount: 0, message: consumeResult.message }
+  }
+
+  // 9. GamePointLog 기록
   await GamePointLogModel.create({
     gameId: new mongoose.Types.ObjectId(gameId),
     userId: new mongoose.Types.ObjectId(userId),
@@ -176,7 +215,7 @@ export async function grantGamePoint(
     apiKeyUsed: apiKey,
   })
 
-  // 9. 플랫폼 ActivityScore + 레벨 갱신
+  // 10. 플랫폼 ActivityScore + 레벨 갱신
   const reason = `게임 연동 포인트: ${game.title} (${type})`
   const result = await grantPoints(userId, type, reason, gameId, amount)
 
@@ -190,6 +229,7 @@ export async function grantGamePoint(
     message: `${amount}P 적립 완료`,
     newScore: result.newScore,
     newLevel: result.newLevel,
+    remainingBalance: consumeResult.balance,
   }
 }
 

@@ -3,8 +3,7 @@ import { useState } from 'react'
 import { X, Plus, Trash2, Loader2, CheckCircle } from 'lucide-react'
 import supportService from '@/services/supportService'
 
-const GENRES = ['RPG', '액션', '퍼즐', '시뮬레이션', '전략', '기타']
-const PLATFORMS = ['iOS', 'Android', 'PC']
+import { FORM_GENRES as GENRES, FORM_PLATFORMS as PLATFORMS } from '@/constants/game'
 
 interface Props {
   isOpen: boolean

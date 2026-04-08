@@ -240,26 +240,41 @@ export const getMyBookmarks = async (req: AuthRequest, res: Response) => {
 export const getComments = async (req: Request, res: Response) => {
   try {
     const { postId } = req.params
-    const comments = await Comment.find({ postId, parentId: null })
-      .populate('author', 'username role level')
-      .sort({ isOfficial: -1, createdAt: 1 })
-    const replies = await Comment.find({ postId, status: 'active', parentId: { $ne: null } })
+    const allComments = await Comment.find({ postId })
       .populate('author', 'username role level')
       .sort({ createdAt: 1 })
 
-    const tree = comments.map((c) => {
+    const rootComments: typeof allComments = []
+    const replyMap = new Map<string, typeof allComments>()
+
+    for (const c of allComments) {
+      if (!c.parentId) {
+        rootComments.push(c)
+      } else if (c.status === 'active') {
+        const parentKey = c.parentId.toString()
+        if (!replyMap.has(parentKey)) replyMap.set(parentKey, [])
+        replyMap.get(parentKey)!.push(c)
+      }
+    }
+
+    // isOfficial 우선 정렬
+    rootComments.sort((a, b) => {
+      if (a.isOfficial !== b.isOfficial) return a.isOfficial ? -1 : 1
+      return a.createdAt.getTime() - b.createdAt.getTime()
+    })
+
+    const tree = rootComments.map((c) => {
       const obj: Record<string, any> = c.toObject()
       if (c.status !== 'active') {
         obj.content = '[삭제된 댓글입니다]'
         obj.author = null
         obj.isDeleted = true
       }
+      const replies = replyMap.get(c._id.toString()) || []
       return {
         ...obj,
         likeCount: c.likes.length,
-        replies: replies
-          .filter((r) => r.parentId?.toString() === c._id.toString())
-          .map((r) => ({ ...r.toObject(), likeCount: r.likes.length }))
+        replies: replies.map((r) => ({ ...r.toObject(), likeCount: r.likes.length }))
       }
     })
     res.json({ comments: tree })
@@ -286,7 +301,9 @@ export const createComment = async (req: AuthRequest, res: Response) => {
     const updatedPost = await Post.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } }, { new: true })
     if (updatedPost) {
       const newHot = calcHotScore(updatedPost.likes.length, updatedPost.commentCount, updatedPost.views, updatedPost.createdAt)
-      await Post.findByIdAndUpdate(postId, { hotScore: newHot, isHot: newHot > 5 })
+      updatedPost.hotScore = newHot
+      updatedPost.isHot = newHot > 5
+      await updatedPost.save()
     }
     const populated = await Comment.findById(comment._id).populate('author', 'username role level')
 

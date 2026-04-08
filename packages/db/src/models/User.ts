@@ -160,4 +160,8 @@ const userSchema = new Schema<IUser>(
   }
 )
 
+userSchema.index({ role: 1, isActive: 1 })
+userSchema.index({ memberType: 1 })
+userSchema.index({ approvalStatus: 1 })
+
 export default mongoose.model<IUser>('User', userSchema)

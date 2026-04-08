@@ -36,4 +36,7 @@ const feedbackSchema = new Schema<IFeedback>(
   }
 )
 
+feedbackSchema.index({ gameId: 1, createdAt: -1 })
+feedbackSchema.index({ userId: 1, gameId: 1 }, { unique: true })
+
 export default mongoose.model<IFeedback>('Feedback', feedbackSchema)

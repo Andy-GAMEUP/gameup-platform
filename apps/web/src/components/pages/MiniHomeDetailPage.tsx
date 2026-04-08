@@ -20,7 +20,7 @@ const TABS = [
   { id: 'publishing', label: '퍼블리싱 제안' },
 ]
 
-const GENRES = ['RPG', '액션', '퍼즐', '시뮬레이션', '전략', '기타']
+import { FORM_GENRES as GENRES } from '@/constants/game'
 
 export default function MiniHomeDetailPage() {
   const params = useParams()

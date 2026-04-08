@@ -11,8 +11,7 @@ interface Props {
 
 type SubmitState = 'idle' | 'loading' | 'success' | 'error'
 
-const GENRES = ['RPG', '액션', '퍼즐', '시뮬레이션', '전략', '기타']
-const PLATFORMS = ['iOS', 'Android', 'PC']
+import { FORM_GENRES as GENRES, FORM_PLATFORMS as PLATFORMS } from '@/constants/game'
 const TAGS = ['퍼블리셔 구함', '투자 구함']
 
 const STEPS = ['게임 등록', '회사 정보', '키워드 선택']

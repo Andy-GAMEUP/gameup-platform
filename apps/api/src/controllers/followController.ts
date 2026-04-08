@@ -1,7 +1,13 @@
 import { Response } from 'express'
-import mongoose from 'mongoose'
 import { AuthRequest } from '../middleware/auth'
 import { FollowModel as Follow } from '@gameup/db'
+
+async function getFollowCounts(userId: string) {
+  return Promise.all([
+    Follow.countDocuments({ followingId: userId }),
+    Follow.countDocuments({ followerId: userId }),
+  ])
+}
 
 export const toggleFollow = async (req: AuthRequest, res: Response) => {
   try {
@@ -16,18 +22,12 @@ export const toggleFollow = async (req: AuthRequest, res: Response) => {
 
     if (existing) {
       await Follow.deleteOne({ followerId, followingId: userId })
-      const [followerCount, followingCount] = await Promise.all([
-        Follow.countDocuments({ followingId: userId }),
-        Follow.countDocuments({ followerId: userId }),
-      ])
+      const [followerCount, followingCount] = await getFollowCounts(userId)
       return res.json({ following: false, followerCount, followingCount })
     }
 
     await Follow.create({ followerId, followingId: userId })
-    const [followerCount, followingCount] = await Promise.all([
-      Follow.countDocuments({ followingId: userId }),
-      Follow.countDocuments({ followerId: userId }),
-    ])
+    const [followerCount, followingCount] = await getFollowCounts(userId)
     res.status(201).json({ following: true, followerCount, followingCount })
   } catch {
     res.status(500).json({ message: '팔로우 처리 실패' })
@@ -77,10 +77,9 @@ export const checkFollowing = async (req: AuthRequest, res: Response) => {
     const { userId } = req.params
     const followerId = req.user!.id
 
-    const [isFollowingDoc, followerCount, followingCount] = await Promise.all([
+    const [isFollowingDoc, [followerCount, followingCount]] = await Promise.all([
       Follow.findOne({ followerId, followingId: userId }),
-      Follow.countDocuments({ followingId: userId }),
-      Follow.countDocuments({ followerId: userId }),
+      getFollowCounts(userId),
     ])
 
     res.json({
@@ -97,10 +96,7 @@ export const getMyFollowStats = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id
 
-    const [followerCount, followingCount] = await Promise.all([
-      Follow.countDocuments({ followingId: userId }),
-      Follow.countDocuments({ followerId: userId }),
-    ])
+    const [followerCount, followingCount] = await getFollowCounts(userId)
 
     res.json({ followerCount, followingCount })
   } catch {

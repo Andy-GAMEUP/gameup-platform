@@ -13,7 +13,7 @@ import EventBannerCarousel from '@/components/EventBannerCarousel'
 
 const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='256' viewBox='0 0 400 256'%3E%3Crect fill='%231e293b' width='400' height='256'/%3E%3Ctext fill='%23334155' font-family='sans-serif' font-size='24' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3EGame%3C/text%3E%3C/svg%3E"
 
-const GENRES = ['전체', 'RPG', '액션', 'FPS', '전략', '퍼즐', '스포츠', '레이싱', '어드벤처', '시뮬레이션']
+import { FILTER_GENRES as GENRES } from '@/constants/game'
 const SORT_OPTIONS = [
   { value: 'newest', label: '최신순' },
   { value: 'popular', label: '인기순' },

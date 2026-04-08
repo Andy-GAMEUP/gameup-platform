@@ -5,10 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Gamepad2, Camera, ArrowRight, SkipForward } from 'lucide-react'
 
-const GENRES = [
-  '액션', 'RPG', '전략', '퍼즐', '스포츠', '레이싱',
-  '어드벤처', '시뮬레이션', '호러', '인디', '아케이드', 'FPS',
-]
+import { PROFILE_GENRES as GENRES } from '@/constants/game'
 
 export default function ProfileSetupPage() {
   const router = useRouter()

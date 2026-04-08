@@ -32,4 +32,8 @@ const PaymentSchema = new Schema<IPayment>({
   }
 }, { timestamps: true })
 
+PaymentSchema.index({ userId: 1, createdAt: -1 })
+PaymentSchema.index({ status: 1 })
+PaymentSchema.index({ pgOrderId: 1 })
+
 export default mongoose.model<IPayment>('Payment', PaymentSchema)

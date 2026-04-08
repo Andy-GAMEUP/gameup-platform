@@ -3,6 +3,13 @@ import { useSession, signIn, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
+async function refreshToken(): Promise<void> {
+  const sessionRes = await fetch('/api/auth/session')
+  const freshSession = await sessionRes.json()
+  const token = freshSession?.user?.accessToken
+  if (token) localStorage.setItem('token', token)
+}
+
 export function useAuth() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -24,6 +31,8 @@ export function useAuth() {
     memberType: ((session.user as any).memberType ?? 'individual') as 'individual' | 'corporate',
     approvalStatus: ((session.user as any).approvalStatus ?? 'pending') as 'pending' | 'approved' | 'rejected',
     companyInfo: (session.user as any).companyInfo as any,
+    level: ((session.user as any).level ?? 1) as number,
+    activityScore: ((session.user as any).activityScore ?? 0) as number,
     bio: undefined as string | undefined,
     favoriteGenres: undefined as string[] | undefined,
   } : null
@@ -39,10 +48,7 @@ export function useAuth() {
         redirect: false,
       })
       if (result?.error) throw new Error(result.error)
-      const sessionRes = await fetch('/api/auth/session')
-      const freshSession = await sessionRes.json()
-      const token = freshSession?.user?.accessToken
-      if (token) localStorage.setItem('token', token)
+      await refreshToken()
       router.refresh()
     },
     register: async (data: { email: string; username: string; password: string; role: 'developer' | 'player'; memberType?: string; companyInfo?: any; contactPerson?: any; skipLogin?: boolean }) => {
@@ -58,10 +64,7 @@ export function useAuth() {
       // 기업회원은 관리자 승인 전까지 로그인하지 않음
       if (data.skipLogin) return
       await signIn('credentials', { email: data.email, password: data.password, redirect: false })
-      const sessionRes = await fetch('/api/auth/session')
-      const freshSession = await sessionRes.json()
-      const token = freshSession?.user?.accessToken
-      if (token) localStorage.setItem('token', token)
+      await refreshToken()
       router.refresh()
     },
     logout: () => {

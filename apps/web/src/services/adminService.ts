@@ -325,6 +325,29 @@ export const adminService = {
 
   toggleGamePointPolicy: (id: string) =>
     apiClient.put(`/admin/game-point-policies/${id}/toggle`).then(r => r.data),
+
+  batchApproveGamePointPolicies: (ids: string[]) =>
+    apiClient.post('/admin/game-point-policies/batch-approve', { ids }).then(r => r.data),
+
+  batchRejectGamePointPolicies: (ids: string[], rejectionReason: string) =>
+    apiClient.post('/admin/game-point-policies/batch-reject', { ids, rejectionReason }).then(r => r.data),
+
+  // ── 개발사 잔액 관리 ──────────────────────────────────────────
+  getDeveloperBalances: (params?: { page?: number; limit?: number }) =>
+    apiClient.get('/admin/developer-balances', { params }).then(r => r.data),
+
+  adjustDeveloperBalance: (developerId: string, data: { amount: number; type: 'admin_grant' | 'admin_deduct'; description: string }) =>
+    apiClient.post(`/admin/developer-balances/${developerId}/adjust`, data).then(r => r.data),
+
+  // ── 포인트 상품 관리 ──────────────────────────────────────────
+  getPointPackages: () =>
+    apiClient.get('/admin/point-packages').then(r => r.data),
+
+  createPointPackage: (data: { name: string; points: number; price: number; description?: string; sortOrder?: number }) =>
+    apiClient.post('/admin/point-packages', data).then(r => r.data),
+
+  updatePointPackage: (id: string, data: Partial<{ name: string; points: number; price: number; description: string; sortOrder: number; isActive: boolean }>) =>
+    apiClient.put(`/admin/point-packages/${id}`, data).then(r => r.data),
 }
 
 export default adminService

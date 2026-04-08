@@ -7,6 +7,9 @@ import {
   UserSessionModel,
 } from '@gameup/db'
 import type { ActivityScoreType } from '@gameup/db'
+import { SimpleCache } from '../utils/SimpleCache'
+
+type PolicyEntry = { amount: number; multiplier: number; dailyLimit: number | null; isActive: boolean }
 
 // Level 캐시 (TTL 5분)
 let levelCache: { level: number; requiredScore: number }[] = []
@@ -14,9 +17,7 @@ let levelCacheTime = 0
 const LEVEL_CACHE_TTL = 5 * 60 * 1000
 
 // PointPolicy 캐시 (TTL 5분)
-let policyCache: Map<string, { amount: number; multiplier: number; dailyLimit: number | null; isActive: boolean }> = new Map()
-let policyCacheTime = 0
-const POLICY_CACHE_TTL = 5 * 60 * 1000
+const policyCache = new SimpleCache<PolicyEntry>(5 * 60 * 1000)
 
 async function getLevelTiers() {
   if (Date.now() - levelCacheTime < LEVEL_CACHE_TTL && levelCache.length > 0) {
@@ -29,11 +30,10 @@ async function getLevelTiers() {
 }
 
 async function getPolicy(type: ActivityScoreType) {
-  if (Date.now() - policyCacheTime < POLICY_CACHE_TTL && policyCache.size > 0) {
+  if (!policyCache.isExpired()) {
     return policyCache.get(type)
   }
   const policies = await PointPolicyModel.find().lean()
-  policyCache = new Map()
   for (const p of policies) {
     policyCache.set(p.type, {
       amount: p.amount,
@@ -42,13 +42,12 @@ async function getPolicy(type: ActivityScoreType) {
       isActive: p.isActive,
     })
   }
-  policyCacheTime = Date.now()
+  policyCache.markRefreshed()
   return policyCache.get(type)
 }
 
 export function invalidatePolicyCache() {
-  policyCacheTime = 0
-  policyCache = new Map()
+  policyCache.invalidate()
 }
 
 export function invalidateLevelCache() {
@@ -145,14 +144,17 @@ export async function grantPoints(
 
   if (!user) return null
 
+  const score = user.activityScore ?? 0
+
   // 최소값 0 보장
-  if (user.activityScore < 0) {
+  if (score < 0) {
     user.activityScore = 0
     await user.save()
   }
 
   // 레벨 재계산
-  const newLevel = await calculateLevel(user.activityScore)
+  const currentScore = user.activityScore ?? 0
+  const newLevel = await calculateLevel(currentScore)
   if (newLevel !== user.level) {
     user.level = newLevel
     await user.save()
@@ -161,7 +163,7 @@ export async function grantPoints(
   return {
     success: true,
     amount,
-    newScore: user.activityScore,
+    newScore: currentScore,
     newLevel: newLevel,
   }
 }
@@ -197,14 +199,17 @@ export async function deductPoints(
 
   if (!user) return null
 
+  const score = user.activityScore ?? 0
+
   // 최소값 0 보장
-  if (user.activityScore < 0) {
+  if (score < 0) {
     user.activityScore = 0
     await user.save()
   }
 
   // 레벨 재계산
-  const newLevel = await calculateLevel(user.activityScore)
+  const currentScore = user.activityScore ?? 0
+  const newLevel = await calculateLevel(currentScore)
   if (newLevel !== user.level) {
     user.level = newLevel
     await user.save()
@@ -213,7 +218,7 @@ export async function deductPoints(
   return {
     success: true,
     amount: deductAmount,
-    newScore: user.activityScore,
+    newScore: currentScore,
     newLevel: newLevel,
   }
 }
