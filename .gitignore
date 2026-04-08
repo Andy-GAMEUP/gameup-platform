@@ -45,3 +45,13 @@ apps/api/uploads/*
 
 # Migration
 scripts/*.log
+
+# Local backup & tools
+.backup/
+.claude/
+.playwright-mcp/
+Figma/
+
+# Office temp files
+~$*
+.~lock.*

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { gameService } from '../../services/gameService'
+import { developerBalanceService } from '../../services/developerBalanceService'
 
 interface Screenshot { id: number; title: string }
 interface Video { id: number; title: string; url: string; duration: string; views: number }
@@ -26,9 +27,31 @@ interface GamePointPolicy {
   amount: number
   multiplier: number
   dailyLimit: number | null
+  startDate?: string | null
+  endDate?: string | null
+  estimatedDailyUsage?: number
+  developerNote?: string
+  conditionConfig?: Record<string, unknown> | null
   isActive: boolean
   approvalStatus: 'draft' | 'pending' | 'approved' | 'rejected'
   rejectionReason?: string
+}
+
+interface ApiKeyItem {
+  _id: string
+  name: string
+  prefix: string
+  isActive: boolean
+  lastUsedAt?: string
+  expiresAt?: string
+  createdAt: string
+}
+
+interface BalanceInfo {
+  _id: string
+  balance: number
+  totalPurchased: number
+  totalUsed: number
 }
 
 const TABS: { key: TabKey; label: string }[] = [
@@ -45,6 +68,7 @@ const POINT_TYPES = [
   { type: 'game_play_time', label: '게임 플레이 시간', icon: Timer, defaultAmount: 1, description: '플레이 시간 기반 포인트 (분 × multiplier)' },
   { type: 'game_purchase', label: '게임 결제 보상', icon: CreditCard, defaultAmount: 0, description: '결제 금액 기반 포인트 (금액 × multiplier)' },
   { type: 'game_event_participate', label: '게임 이벤트 참여', icon: Zap, defaultAmount: 3, description: '게임 이벤트 참여/완료 시 지급' },
+  { type: 'game_level_achieve', label: '레벨 도달 보상', icon: Star, defaultAmount: 5, description: '특정 레벨 도달 시 1회 지급' },
   { type: 'game_ranking', label: '게임 랭킹 보상', icon: Trophy, defaultAmount: 10, description: '랭킹 달성 시 보상 포인트' },
 ]
 
@@ -95,8 +119,19 @@ export default function GameDetailManagementPage() {
   // ── 포인트 정책 상태 ──────────────────────────────────────────
   const [pointPolicies, setPointPolicies] = useState<GamePointPolicy[]>([])
   const [pointLoading, setPointLoading] = useState(false)
-  const [editingPolicy, setEditingPolicy] = useState<{ type: string; label: string; description: string; amount: number; multiplier: number; dailyLimit: number | null } | null>(null)
+  const [editingPolicy, setEditingPolicy] = useState<{
+    type: string; label: string; description: string; amount: number; multiplier: number;
+    dailyLimit: number | null; startDate: string; endDate: string;
+    estimatedDailyUsage: number; developerNote: string;
+  } | null>(null)
   const [pointStats, setPointStats] = useState<{ stats: { type: string; totalPoints: number; count: number; uniqueUsers: number }[]; totalPoints: number; totalTransactions: number } | null>(null)
+
+  // ── 잔액 & API Key 상태 ──────────────────────────────────────
+  const [balanceInfo, setBalanceInfo] = useState<BalanceInfo | null>(null)
+  const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([])
+  const [apiKeyModal, setApiKeyModal] = useState(false)
+  const [newApiKeyName, setNewApiKeyName] = useState('')
+  const [createdApiKey, setCreatedApiKey] = useState<string | null>(null)
 
   const gameId = _id as string
 
@@ -118,17 +153,38 @@ export default function GameDetailManagementPage() {
     } catch { /* ignore */ }
   }, [gameId])
 
+  const loadBalance = useCallback(async () => {
+    try {
+      const data = await developerBalanceService.getMyBalance()
+      setBalanceInfo(data.balance)
+    } catch { /* ignore */ }
+  }, [])
+
+  const loadApiKeys = useCallback(async () => {
+    if (!gameId) return
+    try {
+      const data = await gameService.getApiKeys(gameId)
+      setApiKeys(data.apiKeys || [])
+    } catch { /* ignore */ }
+  }, [gameId])
+
   useEffect(() => {
     if (activeTab === 'points') {
       loadPointPolicies()
       loadPointStats()
+      loadBalance()
+      loadApiKeys()
     }
-  }, [activeTab, loadPointPolicies, loadPointStats])
+  }, [activeTab, loadPointPolicies, loadPointStats, loadBalance, loadApiKeys])
 
   const handleSavePolicy = async () => {
     if (!editingPolicy || !gameId) return
     try {
-      await gameService.upsertGamePointPolicy(gameId, editingPolicy)
+      await gameService.upsertGamePointPolicy(gameId, {
+        ...editingPolicy,
+        startDate: editingPolicy.startDate || null,
+        endDate: editingPolicy.endDate || null,
+      })
       setEditingPolicy(null)
       loadPointPolicies()
     } catch { alert('정책 저장에 실패했습니다') }
@@ -141,7 +197,10 @@ export default function GameDetailManagementPage() {
       await gameService.submitPointPolicies(gameId)
       loadPointPolicies()
       alert('승인 요청이 제출되었습니다')
-    } catch { alert('승인 요청에 실패했습니다') }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '승인 요청에 실패했습니다'
+      alert(msg)
+    }
   }
 
   const handleDeletePolicy = async (type: string) => {
@@ -151,6 +210,43 @@ export default function GameDetailManagementPage() {
       await gameService.deleteGamePointPolicy(gameId, type)
       loadPointPolicies()
     } catch { alert('삭제에 실패했습니다') }
+  }
+
+  const handleTogglePolicy = async (type: string) => {
+    if (!gameId) return
+    try {
+      await gameService.toggleGamePointPolicy(gameId, type)
+      loadPointPolicies()
+    } catch { alert('토글에 실패했습니다') }
+  }
+
+  const handleCreateApiKey = async () => {
+    if (!gameId || !newApiKeyName) return
+    try {
+      const data = await gameService.createApiKey(gameId, { name: newApiKeyName })
+      setCreatedApiKey(data.fullKey)
+      setNewApiKeyName('')
+      loadApiKeys()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'API Key 생성에 실패했습니다'
+      alert(msg)
+    }
+  }
+
+  const handleDeleteApiKey = async (keyId: string) => {
+    if (!gameId || !confirm('이 API Key를 삭제하시겠습니까?')) return
+    try {
+      await gameService.deleteApiKey(gameId, keyId)
+      loadApiKeys()
+    } catch { alert('삭제에 실패했습니다') }
+  }
+
+  const handleToggleApiKey = async (keyId: string) => {
+    if (!gameId) return
+    try {
+      await gameService.toggleApiKey(gameId, keyId)
+      loadApiKeys()
+    } catch { alert('토글에 실패했습니다') }
   }
 
   const getStatusBadge = (status: string) => {
@@ -416,23 +512,32 @@ export default function GameDetailManagementPage() {
 
       {activeTab === 'points' && (
         <div className="space-y-6">
-          {/* 포인트 통계 */}
-          {pointStats && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="bg-bg-secondary border border-line rounded-lg p-4">
-                <p className="text-sm text-text-secondary mb-1">총 지급 포인트</p>
-                <p className="text-2xl font-bold text-accent">{pointStats.totalPoints?.toLocaleString() || 0}P</p>
+          {/* 잔액 & 통계 카드 */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {balanceInfo && (
+              <div className="bg-bg-secondary border border-accent/30 rounded-lg p-4">
+                <p className="text-sm text-text-secondary mb-1">포인트 잔액</p>
+                <p className="text-2xl font-bold text-accent">{balanceInfo.balance.toLocaleString()}P</p>
+                <p className="text-xs text-text-muted mt-1">충전: {balanceInfo.totalPurchased.toLocaleString()} / 사용: {balanceInfo.totalUsed.toLocaleString()}</p>
               </div>
-              <div className="bg-bg-secondary border border-line rounded-lg p-4">
-                <p className="text-sm text-text-secondary mb-1">총 지급 건수</p>
-                <p className="text-2xl font-bold">{pointStats.totalTransactions?.toLocaleString() || 0}</p>
-              </div>
-              <div className="bg-bg-secondary border border-line rounded-lg p-4">
-                <p className="text-sm text-text-secondary mb-1">활성 정책</p>
-                <p className="text-2xl font-bold">{pointPolicies.filter(p => p.approvalStatus === 'approved' && p.isActive).length} / {POINT_TYPES.length}</p>
-              </div>
+            )}
+            {pointStats && (
+              <>
+                <div className="bg-bg-secondary border border-line rounded-lg p-4">
+                  <p className="text-sm text-text-secondary mb-1">총 지급 포인트</p>
+                  <p className="text-2xl font-bold text-accent">{pointStats.totalPoints?.toLocaleString() || 0}P</p>
+                </div>
+                <div className="bg-bg-secondary border border-line rounded-lg p-4">
+                  <p className="text-sm text-text-secondary mb-1">총 지급 건수</p>
+                  <p className="text-2xl font-bold">{pointStats.totalTransactions?.toLocaleString() || 0}</p>
+                </div>
+              </>
+            )}
+            <div className="bg-bg-secondary border border-line rounded-lg p-4">
+              <p className="text-sm text-text-secondary mb-1">활성 정책</p>
+              <p className="text-2xl font-bold">{pointPolicies.filter(p => p.approvalStatus === 'approved' && p.isActive).length} / {POINT_TYPES.length}</p>
             </div>
-          )}
+          </div>
 
           {/* 정책 설정 */}
           <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
@@ -497,18 +602,36 @@ export default function GameDetailManagementPage() {
                                 <label className="block text-xs text-text-secondary mb-1">설명</label>
                                 <input value={editingPolicy.description} onChange={e => setEditingPolicy(p => p ? { ...p, description: e.target.value } : null)} className={inputCls} />
                               </div>
+                              <div>
+                                <label className="block text-xs text-text-secondary mb-1">시작일</label>
+                                <input type="date" value={editingPolicy.startDate} onChange={e => setEditingPolicy(p => p ? { ...p, startDate: e.target.value } : null)} className={inputCls} />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-text-secondary mb-1">종료일</label>
+                                <input type="date" value={editingPolicy.endDate} onChange={e => setEditingPolicy(p => p ? { ...p, endDate: e.target.value } : null)} className={inputCls} />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-text-secondary mb-1">예상 일일 사용량</label>
+                                <input type="number" value={editingPolicy.estimatedDailyUsage || ''} placeholder="0" onChange={e => setEditingPolicy(p => p ? { ...p, estimatedDailyUsage: Number(e.target.value) } : null)} className={inputCls} />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-text-secondary mb-1">개발사 메모</label>
+                                <input value={editingPolicy.developerNote} placeholder="관리자에게 전달할 메모" onChange={e => setEditingPolicy(p => p ? { ...p, developerNote: e.target.value } : null)} className={inputCls} />
+                              </div>
                               <div className="col-span-2 md:col-span-4 flex gap-2">
                                 <button onClick={handleSavePolicy} className="px-3 py-1.5 bg-accent hover:bg-accent-hover rounded text-sm transition-colors">저장</button>
                                 <button onClick={() => setEditingPolicy(null)} className="px-3 py-1.5 border border-line rounded text-sm hover:bg-bg-tertiary transition-colors">취소</button>
                               </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center gap-4 text-sm flex-wrap">
                               {existing ? (
                                 <>
                                   <span className="text-text-secondary">기본: <strong>{existing.amount}P</strong></span>
                                   {existing.multiplier !== 1 && <span className="text-text-secondary">배율: <strong>×{existing.multiplier}</strong></span>}
                                   {existing.dailyLimit && <span className="text-text-secondary">일일 한도: <strong>{existing.dailyLimit}P</strong></span>}
+                                  {existing.startDate && <span className="text-text-muted">시작: {new Date(existing.startDate).toLocaleDateString()}</span>}
+                                  {existing.endDate && <span className="text-text-muted">종료: {new Date(existing.endDate).toLocaleDateString()}</span>}
                                 </>
                               ) : (
                                 <span className="text-text-muted">미설정</span>
@@ -517,6 +640,14 @@ export default function GameDetailManagementPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-1">
+                          {existing?.approvalStatus === 'approved' && (
+                            <button
+                              onClick={() => handleTogglePolicy(pt.type)}
+                              className={`px-2 py-1.5 text-xs rounded-md border transition-colors ${existing.isActive ? 'border-green-500/50 text-green-400 hover:bg-green-500/10' : 'border-gray-500/50 text-gray-400 hover:bg-gray-500/10'}`}
+                            >
+                              {existing.isActive ? 'ON' : 'OFF'}
+                            </button>
+                          )}
                           <button
                             onClick={() => setEditingPolicy({
                               type: pt.type,
@@ -525,6 +656,10 @@ export default function GameDetailManagementPage() {
                               amount: existing?.amount ?? pt.defaultAmount,
                               multiplier: existing?.multiplier ?? 1,
                               dailyLimit: existing?.dailyLimit ?? null,
+                              startDate: existing?.startDate ? new Date(existing.startDate).toISOString().split('T')[0] : '',
+                              endDate: existing?.endDate ? new Date(existing.endDate).toISOString().split('T')[0] : '',
+                              estimatedDailyUsage: existing?.estimatedDailyUsage ?? 0,
+                              developerNote: existing?.developerNote ?? '',
                             })}
                             className="p-1.5 border border-line rounded-md hover:bg-bg-tertiary transition-colors"
                           >
@@ -544,6 +679,46 @@ export default function GameDetailManagementPage() {
             )}
           </div>
 
+          {/* API Key 관리 */}
+          <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold flex items-center gap-2"><Shield className="w-5 h-5 text-blue-400" /> API Key 관리</h2>
+                <p className="text-sm text-text-secondary mt-1">게임 서버에서 포인트 지급 API를 호출할 때 사용하는 인증 키입니다</p>
+              </div>
+              <button onClick={() => { setApiKeyModal(true); setCreatedApiKey(null) }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm transition-colors">
+                <Plus className="w-4 h-4" /> API Key 생성
+              </button>
+            </div>
+
+            {apiKeys.length > 0 ? (
+              <div className="space-y-2">
+                {apiKeys.map(key => (
+                  <div key={key._id} className="flex items-center justify-between p-3 bg-bg-tertiary/30 rounded-lg border border-line">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${key.isActive ? 'bg-green-400' : 'bg-gray-500'}`} />
+                      <div>
+                        <p className="text-sm font-medium">{key.name}</p>
+                        <p className="text-xs text-text-muted font-mono">{key.prefix}****</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {key.lastUsedAt && <span className="text-xs text-text-muted">마지막 사용: {new Date(key.lastUsedAt).toLocaleDateString()}</span>}
+                      <button onClick={() => handleToggleApiKey(key._id)} className={`px-2 py-1 text-xs rounded border ${key.isActive ? 'border-green-500/50 text-green-400' : 'border-gray-500/50 text-gray-400'}`}>
+                        {key.isActive ? '활성' : '비활성'}
+                      </button>
+                      <button onClick={() => handleDeleteApiKey(key._id)} className="p-1 text-red-400 hover:bg-red-500/10 rounded">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-text-muted text-sm">생성된 API Key가 없습니다</div>
+            )}
+          </div>
+
           {/* API 연동 가이드 */}
           <div className="bg-bg-secondary border border-line rounded-lg p-6">
             <h2 className="text-xl font-bold mb-3 flex items-center gap-2"><Shield className="w-5 h-5 text-blue-400" /> API 연동 가이드</h2>
@@ -551,6 +726,7 @@ export default function GameDetailManagementPage() {
             <div className="bg-bg-tertiary rounded-lg p-4 font-mono text-sm overflow-x-auto">
               <p className="text-text-muted mb-2">// 포인트 지급 요청</p>
               <p><span className="text-green-400">POST</span> /api/game-points/grant</p>
+              <p className="text-yellow-400 mt-1">Headers: x-api-key: gup_xxxxxxxx_xxxxxxxxxx...</p>
               <p className="text-text-muted mt-2">{'{'}</p>
               <p className="text-text-secondary pl-4">{`"gameId": "${gameId}",`}</p>
               <p className="text-text-secondary pl-4">{`"userId": "플레이어_ID",`}</p>
@@ -655,6 +831,35 @@ export default function GameDetailManagementPage() {
             <button onClick={() => setItemModal(false)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
             <button onClick={addItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">등록</button>
           </div>
+        </div>
+      </Modal>
+
+      <Modal open={apiKeyModal} onClose={() => { setApiKeyModal(false); setCreatedApiKey(null) }} title="API Key 생성">
+        <div className="space-y-4">
+          {createdApiKey ? (
+            <div className="space-y-3">
+              <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <p className="text-sm font-semibold text-green-400 mb-2">API Key가 생성되었습니다!</p>
+                <p className="text-xs text-text-secondary mb-2">이 키는 다시 표시되지 않으니 안전한 곳에 저장하세요.</p>
+                <div className="bg-bg-tertiary p-3 rounded font-mono text-sm break-all select-all">{createdApiKey}</div>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={() => { setApiKeyModal(false); setCreatedApiKey(null) }} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">확인</button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className={labelCls}>Key 이름 *</label>
+                <input placeholder="예: 프로덕션 서버" value={newApiKeyName} onChange={e => setNewApiKeyName(e.target.value)} className={inputCls} />
+              </div>
+              <p className="text-xs text-text-muted">게임당 최대 5개의 API Key를 생성할 수 있습니다.</p>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setApiKeyModal(false)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
+                <button onClick={handleCreateApiKey} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">생성</button>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 

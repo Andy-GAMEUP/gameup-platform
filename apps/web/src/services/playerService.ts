@@ -132,6 +132,24 @@ export const playerService = {
     const res = await apiClient.get('/users/me/follow-stats')
     return res.data as { followerCount: number; followingCount: number }
   },
+
+  getMyActivityScores: async (params?: { page?: number; limit?: number; type?: string }) => {
+    const res = await apiClient.get('/my/activity-scores', { params })
+    return res.data as {
+      history: ActivityScoreItem[]
+      total: number
+      page: number
+      totalPages: number
+    }
+  },
+}
+
+export interface ActivityScoreItem {
+  _id: string
+  amount: number
+  reason: string
+  type: string
+  createdAt: string
 }
 
 export default playerService

@@ -6,6 +6,7 @@ export type GamePointType =
   | 'game_play_time'        // 게임 플레이 시간
   | 'game_purchase'         // 게임 결제
   | 'game_event_participate' // 게임 이벤트 참여/완료
+  | 'game_level_achieve'    // 게임 레벨 도달
   | 'game_ranking'          // 게임 랭킹 보상
 
 export type GamePointApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected'
@@ -19,6 +20,11 @@ export interface IGamePointPolicy extends Document {
   amount: number
   multiplier: number
   dailyLimit: number | null
+  startDate?: Date
+  endDate?: Date
+  estimatedDailyUsage?: number
+  developerNote?: string
+  conditionConfig?: Record<string, unknown>
   isActive: boolean
   approvalStatus: GamePointApprovalStatus
   adminNote?: string
@@ -51,6 +57,7 @@ const gamePointPolicySchema = new Schema<IGamePointPolicy>(
         'game_play_time',
         'game_purchase',
         'game_event_participate',
+        'game_level_achieve',
         'game_ranking',
       ],
       required: true,
@@ -105,6 +112,26 @@ const gamePointPolicySchema = new Schema<IGamePointPolicy>(
     },
     rejectionReason: {
       type: String,
+    },
+    startDate: {
+      type: Date,
+      default: null,
+    },
+    endDate: {
+      type: Date,
+      default: null,
+    },
+    estimatedDailyUsage: {
+      type: Number,
+      default: 0,
+    },
+    developerNote: {
+      type: String,
+      default: '',
+    },
+    conditionConfig: {
+      type: Schema.Types.Mixed,
+      default: null,
     },
   },
   {

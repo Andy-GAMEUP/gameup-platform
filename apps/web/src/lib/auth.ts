@@ -31,6 +31,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           approvalStatus: data.user.approvalStatus || 'pending',
           companyInfo: data.user.companyInfo || null,
           image: data.user.profileImage || null,
+          level: data.user.level || 1,
+          activityScore: data.user.activityScore || 0,
           accessToken: data.token,
         }
       },
@@ -68,6 +70,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         ;(user as any).approvalStatus = data.user.approvalStatus || 'approved'
         ;(user as any).companyInfo = data.user.companyInfo || null
         ;(user as any).username = data.user.username
+        ;(user as any).level = data.user.level || 1
+        ;(user as any).activityScore = data.user.activityScore || 0
         ;(user as any).accessToken = data.token
       }
       return true
@@ -81,6 +85,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.approvalStatus = (user as any).approvalStatus || 'pending'
         token.companyInfo = (user as any).companyInfo || null
         token.username = (user as any).username || user.name || ''
+        token.level = (user as any).level || 1
+        token.activityScore = (user as any).activityScore || 0
         token.accessToken = (user as any).accessToken || ''
       }
       return token
@@ -94,6 +100,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         ;(session.user as any).approvalStatus = token.approvalStatus
         ;(session.user as any).companyInfo = token.companyInfo
         ;(session.user as any).username = token.username
+        ;(session.user as any).level = token.level
+        ;(session.user as any).activityScore = token.activityScore
         ;(session.user as any).accessToken = token.accessToken
       }
       return session

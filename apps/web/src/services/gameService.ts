@@ -85,6 +85,9 @@ export const gameService = {
   upsertGamePointPolicy: async (gameId: string, data: {
     type: string; label: string; description?: string;
     amount: number; multiplier?: number; dailyLimit?: number | null;
+    startDate?: string | null; endDate?: string | null;
+    estimatedDailyUsage?: number; developerNote?: string;
+    conditionConfig?: Record<string, unknown> | null;
   }) => {
     const response = await apiClient.post(`/games/${gameId}/point-policies`, data)
     return response.data
@@ -100,6 +103,11 @@ export const gameService = {
     return response.data
   },
 
+  toggleGamePointPolicy: async (gameId: string, type: string) => {
+    const response = await apiClient.put(`/games/${gameId}/point-policies/${type}/toggle`)
+    return response.data
+  },
+
   getGamePointStats: async (gameId: string) => {
     const response = await apiClient.get(`/game-points/${gameId}/stats`)
     return response.data
@@ -107,6 +115,32 @@ export const gameService = {
 
   getGamePointLogs: async (gameId: string, params?: { page?: number; limit?: number; type?: string }) => {
     const response = await apiClient.get(`/game-points/${gameId}/logs`, { params })
+    return response.data
+  },
+
+  // ─── API Key 관리 ────────────────────────────────────────────
+  getApiKeys: async (gameId: string) => {
+    const response = await apiClient.get(`/games/${gameId}/api-keys`)
+    return response.data
+  },
+
+  createApiKey: async (gameId: string, data: { name: string; expiresAt?: string }) => {
+    const response = await apiClient.post(`/games/${gameId}/api-keys`, data)
+    return response.data
+  },
+
+  deleteApiKey: async (gameId: string, keyId: string) => {
+    const response = await apiClient.delete(`/games/${gameId}/api-keys/${keyId}`)
+    return response.data
+  },
+
+  regenerateApiKey: async (gameId: string, keyId: string) => {
+    const response = await apiClient.put(`/games/${gameId}/api-keys/${keyId}/regenerate`)
+    return response.data
+  },
+
+  toggleApiKey: async (gameId: string, keyId: string) => {
+    const response = await apiClient.put(`/games/${gameId}/api-keys/${keyId}/toggle`)
     return response.data
   },
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Send } from 'lucide-react'
 import Navbar from '@/components/Navbar'
+import LevelBadge from '@/components/LevelBadge'
 import messageService, { ChatRoom, ChatMessage } from '@/services/messageService'
 import { useAuth } from '@/lib/useAuth'
 
@@ -87,6 +88,7 @@ export default function MessagesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="text-text-primary text-sm font-medium truncate">{other?.username ?? '알 수 없음'}</span>
+                      {(other as any)?.level && <LevelBadge level={(other as any).level} />}
                       {room.lastMessageAt && (
                         <span className="text-text-muted text-xs ml-1 flex-shrink-0">{relativeTime(room.lastMessageAt)}</span>
                       )}
@@ -109,6 +111,7 @@ export default function MessagesPage() {
               {getOtherParticipant(activeRoom)?.username?.[0]?.toUpperCase() ?? '?'}
             </div>
             <span className="text-text-primary font-medium">{getOtherParticipant(activeRoom)?.username ?? '알 수 없음'}</span>
+            {(getOtherParticipant(activeRoom) as any)?.level && <LevelBadge level={(getOtherParticipant(activeRoom) as any).level} />}
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">

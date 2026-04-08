@@ -13,6 +13,11 @@ interface GamePointPolicy {
   amount: number
   multiplier: number
   dailyLimit: number | null
+  startDate?: string | null
+  endDate?: string | null
+  estimatedDailyUsage?: number
+  developerNote?: string
+  conditionConfig?: Record<string, unknown> | null
   isActive: boolean
   approvalStatus: string
   adminNote?: string
@@ -27,6 +32,7 @@ const TYPE_LABELS: Record<string, string> = {
   game_play_time: '게임 플레이 시간',
   game_purchase: '게임 결제 보상',
   game_event_participate: '게임 이벤트 참여',
+  game_level_achieve: '레벨 도달 보상',
   game_ranking: '게임 랭킹 보상',
 }
 
@@ -46,6 +52,9 @@ export default function AdminGamePointPoliciesPage() {
   const [rejectModal, setRejectModal] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [detailModal, setDetailModal] = useState<GamePointPolicy | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [batchRejectModal, setBatchRejectModal] = useState(false)
+  const [batchRejectReason, setBatchRejectReason] = useState('')
 
   const loadPolicies = useCallback(async () => {
     setLoading(true)
@@ -90,6 +99,44 @@ export default function AdminGamePointPoliciesPage() {
     } catch { alert('상태 변경에 실패했습니다') }
   }
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    const pendingIds = policies.filter(p => p.approvalStatus === 'pending').map(p => p._id)
+    if (pendingIds.every(id => selectedIds.has(id))) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(pendingIds))
+    }
+  }
+
+  const handleBatchApprove = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`${selectedIds.size}건의 정책을 일괄 승인하시겠습니까?`)) return
+    try {
+      await adminService.batchApproveGamePointPolicies(Array.from(selectedIds))
+      setSelectedIds(new Set())
+      loadPolicies()
+    } catch { alert('일괄 승인에 실패했습니다') }
+  }
+
+  const handleBatchReject = async () => {
+    if (selectedIds.size === 0 || !batchRejectReason.trim()) return
+    try {
+      await adminService.batchRejectGamePointPolicies(Array.from(selectedIds), batchRejectReason)
+      setSelectedIds(new Set())
+      setBatchRejectModal(false)
+      setBatchRejectReason('')
+      loadPolicies()
+    } catch { alert('일괄 거절에 실패했습니다') }
+  }
+
   return (
     <div className="space-y-6 p-6">
       <div>
@@ -122,6 +169,22 @@ export default function AdminGamePointPoliciesPage() {
         ))}
       </div>
 
+      {/* 일괄 작업 바 */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-accent/10 border border-accent/30 rounded-lg">
+          <span className="text-sm font-medium">{selectedIds.size}건 선택됨</span>
+          <button onClick={handleBatchApprove} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm transition-colors">
+            일괄 승인
+          </button>
+          <button onClick={() => { setBatchRejectModal(true); setBatchRejectReason('') }} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm transition-colors">
+            일괄 거절
+          </button>
+          <button onClick={() => setSelectedIds(new Set())} className="px-3 py-1.5 border border-line rounded text-sm hover:bg-bg-tertiary">
+            선택 해제
+          </button>
+        </div>
+      )}
+
       {/* 정책 목록 */}
       <div className="bg-bg-secondary border border-line rounded-lg overflow-hidden">
         {loading ? (
@@ -129,12 +192,24 @@ export default function AdminGamePointPoliciesPage() {
         ) : policies.length === 0 ? (
           <div className="text-center py-12 text-text-secondary">해당 조건의 정책이 없습니다</div>
         ) : (
+          <>
+          {statusFilter === 'pending' && policies.length > 0 && (
+            <div className="px-4 py-2 border-b border-line bg-bg-tertiary/30">
+              <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+                <input type="checkbox" checked={policies.filter(p => p.approvalStatus === 'pending').every(p => selectedIds.has(p._id))} onChange={toggleSelectAll} className="w-4 h-4 accent-accent" />
+                전체 선택
+              </label>
+            </div>
+          )}
           <div className="divide-y divide-line">
             {policies.map(policy => {
               const status = STATUS_MAP[policy.approvalStatus] || STATUS_MAP.draft
               return (
                 <div key={policy._id} className="p-4 hover:bg-bg-tertiary/20 transition-colors">
                   <div className="flex items-start justify-between gap-4">
+                    {policy.approvalStatus === 'pending' && (
+                      <input type="checkbox" checked={selectedIds.has(policy._id)} onChange={() => toggleSelect(policy._id)} className="w-4 h-4 accent-accent mt-1 flex-shrink-0" />
+                    )}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <span className="font-semibold">{policy.gameId?.title || '(삭제된 게임)'}</span>
@@ -157,6 +232,14 @@ export default function AdminGamePointPoliciesPage() {
                         개발사: {policy.developerId?.username || '-'} ({policy.developerId?.email || '-'})
                         {policy.description && ` · ${policy.description}`}
                       </div>
+                      {(policy.startDate || policy.endDate || policy.estimatedDailyUsage || policy.developerNote) && (
+                        <div className="flex items-center gap-3 text-xs text-text-muted mt-1 flex-wrap">
+                          {policy.startDate && <span>시작: {new Date(policy.startDate).toLocaleDateString()}</span>}
+                          {policy.endDate && <span>종료: {new Date(policy.endDate).toLocaleDateString()}</span>}
+                          {policy.estimatedDailyUsage ? <span>예상 일일: {policy.estimatedDailyUsage}P</span> : null}
+                          {policy.developerNote && <span className="text-yellow-400">메모: {policy.developerNote}</span>}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button onClick={() => setDetailModal(policy)} className="p-1.5 border border-line rounded-md hover:bg-bg-tertiary" title="상세보기">
@@ -183,6 +266,7 @@ export default function AdminGamePointPoliciesPage() {
               )
             })}
           </div>
+          </>
         )}
       </div>
 
@@ -223,6 +307,30 @@ export default function AdminGamePointPoliciesPage() {
         </div>
       )}
 
+      {/* 일괄 거절 모달 */}
+      {batchRejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-overlay" onClick={() => setBatchRejectModal(false)}>
+          <div className="bg-bg-secondary border border-line rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-4">일괄 거절 ({selectedIds.size}건)</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-text-secondary mb-1">거절 사유 *</label>
+                <textarea
+                  value={batchRejectReason}
+                  onChange={e => setBatchRejectReason(e.target.value)}
+                  placeholder="선택된 모든 정책에 적용될 거절 사유를 입력하세요"
+                  className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent min-h-24 resize-y"
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setBatchRejectModal(false)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
+                <button onClick={handleBatchReject} disabled={!batchRejectReason.trim()} className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-md text-sm disabled:opacity-50">일괄 거절</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 상세 모달 */}
       {detailModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg-overlay" onClick={() => setDetailModal(null)}>
@@ -236,7 +344,13 @@ export default function AdminGamePointPoliciesPage() {
                 <div><span className="text-text-secondary">기본 금액:</span> <span className="font-medium">{detailModal.amount}P</span></div>
                 <div><span className="text-text-secondary">배율:</span> <span className="font-medium">x{detailModal.multiplier}</span></div>
                 <div><span className="text-text-secondary">일일 한도:</span> <span className="font-medium">{detailModal.dailyLimit ?? '무제한'}</span></div>
+                <div><span className="text-text-secondary">시작일:</span> <span className="font-medium">{detailModal.startDate ? new Date(detailModal.startDate).toLocaleDateString() : '없음'}</span></div>
+                <div><span className="text-text-secondary">종료일:</span> <span className="font-medium">{detailModal.endDate ? new Date(detailModal.endDate).toLocaleDateString() : '없음'}</span></div>
+                <div><span className="text-text-secondary">예상 일일 사용:</span> <span className="font-medium">{detailModal.estimatedDailyUsage || 0}P</span></div>
               </div>
+              {detailModal.developerNote && (
+                <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded"><span className="text-text-secondary">개발사 메모:</span> {detailModal.developerNote}</div>
+              )}
               {detailModal.description && (
                 <div><span className="text-text-secondary">설명:</span> {detailModal.description}</div>
               )}

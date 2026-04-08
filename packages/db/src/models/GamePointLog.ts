@@ -31,6 +31,7 @@ const gamePointLogSchema = new Schema<IGamePointLog>(
         'game_play_time',
         'game_purchase',
         'game_event_participate',
+        'game_level_achieve',
         'game_ranking',
       ],
       required: true,

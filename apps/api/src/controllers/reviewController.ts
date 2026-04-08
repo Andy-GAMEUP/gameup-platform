@@ -27,7 +27,7 @@ export const getGameReviews = async (req: AuthRequest, res: Response) => {
 
     const total = await Review.countDocuments(filter)
     const reviews = await Review.find(filter)
-      .populate('userId', 'username')
+      .populate('userId', 'username role level profileImage')
       .sort(sortOption)
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)

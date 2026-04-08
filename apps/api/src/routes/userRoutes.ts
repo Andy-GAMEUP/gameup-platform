@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { register, login, getProfile, updateProfile, changePassword, deleteAccount } from '../controllers/userController'
+import { getPublicLevels, getMyActivityScores } from '../controllers/levelController'
 import { authenticateToken } from '../middleware/auth'
 
 const router = Router()

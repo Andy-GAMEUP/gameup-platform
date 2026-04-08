@@ -38,6 +38,8 @@ const navItems: NavItem[] = [
       { path: '/admin/levels', label: '레벨 관리', icon: Award },
       { path: '/admin/activity-scores', label: '활동점수', icon: Activity },
       { path: '/admin/game-point-policies', label: '게임포인트정책', icon: Gift },
+      { path: '/admin/developer-balances', label: '개발사잔액', icon: Activity },
+      { path: '/admin/point-packages', label: '포인트상품', icon: Award },
     ],
   },
   {

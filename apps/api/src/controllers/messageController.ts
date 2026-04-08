@@ -45,7 +45,7 @@ export const getRoomMessages = async (req: AuthRequest, res: Response) => {
     if (!isParticipant) return res.status(403).json({ message: '접근 권한이 없습니다' })
     const total = await MessageModel.countDocuments({ roomId, deletedBy: { $ne: userId } })
     const messages = await MessageModel.find({ roomId, deletedBy: { $ne: userId } })
-      .populate('senderId', 'username profileImage')
+      .populate('senderId', 'username profileImage role level')
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))

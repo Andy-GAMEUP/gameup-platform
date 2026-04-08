@@ -4,6 +4,8 @@ import {
   adminApprovePolicy,
   adminRejectPolicy,
   adminTogglePolicy,
+  adminBatchApprove,
+  adminBatchReject,
 } from '../controllers/gamePointController'
 import { authenticateToken, requireRole } from '../middleware/auth'
 
@@ -23,5 +25,9 @@ router.put('/game-point-policies/:id/reject', adminRejectPolicy)
 
 // 관리자: 정책 활성/비활성 토글
 router.put('/game-point-policies/:id/toggle', adminTogglePolicy)
+
+// 관리자: 일괄 승인/거절
+router.post('/game-point-policies/batch-approve', adminBatchApprove)
+router.post('/game-point-policies/batch-reject', adminBatchReject)
 
 export default router

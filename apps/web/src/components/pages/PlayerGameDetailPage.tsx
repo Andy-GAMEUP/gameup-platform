@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/useAuth'
 import { gameService } from '@/services/gameService'
 import playerService, { Review } from '@/services/playerService'
+import LevelBadge from '@/components/LevelBadge'
 
 interface GameQA {
   _id: string
@@ -783,6 +784,8 @@ export default function PlayerGameDetailPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="text-text-primary text-sm font-medium">{review.userId?.username || '익명'}</span>
+                              <LevelBadge level={(review.userId as any)?.level} />
+                              {(review.userId as any)?.role === 'developer' && <span className="text-xs text-cyan-400 border border-cyan-500/30 px-1 rounded">개발사</span>}
                               {review.isVerifiedTester && <span className="text-xs text-cyan-400 border border-cyan-500/30 px-1 rounded">인증 테스터</span>}
                             </div>
                             <p className="text-text-muted text-xs">{new Date(review.createdAt).toLocaleDateString('ko-KR')}</p>

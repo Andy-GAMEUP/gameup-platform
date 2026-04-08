@@ -41,7 +41,11 @@ import sessionRoutes from './routes/sessionRoutes'
 import gameEventRoutes from './routes/gameEventRoutes'
 import gamePointRoutes from './routes/gamePointRoutes'
 import adminGamePointRoutes from './routes/adminGamePointRoutes'
+import apiKeyRoutes from './routes/apiKeyRoutes'
+import developerBalanceRoutes from './routes/developerBalanceRoutes'
 import { TermsModel } from '@gameup/db'
+import { getPublicLevels, getMyActivityScores } from './controllers/levelController'
+import { authenticateToken } from './middleware/auth'
 import { errorHandler, notFound } from './middleware/errorHandler'
 import { initSocket } from './socket'
 
@@ -135,6 +139,12 @@ app.use('/api', eventBannerRoutes)
 app.use('/api/admin', adminEventBannerRoutes)
 app.use('/api', gamePointRoutes)
 app.use('/api/admin', adminGamePointRoutes)
+app.use('/api', apiKeyRoutes)
+app.use('/api', developerBalanceRoutes)
+
+// 공개 레벨 목록 + 내 활동이력
+app.get('/api/levels', getPublicLevels)
+app.get('/api/my/activity-scores', authenticateToken, getMyActivityScores)
 
 // 공개 약관 조회 (회원가입 시 사용)
 app.get('/api/terms', async (req, res) => {

@@ -18,6 +18,7 @@ export type ActivityScoreType =
   | 'game_play_time'
   | 'game_purchase'
   | 'game_event_participate'
+  | 'game_level_achieve'
   | 'game_ranking'
   | 'admin_grant'
   | 'admin_deduct'
@@ -66,6 +67,7 @@ const activityScoreSchema = new Schema<IActivityScore>(
         'game_play_time',
         'game_purchase',
         'game_event_participate',
+        'game_level_achieve',
         'game_ranking',
         'admin_grant',
         'admin_deduct',

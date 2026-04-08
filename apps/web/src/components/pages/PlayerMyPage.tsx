@@ -5,15 +5,16 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/useAuth'
-import playerService, { FavoriteGame, Activity } from '@/services/playerService'
+import playerService, { FavoriteGame, Activity, ActivityScoreItem } from '@/services/playerService'
 import { authService } from '@/services/authService'
 import { gameService } from '@/services/gameService'
 import MiniHomeManagementPage from '@/components/pages/MiniHomeManagementPage'
 import {
-  User, Heart, Activity as ActivityIcon, Star,
+  User, Heart, Activity as ActivityIcon, Star, Award,
   Edit2, Lock, Trash2, Check, X, Loader2, ChevronRight, Eye, EyeOff, HelpCircle, Building2
 } from 'lucide-react'
 import LevelBadge from '@/components/LevelBadge'
+import LevelProgressCard from '@/components/LevelProgressCard'
 
 const ACTIVITY_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
   play:      { label: '게임 플레이',  icon: '🎮', color: 'text-cyan-400'   },
@@ -36,7 +37,31 @@ interface MyQA {
   createdAt: string
 }
 
-type Tab = 'favorites' | 'activity' | 'qa' | 'profile' | 'security'
+const ACTIVITY_SCORE_CONFIG: Record<string, { label: string; icon: string }> = {
+  login:                { label: '로그인',        icon: '🔑' },
+  stay_time:            { label: '체류 시간',     icon: '⏱️' },
+  post_write:           { label: '글 작성',       icon: '📝' },
+  post_delete:          { label: '글 삭제',       icon: '🗑️' },
+  comment_write:        { label: '댓글 작성',     icon: '💬' },
+  comment_delete:       { label: '댓글 삭제',     icon: '🗑️' },
+  recommend_received:   { label: '추천 받음',     icon: '👍' },
+  recommend_cancelled:  { label: '추천 취소',     icon: '👎' },
+  game_access:          { label: '게임 접속',     icon: '🎮' },
+  game_stay_time:       { label: '게임 체류',     icon: '⏰' },
+  game_event_reward:    { label: '이벤트 보상',   icon: '🎁' },
+  game_payment_reward:  { label: '결제 보상',     icon: '💰' },
+  game_account_create:  { label: '게임 계정 생성', icon: '🆕' },
+  game_daily_login:     { label: '게임 일일 로그인', icon: '📅' },
+  game_play_time:       { label: '게임 플레이 시간', icon: '🕹️' },
+  game_purchase:        { label: '게임 구매',     icon: '🛒' },
+  game_event_participate: { label: '이벤트 참여', icon: '🎉' },
+  game_level_achieve:   { label: '레벨 달성',     icon: '⭐' },
+  game_ranking:         { label: '랭킹',          icon: '🏆' },
+  admin_grant:          { label: '관리자 지급',   icon: '✅' },
+  admin_deduct:         { label: '관리자 차감',   icon: '❌' },
+}
+
+type Tab = 'favorites' | 'activity' | 'activityPoints' | 'qa' | 'profile' | 'security'
 
 function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   return (
@@ -73,6 +98,14 @@ export default function PlayerMyPage() {
   const [activityStats, setActivityStats] = useState({ playCount: 0, reviewCount: 0, favoriteCount: 0 })
   const [followStats, setFollowStats] = useState({ followerCount: 0, followingCount: 0 })
 
+  // ── 활동포인트 ──
+  const [activityScores, setActivityScores] = useState<ActivityScoreItem[]>([])
+  const [activityScoreTotal, setActivityScoreTotal] = useState(0)
+  const [activityScorePage, setActivityScorePage] = useState(1)
+  const [activityScoreLoading, setActivityScoreLoading] = useState(false)
+  const [activityScoreFilter, setActivityScoreFilter] = useState<string>('')
+  const activityScoreLoadedRef = useRef(false)
+
   // ── Q&A ──
   const [myQAs, setMyQAs] = useState<MyQA[]>([])
   const [qaTotal, setQaTotal] = useState(0)
@@ -93,6 +126,30 @@ export default function PlayerMyPage() {
       setQaLoading(false)
     }
   }, [])
+
+  const loadActivityScores = useCallback(async (page = 1, type = '') => {
+    setActivityScoreLoading(true)
+    try {
+      const params: { page: number; limit: number; type?: string } = { page, limit: 20 }
+      if (type) params.type = type
+      const data = await playerService.getMyActivityScores(params)
+      setActivityScores(data.history || [])
+      setActivityScoreTotal(data.total || 0)
+      setActivityScorePage(data.page || 1)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setActivityScoreLoading(false)
+    }
+  }, [])
+
+  // 활동포인트 탭 최초 진입 시 로드
+  useEffect(() => {
+    if (tab === 'activityPoints' && !activityScoreLoadedRef.current) {
+      activityScoreLoadedRef.current = true
+      loadActivityScores(1, activityScoreFilter)
+    }
+  }, [tab, loadActivityScores, activityScoreFilter])
 
   // Q&A 초기 카운트 로드 (한 번만)
   useEffect(() => {
@@ -240,6 +297,7 @@ export default function PlayerMyPage() {
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: 'favorites', label: `즐겨찾기 (${favTotal})`, icon: <Heart className="w-4 h-4" /> },
     { key: 'activity',  label: '활동 내역',               icon: <ActivityIcon className="w-4 h-4" /> },
+    { key: 'activityPoints', label: '활동포인트',         icon: <Award className="w-4 h-4" /> },
     { key: 'qa',        label: `Q&A (${qaTotal})`,        icon: <HelpCircle className="w-4 h-4" /> },
     { key: 'profile',   label: isCorporate ? '파트너 프로필' : '프로필 편집', icon: isCorporate ? <Building2 className="w-4 h-4" /> : <Edit2 className="w-4 h-4" /> },
     { key: 'security',  label: '보안 설정',                icon: <Lock className="w-4 h-4" /> },
@@ -300,6 +358,12 @@ export default function PlayerMyPage() {
             </div>
           </div>
         </div>
+
+        {/* 등급 진행 카드 */}
+        <LevelProgressCard
+          level={(user as any)?.level || 1}
+          activityScore={(user as any)?.activityScore || 0}
+        />
 
         {/* 탭 메뉴 */}
         <div className="flex gap-1 border-b border-line overflow-x-auto">
@@ -399,6 +463,90 @@ export default function PlayerMyPage() {
               })}
             </div>
           )
+        )}
+
+        {/* ─── 활동포인트 탭 ─── */}
+        {tab === 'activityPoints' && (
+          <div className="space-y-4">
+            {/* 필터 */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={activityScoreFilter}
+                onChange={(e) => {
+                  setActivityScoreFilter(e.target.value)
+                  activityScoreLoadedRef.current = false
+                  loadActivityScores(1, e.target.value)
+                }}
+                className="bg-bg-secondary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-cyan-500"
+              >
+                <option value="">전체 유형</option>
+                {Object.entries(ACTIVITY_SCORE_CONFIG).map(([key, cfg]) => (
+                  <option key={key} value={key}>{cfg.icon} {cfg.label}</option>
+                ))}
+              </select>
+              <span className="text-sm text-text-muted">총 {activityScoreTotal}건</span>
+            </div>
+
+            {activityScoreLoading ? (
+              <div className="text-center py-16 text-text-muted"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
+            ) : activityScores.length === 0 ? (
+              <div className="text-center py-16 text-text-muted">
+                <Award className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p>활동포인트 내역이 없습니다</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {activityScores.map((item) => {
+                    const conf = ACTIVITY_SCORE_CONFIG[item.type]
+                    const isPositive = item.amount > 0
+                    return (
+                      <div key={item._id} className="flex items-center gap-3 bg-bg-secondary border border-line rounded-xl p-4 hover:border-line transition-colors">
+                        <span className="text-xl flex-shrink-0">{conf?.icon || '📋'}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-text-primary">{conf?.label || item.type}</span>
+                          </div>
+                          <p className="text-xs text-text-muted truncate">{item.reason}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <span className={`text-sm font-bold ${isPositive ? 'text-accent' : 'text-red-400'}`}>
+                            {isPositive ? '+' : ''}{item.amount.toLocaleString()}P
+                          </span>
+                          <p className="text-[10px] text-text-muted mt-0.5">
+                            {new Date(item.createdAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* 페이지네이션 */}
+                {activityScoreTotal > 20 && (
+                  <div className="flex justify-center gap-2 pt-2">
+                    <button
+                      onClick={() => { loadActivityScores(activityScorePage - 1, activityScoreFilter) }}
+                      disabled={activityScorePage <= 1}
+                      className="px-3 py-1.5 text-sm border border-line rounded-lg text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      이전
+                    </button>
+                    <span className="px-3 py-1.5 text-sm text-text-muted">
+                      {activityScorePage} / {Math.ceil(activityScoreTotal / 20)}
+                    </span>
+                    <button
+                      onClick={() => { loadActivityScores(activityScorePage + 1, activityScoreFilter) }}
+                      disabled={activityScorePage >= Math.ceil(activityScoreTotal / 20)}
+                      className="px-3 py-1.5 text-sm border border-line rounded-lg text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      다음
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
 
         {/* ─── Q&A 탭 ─── */}

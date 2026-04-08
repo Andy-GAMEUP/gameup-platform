@@ -36,6 +36,7 @@ export async function grantPoint(req: Request, res: Response) {
       'game_play_time',
       'game_purchase',
       'game_event_participate',
+      'game_level_achieve',
       'game_ranking',
     ]
 
@@ -209,12 +210,20 @@ export async function getMyGamePolicies(req: AuthRequest, res: Response) {
 export async function upsertGamePolicy(req: AuthRequest, res: Response) {
   try {
     const { gameId } = req.params
-    const { type, label, description, amount, multiplier, dailyLimit } = req.body
+    const {
+      type, label, description, amount, multiplier, dailyLimit,
+      startDate, endDate, estimatedDailyUsage, developerNote, conditionConfig,
+    } = req.body
 
     const game = await GameModel.findById(gameId).select('developerId').lean()
     if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     if (game.developerId.toString() !== req.user!.id) {
       return res.status(403).json({ message: '권한이 없습니다' })
+    }
+
+    // 기간 검증
+    if (startDate && endDate && new Date(startDate) >= new Date(endDate)) {
+      return res.status(400).json({ message: '시작일은 종료일보다 이전이어야 합니다' })
     }
 
     const policy = await GamePointPolicyModel.findOneAndUpdate(
@@ -226,6 +235,11 @@ export async function upsertGamePolicy(req: AuthRequest, res: Response) {
           amount: amount || 1,
           multiplier: multiplier || 1,
           dailyLimit: dailyLimit || null,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          estimatedDailyUsage: estimatedDailyUsage || 0,
+          developerNote: developerNote || '',
+          conditionConfig: conditionConfig || null,
           developerId: req.user!.id,
         },
         $setOnInsert: {
@@ -254,6 +268,37 @@ export async function submitPoliciesForApproval(req: AuthRequest, res: Response)
     if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     if (game.developerId.toString() !== req.user!.id) {
       return res.status(403).json({ message: '권한이 없습니다' })
+    }
+
+    // 제출할 정책 조회
+    const drafts = await GamePointPolicyModel.find({
+      gameId,
+      developerId: req.user!.id,
+      approvalStatus: { $in: ['draft', 'rejected'] },
+    }).lean()
+
+    if (drafts.length === 0) {
+      return res.status(400).json({ message: '제출할 정책이 없습니다' })
+    }
+
+    // 신청서 검증: 모든 정책에 필수 필드가 있는지 확인
+    const invalidPolicies = drafts.filter(
+      (p) => !p.label || !p.amount || p.amount <= 0
+    )
+    if (invalidPolicies.length > 0) {
+      return res.status(400).json({
+        message: '모든 정책에 이름(label)과 유효한 금액(amount)이 필요합니다',
+        invalidTypes: invalidPolicies.map((p) => p.type),
+      })
+    }
+
+    // 기간 검증
+    for (const p of drafts) {
+      if (p.startDate && p.endDate && new Date(p.startDate) >= new Date(p.endDate)) {
+        return res.status(400).json({
+          message: `${p.type} 정책의 시작일이 종료일보다 같거나 이후입니다`,
+        })
+      }
     }
 
     // draft 또는 rejected 상태인 정책을 pending으로 변경
@@ -437,6 +482,105 @@ export async function adminTogglePolicy(req: AuthRequest, res: Response) {
     return res.json({ policy, message: `정책이 ${policy.isActive ? '활성화' : '비활성화'}되었습니다` })
   } catch (error) {
     console.error('정책 토글 오류:', error)
+    return res.status(500).json({ message: '서버 오류' })
+  }
+}
+
+/**
+ * POST /api/admin/game-point-policies/batch-approve
+ * 관리자: 일괄 승인
+ */
+export async function adminBatchApprove(req: AuthRequest, res: Response) {
+  try {
+    const { ids } = req.body
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: '승인할 정책 ID 목록이 필요합니다' })
+    }
+
+    const result = await GamePointPolicyModel.updateMany(
+      { _id: { $in: ids }, approvalStatus: 'pending' },
+      {
+        $set: {
+          approvalStatus: 'approved',
+          isActive: true,
+          approvedAt: new Date(),
+          approvedBy: req.user!.id,
+        },
+      }
+    )
+
+    invalidateGamePolicyCache()
+    return res.json({ message: `${result.modifiedCount}건 승인 완료`, modifiedCount: result.modifiedCount })
+  } catch (error) {
+    console.error('일괄 승인 오류:', error)
+    return res.status(500).json({ message: '서버 오류' })
+  }
+}
+
+/**
+ * POST /api/admin/game-point-policies/batch-reject
+ * 관리자: 일괄 거절
+ */
+export async function adminBatchReject(req: AuthRequest, res: Response) {
+  try {
+    const { ids, rejectionReason } = req.body
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: '거절할 정책 ID 목록이 필요합니다' })
+    }
+    if (!rejectionReason) {
+      return res.status(400).json({ message: '거절 사유를 입력해주세요' })
+    }
+
+    const result = await GamePointPolicyModel.updateMany(
+      { _id: { $in: ids }, approvalStatus: 'pending' },
+      {
+        $set: {
+          approvalStatus: 'rejected',
+          isActive: false,
+          rejectedAt: new Date(),
+          rejectedBy: req.user!.id,
+          rejectionReason,
+        },
+      }
+    )
+
+    invalidateGamePolicyCache()
+    return res.json({ message: `${result.modifiedCount}건 거절 완료`, modifiedCount: result.modifiedCount })
+  } catch (error) {
+    console.error('일괄 거절 오류:', error)
+    return res.status(500).json({ message: '서버 오류' })
+  }
+}
+
+// ─── 개발사: 승인된 정책 독립 토글 ─────────────────────────────────
+
+/**
+ * PUT /api/games/:gameId/point-policies/:type/toggle
+ * 개발사: 승인된 정책의 활성/비활성 토글
+ */
+export async function developerTogglePolicy(req: AuthRequest, res: Response) {
+  try {
+    const { gameId, type } = req.params
+    const game = await GameModel.findById(gameId).select('developerId').lean()
+    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    if (game.developerId.toString() !== req.user!.id) {
+      return res.status(403).json({ message: '권한이 없습니다' })
+    }
+
+    const policy = await GamePointPolicyModel.findOne({ gameId, type })
+    if (!policy) return res.status(404).json({ message: '정책을 찾을 수 없습니다' })
+
+    if (policy.approvalStatus !== 'approved') {
+      return res.status(400).json({ message: '승인된 정책만 활성/비활성 전환이 가능합니다' })
+    }
+
+    policy.isActive = !policy.isActive
+    await policy.save()
+
+    invalidateGamePolicyCache()
+    return res.json({ policy, message: `정책이 ${policy.isActive ? '활성화' : '비활성화'}되었습니다` })
+  } catch (error) {
+    console.error('개발사 정책 토글 오류:', error)
     return res.status(500).json({ message: '서버 오류' })
   }
 }

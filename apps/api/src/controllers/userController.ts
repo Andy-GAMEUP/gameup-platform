@@ -144,6 +144,9 @@ export const login = async (req: AuthRequest, res: Response) => {
         memberType: user.memberType || 'individual',
         approvalStatus: user.approvalStatus || 'pending',
         companyInfo: user.companyInfo,
+        level: user.level || 1,
+        activityScore: user.activityScore || 0,
+        profileImage: user.profileImage || null,
       },
       token
     })
@@ -178,6 +181,10 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
         isActive: user.isActive,
         companyInfo: user.companyInfo,
         contactPerson: user.contactPerson,
+        level: user.level || 1,
+        activityScore: user.activityScore || 0,
+        points: user.points || 0,
+        profileImage: user.profileImage || null,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }
