@@ -1,5 +1,6 @@
 import { Router } from 'express'
-import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGames, getDeveloperStats } from '../controllers/gameController'
+import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGames, getDeveloperStats, getGameDeletionLogs } from '../controllers/gameController'
+import { getDeveloperOverview, getGameAnalytics, exportGameAnalytics } from '../controllers/gameAnalyticsController'
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { authenticateToken, requireRole } from '../middleware/auth'
 import { uploadFields } from '../middleware/upload'
@@ -9,6 +10,12 @@ const router = Router()
 router.get('/', getAllGames)
 router.get('/my', authenticateToken, requireRole('developer'), getMyGames)
 router.get('/developer/stats', authenticateToken, requireRole('developer'), getDeveloperStats)
+
+// 개발자 대시보드 Overview (실데이터)
+router.get('/developer/overview', authenticateToken, requireRole('developer', 'admin'), getDeveloperOverview)
+
+// 게임 삭제 감사로그 (admin)
+router.get('/admin/deletion-logs', authenticateToken, requireRole('admin'), getGameDeletionLogs)
 
 // 개발자 Q&A 관리 (피드백 관리)
 router.get('/developer/qas', authenticateToken, requireRole('developer'), getDeveloperQAs)
@@ -20,10 +27,14 @@ router.get('/my-qas', authenticateToken, getMyQAs)
 router.get('/:id', getGameById)
 router.post('/', authenticateToken, requireRole('developer'), uploadFields, createGame)
 router.put('/:id', authenticateToken, requireRole('developer'), uploadFields, updateGame)
-router.delete('/:id', authenticateToken, requireRole('developer'), deleteGame)
+router.delete('/:id', authenticateToken, requireRole('developer', 'admin'), deleteGame)
 
 // 게임별 Q&A
 router.get('/:gameId/qas', getGameQAs)
 router.post('/:gameId/qas', authenticateToken, createGameQA)
+
+// 게임별 분석
+router.get('/:gameId/analytics', authenticateToken, requireRole('developer', 'admin'), getGameAnalytics)
+router.get('/:gameId/analytics/export', authenticateToken, requireRole('developer', 'admin'), exportGameAnalytics)
 
 export default router

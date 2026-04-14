@@ -55,8 +55,8 @@ export default function Navbar() {
       // 비로그인: 베타존, 라이브게임, 플랫폼 소개, 커뮤니티
       links.push({ path: '/gameup_platform', label: '플랫폼 소개' })
       links.push({ path: '/community', label: '커뮤니티' })
-    } else if (isCorporateApproved || isAdmin) {
-      // 기업회원(승인) 또는 관리자: 베타존, 라이브게임, 커뮤니티, 파트너라운지
+    } else if (isAdmin || isCorporateApproved || showDeveloperCenter) {
+      // 관리자 / 기업회원(승인) / 개발자(개인·기업): 베타존, 라이브게임, 커뮤니티, 파트너라운지
       links.push({ path: '/community', label: '커뮤니티' })
       links.push({ path: '/partner', label: '파트너라운지' })
     } else {

@@ -38,8 +38,13 @@ export const gameService = {
     return response.data
   },
 
-  deleteGame: async (id: string) => {
-    const response = await apiClient.delete(`/games/${id}`)
+  deleteGame: async (id: string, payload: { password: string; reason: string }) => {
+    const response = await apiClient.delete(`/games/${id}`, { data: payload })
+    return response.data
+  },
+
+  getGameDeletionLogs: async (params?: { page?: number; limit?: number; search?: string }) => {
+    const response = await apiClient.get('/games/admin/deletion-logs', { params })
     return response.data
   },
 

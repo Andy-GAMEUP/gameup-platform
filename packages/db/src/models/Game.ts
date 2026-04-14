@@ -13,8 +13,8 @@ export interface IGame extends Document {
   rating: number
   status: 'draft' | 'beta' | 'published' | 'archived'
   approvalStatus: 'pending' | 'review' | 'approved' | 'rejected'
-  serviceType: 'beta' | 'live'
-  monetization: 'free' | 'ad' | 'paid'
+  serviceType: 'beta' | 'live' | 'review' | 'ended'
+  monetization: 'free' | 'ad' | 'paid' | 'freemium'
   testers: number
   feedbackCount: number
   betaEndDate?: Date
@@ -97,12 +97,12 @@ const gameSchema = new Schema<IGame>(
     },
     serviceType: {
       type: String,
-      enum: ['beta', 'live'],
+      enum: ['beta', 'live', 'review', 'ended'],
       default: 'beta'
     },
     monetization: {
       type: String,
-      enum: ['free', 'ad', 'paid'],
+      enum: ['free', 'ad', 'paid', 'freemium'],
       default: 'free'
     },
     testers: {

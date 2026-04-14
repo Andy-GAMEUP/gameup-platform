@@ -1,8 +1,9 @@
 import { Response } from 'express'
 import fs from 'fs'
-import { GameModel as Game } from '@gameup/db'
+import { GameModel as Game, UserModel as User, GameDeletionLogModel as GameDeletionLog, PaymentModel as Payment } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 import { grantGameAccessPoint } from '../services/pointService'
+import { comparePassword } from '../services/authService'
 
 export const getAllGames = async (req: AuthRequest, res: Response) => {
   try {
@@ -230,8 +231,17 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params
-    const game = await Game.findById(id)
+    const { password, reason } = (req.body || {}) as { password?: string; reason?: string }
 
+    // 🔒 비밀번호 & 사유 필수
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ message: '비밀번호를 입력해주세요' })
+    }
+    if (!reason || typeof reason !== 'string' || reason.trim().length < 2) {
+      return res.status(400).json({ message: '삭제 사유를 입력해주세요 (2자 이상)' })
+    }
+
+    const game = await Game.findById(id)
     if (!game) {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     }
@@ -240,6 +250,43 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
     if (game.developerId.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: '자신의 게임만 삭제할 수 있습니다' })
     }
+
+    // 🔒 요청자 비밀번호 검증
+    const actor = await User.findById(req.user.id).select('+password')
+    if (!actor || !actor.password) {
+      return res.status(401).json({ message: '사용자 인증 정보를 확인할 수 없습니다' })
+    }
+    const passwordOk = await comparePassword(password, actor.password)
+    if (!passwordOk) {
+      return res.status(401).json({ message: '비밀번호가 일치하지 않습니다' })
+    }
+
+    // 🔒 감사로그 기록 (삭제 전)
+    let developerUsername: string | undefined
+    try {
+      const developer = await User.findById(game.developerId).select('username email')
+      developerUsername = (developer as { username?: string } | null)?.username
+    } catch { /* no-op */ }
+
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress
+    const userAgent = req.headers['user-agent'] as string | undefined
+
+    await GameDeletionLog.create({
+      gameId: game._id,
+      gameTitle: game.title,
+      gameGenre: game.genre,
+      developerId: game.developerId,
+      developerUsername,
+      deletedBy: req.user.id,
+      deletedByUsername: (actor as { username?: string }).username,
+      deletedByEmail: (actor as { email?: string }).email,
+      deletedByRole: req.user.role,
+      reason: reason.trim(),
+      ipAddress,
+      userAgent,
+      gameSnapshot: game.toObject(),
+      deletedAt: new Date(),
+    })
 
     // 🔒 실제 파일도 함께 삭제
     if (game.gameFile && fs.existsSync(game.gameFile)) {
@@ -254,6 +301,46 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, message: '게임이 삭제되었습니다' })
   } catch (error) {
     console.error('Delete game error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 게임 삭제 감사로그 조회 (admin만)
+export const getGameDeletionLogs = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: '관리자만 접근할 수 있습니다' })
+    }
+
+    const { page = 1, limit = 20, search } = req.query
+    const pageNum = Math.max(1, Number(page))
+    const limitNum = Math.min(100, Math.max(1, Number(limit)))
+    const skip = (pageNum - 1) * limitNum
+
+    const filter: Record<string, unknown> = {}
+    if (search) {
+      const safe = (search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      filter.$or = [
+        { gameTitle: { $regex: safe, $options: 'i' } },
+        { deletedByUsername: { $regex: safe, $options: 'i' } },
+        { deletedByEmail: { $regex: safe, $options: 'i' } },
+        { reason: { $regex: safe, $options: 'i' } },
+      ]
+    }
+
+    const [logs, total] = await Promise.all([
+      GameDeletionLog.find(filter).sort({ deletedAt: -1 }).skip(skip).limit(limitNum),
+      GameDeletionLog.countDocuments(filter),
+    ])
+
+    res.json({
+      success: true,
+      logs,
+      pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
+    })
+  } catch (error) {
+    console.error('Get deletion logs error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }
 }
@@ -276,9 +363,13 @@ export const getDeveloperStats = async (req: AuthRequest, res: Response) => {
     const totalGames = games.length
     const totalPlays = games.reduce((sum, g) => sum + (g.playCount || 0), 0)
 
-    // 🔒 수익은 실제 결제 데이터 기반으로 계산해야 하므로 0으로 표시 (추후 Payment 모델 연동)
-    // const totalRevenue = games.reduce((sum, g) => sum + ((g.price || 0) * (g.playCount || 0)), 0)
-    const totalRevenue = 0 // TODO: Payment 모델에서 실제 결제 완료된 금액 합산
+    // ✅ 실제 Payment 모델에서 결제 완료된 매출 합산
+    const gameIds = games.map(g => g._id)
+    const revenueAgg = await Payment.aggregate([
+      { $match: { gameId: { $in: gameIds }, status: 'completed' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ])
+    const totalRevenue = revenueAgg[0]?.total || 0
 
     const publishedGames = games.filter(g => g.status === 'published' || g.status === 'beta').length
     const draftGames = games.filter(g => g.status === 'draft').length

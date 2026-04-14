@@ -3,9 +3,11 @@ import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Button from './Button'
 import { useAuth } from '@/lib/useAuth'
+import NotificationPanel from './NotificationPanel'
+import notificationService from '@/services/notificationService'
 import {
   LayoutDashboard,
   Gamepad2,
@@ -26,9 +28,25 @@ import {
 export default function DeveloperLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
-  const { logout } = useAuth()
+  const { logout, isAuthenticated } = useAuth()
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const load = () =>
+      notificationService.getUnreadCount()
+        .then((data) => setUnreadCount(data.count ?? 0))
+        .catch(() => {})
+    const token = typeof window !== 'undefined' && localStorage.getItem('token')
+    if (!token) {
+      const timer = setTimeout(load, 1500)
+      return () => clearTimeout(timer)
+    }
+    load()
+  }, [isAuthenticated, notifOpen])
 
   const navItems = [
     { path: '/dashboard', label: '대시보드', icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -134,9 +152,17 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                 </Button>
               </Link>
 
-              <button className="relative p-2 text-text-muted hover:text-text-primary">
+              <button
+                onClick={() => setNotifOpen((v) => !v)}
+                className="relative p-2 text-text-muted hover:text-text-primary"
+                aria-label="알림"
+              >
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-danger rounded-full"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-text-primary text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </button>
 
               <div className="relative">
@@ -196,6 +222,8 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      <NotificationPanel isOpen={notifOpen} onClose={() => setNotifOpen(false)} />
     </div>
   )
 }

@@ -25,6 +25,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/admin',            label: '대시보드',    icon: LayoutDashboard, exact: true },
   { path: '/admin/games',      label: '게임 관리',   icon: Gamepad2 },
+  { path: '/admin/game-deletion-logs', label: '게임 삭제 로그', icon: Gamepad2 },
   { path: '/admin/community',  label: '커뮤니티',    icon: MessageSquare },
   {
     path: '/admin/members',

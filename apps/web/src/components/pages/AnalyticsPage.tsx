@@ -1,333 +1,261 @@
 'use client'
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/Card'
-import Badge from '@/components/Badge'
+import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import {
-  Users,
-  DollarSign,
-  Eye,
-  Download,
-  Star,
-  BarChart3,
-  ArrowUpRight,
-  ArrowDownRight,
+  RefreshCw, Download, Users, UserPlus, Activity, Calendar as CalendarIcon,
+  CreditCard, DollarSign, TrendingUp, AlertCircle,
 } from 'lucide-react'
+import { format } from 'date-fns'
+import { gameService } from '@/services/gameService'
+import {
+  analyticsService,
+  GameAnalyticsResponse,
+} from '@/services/analyticsService'
+import DateRangePicker from '@/components/analytics/DateRangePicker'
+import MetricCard from '@/components/analytics/MetricCard'
+import RetentionChart from '@/components/analytics/RetentionChart'
+import DailyTrendChart from '@/components/analytics/DailyTrendChart'
+
+interface GameOption { _id: string; title: string }
 
 export default function AnalyticsPage() {
-  const [timeRange, setTimeRange] = useState('7d')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialGameId = searchParams.get('gameId') || ''
 
-  // Mock data
-  const overviewStats = [
-    {
-      label: '총 플레이 수',
-      value: '128,450',
-      change: '+12.5%',
-      trend: 'up',
-      icon: <Users className="w-6 h-6" />,
-      color: 'text-blue-400',
-    },
-    {
-      label: '신규 유저',
-      value: '4,230',
-      change: '+8.2%',
-      trend: 'up',
-      icon: <Download className="w-6 h-6" />,
-      color: 'text-accent',
-    },
-    {
-      label: '매출',
-      value: '₩45,280,000',
-      change: '+18.7%',
-      trend: 'up',
-      icon: <DollarSign className="w-6 h-6" />,
-      color: 'text-yellow-400',
-    },
-    {
-      label: '평균 평점',
-      value: '4.6',
-      change: '+0.3',
-      trend: 'up',
-      icon: <Star className="w-6 h-6" />,
-      color: 'text-purple-400',
-    },
-  ]
+  const [games, setGames] = useState<GameOption[]>([])
+  const [gameId, setGameId] = useState<string>(initialGameId)
+  const [from, setFrom] = useState<Date>(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 29)
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
+  const [to, setTo] = useState<Date>(() => {
+    const d = new Date()
+    d.setHours(23, 59, 59, 999)
+    return d
+  })
+  const [data, setData] = useState<GameAnalyticsResponse | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [error, setError] = useState('')
 
-  const topGames = [
-    {
-      id: 1,
-      title: 'Racing Legends',
-      plays: 45230,
-      revenue: 28450000,
-      rating: 4.7,
-      change: 18.5,
-    },
-    {
-      id: 2,
-      title: 'Cyber Nexus',
-      plays: 38450,
-      revenue: 8450000,
-      rating: 4.8,
-      change: 12.3,
-    },
-    {
-      id: 3,
-      title: 'Battle Arena Pro',
-      plays: 32100,
-      revenue: 5230000,
-      rating: 4.8,
-      change: 22.1,
-    },
-    {
-      id: 4,
-      title: 'Stellar Warfare',
-      plays: 28650,
-      revenue: 3200000,
-      rating: 4.6,
-      change: 8.7,
-    },
-    {
-      id: 5,
-      title: 'Mystic Realms',
-      plays: 18900,
-      revenue: 1850000,
-      rating: 4.5,
-      change: 5.2,
-    },
-  ]
+  // 게임 목록 로드
+  useEffect(() => {
+    gameService.getMyGames()
+      .then((res) => {
+        const list = ((res.games || []) as unknown as GameOption[]).map(g => ({ _id: g._id, title: g.title }))
+        setGames(list)
+        if (!gameId && list.length > 0) {
+          setGameId(list[0]._id)
+        }
+      })
+      .catch(() => setError('게임 목록을 불러오지 못했습니다.'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  const weeklyData = [
-    { day: '월', plays: 15200, revenue: 4200000, users: 2100 },
-    { day: '화', plays: 16800, revenue: 4800000, users: 2300 },
-    { day: '수', plays: 19200, revenue: 5600000, users: 2800 },
-    { day: '목', plays: 21500, revenue: 6200000, users: 3200 },
-    { day: '금', plays: 23800, revenue: 7100000, users: 3600 },
-    { day: '토', plays: 28400, revenue: 8900000, users: 4100 },
-    { day: '일', plays: 32100, revenue: 10480000, users: 4500 },
-  ]
+  // URL sync
+  useEffect(() => {
+    if (gameId) {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set('gameId', gameId)
+      router.replace(`/analytics?${params.toString()}`, { scroll: false })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId])
 
-  const retentionData = [
-    { period: 'D+1', rate: 75, color: 'bg-accent' },
-    { period: 'D+3', rate: 58, color: 'bg-blue-500' },
-    { period: 'D+7', rate: 45, color: 'bg-purple-500' },
-    { period: 'D+14', rate: 32, color: 'bg-orange-500' },
-    { period: 'D+30', rate: 18, color: 'bg-red-500' },
-  ]
+  const load = useCallback(async () => {
+    if (!gameId) return
+    setLoading(true)
+    setError('')
+    try {
+      const result = await analyticsService.getGameAnalytics(gameId, {
+        from: format(from, 'yyyy-MM-dd'),
+        to: format(to, 'yyyy-MM-dd'),
+      })
+      setData(result)
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setError(msg || '분석 데이터를 불러오지 못했습니다.')
+      setData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [gameId, from, to])
 
-  const maxValue = Math.max(...weeklyData.map(d => d.plays))
+  useEffect(() => { load() }, [load])
+
+  const handleExport = async () => {
+    if (!gameId) return
+    setExporting(true)
+    try {
+      const blob = await analyticsService.exportGameAnalytics(gameId, {
+        from: format(from, 'yyyy-MM-dd'),
+        to: format(to, 'yyyy-MM-dd'),
+      })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const safeTitle = (data?.gameTitle || 'game').replace(/[^\w가-힣\-_]/g, '_')
+      a.download = `analytics_${safeTitle}_${format(from, 'yyyyMMdd')}_${format(to, 'yyyyMMdd')}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      alert(msg || '엑셀 다운로드에 실패했습니다.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const overview = data?.overview
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-6 p-6">
+      {/* 헤더 */}
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2 text-text-primary">분석</h1>
-          <p className="text-text-secondary">게임 성과 및 사용자 행동을 분석하세요</p>
+          <h1 className="text-3xl font-bold mb-1">게임 분석</h1>
+          <p className="text-text-secondary">게임별 세부 지표 · 리텐션 · 수익화 통계</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setTimeRange('7d')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              timeRange === '7d'
-                ? 'bg-accent text-text-primary'
-                : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'
-            }`}
+
+        {/* 컨트롤 바 */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 게임 선택 */}
+          <select
+            value={gameId}
+            onChange={(e) => setGameId(e.target.value)}
+            className="px-3 py-2 bg-bg-tertiary border border-line rounded-md text-sm text-text-primary focus:outline-none focus:border-accent min-w-[200px]"
           >
-            7일
-          </button>
-          <button
-            onClick={() => setTimeRange('30d')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              timeRange === '30d'
-                ? 'bg-accent text-text-primary'
-                : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'
-            }`}
-          >
-            30일
-          </button>
-          <button
-            onClick={() => setTimeRange('90d')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              timeRange === '90d'
-                ? 'bg-accent text-text-primary'
-                : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'
-            }`}
-          >
-            90일
-          </button>
-        </div>
-      </div>
-
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {overviewStats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className={stat.color}>{stat.icon}</div>
-                <div className={`flex items-center gap-1 text-sm font-medium ${
-                  stat.trend === 'up' ? 'text-accent' : 'text-red-400'
-                }`}>
-                  {stat.trend === 'up' ? (
-                    <ArrowUpRight className="w-4 h-4" />
-                  ) : (
-                    <ArrowDownRight className="w-4 h-4" />
-                  )}
-                  {stat.change}
-                </div>
-              </div>
-              <div className="text-3xl font-bold mb-1 text-text-primary">{stat.value}</div>
-              <div className="text-sm text-text-secondary">{stat.label}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Weekly Activity Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>주간 활동</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {weeklyData.map((data, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-text-secondary">{data.day}</span>
-                    <span className="text-sm font-semibold text-text-primary">{data.plays.toLocaleString()}</span>
-                  </div>
-                  <div className="w-full bg-bg-tertiary rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-green-500 to-emerald-600 h-2 rounded-full transition-all"
-                      style={{ width: `${(data.plays / maxValue) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Retention Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>리텐션 분석</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {retentionData.map((data, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-text-secondary">{data.period}</span>
-                    <span className="text-sm font-semibold text-text-primary">{data.rate}%</span>
-                  </div>
-                  <div className="w-full bg-bg-tertiary rounded-full h-2">
-                    <div
-                      className={`${data.color} h-2 rounded-full transition-all`}
-                      style={{ width: `${data.rate}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Top Performing Games */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>인기 게임</CardTitle>
-            <Badge variant="secondary">최근 7일</Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {topGames.map((game, index) => (
-              <div
-                key={game.id}
-                className="flex items-center gap-4 p-4 bg-bg-tertiary/50 rounded-lg hover:bg-bg-tertiary transition-colors"
-              >
-                <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center text-text-primary font-bold">
-                  {index + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-text-primary mb-1">{game.title}</h3>
-                  <div className="flex items-center gap-4 text-sm text-text-secondary">
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      {game.plays.toLocaleString()}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      {game.rating}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-accent">
-                    ₩{(game.revenue / 10000).toFixed(0)}만
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-accent">
-                    <ArrowUpRight className="w-3 h-3" />
-                    {game.change}%
-                  </div>
-                </div>
-              </div>
+            {games.length === 0 && <option value="">게임 없음</option>}
+            {games.map(g => (
+              <option key={g._id} value={g._id}>{g.title}</option>
             ))}
-          </div>
-        </CardContent>
-      </Card>
+          </select>
 
-      {/* Revenue Breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-accent-light rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-accent" />
-              </div>
-              <div>
-                <p className="text-sm text-text-secondary">유료 판매</p>
-                <p className="text-2xl font-bold text-text-primary">₩38.2M</p>
-              </div>
-            </div>
-            <div className="text-sm text-accent">전체의 84.4%</div>
-          </CardContent>
-        </Card>
+          {/* 캘린더 날짜 선택 */}
+          <DateRangePicker
+            from={from}
+            to={to}
+            onChange={({ from: f, to: t }) => { setFrom(f); setTo(t) }}
+          />
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-                <Eye className="w-6 h-6 text-yellow-400" />
-              </div>
-              <div>
-                <p className="text-sm text-text-secondary">광고 수익</p>
-                <p className="text-2xl font-bold text-text-primary">₩7.1M</p>
-              </div>
-            </div>
-            <div className="text-sm text-yellow-400">전체의 15.6%</div>
-          </CardContent>
-        </Card>
+          <button
+            onClick={load}
+            disabled={!gameId || loading}
+            className="flex items-center gap-1.5 px-3 py-2 border border-line rounded-md text-sm text-text-secondary hover:bg-bg-tertiary disabled:opacity-40"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            새로고침
+          </button>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm text-text-secondary">평균 ARPPU</p>
-                <p className="text-2xl font-bold text-text-primary">₩28.4K</p>
-              </div>
-            </div>
-            <div className="text-sm text-blue-400">+5.3% 증가</div>
-          </CardContent>
-        </Card>
+          {/* 엑셀 내보내기 */}
+          <button
+            onClick={handleExport}
+            disabled={!gameId || exporting || loading || !data}
+            className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors disabled:opacity-40 ml-auto"
+          >
+            <Download className="w-4 h-4" />
+            {exporting ? '내보내는 중...' : '엑셀 내보내기'}
+          </button>
+        </div>
       </div>
+
+      {error && (
+        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+
+      {!gameId && !loading && (
+        <div className="bg-bg-secondary border border-line rounded-lg p-12 text-center text-text-secondary">
+          게임을 선택하여 세부 분석을 확인하세요.
+        </div>
+      )}
+
+      {loading && (
+        <div className="flex items-center justify-center py-20 text-text-secondary">
+          <RefreshCw className="w-5 h-5 animate-spin mr-2" /> 분석 데이터 로딩 중...
+        </div>
+      )}
+
+      {!loading && data && overview && (
+        <>
+          {/* 헤더 정보 */}
+          <div className="text-sm text-text-secondary">
+            <strong className="text-text-primary text-base">{data.gameTitle}</strong>
+            <span className="ml-3">{data.from} ~ {data.to}</span>
+          </div>
+
+          {/* 핵심 지표 카드 (8개) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <MetricCard
+              label="누적 회원"
+              value={overview.cumulativeMembers.toLocaleString()}
+              icon={<Users className="w-5 h-5" />}
+              color="text-blue-400"
+              hint="전체 가입자"
+            />
+            <MetricCard
+              label="신규 생성 회원"
+              value={overview.newMembers.toLocaleString()}
+              icon={<UserPlus className="w-5 h-5" />}
+              color="text-green-400"
+              hint="기간 내"
+            />
+            <MetricCard
+              label="DAU (평균)"
+              value={overview.avgDau.toLocaleString()}
+              icon={<Activity className="w-5 h-5" />}
+              color="text-purple-400"
+            />
+            <MetricCard
+              label="MAU"
+              value={overview.mau.toLocaleString()}
+              icon={<CalendarIcon className="w-5 h-5" />}
+              color="text-cyan-400"
+            />
+            <MetricCard
+              label="결제 전환율 (PUR)"
+              value={`${overview.pur}%`}
+              icon={<CreditCard className="w-5 h-5" />}
+              color="text-yellow-400"
+              hint="결제유저/DAU"
+            />
+            <MetricCard
+              label="ARPPU"
+              value={`₩${overview.arppu.toLocaleString()}`}
+              icon={<DollarSign className="w-5 h-5" />}
+              color="text-accent"
+              hint="결제유저당 매출"
+            />
+            <MetricCard
+              label="ARPU"
+              value={`₩${overview.arpu.toLocaleString()}`}
+              icon={<TrendingUp className="w-5 h-5" />}
+              color="text-orange-400"
+              hint="DAU당 매출"
+            />
+            <MetricCard
+              label="총 매출"
+              value={`₩${overview.totalRevenue.toLocaleString()}`}
+              icon={<DollarSign className="w-5 h-5" />}
+              color="text-accent"
+              hint={`결제 ${overview.payingUsers}명`}
+            />
+          </div>
+
+          {/* 일별 추이 */}
+          <DailyTrendChart data={data.daily} />
+
+          {/* 리텐션 */}
+          <RetentionChart data={data.retention} />
+        </>
+      )}
     </div>
   )
 }

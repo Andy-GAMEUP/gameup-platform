@@ -12,12 +12,14 @@ import {
 
 import { gameService } from '../../services/gameService'
 import { developerBalanceService } from '../../services/developerBalanceService'
+import DeleteGameModal from '../DeleteGameModal'
+import { useRouter } from 'next/navigation'
 
 interface Screenshot { id: number; title: string }
 interface Video { id: number; title: string; url: string; duration: string; views: number }
 interface ShopItem { id: number; name: string; price: number; currency: string; type: string; stock: string; sales: number; active: boolean }
 interface Announcement { id: number; title: string; date: string; type: string; priority: string; content: string; sent: boolean; recipients: number }
-type TabKey = 'announcements' | 'overview' | 'media' | 'shop' | 'points'
+type TabKey = 'announcements' | 'overview' | 'media' | 'shop' | 'points' | 'edit' | 'danger'
 
 interface GamePointPolicy {
   _id: string
@@ -60,6 +62,8 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'media', label: '미디어' },
   { key: 'shop', label: '게임샵' },
   { key: 'points', label: '포인트 보상' },
+  { key: 'edit', label: '게임정보 편집' },
+  { key: 'danger', label: '게임 삭제' },
 ]
 
 const POINT_TYPES = [
@@ -89,7 +93,9 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
 
 export default function GameDetailManagementPage() {
   const { id: _id } = useParams()
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabKey>('announcements')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [screenshots, setScreenshots] = useState<Screenshot[]>([
     { id: 1, title: '메인 화면' }, { id: 2, title: '전투 장면' }, { id: 3, title: '도시 풍경' },
   ])
@@ -294,7 +300,7 @@ export default function GameDetailManagementPage() {
             </button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold mb-1">{game.title}</h1>
+            <h1 className="text-3xl font-bold mb-1">{game.title} <span className="text-base font-normal text-text-secondary">· 게임관리</span></h1>
             <div className="flex items-center gap-3">
               <span className="text-xs px-2 py-1 rounded-full bg-accent-light text-accent border border-accent-muted">{game.status}</span>
               <span className="flex items-center gap-1 text-text-secondary text-sm">
@@ -770,6 +776,70 @@ export default function GameDetailManagementPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* 게임정보 편집 탭 */}
+      {activeTab === 'edit' && (
+        <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
+          <div>
+            <h2 className="text-xl font-bold mb-1">게임정보 편집</h2>
+            <p className="text-sm text-text-secondary">게임 제목, 설명, 썸네일, 장르 등 상세 정보를 편집합니다.</p>
+          </div>
+          <div className="p-4 bg-bg-tertiary/30 border border-line rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Edit className="w-5 h-5 text-accent" />
+              <div>
+                <p className="font-semibold text-text-primary">상세 편집 페이지로 이동</p>
+                <p className="text-xs text-text-secondary">파일 업로드 등 전체 편집 기능을 사용할 수 있습니다.</p>
+              </div>
+            </div>
+            <Link href={`/games-management/${_id}/edit`}>
+              <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors">
+                <Edit className="w-4 h-4" /> 편집하기
+              </button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* 게임 삭제 탭 (위험 영역) */}
+      {activeTab === 'danger' && (
+        <div className="bg-bg-secondary border border-red-500/40 rounded-lg p-6 space-y-4">
+          <div>
+            <h2 className="text-xl font-bold mb-1 text-red-400">게임 삭제</h2>
+            <p className="text-sm text-text-secondary">이 작업은 되돌릴 수 없습니다. 삭제 시 비밀번호 확인과 사유 입력이 필수이며, 모든 삭제 기록은 감사 로그에 영구 저장됩니다.</p>
+          </div>
+          <div className="p-4 bg-red-900/10 border border-red-500/30 rounded-lg space-y-3">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 text-sm text-text-secondary">
+                <p className="text-red-300 font-semibold mb-1">삭제 시 함께 제거되는 항목</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li>게임 파일 및 썸네일</li>
+                  <li>게임 메타데이터 및 등록 정보</li>
+                </ul>
+                <p className="text-xs text-text-muted mt-2">* 감사 로그(요청자, 사유, IP, 스냅샷)는 삭제되지 않습니다.</p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-semibold transition-colors"
+              >
+                <Trash2 className="w-4 h-4" /> 게임 영구 삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && typeof _id === 'string' && (
+        <DeleteGameModal
+          gameId={_id}
+          gameTitle={game.title}
+          onClose={() => setShowDeleteModal(false)}
+          onDeleted={() => router.push('/games-management')}
+        />
       )}
 
       <Modal open={ssModal} onClose={() => setSsModal(false)} title="스크린샷 추가">
