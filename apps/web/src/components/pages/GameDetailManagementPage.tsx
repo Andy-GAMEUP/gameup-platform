@@ -19,7 +19,7 @@ interface Screenshot { id: number; title: string }
 interface Video { id: number; title: string; url: string; duration: string; views: number }
 interface ShopItem { id: number; name: string; price: number; currency: string; type: string; stock: string; sales: number; active: boolean }
 interface Announcement { id: number; title: string; date: string; type: string; priority: string; content: string; sent: boolean; recipients: number }
-type TabKey = 'announcements' | 'overview' | 'media' | 'shop' | 'points' | 'edit' | 'danger'
+type TabKey = 'announcements' | 'media' | 'shop' | 'points' | 'edit' | 'danger'
 
 interface GamePointPolicy {
   _id: string
@@ -58,7 +58,6 @@ interface BalanceInfo {
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'announcements', label: '공지 & 알림' },
-  { key: 'overview', label: '기본 정보' },
   { key: 'media', label: '미디어' },
   { key: 'shop', label: '게임샵' },
   { key: 'points', label: '포인트 보상' },
@@ -116,11 +115,15 @@ export default function GameDetailManagementPage() {
   const [ssModal, setSsModal] = useState(false)
   const [vidModal, setVidModal] = useState(false)
   const [itemModal, setItemModal] = useState(false)
+  const [editItemModal, setEditItemModal] = useState(false)
+  const [editingItem, setEditingItem] = useState<ShopItem | null>(null)
   const [notiModal, setNotiModal] = useState(false)
   const [newSs, setNewSs] = useState({ title: '' })
   const [newVid, setNewVid] = useState({ title: '', url: '', type: 'youtube' })
   const [newItem, setNewItem] = useState({ name: '', price: '', currency: 'KRW', type: '패키지', stock: '무제한', description: '' })
   const [newNoti, setNewNoti] = useState({ title: '', content: '', type: 'notice', priority: 'normal', sendPush: false })
+  const [shopSort, setShopSort] = useState<'default' | 'price_high' | 'price_low' | 'sales_high' | 'sales_low'>('default')
+  const [shopPeriod, setShopPeriod] = useState<'all' | 'month' | 'last_month' | '3months'>('all')
 
   // ── 포인트 정책 상태 ──────────────────────────────────────────
   const [pointPolicies, setPointPolicies] = useState<GamePointPolicy[]>([])
@@ -283,6 +286,26 @@ export default function GameDetailManagementPage() {
     setShopItems(p => [...p, { id: Date.now(), name: newItem.name, price: parseInt(newItem.price), currency: newItem.currency, type: newItem.type, stock: newItem.stock, sales: 0, active: true }])
     setNewItem({ name: '', price: '', currency: 'KRW', type: '패키지', stock: '무제한', description: '' }); setItemModal(false)
   }
+  const openEditItem = (item: ShopItem) => {
+    setEditingItem({ ...item })
+    setEditItemModal(true)
+  }
+  const saveEditItem = () => {
+    if (!editingItem || !editingItem.name || !editingItem.price) return
+    setShopItems(p => p.map(x => x.id === editingItem.id ? editingItem : x))
+    setEditItemModal(false); setEditingItem(null)
+  }
+  const deleteItem = (id: number) => {
+    if (!confirm('이 아이템을 삭제하시겠습니까?')) return
+    setShopItems(p => p.filter(x => x.id !== id))
+  }
+  const sortedShopItems = [...shopItems].sort((a, b) => {
+    if (shopSort === 'price_high') return b.price - a.price
+    if (shopSort === 'price_low') return a.price - b.price
+    if (shopSort === 'sales_high') return b.sales - a.sales
+    if (shopSort === 'sales_low') return a.sales - b.sales
+    return 0
+  })
   const addAnnouncement = () => {
     if (!newNoti.title || !newNoti.content) return
     const today = new Date().toISOString().split('T')[0].replace(/-/g, '.')
@@ -376,45 +399,6 @@ export default function GameDetailManagementPage() {
         </div>
       )}
 
-      {activeTab === 'overview' && (
-        <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-6">
-          <h2 className="text-xl font-bold">게임 기본 정보</h2>
-          <div>
-            <label className={labelCls}>게임 아이콘</label>
-            <div className="flex items-start gap-6">
-              <div className="w-32 h-32 bg-bg-tertiary rounded-lg border-2 border-dashed border-line flex items-center justify-center">
-                <div className="text-center text-text-muted"><ImageIcon className="w-12 h-12 mx-auto mb-1 opacity-50" /><p className="text-xs">512x512</p></div>
-              </div>
-              <button className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary transition-colors mt-2">
-                <Upload className="w-4 h-4" /> 아이콘 업로드
-              </button>
-            </div>
-          </div>
-          <hr className="border-line" />
-          <div><label className={labelCls}>게임 제목 *</label><input defaultValue={game.title} className={inputCls} /></div>
-          <div>
-            <label className={labelCls}>게임 장르 *</label>
-            <select defaultValue="rpg" className={inputCls}>
-              {['rpg','action','fps','moba','strategy','simulation','adventure','racing','horror','sports'].map(v => (
-                <option key={v} value={v}>{v.toUpperCase()}</option>
-              ))}
-            </select>
-          </div>
-          <div><label className={labelCls}>게임 특징 소개 *</label><textarea defaultValue="• 압도적인 사이버펑크 그래픽" className={`${inputCls} min-h-32 resize-y`} /></div>
-          <div><label className={labelCls}>짧은 설명 *</label><input defaultValue={game.description} maxLength={100} className={inputCls} /></div>
-          <hr className="border-line" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className={labelCls}><Calendar className="w-4 h-4 inline mr-1" />출시 예정일</label><input type="date" defaultValue="2024-06-15" className={inputCls} /></div>
-            <div>
-              <label className={labelCls}><Globe className="w-4 h-4 inline mr-1" />공개 여부</label>
-              <div className="flex items-center gap-3 mt-2">
-                <input type="checkbox" defaultChecked id="public" className="w-4 h-4 accent-green-500" />
-                <label htmlFor="public" className="text-sm text-text-secondary">베타존에 게임 공개</label>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {activeTab === 'media' && (
         <div className="space-y-6">
@@ -473,26 +457,53 @@ export default function GameDetailManagementPage() {
 
       {activeTab === 'shop' && (
         <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div><h2 className="text-xl font-bold">게임샵 아이템 관리</h2><p className="text-sm text-text-secondary mt-1">인앱 결제 아이템과 가격을 설정하세요</p></div>
             <button onClick={() => setItemModal(true)} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors">
               <ShoppingBag className="w-4 h-4" /> 아이템 추가
             </button>
           </div>
-          {shopItems.map(item => (
+
+          {/* 정렬 & 기간 필터 */}
+          <div className="flex flex-wrap gap-3 p-3 bg-bg-tertiary/30 border border-line rounded-lg">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-secondary whitespace-nowrap">기간</span>
+              <select value={shopPeriod} onChange={e => setShopPeriod(e.target.value as typeof shopPeriod)} className="px-2 py-1.5 bg-bg-tertiary border border-line rounded text-xs focus:outline-none focus:border-accent">
+                <option value="all">전체</option>
+                <option value="month">이번 달</option>
+                <option value="last_month">지난 달</option>
+                <option value="3months">최근 3개월</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-secondary whitespace-nowrap">정렬</span>
+              <select value={shopSort} onChange={e => setShopSort(e.target.value as typeof shopSort)} className="px-2 py-1.5 bg-bg-tertiary border border-line rounded text-xs focus:outline-none focus:border-accent">
+                <option value="default">기본순</option>
+                <option value="price_high">가격 높은순</option>
+                <option value="price_low">가격 낮은순</option>
+                <option value="sales_high">누적판매 많은순</option>
+                <option value="sales_low">누적판매 적은순</option>
+              </select>
+            </div>
+            <span className="text-xs text-text-muted self-center">총 {shopItems.length}개 아이템</span>
+          </div>
+
+          {sortedShopItems.length === 0 ? (
+            <div className="text-center py-10 text-text-muted text-sm">등록된 아이템이 없습니다</div>
+          ) : sortedShopItems.map(item => (
             <div key={item.id} className="p-4 bg-bg-tertiary/30 rounded-lg border border-line flex items-start justify-between">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Package className="w-8 h-8" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3 className="font-semibold">{item.name}</h3>
                     <span className="text-xs px-2 py-0.5 border border-line rounded-full">{item.type}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full border ${item.active ? 'bg-accent-light text-accent border-accent-muted' : 'bg-bg-muted/20 text-text-secondary border-line/50'}`}>{item.active ? '판매중' : '비활성'}</span>
                   </div>
                   <p className="text-lg font-bold text-accent flex items-center gap-1 mb-1"><DollarSign className="w-4 h-4" />{item.price.toLocaleString()} {item.currency}</p>
-                  <p className="text-sm text-text-secondary">재고: {item.stock} · 판매: {item.sales}개</p>
+                  <p className="text-sm text-text-secondary">재고: {item.stock} · 누적판매: <strong>{item.sales.toLocaleString()}</strong>개</p>
                   <div className="flex items-center gap-2 mt-2">
                     <input type="checkbox" checked={item.active} onChange={() => setShopItems(p => p.map(x => x.id === item.id ? { ...x, active: !x.active } : x))} className="w-4 h-4 accent-green-500" />
                     <span className="text-xs text-text-secondary">판매 활성화</span>
@@ -500,16 +511,21 @@ export default function GameDetailManagementPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button className="p-1.5 border border-line rounded-md hover:bg-bg-tertiary"><Edit className="w-4 h-4" /></button>
-                <button onClick={() => setShopItems(p => p.filter(x => x.id !== item.id))} className="p-1.5 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => openEditItem(item)} className="p-1.5 border border-line rounded-md hover:bg-bg-tertiary transition-colors" title="편집">
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button onClick={() => deleteItem(item.id)} className="p-1.5 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10 transition-colors" title="삭제">
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
           ))}
+
           <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-            <h3 className="font-semibold mb-3">판매 통계 (이번 달)</h3>
+            <h3 className="font-semibold mb-3">판매 통계 ({shopPeriod === 'all' ? '전체' : shopPeriod === 'month' ? '이번 달' : shopPeriod === 'last_month' ? '지난 달' : '최근 3개월'})</h3>
             <div className="grid grid-cols-3 gap-4">
               <div><p className="text-sm text-text-secondary mb-1">총 판매액</p><p className="text-2xl font-bold text-accent">₩{shopItems.reduce((s, i) => s + i.price * i.sales, 0).toLocaleString()}</p></div>
-              <div><p className="text-sm text-text-secondary mb-1">판매 건수</p><p className="text-2xl font-bold">{shopItems.reduce((s, i) => s + i.sales, 0).toLocaleString()}</p></div>
+              <div><p className="text-sm text-text-secondary mb-1">누적 판매수량</p><p className="text-2xl font-bold">{shopItems.reduce((s, i) => s + i.sales, 0).toLocaleString()}개</p></div>
               <div><p className="text-sm text-text-secondary mb-1">활성 아이템</p><p className="text-2xl font-bold">{shopItems.filter(i => i.active).length} / {shopItems.length}</p></div>
             </div>
           </div>
@@ -778,24 +794,69 @@ export default function GameDetailManagementPage() {
         </div>
       )}
 
-      {/* 게임정보 편집 탭 */}
+      {/* 게임정보 편집 탭 (기본 정보 + 고급 편집 통합) */}
       {activeTab === 'edit' && (
-        <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
-          <div>
-            <h2 className="text-xl font-bold mb-1">게임정보 편집</h2>
-            <p className="text-sm text-text-secondary">게임 제목, 설명, 썸네일, 장르 등 상세 정보를 편집합니다.</p>
-          </div>
-          <div className="p-4 bg-bg-tertiary/30 border border-line rounded-lg flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Edit className="w-5 h-5 text-accent" />
+        <div className="space-y-6">
+          <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-6">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="font-semibold text-text-primary">상세 편집 페이지로 이동</p>
-                <p className="text-xs text-text-secondary">파일 업로드 등 전체 편집 기능을 사용할 수 있습니다.</p>
+                <h2 className="text-xl font-bold">게임정보 편집</h2>
+                <p className="text-sm text-text-secondary mt-1">게임 제목, 장르, 설명 등 기본 정보를 수정하세요.</p>
+              </div>
+              <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors">
+                <Save className="w-4 h-4" /> 저장
+              </button>
+            </div>
+
+            {/* 게임 아이콘 */}
+            <div>
+              <label className={labelCls}>게임 아이콘</label>
+              <div className="flex items-start gap-6">
+                <div className="w-32 h-32 bg-bg-tertiary rounded-lg border-2 border-dashed border-line flex items-center justify-center">
+                  <div className="text-center text-text-muted"><ImageIcon className="w-12 h-12 mx-auto mb-1 opacity-50" /><p className="text-xs">512x512</p></div>
+                </div>
+                <button className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary transition-colors mt-2">
+                  <Upload className="w-4 h-4" /> 아이콘 업로드
+                </button>
               </div>
             </div>
+            <hr className="border-line" />
+
+            {/* 기본 정보 */}
+            <div><label className={labelCls}>게임 제목 *</label><input defaultValue={game.title} className={inputCls} /></div>
+            <div>
+              <label className={labelCls}>게임 장르 *</label>
+              <select defaultValue="rpg" className={inputCls}>
+                {['rpg','action','fps','moba','strategy','simulation','adventure','racing','horror','sports'].map(v => (
+                  <option key={v} value={v}>{v.toUpperCase()}</option>
+                ))}
+              </select>
+            </div>
+            <div><label className={labelCls}>게임 특징 소개 *</label><textarea defaultValue="• 압도적인 사이버펑크 그래픽" className={`${inputCls} min-h-32 resize-y`} /></div>
+            <div>
+              <label className={labelCls}>짧은 설명 * <span className="text-text-muted">(최대 100자)</span></label>
+              <input defaultValue={game.description} maxLength={100} className={inputCls} />
+            </div>
+            <hr className="border-line" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className={labelCls}><Calendar className="w-4 h-4 inline mr-1" />출시 예정일</label><input type="date" defaultValue="2024-06-15" className={inputCls} /></div>
+              <div>
+                <label className={labelCls}><Globe className="w-4 h-4 inline mr-1" />공개 여부</label>
+                <div className="flex items-center gap-3 mt-2">
+                  <input type="checkbox" defaultChecked id="public" className="w-4 h-4 accent-green-500" />
+                  <label htmlFor="public" className="text-sm text-text-secondary">베타존에 게임 공개</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 고급 편집 (전체 편집 페이지 링크) */}
+          <div className="bg-bg-secondary border border-line rounded-lg p-6">
+            <h3 className="font-semibold mb-1 flex items-center gap-2"><Edit className="w-4 h-4 text-accent" />고급 편집</h3>
+            <p className="text-sm text-text-secondary mb-4">썸네일, 게임 파일 업로드, 베타 테스트 설정, 수익 모델 등 전체 편집 기능을 사용할 수 있습니다.</p>
             <Link href={`/games-management/${_id}/edit`}>
-              <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors">
-                <Edit className="w-4 h-4" /> 편집하기
+              <button className="flex items-center gap-2 px-4 py-2 border border-accent text-accent hover:bg-accent hover:text-text-primary rounded-md text-sm font-semibold transition-colors">
+                <Edit className="w-4 h-4" /> 전체 편집 페이지로 이동
               </button>
             </Link>
           </div>
@@ -902,6 +963,43 @@ export default function GameDetailManagementPage() {
             <button onClick={addItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">등록</button>
           </div>
         </div>
+      </Modal>
+
+      <Modal open={editItemModal} onClose={() => { setEditItemModal(false); setEditingItem(null) }} title="아이템 편집">
+        {editingItem && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className={labelCls}>아이템명 *</label><input value={editingItem.name} onChange={e => setEditingItem(p => p ? { ...p, name: e.target.value } : null)} className={inputCls} /></div>
+              <div>
+                <label className={labelCls}>카테고리 *</label>
+                <select value={editingItem.type} onChange={e => setEditingItem(p => p ? { ...p, type: e.target.value } : null)} className={inputCls}>
+                  {['패키지','외형','재화','소모품'].map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div><label className={labelCls}>가격 *</label><input type="number" value={editingItem.price} onChange={e => setEditingItem(p => p ? { ...p, price: Number(e.target.value) } : null)} className={inputCls} /></div>
+              <div>
+                <label className={labelCls}>통화</label>
+                <select value={editingItem.currency} onChange={e => setEditingItem(p => p ? { ...p, currency: e.target.value } : null)} className={inputCls}>
+                  <option value="KRW">KRW</option><option value="USD">USD</option><option value="EUR">EUR</option>
+                </select>
+              </div>
+              <div><label className={labelCls}>재고</label><input value={editingItem.stock} onChange={e => setEditingItem(p => p ? { ...p, stock: e.target.value } : null)} className={inputCls} /></div>
+            </div>
+            <div>
+              <label className={labelCls}>판매 상태</label>
+              <div className="flex items-center gap-3 mt-1">
+                <input type="checkbox" checked={editingItem.active} onChange={e => setEditingItem(p => p ? { ...p, active: e.target.checked } : null)} className="w-4 h-4 accent-green-500" />
+                <span className="text-sm text-text-secondary">판매 활성화</span>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => { setEditItemModal(false); setEditingItem(null) }} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
+              <button onClick={saveEditItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">저장</button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       <Modal open={apiKeyModal} onClose={() => { setApiKeyModal(false); setCreatedApiKey(null) }} title="API Key 생성">

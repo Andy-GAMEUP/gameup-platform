@@ -61,17 +61,28 @@ services:
       - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - letsencrypt_data:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
     networks:
       - gameup-net
     depends_on:
       - web
       - api
 
+  certbot:
+    image: certbot/certbot:latest
+    container_name: gameup-certbot
+    volumes:
+      - letsencrypt_data:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet; sleep 12h & wait $${!}; done'"
+
 volumes:
   mongodb_data:
   uploads_data:
+  letsencrypt_data:
+  certbot_www:
 
 networks:
   gameup-net:

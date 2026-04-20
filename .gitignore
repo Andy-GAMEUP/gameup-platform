@@ -19,10 +19,9 @@ build/
 .env.api
 .env.web
 
-# SSL 인증서 (서버에 직접 배포)
-nginx/certs/*.crt
-nginx/certs/*.key
-nginx/certs/*.pem
+# nginx 인증서 디렉토리 (Let's Encrypt는 Docker volume으로 관리)
+nginx/certs/*
+!nginx/certs/.gitkeep
 
 # os
 .DS_Store
