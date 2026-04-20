@@ -1,0 +1,16 @@
+node_modules
+.next
+dist
+.turbo
+.git
+e2e/
+docs/
+.env*
+apps/api/uploads/*
+playwright-report/
+test-results/
+Figma/
+.backup/
+.claude/
+scripts/*.log
+*.log

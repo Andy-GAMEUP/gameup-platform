@@ -16,6 +16,13 @@ build/
 .env.local
 .env.*.local
 .env.production
+.env.api
+.env.web
+
+# SSL 인증서 (서버에 직접 배포)
+nginx/certs/*.crt
+nginx/certs/*.key
+nginx/certs/*.pem
 
 # os
 .DS_Store

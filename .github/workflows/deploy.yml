@@ -1,0 +1,59 @@
+name: Deploy to gameup.co.kr
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm type-check
+
+  deploy:
+    name: Deploy
+    needs: lint-and-typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd /opt/gameup
+
+            echo ">>> Pull latest code"
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo ">>> Build images"
+            docker compose build --no-cache
+
+            echo ">>> Start services"
+            docker compose up -d --remove-orphans
+
+            echo ">>> Wait for API health"
+            sleep 15
+            curl -sf http://localhost:5000/api/health || (docker compose logs api && exit 1)
+
+            echo ">>> Deploy complete: $(date)"
