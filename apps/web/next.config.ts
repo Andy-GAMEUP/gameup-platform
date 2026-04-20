@@ -1,7 +1,11 @@
 import type { NextConfig } from "next"
 
+const isProd = process.env.NODE_ENV === "production"
+
 const nextConfig: NextConfig = {
   transpilePackages: ["@gameup/ui", "@gameup/types", "@gameup/utils"],
+  // Docker standalone 빌드 (프로덕션 전용)
+  output: isProd ? "standalone" : undefined,
   images: {
     unoptimized: false,
     remotePatterns: [
@@ -11,9 +15,21 @@ const nextConfig: NextConfig = {
         port: '5000',
         pathname: '/uploads/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.gameup.co.kr',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'gameup.co.kr',
+        pathname: '/uploads/**',
+      },
     ],
   },
+  // 개발 환경에서만 rewrite 적용 (프로덕션은 Nginx가 프록시 처리)
   async rewrites() {
+    if (isProd) return { beforeFiles: [], afterFiles: [], fallback: [] }
     return {
       beforeFiles: [
         {
