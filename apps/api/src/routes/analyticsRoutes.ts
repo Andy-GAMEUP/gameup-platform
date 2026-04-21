@@ -13,6 +13,7 @@ const trackLimiter = rateLimit({
 })
 
 router.post('/track', trackLimiter, trackPageVisit)
-router.patch('/track/:id/duration', trackLimiter, updateDuration)
+// POST (not PATCH) because navigator.sendBeacon() only supports POST
+router.post('/track/:id/duration', trackLimiter, updateDuration)
 
 export default router

@@ -48,7 +48,7 @@ export const trackPageVisit = async (req: Request, res: Response) => {
   }
 }
 
-// PATCH /api/analytics/track/:id/duration
+// POST /api/analytics/track/:id/duration (sendBeacon is always POST)
 export const updateDuration = async (req: Request, res: Response) => {
   try {
     const { id } = req.params
