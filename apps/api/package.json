@@ -12,6 +12,7 @@
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "seed": "tsx src/scripts/seed.ts",
+    "seed:partners": "tsx src/scripts/seed-partners.ts",
     "create-admin": "tsx src/scripts/createAdminUser.ts"
   },
   "dependencies": {
