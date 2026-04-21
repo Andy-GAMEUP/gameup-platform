@@ -1,4 +1,5 @@
 import type { NextConfig } from "next"
+import path from "path"
 
 const isProd = process.env.NODE_ENV === "production"
 
@@ -6,9 +7,9 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@gameup/ui", "@gameup/types", "@gameup/utils"],
   // Docker standalone 빌드 (프로덕션 전용)
   output: isProd ? "standalone" : undefined,
-  // 모노레포 Docker 빌드 시 Turbopack 워크스페이스 루트 명시
+  // 모노레포 Docker 빌드 시 Turbopack 워크스페이스 루트 명시 (apps/web에서 2단계 위 = 모노레포 루트)
   turbopack: {
-    root: process.cwd(),
+    root: path.resolve(__dirname, "../.."),
   },
   images: {
     unoptimized: false,
