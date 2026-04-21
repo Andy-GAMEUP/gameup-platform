@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@gameup/ui", "@gameup/types", "@gameup/utils"],
   // Docker standalone 빌드 (프로덕션 전용)
   output: isProd ? "standalone" : undefined,
+  // 모노레포 Docker 빌드 시 Turbopack 워크스페이스 루트 명시
+  turbopack: {
+    root: process.cwd(),
+  },
   images: {
     unoptimized: false,
     remotePatterns: [
