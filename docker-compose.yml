@@ -41,7 +41,8 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXTAUTH_URL: https://www.gameup.co.kr
-        NEXT_PUBLIC_API_URL: https://www.gameup.co.kr
+        NEXT_PUBLIC_API_URL: /api
+        NEXT_PUBLIC_UPLOADS_URL: ""
     container_name: gameup-web
     restart: unless-stopped
     env_file:
