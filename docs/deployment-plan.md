@@ -36,8 +36,9 @@
 ### apps/web (.env.production)
 | 변수 | 상태 |
 |------|------|
-| `NEXTAUTH_SECRET` | ✅ 신규 생성 완료 |
-| `NEXTAUTH_URL` | ✅ https://www.gameup.co.kr |
+| `AUTH_SECRET` | ✅ 신규 생성 완료 (NextAuth v5 표준) |
+| `AUTH_URL` | ✅ https://www.gameup.co.kr |
+| `AUTH_TRUST_HOST` | ✅ true (리버스 프록시 대응) |
 | `KAKAO_CLIENT_ID` | ✅ b08491c4f70d913ee2cc1a6a61fa8a26 (기존 유지) |
 | `KAKAO_CLIENT_SECRET` | ❌ 신규 발급 필요 |
 | `NAVER_CLIENT_ID` | ✅ EsMBfSQJZ0MOcsxZb2T7 (기존 유지) |
