@@ -4,77 +4,110 @@
 
 - **트리거**: `main` 브랜치 push (문서/README 변경 제외)
 - **수동 실행**: GitHub Actions 탭 → "Deploy to gameup.co.kr" → "Run workflow"
+- **아키텍처**: Self-hosted runner (서버에서 직접 실행, inbound SSH 불필요)
 - **동작 흐름**:
-  1. Type check 통과 확인
-  2. SSH로 서버 접속
-  3. 서버의 `/opt/gameup/scripts/deploy.sh` 실행
-  4. 변경 경로 분석 → 영향받는 서비스(api/web/nginx)만 재빌드
-  5. Health check
+  1. GitHub-hosted runner에서 type check 통과 확인
+  2. **Self-hosted runner(서버)** 에서 `/opt/gameup/scripts/deploy.sh` 실행
+  3. 변경 경로 분석 → 영향받는 서비스(api/web/nginx)만 재빌드
+  4. Health check
 
-## 1회 설정 (초기 1번만 수행)
+## 보안 모델
 
-### Step 1 - SSH 키 생성 (로컬 Mac에서)
+- ✅ Inbound SSH(22) 외부 공개 불필요 (사용자 IP만 허용 유지)
+- ✅ Outbound HTTPS(443)만 사용 (GitHub 폴링)
+- ✅ Secrets 노출 위험 없음 (배포 자격증명이 GitHub에 저장되지 않음)
+- ⚠️ **Private repo 전제**. Public repo는 PR 빌드가 self-hosted runner에서 실행되면 위험하므로 사용 금지.
+
+## 1회 설정 - Self-hosted Runner 설치
+
+### Step 1 - GitHub에서 등록 토큰 발급
+
+**방법 A (gh CLI 사용, 로컬 Mac에서):**
 ```bash
-ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/gameup_deploy -N ""
+gh api -X POST repos/Andy-GAMEUP/gameup-platform/actions/runners/registration-token --jq .token
 ```
 
-- `~/.ssh/gameup_deploy` (private key) → GitHub Secrets에 등록
-- `~/.ssh/gameup_deploy.pub` (public key) → 서버 authorized_keys에 추가
+**방법 B (브라우저):**
+1. https://github.com/Andy-GAMEUP/gameup-platform/settings/actions/runners
+2. "New self-hosted runner" 클릭
+3. OS: Linux, Architecture: x64
+4. 페이지에 표시되는 `./config.sh --url ... --token AABCD...` 명령에서 **token 값**을 복사
 
-### Step 2 - 서버에 public key 등록
+⚠️ 토큰은 1시간 유효. 만료 시 재발급.
+
+### Step 2 - 서버에 Runner 설치
+
+서버에서 실행:
+
 ```bash
-# 로컬 Mac에서 public key 복사
-cat ~/.ssh/gameup_deploy.pub
+# 전용 사용자 생성 (보안상 root 사용 비권장이지만, deploy.sh가 docker 명령을 써야 하므로 root 또는 docker 그룹 권한 필요)
+# 여기서는 간편함을 위해 root 사용자의 홈에 설치
 
-# 서버 SSH 접속 후 등록
-# (서버에서 실행)
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
-echo "<복사한 public key 내용>" >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
+mkdir -p /opt/actions-runner && cd /opt/actions-runner
+
+# 최신 runner 다운로드 (버전은 https://github.com/actions/runner/releases 참조)
+RUNNER_VERSION="2.328.0"
+curl -o actions-runner-linux-x64.tar.gz -L \
+  "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz"
+
+tar xzf actions-runner-linux-x64.tar.gz
+rm actions-runner-linux-x64.tar.gz
+
+# 의존성 설치
+./bin/installdependencies.sh
 ```
 
-### Step 3 - GitHub Secrets 등록
-GitHub 저장소 → Settings → Secrets and variables → Actions → New repository secret
+### Step 3 - Runner 등록
 
-| Secret Name | 값 |
-|-------------|-----|
-| `DEPLOY_HOST` | `101.79.9.143` |
-| `DEPLOY_USER` | `root` |
-| `DEPLOY_SSH_KEY` | `~/.ssh/gameup_deploy` 전체 내용 (private key) |
-| `DEPLOY_PORT` | `22` (기본값이면 생략 가능) |
-
-**Private key 복사:**
 ```bash
-cat ~/.ssh/gameup_deploy | pbcopy   # 클립보드에 복사됨
+cd /opt/actions-runner
+
+# <REGISTRATION_TOKEN>은 Step 1에서 받은 값
+./config.sh \
+  --url https://github.com/Andy-GAMEUP/gameup-platform \
+  --token <REGISTRATION_TOKEN> \
+  --name gameup-svr1 \
+  --labels gameup-prod \
+  --work _work \
+  --unattended \
+  --replace
 ```
 
-### Step 4 - 서버에 deploy.sh 배포 가능 상태 확인
-```bash
-# 서버에서 실행
-ls -la /opt/gameup/scripts/deploy.sh
-# 실행 권한 없으면: chmod +x /opt/gameup/scripts/deploy.sh
+### Step 4 - 시스템 서비스로 등록 (자동 시작)
 
-# 수동 실행 테스트 (변경 없을 때 정상 스킵되는지 확인)
-/opt/gameup/scripts/deploy.sh
+```bash
+cd /opt/actions-runner
+./svc.sh install root
+./svc.sh start
+./svc.sh status
 ```
 
-### Step 5 - 첫 배포 테스트
-로컬에서 작은 변경 후 커밋/푸시:
+상태가 `active (running)` 이어야 합니다.
+
+### Step 5 - 확인
+
+GitHub 저장소 → Settings → Actions → Runners 페이지에서 `gameup-svr1` 이 **Idle** 상태로 표시되면 성공.
+
+## 첫 배포 테스트
+
 ```bash
-git commit --allow-empty -m "chore: trigger ci/cd test"
-git push origin main
+# 로컬 Mac에서
+gh workflow run "Deploy to gameup.co.kr" --ref main
+gh run watch $(gh run list --limit 1 --json databaseId --jq '.[0].databaseId')
 ```
 
-GitHub 저장소 → Actions 탭에서 워크플로우 실행 확인.
+## 모니터링
 
-## 배포 로그 확인
-
-### GitHub Actions (전체 로그)
-저장소 → Actions 탭 → 해당 실행 클릭 → 각 step 펼쳐서 확인
-
-### 서버 배포 로그
+### Runner 로그
 ```bash
-tail -100 /opt/gameup/deploy.log
+# 서버에서
+journalctl -u actions.runner.* -f
+```
+
+### 배포 로그
+```bash
+# 서버에서
+tail -f /opt/gameup/deploy.log
 ```
 
 ## 변경 감지 규칙 (deploy.sh)
@@ -87,35 +120,48 @@ tail -100 /opt/gameup/deploy.log
 | `docker-compose.yml` | 전체 재기동 |
 | `docs/**`, `*.md` | 배포 스킵 (워크플로우 자체가 트리거 안됨) |
 
-## 롤백 방법
+## Runner 재시작/제거
 
-### 자동 롤백 없음 (수동)
+### 재시작
+```bash
+cd /opt/actions-runner
+./svc.sh stop
+./svc.sh start
+```
+
+### 제거 (재등록 필요 시)
+```bash
+cd /opt/actions-runner
+./svc.sh stop
+./svc.sh uninstall
+
+# GitHub에서 새 등록 토큰 받은 뒤
+./config.sh remove --token <REMOVAL_TOKEN>
+```
+
+## 롤백
+
 ```bash
 # 서버 접속 후
 cd /opt/gameup
-
-# 이전 커밋으로 되돌리기
 git log --oneline -10
 git reset --hard <이전 커밋 해시>
-
-# 재빌드
 docker compose build api web
 docker compose up -d
 ```
 
 ## 트러블슈팅
 
-### SSH 연결 실패
-- GitHub Secrets의 `DEPLOY_SSH_KEY` 값 확인 (줄바꿈 포함 전체 복사 필요)
-- 서버 `~/.ssh/authorized_keys`에 public key 정확히 들어갔는지 확인
-- 서버 방화벽/Naver Cloud ACG에서 GitHub Actions runner IP 허용 여부 (전체 허용 권장)
+### Runner가 Offline 상태
+- `./svc.sh status` 확인
+- `journalctl -u actions.runner.* -n 50` 로그 확인
+- 네트워크 outbound 443 차단 여부 확인
 
 ### 빌드 실패
-- GitHub Actions 로그에서 `docker compose build` 에러 메시지 확인
-- 서버 디스크 용량 확인: `df -h`
+- 서버 디스크 용량: `df -h`
 - Docker 이미지 정리: `docker image prune -af`
+- Runner 작업 디렉토리 정리: `rm -rf /opt/actions-runner/_work/*`
 
-### Health check 실패
-- `docker logs gameup-api --tail=50` 확인
-- MongoDB 연결 상태 확인
+### 배포 후 Health check 실패
+- `docker logs gameup-api --tail=50`
 - `.env.api`, `.env.web` 환경변수 확인
