@@ -104,6 +104,9 @@ export default function PlayerGameDetailPage() {
   const [qaQuestion, setQaQuestion] = useState('')
   const [qaSubmitting, setQaSubmitting] = useState(false)
 
+  // 스크린샷
+  const [screenshots, setScreenshots] = useState<{ _id: string; title: string; url: string; order: number }[]>([])
+
   // ── 결제 모달 상태 ────────────────────────────────────────────
   const [paymentModal, setPaymentModal] = useState<{
     open: boolean
@@ -168,11 +171,20 @@ export default function PlayerGameDetailPage() {
     } catch { /* ignore */ }
   }, [id, qaPage])
 
+  const loadScreenshots = useCallback(async () => {
+    if (!id) return
+    try {
+      const data = await gameService.getGameMedia(id, 'screenshot')
+      setScreenshots(data.media || [])
+    } catch { /* ignore */ }
+  }, [id])
+
   useEffect(() => { loadGame() }, [loadGame])
   useEffect(() => { loadReviews() }, [loadReviews])
   useEffect(() => { loadMyReview() }, [loadMyReview])
   useEffect(() => { checkFavorite() }, [checkFavorite])
   useEffect(() => { loadQAs() }, [loadQAs])
+  useEffect(() => { loadScreenshots() }, [loadScreenshots])
 
   const handleFavorite = async () => {
     if (!isAuthenticated) { router.push('/login'); return }
@@ -399,13 +411,8 @@ export default function PlayerGameDetailPage() {
         {/* ── 게임 소개 탭 ── */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-bg-secondary border border-line rounded-xl p-6">
-                <h2 className="text-text-primary font-bold text-lg mb-3">게임 설명</h2>
-                <p className="text-text-secondary leading-relaxed">{game.description as string}</p>
-              </div>
-
-              {/* 유료 게임 구매 버튼 */}
+            <div className="lg:col-span-2 space-y-4">
+              {/* CTA 버튼 */}
               {monetization === 'paid' && gamePrice > 0 ? (
                 <button
                   onClick={() => handlePurchase(`${game.title as string} 정식 구매`, gamePrice)}
@@ -421,6 +428,71 @@ export default function PlayerGameDetailPage() {
                   🎮 지금 베타 테스트 참여하기
                 </button>
               ) : null}
+
+              {/* 스크린샷 갤러리 */}
+              <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
+                <div className="px-5 pt-4 pb-3 flex items-center justify-between">
+                  <h3 className="text-text-primary font-semibold text-sm">게임 스크린샷</h3>
+                  {screenshots.length > 0 && (
+                    <span className="text-text-muted text-xs">{screenshots.length}장</span>
+                  )}
+                </div>
+                {screenshots.length === 0 ? (
+                  <div className="px-5 pb-5">
+                    <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                      {[1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="aspect-video rounded-lg bg-bg-tertiary/50 border border-line/40 flex flex-col items-center justify-center gap-1.5"
+                        >
+                          <span className="text-2xl opacity-30">🖼️</span>
+                          <span className="text-text-muted text-xs opacity-60">스크린샷 없음</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="px-5 pb-5 overflow-x-auto"
+                    style={{ scrollbarWidth: 'thin', scrollbarColor: '#334155 transparent' }}
+                  >
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridAutoFlow: 'column',
+                        gridAutoColumns: 'calc((100% - 24px) / 3)',
+                        gap: '12px',
+                      }}
+                    >
+                      {screenshots.map((shot, i) => (
+                        <div
+                          key={shot._id || i}
+                          className="aspect-video rounded-lg overflow-hidden bg-bg-tertiary border border-line/50 group cursor-pointer"
+                        >
+                          {shot.url ? (
+                            <img
+                              src={shot.url}
+                              alt={shot.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-text-muted">
+                              <span className="text-2xl">🖼️</span>
+                              <span className="text-xs">{shot.title}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 게임 설명 */}
+              <div className="bg-bg-secondary border border-line rounded-xl p-6">
+                <h2 className="text-text-primary font-bold text-lg mb-3">게임 설명</h2>
+                <p className="text-text-secondary leading-relaxed">{game.description as string}</p>
+              </div>
             </div>
 
             <div className="space-y-4">
