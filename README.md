@@ -121,6 +121,16 @@ gh workflow run "Deploy to gameup.co.kr" --ref main
 - 장르 필터: 한글/영문 alias 매칭 지원 (예: `시뮬레이션` ↔ `simulation`)
 - 유틸 스크립트 추가: `check-game.mjs`, `set-admin.mjs`, `update-game-domain.mjs`
 
+### 2026-05-18 (2) — 게임 소개 탭 UX 개선
+
+**PlayerGameDetailPage 레이아웃 변경**
+- CTA 버튼(베타 참여/구매)을 게임 설명 위로 이동 (참고 디자인 반영)
+- 버튼 아래 스크린샷 갤러리 섹션 추가
+  - 한 화면에 3장 노출, 3장 초과 시 좌우 스크롤 자동 적용
+  - 스크린샷 미등록 시 플레이스홀더 3칸 표시
+  - 이미지 hover 줌 효과
+- `gameService.getGameMedia` API 연동으로 실제 등록 스크린샷 표시
+
 ---
 
 ## 라이선스
