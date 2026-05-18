@@ -93,6 +93,36 @@ gh workflow run "Deploy to gameup.co.kr" --ref main
 | Developer | developer@test.com | test123456 |
 | Player | player@test.com | test123456 |
 
+## 변경 이력 (dev-capcloud)
+
+### 2026-05-18 — GRAC 게임 관리 전면 개편
+
+**게임 등록 방식 변경**
+- 게임 파일(.zip) 업로드 방식 → 서비스 URL(`gameDomain`) 입력 방식으로 전환
+
+**DB 모델 변경 (`packages/db`, `packages/types`)**
+- `Game`: `gameDomain`, `bannerImage` 필드 추가 / `gameFile` 선택 필드로 변경
+- `Game.approvalStatus`: `not_submitted` 상태 추가 (기본값 변경)
+- 신규 모델 추가: `GameMedia`, `GameShopItem`, `GameAnnouncement`
+
+**새 API 컨트롤러 추가 (`apps/api`)**
+- `gameMediaController` — 스크린샷/영상 미디어 CRUD
+- `gameShopController` — 게임 내 샵 아이템 CRUD
+- `gameAnnouncementController` — 공지 & 알림 CRUD
+
+**프론트엔드 (`apps/web`)**
+- `GameDetailManagementPage`: 목업 데이터 제거 → 실API 연동, 탭 재편 (게임정보 편집 / 미디어 / 게임샵 / 포인트 보상 / 개발자 설정 / 공지&알림)
+- `GameEditPage`: `gameDomain` 편집, 심사 요청 버튼, `not_submitted` 배지 추가
+- `UploadGamePage`: 파일 업로드 UI 제거, 도메인 URL 입력 UI로 교체
+- 관리자/플레이어 페이지 다수 UI 개선
+- `DevLogPanel` 컴포넌트 추가
+
+**기타**
+- 장르 필터: 한글/영문 alias 매칭 지원 (예: `시뮬레이션` ↔ `simulation`)
+- 유틸 스크립트 추가: `check-game.mjs`, `set-admin.mjs`, `update-game-domain.mjs`
+
+---
+
 ## 라이선스
 
 Private – 내부 사용 전용
