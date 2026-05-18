@@ -144,6 +144,9 @@ export default function GameDetailManagementPage() {
   const [editingItem, setEditingItem] = useState<ShopItem | null>(null)
   const [notiModal, setNotiModal] = useState(false)
   const [newSs, setNewSs] = useState({ title: '' })
+  const [newSsFile, setNewSsFile] = useState<File | null>(null)
+  const [newSsPreview, setNewSsPreview] = useState<string | null>(null)
+  const ssFileRef = useRef<HTMLInputElement>(null)
   const [newVid, setNewVid] = useState({ title: '', url: '', type: 'youtube' })
   const [newItem, setNewItem] = useState({ name: '', price: '', currency: 'KRW', type: '패키지', stock: '무제한', description: '' })
   const [newNoti, setNewNoti] = useState({ title: '', content: '', type: 'notice', priority: 'normal', sendPush: false })
@@ -445,15 +448,27 @@ export default function GameDetailManagementPage() {
   }
 
   const addScreenshot = async () => {
-    if (!newSs.title || !gameId) return
+    if (!newSs.title || !newSsFile || !gameId) return
     try {
-      await gameService.addGameMedia(gameId, { type: 'screenshot', title: newSs.title })
-      setNewSs({ title: '' }); setSsModal(false)
+      await gameService.addGameMedia(gameId, { type: 'screenshot', title: newSs.title, file: newSsFile })
+      setNewSs({ title: '' })
+      setNewSsFile(null)
+      setNewSsPreview(null)
+      setSsModal(false)
       loadMedia()
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
       alert(msg)
     }
+  }
+
+  const handleSsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setNewSsFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setNewSsPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
   }
   const deleteScreenshot = async (mediaId: string) => {
     if (!gameId || !confirm('삭제하시겠습니까?')) return
@@ -715,10 +730,21 @@ export default function GameDetailManagementPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {screenshots.map(ss => (
-                  <div key={ss._id} className="relative group aspect-video bg-bg-tertiary/50 rounded-lg border-2 border-line flex items-center justify-center">
-                    <div className="text-center text-text-muted"><ImageIcon className="w-10 h-10 mx-auto mb-1 opacity-50" /><p className="text-sm">{ss.title}</p></div>
-                    <button onClick={() => deleteScreenshot(ss._id)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 bg-red-500/20 border border-red-500/50 text-red-400 rounded-md transition-opacity">
-                      <Trash2 className="w-4 h-4" />
+                  <div key={ss._id} className="relative group aspect-video bg-bg-tertiary/50 rounded-lg border border-line overflow-hidden">
+                    {ss.url ? (
+                      <img src={ss.url} alt={ss.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center w-full h-full text-text-muted">
+                        <ImageIcon className="w-10 h-10 opacity-30 mb-1" />
+                        <p className="text-xs">{ss.title}</p>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors" />
+                    <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-xs text-white font-medium truncate">{ss.title}</p>
+                    </div>
+                    <button onClick={() => deleteScreenshot(ss._id)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 bg-red-500/80 text-white rounded-md transition-opacity">
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
@@ -1252,15 +1278,37 @@ export default function GameDetailManagementPage() {
         />
       )}
 
-      <Modal open={ssModal} onClose={() => setSsModal(false)} title="스크린샷 추가">
+      <Modal open={ssModal} onClose={() => { setSsModal(false); setNewSs({ title: '' }); setNewSsFile(null); setNewSsPreview(null) }} title="스크린샷 추가">
         <div className="space-y-4">
-          <div><label className={labelCls}>제목</label><input placeholder="예: 메인 화면" value={newSs.title} onChange={e => setNewSs({ title: e.target.value })} className={inputCls} /></div>
-          <div className="border-2 border-dashed border-line rounded-lg p-8 text-center cursor-pointer hover:border-line">
-            <Upload className="w-10 h-10 mx-auto mb-2 text-text-secondary" /><p className="text-sm text-text-secondary">클릭하여 이미지 업로드</p>
+          <div>
+            <label className={labelCls}>제목</label>
+            <input placeholder="예: 메인 화면" value={newSs.title} onChange={e => setNewSs({ title: e.target.value })} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>이미지 (PNG, JPG, WEBP / 최대 5MB)</label>
+            <input ref={ssFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleSsFileChange} />
+            <div
+              className="border-2 border-dashed border-line rounded-lg overflow-hidden cursor-pointer hover:border-accent transition-colors"
+              style={{ aspectRatio: '16/9' }}
+              onClick={() => ssFileRef.current?.click()}
+            >
+              {newSsPreview ? (
+                <img src={newSsPreview} alt="미리보기" className="w-full h-full object-cover" />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full gap-2 text-text-muted">
+                  <Upload className="w-8 h-8 opacity-40" />
+                  <p className="text-sm">클릭하여 이미지 선택</p>
+                  <p className="text-xs opacity-60">권장 해상도: 1920×1080px</p>
+                </div>
+              )}
+            </div>
+            {newSsFile && (
+              <p className="text-xs text-text-muted mt-1">{newSsFile.name} · {(newSsFile.size / 1024 / 1024).toFixed(1)}MB</p>
+            )}
           </div>
           <div className="flex justify-end gap-3">
-            <button onClick={() => setSsModal(false)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-            <button onClick={addScreenshot} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">추가</button>
+            <button onClick={() => { setSsModal(false); setNewSs({ title: '' }); setNewSsFile(null); setNewSsPreview(null) }} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
+            <button onClick={addScreenshot} disabled={!newSs.title || !newSsFile} className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-sm">추가</button>
           </div>
         </div>
       </Modal>

@@ -121,6 +121,14 @@ gh workflow run "Deploy to gameup.co.kr" --ref main
 - 장르 필터: 한글/영문 alias 매칭 지원 (예: `시뮬레이션` ↔ `simulation`)
 - 유틸 스크립트 추가: `check-game.mjs`, `set-admin.mjs`, `update-game-domain.mjs`
 
+### 2026-05-18 (3) — 게임 스크린샷 업로드 기능 수정
+
+**수정 내용**
+- 스크린샷 모달: 실제 파일 선택 + 16:9 미리보기 추가 (기존: 버튼만 있고 동작 안 함)
+- API: 스크린샷 파일 업로드 미들웨어 추가 (`screenshotUpload`, `/uploads/screenshots/` 저장)
+- 스크린샷 그리드: 등록된 이미지 실제 표시, hover 시 제목/삭제버튼 노출
+- `gameService.addGameMedia`: 파일 있을 때 FormData 전송으로 변경
+
 ### 2026-05-18 (2) — 게임 소개 탭 UX 개선
 
 **PlayerGameDetailPage 레이아웃 변경**

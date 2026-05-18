@@ -160,8 +160,19 @@ export const gameService = {
     return response.data
   },
 
-  addGameMedia: async (gameId: string, data: { type: 'screenshot' | 'video'; title: string; url?: string }) => {
-    const response = await apiClient.post(`/games/${gameId}/media`, data)
+  addGameMedia: async (gameId: string, data: { type: 'screenshot' | 'video'; title: string; url?: string; file?: File }) => {
+    const { file, ...rest } = data
+    if (file) {
+      const formData = new FormData()
+      formData.append('type', rest.type)
+      formData.append('title', rest.title)
+      formData.append('screenshot', file)
+      const response = await apiClient.post(`/games/${gameId}/media`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      return response.data
+    }
+    const response = await apiClient.post(`/games/${gameId}/media`, rest)
     return response.data
   },
 

@@ -31,12 +31,16 @@ export const addGameMedia = async (req: AuthRequest, res: Response) => {
 
     const { gameId } = req.params
     const { type, title, url } = req.body
+    const file = req.file
 
     if (!type || !['screenshot', 'video'].includes(type)) {
       return res.status(400).json({ message: 'type은 screenshot 또는 video여야 합니다' })
     }
     if (!title?.trim()) return res.status(400).json({ message: '제목을 입력해주세요' })
     if (type === 'video' && !url?.trim()) return res.status(400).json({ message: '동영상 URL을 입력해주세요' })
+    if (type === 'screenshot' && !file && !url?.trim()) {
+      return res.status(400).json({ message: '스크린샷 이미지를 업로드해주세요' })
+    }
 
     const game = await verifyGameOwner(gameId, req.user.id)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
@@ -45,12 +49,16 @@ export const addGameMedia = async (req: AuthRequest, res: Response) => {
     const limit = type === 'screenshot' ? 10 : 5
     if (count >= limit) return res.status(400).json({ message: `${type === 'screenshot' ? '스크린샷' : '동영상'}은 최대 ${limit}개까지 등록할 수 있습니다` })
 
+    const mediaUrl = type === 'screenshot' && file
+      ? '/uploads/screenshots/' + file.filename
+      : url?.trim() || ''
+
     const media = await GameMediaModel.create({
       gameId,
       developerId: req.user.id,
       type,
       title: title.trim(),
-      url: url?.trim() || '',
+      url: mediaUrl,
       order: count,
     })
 

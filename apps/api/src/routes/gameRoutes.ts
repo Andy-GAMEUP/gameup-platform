@@ -6,7 +6,7 @@ import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/game
 import { getGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem } from '../controllers/gameShopController'
 import { getGameAnnouncements, createGameAnnouncement, deleteGameAnnouncement } from '../controllers/gameAnnouncementController'
 import { authenticateToken, requireRole } from '../middleware/auth'
-import { uploadFields } from '../middleware/upload'
+import { uploadFields, screenshotUpload } from '../middleware/upload'
 
 const router = Router()
 
@@ -43,7 +43,7 @@ router.get('/:gameId/analytics/export', authenticateToken, requireRole('develope
 
 // 게임 미디어 (스크린샷 / 동영상)
 router.get('/:gameId/media', getGameMedia)
-router.post('/:gameId/media', authenticateToken, requireRole('developer'), addGameMedia)
+router.post('/:gameId/media', authenticateToken, requireRole('developer'), screenshotUpload, addGameMedia)
 router.delete('/:gameId/media/:mediaId', authenticateToken, requireRole('developer'), deleteGameMedia)
 
 // 게임샵 아이템
