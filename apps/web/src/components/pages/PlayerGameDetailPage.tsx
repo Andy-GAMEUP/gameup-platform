@@ -496,77 +496,6 @@ export default function PlayerGameDetailPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="bg-bg-secondary border border-line rounded-xl p-5">
-                <h3 className="text-text-primary font-semibold mb-4">게임 정보</h3>
-                <dl className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-text-secondary">장르</dt>
-                    <dd className="text-text-primary">{game.genre as string || '-'}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-text-secondary">수익화</dt>
-                    <dd className="text-text-primary capitalize">
-                      {monetization === 'free' ? '무료' : monetization === 'paid' ? `유료 (₩${gamePrice.toLocaleString()})` : '부분 유료'}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-text-secondary">플레이</dt>
-                    <dd className="text-cyan-400 font-bold">{(game.playCount as number || 0).toLocaleString()}회</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-text-secondary">리뷰</dt>
-                    <dd className="text-purple-400 font-bold">{reviewTotal}개</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-text-secondary">평균 별점</dt>
-                    <dd className="text-yellow-400 font-bold">{avgRating.toFixed(1)} / 5.0</dd>
-                  </div>
-                </dl>
-              </div>
-
-              {/* 인앱 결제 아이템 (freemium) */}
-              {monetization === 'freemium' && (
-                <div className="bg-bg-secondary border border-line rounded-xl p-5">
-                  <h3 className="text-text-primary font-semibold mb-3">게임샵</h3>
-                  <div className="space-y-2">
-                    {[
-                      { name: '스타터 팩', price: 9900 },
-                      { name: '프리미엄 스킨', price: 4900 },
-                      { name: '골드 1000개', price: 2900 },
-                    ].map((item) => (
-                      <div key={item.name} className="flex items-center justify-between p-3 bg-bg-tertiary/50 rounded-lg">
-                        <span className="text-sm text-text-secondary">{item.name}</span>
-                        <button
-                          onClick={() => handlePurchase(item.name, item.price)}
-                          className="text-xs px-3 py-1.5 bg-accent hover:bg-accent-hover rounded-md transition-colors font-medium"
-                        >
-                          ₩{item.price.toLocaleString()}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-bg-secondary border border-line rounded-xl p-5">
-                <h3 className="text-text-primary font-semibold mb-3">별점 분포</h3>
-                <div className="space-y-2">
-                  {[5, 4, 3, 2, 1].map((star) => {
-                    const cnt = ratingDist[star] || 0
-                    const pct = totalReviewCount > 0 ? (cnt / totalReviewCount) * 100 : 0
-                    return (
-                      <div key={star} className="flex items-center gap-2 text-xs">
-                        <span className="text-text-secondary w-4">{star}★</span>
-                        <div className="flex-1 bg-bg-tertiary rounded-full h-1.5">
-                          <div className="bg-yellow-400 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className="text-text-muted w-5 text-right">{cnt}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
               {/* 개발사 정보 */}
               {game.developerId != null && typeof game.developerId === 'object' ? (
                 <div className="bg-bg-secondary border border-line rounded-xl p-5">
@@ -596,6 +525,55 @@ export default function PlayerGameDetailPage() {
                   )}
                 </div>
               ) : null}
+
+              {/* 게임 정보 */}
+              <div className="bg-bg-secondary border border-line rounded-xl p-5">
+                <h3 className="text-text-primary font-semibold mb-4">게임 정보</h3>
+                <dl className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-text-secondary">장르</dt>
+                    <dd className="text-text-primary">{game.genre as string || '-'}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-secondary">수익화</dt>
+                    <dd className="text-text-primary capitalize">
+                      {monetization === 'free' ? '무료' : monetization === 'paid' ? `유료 (₩${gamePrice.toLocaleString()})` : '부분 유료'}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-secondary">플레이</dt>
+                    <dd className="text-cyan-400 font-bold">{(game.playCount as number || 0).toLocaleString()}회</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-secondary">리뷰</dt>
+                    <dd className="text-purple-400 font-bold">{reviewTotal}개</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-secondary">평균 별점</dt>
+                    <dd className="text-yellow-400 font-bold">{avgRating.toFixed(1)} / 5.0</dd>
+                  </div>
+                </dl>
+              </div>
+
+              {/* 별점 분포 */}
+              <div className="bg-bg-secondary border border-line rounded-xl p-5">
+                <h3 className="text-text-primary font-semibold mb-3">별점 분포</h3>
+                <div className="space-y-2">
+                  {[5, 4, 3, 2, 1].map((star) => {
+                    const cnt = ratingDist[star] || 0
+                    const pct = totalReviewCount > 0 ? (cnt / totalReviewCount) * 100 : 0
+                    return (
+                      <div key={star} className="flex items-center gap-2 text-xs">
+                        <span className="text-text-secondary w-4">{star}★</span>
+                        <div className="flex-1 bg-bg-tertiary rounded-full h-1.5">
+                          <div className="bg-yellow-400 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-text-muted w-5 text-right">{cnt}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* Q&A 섹션 */}
