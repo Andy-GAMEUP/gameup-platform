@@ -14,6 +14,7 @@ const ensureDir = (dir: string) => {
 const UPLOAD_BASE = path.join(process.cwd(), 'uploads')
 ensureDir(path.join(UPLOAD_BASE, 'games'))
 ensureDir(path.join(UPLOAD_BASE, 'thumbnails'))
+ensureDir(path.join(UPLOAD_BASE, 'banners'))
 ensureDir(path.join(UPLOAD_BASE, 'community'))
 
 const storage = multer.diskStorage({
@@ -22,6 +23,8 @@ const storage = multer.diskStorage({
       cb(null, path.join(UPLOAD_BASE, 'games'))
     } else if (file.fieldname === 'thumbnail') {
       cb(null, path.join(UPLOAD_BASE, 'thumbnails'))
+    } else if (file.fieldname === 'bannerImage') {
+      cb(null, path.join(UPLOAD_BASE, 'banners'))
     } else if (file.fieldname === 'communityImages') {
       cb(null, path.join(UPLOAD_BASE, 'community'))
     } else {
@@ -45,7 +48,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     } else {
       cb(new Error('게임 파일은 HTML 또는 ZIP 형식만 가능합니다'))
     }
-  } else if (file.fieldname === 'thumbnail' || file.fieldname === 'communityImages') {
+  } else if (file.fieldname === 'thumbnail' || file.fieldname === 'bannerImage' || file.fieldname === 'communityImages') {
     const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     const allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     const ext = path.extname(file.originalname).toLowerCase()
@@ -67,13 +70,13 @@ export const upload = multer({
   fileFilter,
   limits: {
     fileSize: MAX_FILE_SIZE,
-    files: 2
+    files: 3
   }
 })
 
 export const uploadFields = upload.fields([
-  { name: 'gameFile', maxCount: 1 },
-  { name: 'thumbnail', maxCount: 1 }
+  { name: 'thumbnail', maxCount: 1 },
+  { name: 'bannerImage', maxCount: 1 }
 ])
 
 // 커뮤니티 게시글 이미지 업로드 (최대 5장, 5MB/장)

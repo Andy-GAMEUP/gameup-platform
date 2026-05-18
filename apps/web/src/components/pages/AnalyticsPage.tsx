@@ -114,7 +114,7 @@ export default function AnalyticsPage() {
   const overview = data?.overview
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex flex-col gap-4">
         <div>

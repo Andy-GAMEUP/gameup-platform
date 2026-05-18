@@ -66,7 +66,7 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
     if (isActive !== undefined) filter.isActive = isActive === 'true'
     if (memberType) filter.memberType = memberType
     if (isPartner === 'true') filter.isPartner = true
-    if (approvalStatus && ['pending', 'approved', 'rejected'].includes(String(approvalStatus))) {
+    if (approvalStatus && ['not_submitted', 'pending', 'review', 'approved', 'rejected'].includes(String(approvalStatus))) {
       filter.approvalStatus = String(approvalStatus)
     }
     if (search) {

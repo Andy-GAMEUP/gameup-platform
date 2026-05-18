@@ -16,8 +16,8 @@ import {
   BarChart3,
   Settings,
   Bell,
-  Menu,
-  X,
+  ChevronLeft,
+  ChevronRight,
   ChevronDown,
   LogOut,
   Plus,
@@ -75,19 +75,25 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
     <div className="accent-green min-h-screen bg-bg-primary text-text-primary flex">
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 h-screen bg-bg-secondary border-r border-line transition-all duration-300 z-40 ${
+        className={`fixed lg:sticky top-0 h-screen bg-bg-secondary border-r border-line transition-all duration-300 z-40 overflow-hidden ${
           sidebarOpen ? 'w-64' : 'w-0 lg:w-20'
         }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-line">
-            <Link href="/" className="flex items-center gap-2">
+          <div className="px-3 h-16 border-b border-line flex items-center justify-between gap-2">
+            <Link href="/" className="flex items-center gap-2 min-w-0">
               <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-8 w-auto object-contain flex-shrink-0" />
               {sidebarOpen && (
-                <span className="text-base font-bold tracking-tight text-black">GameUp</span>
+                <span className="text-base font-bold tracking-tight text-black truncate">GameUp</span>
               )}
             </Link>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="flex-shrink-0 text-text-muted hover:text-text-primary"
+            >
+              {sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+            </button>
           </div>
 
           {/* Navigation */}
@@ -130,19 +136,9 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-bg-primary/95 backdrop-blur-lg border-b border-line">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="text-text-muted hover:text-text-primary"
-              >
-                {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </button>
-              <h1 className="text-xl font-bold">
-                {navItems.find((item) => isActive(item.path))?.label || '개발자 센터'}
-              </h1>
-            </div>
+        <header className="sticky top-0 z-30 bg-bg-primary/95 backdrop-blur-lg">
+          <div className="flex items-center justify-between px-6 h-16 border-b border-line">
+            <div className="flex items-center gap-4" />
 
             <div className="flex items-center gap-4">
               <Link href="/upload">

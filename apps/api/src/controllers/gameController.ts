@@ -1,5 +1,6 @@
 import { Response } from 'express'
 import fs from 'fs'
+import path from 'path'
 import { GameModel as Game, UserModel as User, GameDeletionLogModel as GameDeletionLog, PaymentModel as Payment } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 import { grantGameAccessPoint } from '../services/pointService'
@@ -23,7 +24,14 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
     }
 
     if (genre && genre !== 'all') {
-      filter.genre = genre
+      // 구버전 DB는 영문 소문자로 저장돼 있어서 한글/영문 모두 매칭
+      const genreAliases: Record<string, string> = {
+        '시뮬레이션': 'simulation', '액션': 'action', 'RPG': 'rpg',
+        'FPS': 'fps', '전략': 'strategy', '레이싱': 'racing',
+        '어드벤처': 'adventure', '퍼즐': 'puzzle', '스포츠': 'sports', '호러': 'horror',
+      }
+      const enAlias = genreAliases[genre as string]
+      filter.genre = enAlias ? { $in: [genre, enAlias] } : genre
     }
 
     if (search) {
@@ -100,15 +108,21 @@ export const createGame = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: '인증이 필요합니다' })
     }
 
-    const { title, description, genre, price, isPaid, status, monetization, serviceType } = req.body
+    const { title, description, genre, price, isPaid, status, monetization, serviceType, gameDomain } = req.body
     const files = req.files as { [fieldname: string]: Express.Multer.File[] }
 
     if (!title?.trim() || !description?.trim()) {
       return res.status(400).json({ message: '제목과 설명은 필수입니다' })
     }
 
-    if (!files || !files.gameFile) {
-      return res.status(400).json({ message: '게임 파일은 필수입니다' })
+    if (!gameDomain?.trim()) {
+      return res.status(400).json({ message: '게임 도메인(URL)은 필수입니다' })
+    }
+
+    try {
+      new URL(gameDomain.trim())
+    } catch {
+      return res.status(400).json({ message: '유효한 URL 형식으로 입력해주세요 (예: https://mygame.com)' })
     }
 
     const gameData: Record<string, unknown> = {
@@ -116,16 +130,20 @@ export const createGame = async (req: AuthRequest, res: Response) => {
       description: description.trim(),
       genre: genre || '',
       developerId: req.user.id,
-      gameFile: files.gameFile[0].path,
+      gameDomain: gameDomain.trim(),
       price: isPaid === 'true' ? Math.max(0, Number(price) || 0) : 0,
       isPaid: isPaid === 'true',
       status: status || 'draft',
+      approvalStatus: 'not_submitted',
       monetization: monetization || 'free',
       serviceType: serviceType || 'beta'
     }
 
-    if (files.thumbnail) {
-      gameData.thumbnail = files.thumbnail[0].path
+    if (files && files.thumbnail) {
+      gameData.thumbnail = '/uploads/thumbnails/' + files.thumbnail[0].filename
+    }
+    if (files && files.bannerImage) {
+      gameData.bannerImage = '/uploads/banners/' + files.bannerImage[0].filename
     }
 
     const game = await Game.create(gameData)
@@ -163,7 +181,7 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
       serviceType, monetization, platform, engine,
       startDate, endDate, maxTesters, testType, requirements,
       trailer, website, discord, notes,
-      requestReview
+      requestReview, gameDomain
     } = req.body
     const files = req.files as { [fieldname: string]: Express.Multer.File[] }
 
@@ -188,6 +206,14 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
     if (website !== undefined) (game as any).website = website
     if (discord !== undefined) (game as any).discord = discord
     if (notes !== undefined) (game as any).notes = notes
+    if (gameDomain !== undefined) {
+      if (gameDomain.trim()) {
+        try { new URL(gameDomain.trim()) } catch {
+          return res.status(400).json({ message: '유효한 URL 형식으로 입력해주세요 (예: https://mygame.com)' })
+        }
+      }
+      (game as any).gameDomain = gameDomain.trim()
+    }
 
     // 태그
     const rawTags = req.body['tags[]']
@@ -200,19 +226,24 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
       game.approvalStatus = 'pending'
     }
 
-    // 🔒 기존 파일 삭제 후 새 파일로 교체
-    if (files && files.gameFile) {
-      if (game.gameFile && fs.existsSync(game.gameFile)) {
-        fs.unlinkSync(game.gameFile)
+    if (files && files.thumbnail) {
+      if (game.thumbnail) {
+        const oldPath = game.thumbnail.startsWith('/uploads/')
+          ? path.join(process.cwd(), game.thumbnail.slice(1))
+          : game.thumbnail
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath)
       }
-      game.gameFile = files.gameFile[0].path
+      game.thumbnail = '/uploads/thumbnails/' + files.thumbnail[0].filename
     }
 
-    if (files && files.thumbnail) {
-      if (game.thumbnail && fs.existsSync(game.thumbnail)) {
-        fs.unlinkSync(game.thumbnail)
+    if (files && files.bannerImage) {
+      if (game.bannerImage) {
+        const oldPath = game.bannerImage.startsWith('/uploads/')
+          ? path.join(process.cwd(), game.bannerImage.slice(1))
+          : game.bannerImage
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath)
       }
-      game.thumbnail = files.thumbnail[0].path
+      game.bannerImage = '/uploads/banners/' + files.bannerImage[0].filename
     }
 
     await game.save()
@@ -292,8 +323,17 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
     if (game.gameFile && fs.existsSync(game.gameFile)) {
       fs.unlinkSync(game.gameFile)
     }
-    if (game.thumbnail && fs.existsSync(game.thumbnail)) {
-      fs.unlinkSync(game.thumbnail)
+    if (game.thumbnail) {
+      const thumbPath = game.thumbnail.startsWith('/uploads/')
+        ? path.join(process.cwd(), game.thumbnail.slice(1))
+        : game.thumbnail
+      if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath)
+    }
+    if (game.bannerImage) {
+      const bannerPath = game.bannerImage.startsWith('/uploads/')
+        ? path.join(process.cwd(), game.bannerImage.slice(1))
+        : game.bannerImage
+      if (fs.existsSync(bannerPath)) fs.unlinkSync(bannerPath)
     }
 
     await Game.findByIdAndDelete(id)
@@ -391,6 +431,24 @@ export const getDeveloperStats = async (req: AuthRequest, res: Response) => {
       recentGames
     })
   } catch (error) {
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+export const requestReview = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+    const game = await Game.findById(req.params.id)
+    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    if (game.developerId.toString() !== req.user.id) return res.status(403).json({ message: '자신의 게임만 심사 요청할 수 있습니다' })
+    if (game.approvalStatus === 'approved') return res.status(400).json({ message: '이미 승인된 게임입니다' })
+    if (game.approvalStatus === 'pending' || game.approvalStatus === 'review') return res.status(400).json({ message: '이미 심사 중입니다' })
+    if (!game.gameDomain?.trim()) return res.status(400).json({ message: '게임 URL을 먼저 등록해주세요' })
+    game.approvalStatus = 'pending'
+    await game.save()
+    res.json({ success: true, message: '심사가 요청되었습니다. 관리자 검토 후 승인됩니다.' })
+  } catch (error) {
+    console.error('Request review error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }
 }

@@ -270,7 +270,7 @@ export default function FeedbackManagementPage() {
   const unansweredCount = qas.filter(q => !q.answer).length
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* 헤더 */}
       <div>
         <h1 className="text-3xl font-bold mb-1">피드백 관리</h1>

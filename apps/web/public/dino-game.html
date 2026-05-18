@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DinoRun — GameUp 샘플</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      color: #e0e0e0;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      letter-spacing: 4px;
+      color: #7c3aed;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    #subtitle {
+      font-size: 0.75rem;
+      color: #666;
+      margin-bottom: 24px;
+      letter-spacing: 2px;
+    }
+
+    #game-wrapper {
+      position: relative;
+      border: 2px solid #7c3aed;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(124,58,237,0.3);
+    }
+
+    canvas {
+      display: block;
+      background: #0f0f1a;
+    }
+
+    #ui {
+      display: flex;
+      justify-content: space-between;
+      width: 700px;
+      padding: 10px 4px;
+      font-size: 0.8rem;
+      color: #888;
+    }
+
+    #score-display { color: #a78bfa; font-weight: bold; font-size: 1rem; }
+    #hi-display { color: #555; }
+    #msg {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    #msg .title { font-size: 1.1rem; color: #7c3aed; letter-spacing: 3px; margin-bottom: 6px; }
+    #msg .sub   { font-size: 0.75rem; color: #666; letter-spacing: 1px; }
+
+    #controls {
+      margin-top: 16px;
+      font-size: 0.72rem;
+      color: #444;
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+<script>
+  (function() {
+    const returnUrl = new URLSearchParams(location.search).get('gameup_return')
+    if (!returnUrl) return
+    const bar = document.createElement('div')
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;align-items:center;gap:10px;padding:8px 16px;background:rgba(10,10,20,0.92);backdrop-filter:blur(8px);border-bottom:1px solid #7c3aed;font-family:Courier New,monospace;'
+    bar.innerHTML = `
+      <a href="${returnUrl}" style="display:flex;align-items:center;gap:6px;color:#a78bfa;text-decoration:none;font-size:13px;font-weight:bold;letter-spacing:1px;padding:4px 12px;border:1px solid #7c3aed;border-radius:6px;transition:background 0.2s;" onmouseover="this.style.background='rgba(124,58,237,0.2)'" onmouseout="this.style.background='transparent'">
+        ← GameUp
+      </a>
+      <span style="color:#555;font-size:11px;letter-spacing:2px;">DINORUN</span>
+    `
+    document.body.prepend(bar)
+    // 바 높이만큼 body 패딩 추가
+    document.body.style.paddingTop = '42px'
+  })()
+</script>
+
+<h1>DinoRun</h1>
+<div id="subtitle">POWERED BY GAMEUP</div>
+
+<div id="game-wrapper">
+  <canvas id="c" width="700" height="200"></canvas>
+  <div id="msg">
+    <div class="title">PRESS SPACE / TAP</div>
+    <div class="sub">to start</div>
+  </div>
+</div>
+
+<div id="ui">
+  <span id="hi-display">HI 00000</span>
+  <span id="score-display">00000</span>
+</div>
+
+<div id="controls">SPACE / ↑ = JUMP &nbsp;·&nbsp; ↓ = DUCK &nbsp;·&nbsp; DOUBLE JUMP OK</div>
+
+<script>
+const canvas = document.getElementById('c')
+const ctx    = canvas.getContext('2d')
+const W = canvas.width, H = canvas.height
+const GROUND = H - 40
+
+// ── palette ──────────────────────────────────────────────
+const C = {
+  ground : '#2a2a4a',
+  dino   : '#a78bfa',
+  obs    : '#f87171',
+  cloud  : '#1e1e38',
+  star   : '#7c3aed',
+  text   : '#7c3aed',
+  score  : '#a78bfa',
+}
+
+// ── state ────────────────────────────────────────────────
+let state = 'idle'   // idle | playing | dead
+let score = 0, hiScore = 0, frame = 0
+let speed = 6, speedTimer = 0
+
+// ── dino ─────────────────────────────────────────────────
+const dino = {
+  x: 80, y: GROUND,
+  w: 40, h: 50,
+  vy: 0, jumps: 0,
+  ducking: false,
+  legPhase: 0,
+
+  get top()    { return this.y - (this.ducking ? 28 : this.h) },
+  get bottom() { return this.y },
+  get left()   { return this.x + 4 },
+  get right()  { return this.x + this.w - 4 },
+
+  jump() {
+    if (this.jumps < 2) {
+      this.vy = -14
+      this.jumps++
+    }
+  },
+  duck(on) {
+    this.ducking = on
+  },
+  update() {
+    if (this.ducking && this.jumps === 0) { this.vy = 0; this.y = GROUND; return }
+    this.vy += 0.7
+    this.y  += this.vy
+    if (this.y >= GROUND) { this.y = GROUND; this.vy = 0; this.jumps = 0 }
+    if (state === 'playing') this.legPhase += 0.25
+  },
+  draw() {
+    ctx.fillStyle = C.dino
+    const bodyH = this.ducking ? 28 : this.h
+    const bodyY = this.y - bodyH
+    const bx = this.x, by = bodyY, bw = this.w, bh = bodyH
+
+    // body
+    ctx.beginPath()
+    ctx.roundRect(bx, by, bw, bh, 6)
+    ctx.fill()
+
+    // eye
+    ctx.fillStyle = '#0f0f1a'
+    ctx.beginPath()
+    ctx.arc(bx + bw - 8, by + 10, 4, 0, Math.PI*2)
+    ctx.fill()
+    ctx.fillStyle = '#fff'
+    ctx.beginPath()
+    ctx.arc(bx + bw - 7, by + 9, 1.5, 0, Math.PI*2)
+    ctx.fill()
+
+    if (!this.ducking) {
+      // tail
+      ctx.fillStyle = C.dino
+      ctx.beginPath()
+      ctx.moveTo(bx, by + bh * 0.6)
+      ctx.lineTo(bx - 12, by + bh * 0.5)
+      ctx.lineTo(bx - 8, by + bh * 0.8)
+      ctx.closePath()
+      ctx.fill()
+
+      // legs
+      const swing = Math.sin(this.legPhase) * 8
+      ctx.fillStyle = C.dino
+      // left leg
+      ctx.fillRect(bx + 6,  by + bh, 8, 10 + swing)
+      // right leg
+      ctx.fillRect(bx + 20, by + bh, 8, 10 - swing)
+    }
+  }
+}
+
+// ── obstacles ────────────────────────────────────────────
+const obs = []
+let obsTimer = 0, obsInterval = 80
+
+function spawnObs() {
+  const type = Math.random() < 0.3 ? 'bird' : 'cactus'
+  if (type === 'cactus') {
+    const w = 20 + Math.random() * 20 | 0
+    const h = 30 + Math.random() * 30 | 0
+    obs.push({ type, x: W + 10, y: GROUND - h, w, h })
+  } else {
+    const birdY = GROUND - 60 - Math.random() * 40 | 0
+    obs.push({ type, x: W + 10, y: birdY, w: 38, h: 20, wing: 0 })
+  }
+}
+
+function updateObs() {
+  obsTimer++
+  if (obsTimer >= obsInterval) {
+    spawnObs()
+    obsTimer = 0
+    obsInterval = 55 + Math.random() * 50 | 0
+  }
+  for (let i = obs.length - 1; i >= 0; i--) {
+    obs[i].x -= speed
+    if (obs[i].type === 'bird') obs[i].wing += 0.2
+    if (obs[i].x + obs[i].w < 0) obs.splice(i, 1)
+  }
+}
+
+function drawObs() {
+  for (const o of obs) {
+    ctx.fillStyle = C.obs
+    if (o.type === 'cactus') {
+      ctx.beginPath()
+      ctx.roundRect(o.x, o.y, o.w, o.h, 4)
+      ctx.fill()
+      // arms
+      const aw = 8, ah = o.h * 0.4
+      ctx.fillRect(o.x - aw, o.y + o.h * 0.2, aw, ah)
+      ctx.fillRect(o.x + o.w, o.y + o.h * 0.3, aw, ah)
+    } else {
+      // body
+      ctx.fillRect(o.x + 8, o.y + 5, 22, 12)
+      // wings
+      const wf = Math.sin(o.wing) * 6
+      ctx.beginPath()
+      ctx.moveTo(o.x + 8, o.y + 8)
+      ctx.lineTo(o.x, o.y - wf)
+      ctx.lineTo(o.x + 16, o.y + 8)
+      ctx.closePath()
+      ctx.fill()
+      ctx.beginPath()
+      ctx.moveTo(o.x + 22, o.y + 8)
+      ctx.lineTo(o.x + 38, o.y - wf)
+      ctx.lineTo(o.x + 30, o.y + 8)
+      ctx.closePath()
+      ctx.fill()
+    }
+  }
+}
+
+// ── clouds / stars ───────────────────────────────────────
+const clouds = []
+for (let i = 0; i < 5; i++) clouds.push({ x: Math.random()*W, y: 20+Math.random()*50, w: 40+Math.random()*60, s: 0.5+Math.random()*0.5 })
+
+const stars = []
+for (let i = 0; i < 40; i++) stars.push({ x: Math.random()*W, y: Math.random()*(H-60), r: Math.random()*1.5+0.3 })
+
+function drawBg() {
+  // stars
+  ctx.fillStyle = C.star
+  for (const s of stars) {
+    const blink = 0.4 + 0.6 * Math.abs(Math.sin(frame * 0.02 + s.x))
+    ctx.globalAlpha = blink * 0.6
+    ctx.beginPath()
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2)
+    ctx.fill()
+  }
+  ctx.globalAlpha = 1
+
+  // clouds
+  ctx.fillStyle = C.cloud
+  for (const cl of clouds) {
+    ctx.beginPath()
+    ctx.roundRect(cl.x, cl.y, cl.w, 18, 9)
+    ctx.fill()
+    cl.x -= cl.s * (speed / 6)
+    if (cl.x + cl.w < 0) { cl.x = W + 10; cl.y = 20 + Math.random()*50; cl.w = 40+Math.random()*60 }
+  }
+
+  // ground
+  ctx.fillStyle = C.ground
+  ctx.fillRect(0, GROUND + 2, W, 2)
+  // ground dots
+  ctx.fillStyle = '#1e1e38'
+  for (let gx = (frame * speed * 0.3 | 0) % 30; gx < W; gx += 30) {
+    ctx.fillRect(gx, GROUND + 6, 14, 2)
+  }
+}
+
+// ── collision ────────────────────────────────────────────
+function checkHit() {
+  for (const o of obs) {
+    const pad = 6
+    if (
+      dino.right  - pad > o.x + pad &&
+      dino.left   + pad < o.x + o.w - pad &&
+      dino.top    + pad < o.y + o.h - pad &&
+      dino.bottom - pad > o.y + pad
+    ) return true
+  }
+  return false
+}
+
+// ── score HUD ────────────────────────────────────────────
+function drawHUD() {
+  ctx.fillStyle = C.score
+  ctx.font = 'bold 14px Courier New'
+  const sc = String(score).padStart(5, '0')
+  ctx.fillText(sc, W - 60, 24)
+
+  ctx.fillStyle = '#333'
+  ctx.fillText('HI ' + String(hiScore).padStart(5,'0'), W - 150, 24)
+}
+
+// ── milestone flash ──────────────────────────────────────
+let flashTimer = 0
+function triggerFlash() { flashTimer = 20 }
+
+// ── main loop ────────────────────────────────────────────
+function loop() {
+  requestAnimationFrame(loop)
+  ctx.clearRect(0, 0, W, H)
+
+  drawBg()
+
+  if (state === 'playing') {
+    frame++
+
+    // speed ramp
+    speedTimer++
+    if (speedTimer >= 300) { speed = Math.min(speed + 0.5, 18); speedTimer = 0 }
+
+    // score
+    if (frame % 6 === 0) {
+      score++
+      if (score % 100 === 0) triggerFlash()
+    }
+
+    dino.update()
+    updateObs()
+    drawObs()
+    dino.draw()
+
+    if (checkHit()) {
+      state = 'dead'
+      if (score > hiScore) hiScore = score
+      showMsg('GAME OVER', 'SPACE / TAP to restart')
+    }
+  } else {
+    dino.update()
+    drawObs()
+    dino.draw()
+  }
+
+  // milestone flash overlay
+  if (flashTimer > 0) {
+    ctx.fillStyle = `rgba(124,58,237,${flashTimer/20 * 0.15})`
+    ctx.fillRect(0, 0, W, H)
+    flashTimer--
+  }
+
+  drawHUD()
+  document.getElementById('score-display').textContent = String(score).padStart(5,'0')
+  document.getElementById('hi-display').textContent    = 'HI ' + String(hiScore).padStart(5,'0')
+}
+
+// ── message overlay ──────────────────────────────────────
+const msgEl  = document.getElementById('msg')
+const msgTitle = msgEl.querySelector('.title')
+const msgSub   = msgEl.querySelector('.sub')
+
+function showMsg(t, s) {
+  msgTitle.textContent = t
+  msgSub.textContent   = s
+  msgEl.style.display  = 'block'
+}
+function hideMsg() { msgEl.style.display = 'none' }
+
+// ── start / restart ──────────────────────────────────────
+function startGame() {
+  if (state === 'playing') return
+  hideMsg()
+  obs.length = 0
+  obsTimer = 0; obsInterval = 80
+  score = 0; frame = 0; speed = 6; speedTimer = 0
+  dino.y = GROUND; dino.vy = 0; dino.jumps = 0; dino.ducking = false
+  state = 'playing'
+}
+
+// ── input ────────────────────────────────────────────────
+let duckDown = false
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') {
+    e.preventDefault()
+    if (state !== 'playing') { startGame(); return }
+    dino.jump()
+  }
+  if (e.code === 'ArrowDown') {
+    e.preventDefault()
+    if (!duckDown) { duckDown = true; dino.duck(true) }
+  }
+})
+document.addEventListener('keyup', e => {
+  if (e.code === 'ArrowDown') { duckDown = false; dino.duck(false) }
+})
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault()
+  if (state !== 'playing') { startGame(); return }
+  dino.jump()
+}, { passive: false })
+
+loop()
+</script>
+</body>
+</html>

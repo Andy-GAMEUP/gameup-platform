@@ -273,10 +273,22 @@ export default function PlayerGameDetailPage() {
   const avgRating = game ? (game.rating as number) || 0 : 0
   const totalReviewCount = Object.values(ratingDist).reduce((a, b) => a + b, 0)
   const rawThumb = game?.thumbnail as string | undefined
+  const rawBanner = game?.bannerImage as string | undefined
+  const toUploadUrl = (raw: string) =>
+    raw.startsWith('http') ? raw
+    : raw.startsWith('/uploads/') ? raw
+    : `/uploads/thumbnails/${raw.split('/').pop()}`
   const thumbUrl = rawThumb
-    ? (rawThumb.startsWith('http') ? rawThumb : `/uploads/${rawThumb.replace('uploads/', '')}`)
+    ? toUploadUrl(rawThumb)
     : GENRE_IMG[(game?.genre as string) || ''] || GENRE_IMG.default
+  const bannerUrl = rawBanner
+    ? (rawBanner.startsWith('http') ? rawBanner : rawBanner.startsWith('/uploads/') ? rawBanner : `/uploads/banners/${rawBanner.split('/').pop()}`)
+    : thumbUrl
   const gameFileUrl = game?.gameFile ? `/${(game.gameFile as string)}` : null
+  const rawDomain = (game?.gameDomain as string) || null
+  const gameDomainUrl = rawDomain
+    ? `${rawDomain}${rawDomain.includes('?') ? '&' : '?'}gameup_return=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`
+    : null
   const monetization = (game?.monetization as string) || 'free'
   const gamePrice = (game?.price as number) || 0
 
@@ -303,7 +315,7 @@ export default function PlayerGameDetailPage() {
 
       {/* Hero Banner */}
       <div className="relative h-64 md:h-80 overflow-hidden">
-        <Image src={thumbUrl} alt={game.title as string} fill className="object-cover" unoptimized />
+        <Image src={bannerUrl} alt={game.title as string} fill className="object-cover" unoptimized />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <div className="max-w-5xl mx-auto flex items-end justify-between gap-4">
@@ -614,6 +626,34 @@ export default function PlayerGameDetailPage() {
               <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center">
                 <p className="text-2xl mb-2">📦</p>
                 <p className="text-text-secondary">이 게임의 베타 서비스가 종료되었습니다</p>
+              </div>
+            ) : gameDomainUrl ? (
+              <div className="space-y-3">
+                <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center space-y-4">
+                  <p className="text-text-secondary text-sm">게임을 시작하면 플레이 기록이 저장됩니다</p>
+                  <button
+                    onClick={() => {
+                      const win = window.open(gameDomainUrl, '_blank', 'noopener,noreferrer')
+                      if (!win) {
+                        // 팝업 차단 시 직접 이동
+                        window.location.href = gameDomainUrl
+                      }
+                      handlePlay().catch(() => {})
+                    }}
+                    className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-text-primary px-8 py-3 rounded-xl font-semibold text-lg transition-all"
+                  >
+                    🎮 게임 시작
+                  </button>
+                  <p className="text-xs text-text-muted">
+                    게임 주소:{' '}
+                    <a href={gameDomainUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">
+                      {gameDomainUrl}
+                    </a>
+                  </p>
+                </div>
+                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-300">
+                  💡 플레이 후 리뷰를 남겨 개발자에게 피드백을 전달하세요
+                </div>
               </div>
             ) : gameFileUrl ? (
               <div className="space-y-3">

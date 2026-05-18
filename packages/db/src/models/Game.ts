@@ -6,13 +6,15 @@ export interface IGame extends Document {
   genre: string
   developerId: mongoose.Types.ObjectId
   thumbnail?: string
-  gameFile: string
+  bannerImage?: string
+  gameFile?: string
+  gameDomain?: string
   price: number
   isPaid: boolean
   playCount: number
   rating: number
   status: 'draft' | 'beta' | 'published' | 'archived'
-  approvalStatus: 'pending' | 'review' | 'approved' | 'rejected'
+  approvalStatus: 'not_submitted' | 'pending' | 'review' | 'approved' | 'rejected'
   serviceType: 'beta' | 'live' | 'review' | 'ended'
   monetization: 'free' | 'ad' | 'paid' | 'freemium'
   testers: number
@@ -65,9 +67,15 @@ const gameSchema = new Schema<IGame>(
     thumbnail: {
       type: String
     },
+    bannerImage: {
+      type: String
+    },
     gameFile: {
+      type: String
+    },
+    gameDomain: {
       type: String,
-      required: true
+      default: ''
     },
     price: {
       type: Number,
@@ -92,8 +100,8 @@ const gameSchema = new Schema<IGame>(
     },
     approvalStatus: {
       type: String,
-      enum: ['pending', 'review', 'approved', 'rejected'],
-      default: 'pending'
+      enum: ['not_submitted', 'pending', 'review', 'approved', 'rejected'],
+      default: 'not_submitted'
     },
     serviceType: {
       type: String,

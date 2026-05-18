@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/Card'
 import Badge from '@/components/Badge'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/Tabs'
 import Link from 'next/link'
 import {
   Gamepad2, DollarSign, Users, TrendingUp, BarChart3, RefreshCw, Plus,
@@ -80,17 +79,16 @@ export function DashboardPage() {
   ]
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-2">대시보드</h1>
           <p className="text-text-secondary">
             {mode === 'lifetime' ? '게임 등록일부터 현재까지 누적' : '최근 30일 기준'} · 내 모든 게임의 성과를 확인하세요
           </p>
         </div>
-        <div className="flex gap-2 items-center">
-          {/* 기간 모드 토글 */}
+        <div className="flex gap-2 items-center flex-shrink-0">
           <div className="flex border border-line rounded-md overflow-hidden">
             <button
               onClick={() => setMode('range')}
@@ -144,24 +142,34 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* 게임 탭 */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-bg-secondary border border-line">
-          <TabsTrigger value="all">전체 게임 ({games.length})</TabsTrigger>
-          <TabsTrigger value="beta">베타 ({games.filter(g => g.serviceType === 'beta' || g.status === 'beta').length})</TabsTrigger>
-          <TabsTrigger value="live">라이브 ({games.filter(g => g.serviceType === 'live' || g.status === 'published').length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={activeTab} className="space-y-6 mt-6">
-          {/* 게임별 성과 */}
-          <Card className="bg-bg-secondary border border-line">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl font-bold">게임별 성과</h2>
-                  <p className="text-xs text-text-secondary mt-1">게임 카드를 클릭하면 분석 페이지로 이동합니다</p>
-                </div>
-              </div>
+      {/* 게임별 성과 */}
+      <Card className="bg-bg-secondary border border-line">
+        <div className="p-6">
+          <div className="flex items-end justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold">게임별 성과</h2>
+              <p className="text-xs text-text-secondary mt-1">게임 카드를 클릭하면 분석 페이지로 이동합니다</p>
+            </div>
+            <div className="flex border border-line rounded-md overflow-hidden">
+              {[
+                { value: 'all', label: `전체 게임 (${games.length})` },
+                { value: 'beta', label: `베타 (${games.filter(g => g.serviceType === 'beta' || g.status === 'beta').length})` },
+                { value: 'live', label: `라이브 (${games.filter(g => g.serviceType === 'live' || g.status === 'published').length})` },
+              ].map(tab => (
+                <button
+                  key={tab.value}
+                  onClick={() => setActiveTab(tab.value)}
+                  className={`px-3 py-2 text-xs transition-colors whitespace-nowrap ${
+                    activeTab === tab.value
+                      ? 'bg-accent text-text-primary'
+                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-secondary'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
               {loading ? (
                 <div className="flex items-center justify-center py-16 text-text-secondary">
@@ -227,10 +235,8 @@ export function DashboardPage() {
                   ))}
                 </div>
               )}
-            </div>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          </div>
+        </Card>
     </div>
   )
 }

@@ -38,6 +38,11 @@ export const gameService = {
     return response.data
   },
 
+  requestReview: async (id: string) => {
+    const response = await apiClient.post(`/games/${id}/request-review`)
+    return response.data
+  },
+
   deleteGame: async (id: string, payload: { password: string; reason: string }) => {
     const response = await apiClient.delete(`/games/${id}`, { data: payload })
     return response.data
@@ -146,6 +151,59 @@ export const gameService = {
 
   toggleApiKey: async (gameId: string, keyId: string) => {
     const response = await apiClient.put(`/games/${gameId}/api-keys/${keyId}/toggle`)
+    return response.data
+  },
+
+  // ─── 게임 미디어 ─────────────────────────────────────────────
+  getGameMedia: async (gameId: string, type?: 'screenshot' | 'video') => {
+    const response = await apiClient.get(`/games/${gameId}/media`, { params: type ? { type } : {} })
+    return response.data
+  },
+
+  addGameMedia: async (gameId: string, data: { type: 'screenshot' | 'video'; title: string; url?: string }) => {
+    const response = await apiClient.post(`/games/${gameId}/media`, data)
+    return response.data
+  },
+
+  deleteGameMedia: async (gameId: string, mediaId: string) => {
+    const response = await apiClient.delete(`/games/${gameId}/media/${mediaId}`)
+    return response.data
+  },
+
+  // ─── 게임샵 아이템 ───────────────────────────────────────────
+  getGameShopItems: async (gameId: string, params?: { sort?: string; period?: string }) => {
+    const response = await apiClient.get(`/games/${gameId}/shop-items`, { params })
+    return response.data
+  },
+
+  createGameShopItem: async (gameId: string, data: { name: string; price: number; currency: string; type: string; stock: string; description?: string }) => {
+    const response = await apiClient.post(`/games/${gameId}/shop-items`, data)
+    return response.data
+  },
+
+  updateGameShopItem: async (gameId: string, itemId: string, data: Partial<{ name: string; price: number; currency: string; type: string; stock: string; description: string; active: boolean }>) => {
+    const response = await apiClient.put(`/games/${gameId}/shop-items/${itemId}`, data)
+    return response.data
+  },
+
+  deleteGameShopItem: async (gameId: string, itemId: string) => {
+    const response = await apiClient.delete(`/games/${gameId}/shop-items/${itemId}`)
+    return response.data
+  },
+
+  // ─── 게임 공지&알림 ─────────────────────────────────────────
+  getGameAnnouncements: async (gameId: string, params?: { page?: number; limit?: number }) => {
+    const response = await apiClient.get(`/games/${gameId}/announcements`, { params })
+    return response.data
+  },
+
+  createGameAnnouncement: async (gameId: string, data: { title: string; content: string; type: string; priority: string; sendPush: boolean }) => {
+    const response = await apiClient.post(`/games/${gameId}/announcements`, data)
+    return response.data
+  },
+
+  deleteGameAnnouncement: async (gameId: string, announcementId: string) => {
+    const response = await apiClient.delete(`/games/${gameId}/announcements/${announcementId}`)
     return response.data
   },
 }

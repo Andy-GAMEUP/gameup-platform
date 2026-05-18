@@ -1,5 +1,5 @@
 export type GameStatus = 'draft' | 'beta' | 'published' | 'archived'
-export type ApprovalStatus = 'pending' | 'review' | 'approved' | 'rejected'
+export type ApprovalStatus = 'not_submitted' | 'pending' | 'review' | 'approved' | 'rejected'
 export type MonetizationType = 'free' | 'ad' | 'paid' | 'freemium'
 export type ServiceType = 'beta' | 'live'
 
@@ -10,7 +10,9 @@ export interface Game {
   description: string
   developerId: string
   thumbnail?: string
+  bannerImage?: string
   gameFile?: string
+  gameDomain?: string
   genre?: string
   price: number
   isPaid: boolean

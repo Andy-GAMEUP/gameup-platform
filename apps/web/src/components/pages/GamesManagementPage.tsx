@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Eye, Plus, Search, Users, Star, RefreshCw, Settings } from 'lucide-react'
+import { Eye, Plus, Search, Users, Star, RefreshCw, Settings, Send } from 'lucide-react'
 import { gameService } from '@/services/gameService'
 import DeleteGameModal from '@/components/DeleteGameModal'
 
@@ -21,13 +21,15 @@ interface Game {
 }
 
 const approvalBadge: Record<string, string> = {
+  not_submitted: 'bg-bg-tertiary/40 text-text-muted border border-line/50',
   approved: 'bg-accent-light text-accent border border-accent-muted',
   pending:  'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50',
   review:   'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50',
   rejected: 'bg-red-500/20 text-red-400 border border-red-500/50',
 }
-// 요구사항: 승인상태 = 심사중 / 반려 / 완료
+// 요구사항: 승인상태 = 미제출 / 심사중 / 반려 / 완료
 const approvalLabel: Record<string, string> = {
+  not_submitted: '미제출',
   approved: '완료',
   pending:  '심사중',
   review:   '심사중',
@@ -63,6 +65,22 @@ export default function GamesManagementPage() {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Game | null>(null)
+  const [requestingReview, setRequestingReview] = useState<string | null>(null)
+
+  const handleRequestReview = async (gameId: string, gameTitle: string) => {
+    if (!confirm(`"${gameTitle}" 게임의 심사를 요청하시겠습니까?`)) return
+    setRequestingReview(gameId)
+    try {
+      await gameService.requestReview(gameId)
+      alert('심사가 요청되었습니다. 관리자 검토 후 승인됩니다.')
+      await loadGames()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      alert(msg || '심사 요청에 실패했습니다.')
+    } finally {
+      setRequestingReview(null)
+    }
+  }
 
   const loadGames = async () => {
     setLoading(true)
@@ -86,6 +104,7 @@ export default function GamesManagementPage() {
 
   const stats = [
     { label: '전체 게임', value: games.length,                                              color: 'text-text-primary' },
+    { label: '미제출',    value: games.filter(g => g.approvalStatus === 'not_submitted').length, color: 'text-text-muted' },
     { label: '심사중',    value: games.filter(g => g.approvalStatus === 'pending' || g.approvalStatus === 'review').length, color: 'text-yellow-400' },
     { label: '완료',      value: games.filter(g => g.approvalStatus === 'approved').length, color: 'text-accent' },
     { label: '반려',      value: games.filter(g => g.approvalStatus === 'rejected').length, color: 'text-red-400' },
@@ -100,7 +119,7 @@ export default function GamesManagementPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -124,7 +143,7 @@ export default function GamesManagementPage() {
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {stats.map(s => (
           <div key={s.label} className="bg-bg-secondary border border-line rounded-lg p-4">
             <div className={`text-2xl font-bold mb-1 ${s.color}`}>{s.value}</div>
@@ -230,6 +249,17 @@ export default function GamesManagementPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* 심사 요청 (not_submitted 또는 rejected 상태일 때) */}
+                          {(game.approvalStatus === 'not_submitted' || game.approvalStatus === 'rejected') && (
+                            <button
+                              onClick={() => handleRequestReview(game._id, game.title)}
+                              disabled={requestingReview === game._id}
+                              className="flex items-center gap-1 px-2 py-1.5 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 border border-cyan-500/30 rounded-md transition-colors text-xs font-medium disabled:opacity-50"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              {requestingReview === game._id ? '요청중...' : '심사요청'}
+                            </button>
+                          )}
                           {/* 게임정보 */}
                           <Link href={`/games/${game._id}`}>
                             <button className="flex items-center gap-1 px-2 py-1.5 text-text-secondary hover:text-text-primary hover:bg-line-light rounded-md transition-colors text-xs font-medium">
@@ -237,7 +267,7 @@ export default function GamesManagementPage() {
                               게임정보
                             </button>
                           </Link>
-                          {/* 게임관리 (기존 공지알림 → 게임관리로 명칭 변경, 편집·삭제 포함) */}
+                          {/* 게임관리 */}
                           <Link href={`/games-management/${game._id}/manage`}>
                             <button className="flex items-center gap-1 px-2 py-1.5 text-text-secondary hover:text-accent hover:bg-line-light rounded-md transition-colors text-xs font-medium">
                               <Settings className="w-3.5 h-3.5" />

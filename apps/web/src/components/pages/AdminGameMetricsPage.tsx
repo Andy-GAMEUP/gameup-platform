@@ -27,10 +27,11 @@ const SEVERITY_LABELS: Record<string, string> = {
   low: '낮음', medium: '보통', high: '높음', critical: '치명적'
 }
 const APPROVAL_STATUS: Record<string, { label: string; cls: string }> = {
+  not_submitted: { label: '미제출',   cls: 'bg-bg-tertiary/40 text-text-muted border-line/50' },
   pending:  { label: '심사대기', cls: 'bg-yellow-600/20 text-yellow-300 border-yellow-500/40' },
   review:   { label: '검토중',   cls: 'bg-blue-600/20 text-blue-300 border-blue-500/40' },
   approved: { label: '승인됨',   cls: 'bg-accent-light text-accent border-green-500/40' },
-  rejected: { label: '거부됨',   cls: 'bg-accent-light text-accent-text border-red-500/40' },
+  rejected: { label: '거부됨',   cls: 'bg-red-600/20 text-red-300 border-red-500/40' },
 }
 const GAME_STATUS: Record<string, { label: string; cls: string }> = {
   draft:     { label: '드래프트', cls: 'bg-bg-muted/40 text-text-secondary' },
