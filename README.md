@@ -95,6 +95,41 @@ gh workflow run "Deploy to gameup.co.kr" --ref main
 
 ## 변경 이력 (dev-capcloud)
 
+### 2026-05-19 — 분석 대시보드 UI 전면 개편
+
+**분석 페이지 (`apps/web/src/components/pages/AnalyticsPage.tsx`)**
+- 기간 선택 UI: 버튼 나열 방식 → 드롭다운 방식으로 변경 (어제/1주일/한 달/반년/1년/지정 날짜)
+- 지정 날짜 선택 시 드롭다운 내부에서 날짜 입력 화면으로 전환
+- 엑셀 내보내기: 텍스트 버튼 → 아이콘 전용 버튼 + 호버 툴팁
+- 날짜 범위 표시 (기간 이름 · 시작일 ~ 종료일) 추가
+- 분석 탭 레이아웃 재구성
+  - 일별 추이 2분할: 좌(DAU/신규 유저/결제 유저) + 우(매출 추이: 매출/ARPU/ARPPU)
+  - 유저 리텐션 · 세션 타임 · 수익 현황 3분할 동일 행 배치
+- 리텐션 탭 포함 전 탭에 다운로드 버튼 표시
+
+**신규 차트 컴포넌트**
+- `RevenueTrendChart`: 매출/ARPU/ARPPU 멀티 토글 선 그래프
+- `SessionTimeChart`: 세션 타임 선 그래프 (전체/결제자/비결제자 멀티 토글)
+
+**기존 차트 개선**
+- `DailyTrendChart`: dual-axis 제거로 수평 점선 그리드 정상화, 매출 항목 제거
+- `RetentionChart`: 수평 점선 그리드 통일 (`vertical={false}` 제거)
+- 모든 차트 그리드 스타일 통일
+
+**리텐션 계산 방식 변경 (`apps/api`)**
+- 코호트 기반 → 롤링 평균 방식으로 변경
+- GA4 스타일 코호트 히트맵 테이블 추가 (파란색 농도로 잔존율 시각화)
+- DAU/리텐션 집계에서 `play` 타입 세션 데이터 제외
+
+**세션 타임 분류 집계 추가 (`apps/api`)**
+- `avgSessionPayer` / `avgSessionNonPayer` 일별 데이터 추가
+- `DailyPoint` 타입에 해당 필드 추가
+
+**대시보드 (`apps/web/src/components/pages/DashboardPage.tsx`)**
+- 기간 선택 드롭다운으로 변경 (어제/1주일/한 달/반년/1년/지정 날짜/누적)
+- 엑셀 아이콘 전용 버튼 + 호버 툴팁
+- 날짜 범위 표시 추가
+
 ### 2026-05-18 — GRAC 게임 관리 전면 개편
 
 **게임 등록 방식 변경**
