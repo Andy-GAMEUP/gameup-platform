@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGames, getDeveloperStats, getGameDeletionLogs, requestReview } from '../controllers/gameController'
-import { getDeveloperOverview, getGameAnalytics, exportGameAnalytics } from '../controllers/gameAnalyticsController'
+import { getDeveloperOverview, getDeveloperDaily, getGameAnalytics, exportGameAnalytics, exportDeveloperDashboard } from '../controllers/gameAnalyticsController'
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/gameMediaController'
 import { getGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem } from '../controllers/gameShopController'
@@ -16,6 +16,8 @@ router.get('/developer/stats', authenticateToken, requireRole('developer'), getD
 
 // 개발자 대시보드 Overview (실데이터)
 router.get('/developer/overview', authenticateToken, requireRole('developer', 'admin'), getDeveloperOverview)
+router.get('/developer/daily', authenticateToken, requireRole('developer', 'admin'), getDeveloperDaily)
+router.get('/developer/export', authenticateToken, requireRole('developer', 'admin'), exportDeveloperDashboard)
 
 // 게임 삭제 감사로그 (admin)
 router.get('/admin/deletion-logs', authenticateToken, requireRole('admin'), getGameDeletionLogs)

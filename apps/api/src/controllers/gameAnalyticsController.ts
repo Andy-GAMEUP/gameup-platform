@@ -5,9 +5,10 @@ import {
   PaymentModel as Payment,
   PlayerActivityModel as PlayerActivity,
   GamePointLogModel as GamePointLog,
+  GameShopItemModel as GameShopItem,
 } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
-import { buildAnalyticsWorkbook, GameAnalyticsExportData, DailyPoint, RetentionPoint } from '../services/analyticsExportService'
+import { buildAnalyticsWorkbook, buildDashboardWorkbook, GameAnalyticsExportData, DailyPoint, RetentionPoint } from '../services/analyticsExportService'
 
 // ============================================================================
 // 공통 유틸
@@ -133,6 +134,78 @@ async function computeGameMetrics(gameId: mongoose.Types.ObjectId, from: Date, t
 //    Query: from?, to?, mode? ('range' | 'lifetime')
 //    - lifetime: 게임 등록일부터 현재까지 (개별 게임마다 상이)
 // ============================================================================
+// ============================================================================
+// 0) 개발자 일별 집계 (대시보드 차트용)
+// ============================================================================
+export const getDeveloperDaily = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+
+    const mode = req.query.mode === 'lifetime' ? 'lifetime' : 'range'
+    const { from, to } = parseRange(req, 30)
+
+    const filter = req.user.role === 'admin' ? {} : { developerId: req.user.id }
+    const games = await Game.find(filter).select('_id createdAt')
+    const gameIds = games.map(g => g._id)
+
+    const effectiveFrom = mode === 'lifetime'
+      ? games.reduce((min, g) => g.createdAt < min ? g.createdAt : min, new Date())
+      : from
+    const effectiveTo = to
+
+    // 날짜 배열 생성
+    const days: string[] = []
+    for (let d = new Date(effectiveFrom); d <= effectiveTo; d.setDate(d.getDate() + 1)) {
+      days.push(ymd(new Date(d)))
+    }
+
+    const [revenueDaily, activityDaily, loginDaily, newMembersDaily] = await Promise.all([
+      Payment.aggregate([
+        { $match: { gameId: { $in: gameIds }, status: 'completed', createdAt: { $gte: effectiveFrom, $lte: effectiveTo } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, revenue: { $sum: '$amount' }, payers: { $addToSet: '$userId' } } },
+      ]),
+      PlayerActivity.aggregate([
+        { $match: { gameId: { $in: gameIds }, createdAt: { $gte: effectiveFrom, $lte: effectiveTo } } },
+        { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, userId: '$userId' } } },
+        { $group: { _id: '$_id.date', dau: { $sum: 1 } } },
+      ]),
+      GamePointLog.aggregate([
+        { $match: { gameId: { $in: gameIds }, type: 'game_daily_login', createdAt: { $gte: effectiveFrom, $lte: effectiveTo } } },
+        { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, userId: '$userId' } } },
+        { $group: { _id: '$_id.date', dau: { $sum: 1 } } },
+      ]),
+      GamePointLog.aggregate([
+        { $match: { gameId: { $in: gameIds }, type: 'game_account_create', createdAt: { $gte: effectiveFrom, $lte: effectiveTo } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, count: { $sum: 1 } } },
+      ]),
+    ])
+
+    const revMap = new Map<string, { revenue: number; payers: number }>(
+      revenueDaily.map((r: { _id: string; revenue: number; payers: unknown[] }) => [r._id, { revenue: r.revenue, payers: r.payers.length }])
+    )
+    const dauMap = new Map<string, number>()
+    for (const r of [...activityDaily, ...loginDaily] as { _id: string; dau: number }[]) {
+      dauMap.set(r._id, Math.max(dauMap.get(r._id) || 0, r.dau))
+    }
+    const newMap = new Map<string, number>(newMembersDaily.map((r: { _id: string; count: number }) => [r._id, r.count]))
+
+    const daily = days.map(date => ({
+      date,
+      revenue: revMap.get(date)?.revenue || 0,
+      payingUsers: revMap.get(date)?.payers || 0,
+      dau: dauMap.get(date) || 0,
+      newMembers: newMap.get(date) || 0,
+    }))
+
+    res.json({ success: true, from: ymd(effectiveFrom), to: ymd(effectiveTo), daily })
+  } catch (error) {
+    console.error('Get developer daily error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// ============================================================================
+// 1) 개발자 대시보드 Overview
 export const getDeveloperOverview = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
@@ -145,13 +218,14 @@ export const getDeveloperOverview = async (req: AuthRequest, res: Response) => {
     const games = await Game.find(filter).sort({ createdAt: -1 })
 
     let summary = {
-      totalGames: games.length,
       totalRevenue: 0,
       totalActiveUsers: 0,
-      avgARPPU: 0,
+      totalNewMembers: 0,
+      avgPUR: 0,
       revenueChange: 0,
       activeChange: 0,
-      arppuChange: 0,
+      newMembersChange: 0,
+      purChange: 0,
     }
 
     const gameRows = await Promise.all(games.map(async (g) => {
@@ -180,8 +254,9 @@ export const getDeveloperOverview = async (req: AuthRequest, res: Response) => {
 
     summary.totalRevenue = gameRows.reduce((s, g) => s + g.revenue, 0)
     summary.totalActiveUsers = gameRows.reduce((s, g) => s + g.activeUsers, 0)
-    const arppuVals = gameRows.filter(g => g.arppu > 0).map(g => g.arppu)
-    summary.avgARPPU = arppuVals.length ? Math.round(arppuVals.reduce((s, v) => s + v, 0) / arppuVals.length) : 0
+    summary.totalNewMembers = gameRows.reduce((s, g) => s + g.newMembers, 0)
+    const purVals = gameRows.filter(g => g.pur > 0).map(g => g.pur)
+    summary.avgPUR = purVals.length ? Number((purVals.reduce((s, v) => s + v, 0) / purVals.length).toFixed(2)) : 0
 
     // 증감률: 직전 동일 기간 대비 (range 모드일 때만)
     if (mode === 'range') {
@@ -193,15 +268,17 @@ export const getDeveloperOverview = async (req: AuthRequest, res: Response) => {
       )
       const prevRevenue = prevMetricsArr.reduce((s, m) => s + m.totalRevenue, 0)
       const prevActive = prevMetricsArr.reduce((s, m) => s + m.activeUsers, 0)
-      const prevArppuVals = prevMetricsArr.filter(m => m.arppu > 0).map(m => m.arppu)
-      const prevArppu = prevArppuVals.length ? Math.round(prevArppuVals.reduce((s, v) => s + v, 0) / prevArppuVals.length) : 0
+      const prevNewMembers = prevMetricsArr.reduce((s, m) => s + m.newMembers, 0)
+      const prevPurVals = prevMetricsArr.filter(m => m.pur > 0).map(m => m.pur)
+      const prevPur = prevPurVals.length ? prevPurVals.reduce((s, v) => s + v, 0) / prevPurVals.length : 0
 
       const pct = (cur: number, prev: number) =>
         prev > 0 ? Number((((cur - prev) / prev) * 100).toFixed(1)) : (cur > 0 ? 100 : 0)
 
       summary.revenueChange = pct(summary.totalRevenue, prevRevenue)
       summary.activeChange = pct(summary.totalActiveUsers, prevActive)
-      summary.arppuChange = pct(summary.avgARPPU, prevArppu)
+      summary.newMembersChange = pct(summary.totalNewMembers, prevNewMembers)
+      summary.purChange = pct(summary.avgPUR, prevPur)
     }
 
     res.json({
@@ -219,6 +296,97 @@ export const getDeveloperOverview = async (req: AuthRequest, res: Response) => {
 }
 
 // ============================================================================
+// 1-b) 개발자 대시보드 엑셀 다운로드
+// ============================================================================
+export const exportDeveloperDashboard = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+
+    const mode = req.query.mode === 'lifetime' ? 'lifetime' : 'range'
+    const { from, to } = parseRange(req, 30)
+
+    const filter = req.user.role === 'admin' ? {} : { developerId: req.user.id }
+    const games = await Game.find(filter).sort({ createdAt: -1 })
+    const gameIds = games.map(g => g._id)
+
+    const effectiveFrom = mode === 'lifetime'
+      ? games.reduce((min, g) => g.createdAt < min ? g.createdAt : min, new Date())
+      : from
+    const effectiveTo = to
+
+    // 일별 데이터
+    const days: string[] = []
+    for (let d = new Date(effectiveFrom); d <= effectiveTo; d.setDate(d.getDate() + 1)) {
+      days.push(ymd(new Date(d)))
+    }
+
+    const [revenueDaily, activityDaily, loginDaily] = await Promise.all([
+      Payment.aggregate([
+        { $match: { gameId: { $in: gameIds }, status: 'completed', createdAt: { $gte: effectiveFrom, $lte: effectiveTo } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, revenue: { $sum: '$amount' } } },
+      ]),
+      PlayerActivity.aggregate([
+        { $match: { gameId: { $in: gameIds }, createdAt: { $gte: effectiveFrom, $lte: effectiveTo } } },
+        { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, userId: '$userId' } } },
+        { $group: { _id: '$_id.date', dau: { $sum: 1 } } },
+      ]),
+      GamePointLog.aggregate([
+        { $match: { gameId: { $in: gameIds }, type: 'game_daily_login', createdAt: { $gte: effectiveFrom, $lte: effectiveTo } } },
+        { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, userId: '$userId' } } },
+        { $group: { _id: '$_id.date', dau: { $sum: 1 } } },
+      ]),
+    ])
+
+    const revMap = new Map<string, number>(revenueDaily.map((r: { _id: string; revenue: number }) => [r._id, r.revenue]))
+    const dauMap = new Map<string, number>()
+    for (const r of [...activityDaily, ...loginDaily] as { _id: string; dau: number }[]) {
+      dauMap.set(r._id, Math.max(dauMap.get(r._id) || 0, r.dau))
+    }
+    const daily = days.map(date => ({ date, revenue: revMap.get(date) || 0, dau: dauMap.get(date) || 0 }))
+
+    // 게임별 지표
+    const gameRows = await Promise.all(games.map(async (g) => {
+      const range = mode === 'lifetime' ? { from: g.createdAt, to: new Date() } : { from, to }
+      const metrics = await computeGameMetrics(g._id as mongoose.Types.ObjectId, range.from, range.to)
+      return {
+        title: g.title,
+        serviceType: g.serviceType,
+        monetization: g.monetization,
+        revenue: metrics.totalRevenue,
+        activeUsers: metrics.activeUsers,
+        avgDau: metrics.avgDau,
+        arppu: metrics.arppu,
+        pur: metrics.pur,
+        cumulativeMembers: metrics.cumulativeMembers,
+        newMembers: metrics.newMembers,
+      }
+    }))
+
+    const totalRevenue = gameRows.reduce((s, g) => s + g.revenue, 0)
+    const totalActiveUsers = gameRows.reduce((s, g) => s + g.activeUsers, 0)
+    const totalNewMembers = gameRows.reduce((s, g) => s + g.newMembers, 0)
+    const purVals = gameRows.filter(g => g.pur > 0).map(g => g.pur)
+    const avgPUR = purVals.length ? Number((purVals.reduce((s, v) => s + v, 0) / purVals.length).toFixed(2)) : 0
+
+    const buffer = buildDashboardWorkbook({
+      from: ymd(effectiveFrom),
+      to: ymd(effectiveTo),
+      summary: { totalRevenue, totalActiveUsers, totalNewMembers, avgPUR },
+      daily,
+      games: gameRows,
+    })
+
+    const filename = `dashboard_${ymd(effectiveFrom)}_${ymd(effectiveTo)}.xlsx`
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`)
+    res.send(buffer)
+  } catch (error) {
+    console.error('Export developer dashboard error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// ============================================================================
 // 2) 게임 단일 분석
 // ============================================================================
 async function buildFullAnalytics(gameId: mongoose.Types.ObjectId, gameTitle: string, from: Date, to: Date) {
@@ -230,9 +398,9 @@ async function buildFullAnalytics(gameId: mongoose.Types.ObjectId, gameTitle: st
     days.push(ymd(d))
   }
 
-  const [activityDaily, loginDaily, newDaily, revenueDaily] = await Promise.all([
+  const [activityDaily, loginDaily, newDaily, revenueDaily, sessionDaily] = await Promise.all([
     PlayerActivity.aggregate([
-      { $match: { gameId, createdAt: { $gte: from, $lte: to } } },
+      { $match: { gameId, type: { $ne: 'play' }, createdAt: { $gte: from, $lte: to } } },
       { $group: { _id: { date: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, userId: '$userId' } } },
       { $group: { _id: '$_id.date', users: { $sum: 1 } } },
     ] as never),
@@ -255,6 +423,30 @@ async function buildFullAnalytics(gameId: mongoose.Types.ObjectId, gameTitle: st
         },
       },
     ] as never),
+    PlayerActivity.aggregate([
+      { $match: { gameId, type: 'play', sessionDuration: { $exists: true, $gt: 0 }, createdAt: { $gte: from, $lte: to } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          avgSession: { $avg: '$sessionDuration' },
+        },
+      },
+    ] as never),
+  ])
+
+  // 기간 내 결제 완료 유저 ID 목록
+  const payerDocs = await Payment.distinct('userId', { gameId, status: 'completed', createdAt: { $gte: from, $lte: to } }) as mongoose.Types.ObjectId[]
+  const payerSet = new Set(payerDocs.map(id => String(id)))
+
+  const [sessionPayerDaily, sessionNonPayerDaily] = await Promise.all([
+    PlayerActivity.aggregate([
+      { $match: { gameId, type: 'play', sessionDuration: { $exists: true, $gt: 0 }, userId: { $in: payerDocs }, createdAt: { $gte: from, $lte: to } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, avgSession: { $avg: '$sessionDuration' } } },
+    ] as never),
+    PlayerActivity.aggregate([
+      { $match: { gameId, type: 'play', sessionDuration: { $exists: true, $gt: 0 }, userId: { $nin: payerDocs }, createdAt: { $gte: from, $lte: to } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, avgSession: { $avg: '$sessionDuration' } } },
+    ] as never),
   ])
 
   const dauByDate = new Map<string, number>()
@@ -266,64 +458,115 @@ async function buildFullAnalytics(gameId: mongoose.Types.ObjectId, gameTitle: st
   const revByDate = new Map<string, { revenue: number; payers: number }>(
     revenueDaily.map((r: { _id: string; revenue: number; payers: unknown[] }) => [r._id, { revenue: r.revenue, payers: r.payers.length }])
   )
-
+  const sessionByDate = new Map<string, number>(
+    (sessionDaily as Array<{ _id: string; avgSession: number }>).map(r => [r._id, Math.round(r.avgSession)])
+  )
+  const sessionPayerByDate = new Map<string, number>(
+    (sessionPayerDaily as Array<{ _id: string; avgSession: number }>).map(r => [r._id, Math.round(r.avgSession)])
+  )
+  const sessionNonPayerByDate = new Map<string, number>(
+    (sessionNonPayerDaily as Array<{ _id: string; avgSession: number }>).map(r => [r._id, Math.round(r.avgSession)])
+  )
   const daily: DailyPoint[] = days.map(date => ({
     date,
     dau: dauByDate.get(date) || 0,
     newMembers: newByDate.get(date) || 0,
     payingUsers: revByDate.get(date)?.payers || 0,
     revenue: revByDate.get(date)?.revenue || 0,
+    avgSession: sessionByDate.get(date) || 0,
+    avgSessionPayer: sessionPayerByDate.get(date) || 0,
+    avgSessionNonPayer: sessionNonPayerByDate.get(date) || 0,
   }))
 
-  // D+0 ~ D+30 리텐션 (코호트: from 기준 게임 가입 유저)
-  // 코호트: 기간 내 game_account_create 한 유저들의 N일 후 활동 비율
-  const cohortUsers = await GamePointLog.aggregate([
-    { $match: { gameId, type: 'game_account_create', createdAt: { $gte: from, $lte: to } } },
-    { $group: { _id: '$userId', firstAt: { $min: '$createdAt' } } },
-  ] as never) as Array<{ _id: mongoose.Types.ObjectId; firstAt: Date }>
+  // D+0 ~ D+30 리텐션 (롤링 평균)
+  // 기간 내 각 날짜의 활동 유저를 일별 코호트로 삼아 D+N 재방문율을 구한 뒤 평균
+  const DAY_MS = 24 * 60 * 60 * 1000
+  const today = new Date()
+  today.setHours(23, 59, 59, 999)
+  // D+30 계산을 위해 to 이후 30일까지 데이터 필요
+  const extendedTo = new Date(Math.min(to.getTime() + 30 * DAY_MS, today.getTime()))
+
+  const retActs = await PlayerActivity.find({
+    gameId, type: { $ne: 'play' }, createdAt: { $gte: from, $lte: extendedTo },
+  }).select('userId createdAt').lean()
+  const retLogs = await GamePointLog.find({
+    gameId, type: 'game_daily_login', createdAt: { $gte: from, $lte: extendedTo },
+  }).select('userId createdAt').lean()
+
+  // date string -> Set<userId>
+  const activeByDate = new Map<string, Set<string>>()
+  const retAllActs = [...retActs, ...retLogs] as Array<{ userId: mongoose.Types.ObjectId; createdAt: Date }>
+  for (const a of retAllActs) {
+    const key = ymd(a.createdAt)
+    if (!activeByDate.has(key)) activeByDate.set(key, new Set())
+    activeByDate.get(key)!.add(String(a.userId))
+  }
+
+  // 기간 내 날짜 배열
+  const periodDays: string[] = []
+  for (let t = new Date(from); t <= to; t = new Date(t.getTime() + DAY_MS)) {
+    periodDays.push(ymd(t))
+  }
 
   const retention: RetentionPoint[] = []
-  if (cohortUsers.length > 0) {
-    const userIds = cohortUsers.map(c => c._id)
-    const firstAtMap = new Map(cohortUsers.map(c => [String(c._id), c.firstAt]))
+  for (let day = 0; day <= 30; day++) {
+    let sumRate = 0
+    let validDays = 0
+    let sumCohort = 0
 
-    // 활동 데이터 한 번에 가져와 메모리에서 일자 차이 계산
-    const acts = await PlayerActivity.find({
-      gameId, userId: { $in: userIds },
-    }).select('userId createdAt').lean()
-    const logs = await GamePointLog.find({
-      gameId, userId: { $in: userIds }, type: 'game_daily_login',
-    }).select('userId createdAt').lean()
+    for (const d of periodDays) {
+      const targetDate = new Date(new Date(d).getTime() + day * DAY_MS)
+      if (targetDate > today) continue
 
-    // userId별 day-offset 집합
-    const dayOffsetByUser = new Map<string, Set<number>>()
-    const allActs = [...acts, ...logs] as Array<{ userId: mongoose.Types.ObjectId; createdAt: Date }>
-    for (const a of allActs) {
-      const uid = String(a.userId)
-      const first = firstAtMap.get(uid)
-      if (!first) continue
-      const diff = Math.floor((a.createdAt.getTime() - first.getTime()) / (24 * 60 * 60 * 1000))
-      if (diff < 0 || diff > 30) continue
-      if (!dayOffsetByUser.has(uid)) dayOffsetByUser.set(uid, new Set())
-      dayOffsetByUser.get(uid)!.add(diff)
-    }
+      const cohort = activeByDate.get(d)
+      if (!cohort || cohort.size === 0) continue
 
-    for (let day = 0; day <= 30; day++) {
-      let count = 0
-      for (const set of dayOffsetByUser.values()) {
-        if (set.has(day)) count++
+      const active = activeByDate.get(ymd(targetDate))
+      let returned = 0
+      if (active) {
+        for (const uid of cohort) {
+          if (active.has(uid)) returned++
+        }
       }
-      retention.push({
-        day,
-        rate: Number(((count / cohortUsers.length) * 100).toFixed(2)),
-        cohortSize: cohortUsers.length,
-      })
+
+      sumRate += returned / cohort.size
+      sumCohort += cohort.size
+      validDays++
     }
-  } else {
-    for (let day = 0; day <= 30; day++) {
-      retention.push({ day, rate: 0, cohortSize: 0 })
-    }
+
+    retention.push({
+      day,
+      rate: validDays > 0 ? Number(((sumRate / validDays) * 100).toFixed(2)) : 0,
+      cohortSize: validDays > 0 ? Math.round(sumCohort / validDays) : 0,
+    })
   }
+
+  // 결제 상품 판매 순위
+  const topItems = await GameShopItem.find({ gameId, active: true })
+    .sort({ sales: -1 })
+    .select('name price sales currency')
+    .lean()
+
+  // 날짜별 코호트 테이블 (히트맵용)
+  const numCols = Math.min(periodDays.length + 1, 31)
+  const cohortRows = periodDays.map(d => {
+    const cohort = activeByDate.get(d)
+    const retentions: Array<number | null> = []
+    for (let n = 0; n < numCols; n++) {
+      const targetDate = new Date(new Date(d).getTime() + n * DAY_MS)
+      if (targetDate > today) {
+        retentions.push(null)
+      } else {
+        const active = activeByDate.get(ymd(targetDate))
+        let count = 0
+        if (cohort && active) {
+          for (const uid of cohort) { if (active.has(uid)) count++ }
+        }
+        retentions.push(count)
+      }
+    }
+    return { date: d, cohortSize: cohort?.size ?? 0, retentions }
+  })
 
   return {
     gameTitle,
@@ -332,6 +575,8 @@ async function buildFullAnalytics(gameId: mongoose.Types.ObjectId, gameTitle: st
     overview: metrics,
     daily,
     retention,
+    cohortTable: { rows: cohortRows, numCols },
+    topItems: topItems.map(i => ({ name: i.name, price: i.price, sales: i.sales, currency: i.currency })),
   }
 }
 

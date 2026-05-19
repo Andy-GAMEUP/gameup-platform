@@ -2,37 +2,34 @@
 import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import Button from './Button'
 import { useAuth } from '@/lib/useAuth'
 import NotificationPanel from './NotificationPanel'
 import notificationService from '@/services/notificationService'
 import {
-  LayoutDashboard,
-  Gamepad2,
-  Users,
-  MessageSquare,
-  BarChart3,
-  Settings,
-  Bell,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  LogOut,
-  Plus,
-  Home,
-  Handshake,
+  LayoutDashboard, Gamepad2, Users, MessageSquare, BarChart3, Settings,
+  Bell, ChevronLeft, ChevronRight, ChevronDown, LogOut, Plus, Home, Handshake,
+  LineChart, Repeat2, DollarSign, UserPlus,
 } from 'lucide-react'
 
 export default function DeveloperLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [notifOpen, setNotifOpen] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
-  const pathname = usePathname()
-  const router = useRouter()
+  const [sidebarOpen,   setSidebarOpen]   = useState(true)
+  const [profileOpen,   setProfileOpen]   = useState(false)
+  const [notifOpen,     setNotifOpen]     = useState(false)
+  const [unreadCount,   setUnreadCount]   = useState(0)
+  const [analyticsOpen, setAnalyticsOpen] = useState(false)
+  const pathname     = usePathname()
+  const router       = useRouter()
+  const searchParams = useSearchParams()
   const { logout, isAuthenticated } = useAuth()
+
+  const currentTab = searchParams.get('tab') || 'analysis'
+
+  useEffect(() => {
+    if (pathname.startsWith('/analytics')) setAnalyticsOpen(true)
+  }, [pathname])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -48,21 +45,30 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
     load()
   }, [isAuthenticated, notifOpen])
 
-  const navItems = [
-    { path: '/dashboard', label: '대시보드', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { path: '/games-management', label: '게임 관리', icon: <Gamepad2 className="w-5 h-5" /> },
-    { path: '/testers', label: '테스터 관리', icon: <Users className="w-5 h-5" /> },
-    { path: '/feedback', label: '피드백', icon: <MessageSquare className="w-5 h-5" /> },
-    { path: '/analytics', label: '분석', icon: <BarChart3 className="w-5 h-5" /> },
-    { path: '/minihome-manage', label: '미니홈 관리', icon: <Home className="w-5 h-5" /> },
-    { path: '/proposals', label: '제안 관리', icon: <Handshake className="w-5 h-5" /> },
-    { path: '/settings', label: '설정', icon: <Settings className="w-5 h-5" /> },
+  type NavChild = { tab: string; label: string; icon: React.ReactNode }
+  type NavItem  = { path: string; label: string; icon: React.ReactNode; children?: NavChild[] }
+
+  const navItems: NavItem[] = [
+    { path: '/dashboard',       label: '대시보드',   icon: <LayoutDashboard className="w-5 h-5" /> },
+    { path: '/games-management', label: '게임 관리', icon: <Gamepad2        className="w-5 h-5" /> },
+    { path: '/testers',         label: '테스터 관리', icon: <Users           className="w-5 h-5" /> },
+    { path: '/feedback',        label: '피드백',     icon: <MessageSquare   className="w-5 h-5" /> },
+    {
+      path: '/analytics', label: '분석', icon: <BarChart3 className="w-5 h-5" />,
+      children: [
+        { tab: 'analysis',  label: '개요',     icon: <LineChart  className="w-4 h-4" /> },
+        { tab: 'retention', label: '리텐션',   icon: <Repeat2    className="w-4 h-4" /> },
+        { tab: 'revenue',   label: '수익',     icon: <DollarSign className="w-4 h-4" /> },
+        { tab: 'newusers',  label: '신규 유저', icon: <UserPlus   className="w-4 h-4" /> },
+      ],
+    },
+    { path: '/minihome-manage', label: '미니홈 관리', icon: <Home      className="w-5 h-5" /> },
+    { path: '/proposals',       label: '제안 관리',   icon: <Handshake className="w-5 h-5" /> },
+    { path: '/settings',        label: '설정',       icon: <Settings  className="w-5 h-5" /> },
   ]
 
   const isActive = (path: string) => {
-    if (path === '/dashboard') {
-      return pathname === '/dashboard'
-    }
+    if (path === '/dashboard') return pathname === '/dashboard'
     return pathname.startsWith(path)
   }
 
@@ -75,7 +81,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
     <div className="accent-green min-h-screen bg-bg-primary text-text-primary flex">
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-0 h-screen bg-bg-secondary border-r border-line transition-all duration-300 z-40 overflow-hidden ${
+        className={`flex-shrink-0 fixed lg:sticky top-0 h-screen bg-bg-secondary border-r border-line transition-all duration-300 z-40 overflow-hidden ${
           sidebarOpen ? 'w-64' : 'w-0 lg:w-20'
         }`}
       >
@@ -98,21 +104,76 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
 
           {/* Navigation */}
           <nav className="flex-1 p-4 overflow-y-auto">
-            <div className="space-y-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive(item.path)
-                      ? 'bg-accent text-text-inverse'
-                      : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
-                  }`}
-                >
-                  {item.icon}
-                  {sidebarOpen && <span>{item.label}</span>}
-                </Link>
-              ))}
+            <div className="space-y-1">
+              {navItems.map((item) => {
+                const active = isActive(item.path)
+
+                if (item.children) {
+                  return (
+                    <div key={item.path}>
+                      <button
+                        onClick={() => {
+                          if (!sidebarOpen) {
+                            router.push(`${item.path}?tab=analysis`)
+                            return
+                          }
+                          setAnalyticsOpen(v => !v)
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                          active
+                            ? 'bg-accent text-text-inverse'
+                            : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
+                        }`}
+                      >
+                        {item.icon}
+                        {sidebarOpen && (
+                          <>
+                            <span className="flex-1 text-left">{item.label}</span>
+                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${analyticsOpen ? 'rotate-180' : ''}`} />
+                          </>
+                        )}
+                      </button>
+
+                      {analyticsOpen && sidebarOpen && (
+                        <div className="mt-1 ml-4 pl-3 border-l border-line space-y-0.5">
+                          {item.children.map(child => {
+                            const childActive = active && currentTab === child.tab
+                            return (
+                              <Link
+                                key={child.tab}
+                                href={`${item.path}?tab=${child.tab}`}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                                  childActive
+                                    ? 'bg-accent/15 text-accent font-medium'
+                                    : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
+                                }`}
+                              >
+                                {child.icon}
+                                {child.label}
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                }
+
+                return (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      active
+                        ? 'bg-accent text-text-inverse'
+                        : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
+                    }`}
+                  >
+                    {item.icon}
+                    {sidebarOpen && <span>{item.label}</span>}
+                  </Link>
+                )
+              })}
             </div>
           </nav>
 
@@ -134,7 +195,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
         {/* Header */}
         <header className="sticky top-0 z-30 bg-bg-primary/95 backdrop-blur-lg">
           <div className="flex items-center justify-between px-6 h-16 border-b border-line">

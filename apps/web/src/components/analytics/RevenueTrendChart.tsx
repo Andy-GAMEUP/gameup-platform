@@ -1,29 +1,26 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { DailyPoint } from '@/services/analyticsService'
 
-interface DailyPoint {
-  date: string
-  dau: number
-  newMembers: number
-  payingUsers: number
-  revenue: number
-}
-
-type MetricKey = 'dau' | 'newMembers' | 'payingUsers'
+type MetricKey = 'revenue' | 'dau' | 'payingUsers' | 'arpu' | 'arppu' | 'pur'
 
 const METRICS: { key: MetricKey; label: string; color: string }[] = [
-  { key: 'dau',         label: 'DAU',     color: '#10b981' },
-  { key: 'newMembers',  label: '신규 유저', color: '#3b82f6' },
-  { key: 'payingUsers', label: '결제 유저', color: '#a78bfa' },
+  { key: 'revenue', label: '매출',  color: '#f59e0b' },
+  { key: 'arpu',    label: 'ARPU',  color: '#3b82f6' },
+  { key: 'arppu',   label: 'ARPPU', color: '#ef4444' },
 ]
 
-export default function DailyTrendChart({
+export default function RevenueTrendChart({
   data,
-  defaultActive = ['dau', 'newMembers'],
+  defaultActive = ['revenue'],
+  gameId,
 }: {
   data: DailyPoint[]
   defaultActive?: MetricKey[]
+  gameId?: string
 }) {
   const [active, setActive] = useState<Set<MetricKey>>(new Set(defaultActive))
 
@@ -39,10 +36,17 @@ export default function DailyTrendChart({
       return next
     })
 
+  const chartData = data.map(d => {
+    const arpu  = d.dau        > 0 ? Math.round(d.revenue / d.dau)         : 0
+    const arppu = d.payingUsers > 0 ? Math.round(d.revenue / d.payingUsers) : 0
+    const pur   = d.dau        > 0 ? Number(((d.payingUsers / d.dau) * 100).toFixed(2)) : 0
+    return { date: d.date, revenue: d.revenue, dau: d.dau, payingUsers: d.payingUsers, arpu, arppu, pur }
+  })
+
   return (
     <div className="bg-bg-secondary border border-line rounded-lg p-6">
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-        <h3 className="text-lg font-bold">일별 추이</h3>
+        <h3 className="text-lg font-bold">매출 추이</h3>
         <div className="flex border border-line rounded-md overflow-hidden">
           {METRICS.map(m => (
             <button
@@ -62,12 +66,13 @@ export default function DailyTrendChart({
       </div>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
+          <LineChart data={chartData} margin={{ top: 5, right: 0, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis dataKey="date" stroke="#9ca3af" tick={{ fontSize: 10 }} />
-            <YAxis stroke="#9ca3af" tick={{ fontSize: 11 }} />
+            <YAxis stroke="#9ca3af" tick={{ fontSize: 11 }} width={72} tickFormatter={v => `₩${Number(v).toLocaleString()}`} />
             <Tooltip
               contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }}
+              formatter={(v, name) => [`₩${Number(v).toLocaleString()}`, name]}
             />
             {METRICS.filter(m => active.has(m.key)).map(m => (
               <Line
@@ -82,6 +87,14 @@ export default function DailyTrendChart({
             ))}
           </LineChart>
         </ResponsiveContainer>
+      </div>
+      <div className="flex justify-end mt-3">
+        <Link
+          href={`/analytics?tab=revenue${gameId ? `&gameId=${gameId}` : ''}`}
+          className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover transition-colors"
+        >
+          수익 보드 <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
     </div>
   )
