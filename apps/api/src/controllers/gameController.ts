@@ -11,7 +11,6 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
     const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType } = req.query
 
     const filter: Record<string, unknown> = {
-      approvalStatus: 'approved',
       status: { $in: ['beta', 'published'] }
     }
 
@@ -192,7 +191,14 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
     if (price !== undefined) game.price = Math.max(0, Number(price))
     if (isPaid !== undefined) game.isPaid = isPaid === 'true'
     if (status) game.status = status
-    if (serviceType) game.serviceType = serviceType
+    if (serviceType) {
+      game.serviceType = serviceType
+      if (serviceType === 'live') {
+        game.approvalStatus = 'approved'
+        if (game.status === 'draft') game.status = 'beta'
+        if (!game.approvedAt) (game as any).approvedAt = new Date()
+      }
+    }
     if (monetization) game.monetization = monetization
 
     // 확장 필드
