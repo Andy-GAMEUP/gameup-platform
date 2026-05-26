@@ -133,8 +133,9 @@ export const createGame = async (req: AuthRequest, res: Response) => {
       gameDomain: gameDomain.trim(),
       price: isPaid === 'true' ? Math.max(0, Number(price) || 0) : 0,
       isPaid: isPaid === 'true',
-      status: status || 'draft',
-      approvalStatus: 'not_submitted',
+      status: status || 'beta',
+      approvalStatus: 'approved',
+      approvedAt: new Date(),
       monetization: monetization || 'free',
       serviceType: serviceType || 'beta'
     }
