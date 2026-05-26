@@ -4,10 +4,11 @@ import { Card } from '@/components/Card'
 import Badge from '@/components/Badge'
 import Link from 'next/link'
 import {
-  DollarSign, Users, UserPlus, CreditCard, BarChart3, RefreshCw, Plus, Download, ChevronDown,
+  DollarSign, Users, UserPlus, CreditCard, BarChart3, RefreshCw, Plus, Download, ChevronDown, ArrowUp, ArrowDown, Minus,
 } from 'lucide-react'
 import { analyticsService, OverviewSummary, OverviewGameRow, DailyOverviewPoint } from '@/services/analyticsService'
-import DailyTrendChart from '@/components/analytics/DailyTrendChart'
+import DashboardTrendChart from '@/components/analytics/DashboardTrendChart'
+import GamePieChart from '@/components/analytics/GamePieChart'
 
 
 type Period = '1d' | '7d' | '30d' | '6m' | '1y' | 'custom' | 'lifetime'
@@ -116,7 +117,7 @@ export function DashboardPage() {
     const params = buildParams(period)
     if (!('from' in params)) return null
     const fmt = (s: string) => s.replace(/-/g, '.')
-    return { label: PERIOD_OPTIONS.find(o => o.value === period)?.label ?? '', from: fmt(params.from), to: fmt(params.to) }
+    return { label: PERIOD_OPTIONS.find(o => o.value === period)?.label ?? '', from: fmt(params.from ?? ''), to: fmt(params.to ?? '') }
   })()
 
   const filteredGames = activeTab === 'all'
@@ -127,14 +128,37 @@ export function DashboardPage() {
         return true
       })
 
+  const isApproved = (g: OverviewGameRow) => {
+    if (g.approvalStatus && g.approvalStatus !== 'approved') return false
+    return g.status === 'published' || g.status === 'beta' ||
+      g.serviceType === 'live' || g.serviceType === 'beta' ||
+      g.approvalStatus === 'approved'
+  }
+
+  const sortedGames = [...filteredGames].sort((a, b) => {
+    const aOk = isApproved(a) ? 1 : 0
+    const bOk = isApproved(b) ? 1 : 0
+    if (aOk !== bOk) return bOk - aOk
+    return b.revenue - a.revenue
+  })
+
   const monetizationLabel = (m?: string) =>
     ({ free: '무료', ad: '광고', paid: '유료', freemium: '프리미엄' }[m || 'free'] || '무료')
 
-  const fmtChange = (v: number) => v > 0 ? `+${v}%` : `${v}%`
-  const trendCls  = (v: number) =>
-    v > 0 ? 'bg-accent-light text-accent border-accent-muted' :
-    v < 0 ? 'bg-red-500/20 text-red-400 border-red-500/50' :
-    'bg-bg-muted/20 text-text-secondary border-line/50'
+  const TrendBadge = ({ v }: { v: number }) => {
+    if (v === 0) return (
+      <div className="flex items-center gap-0.5 text-xs font-semibold text-text-secondary">
+        <Minus className="w-3.5 h-3.5" /> 0%
+      </div>
+    )
+    const up = v > 0
+    return (
+      <div className={`flex items-center gap-0.5 text-xs font-semibold ${up ? 'text-blue-400' : 'text-red-400'}`}>
+        {up ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+        {Math.abs(v)}%
+      </div>
+    )
+  }
 
   const stats = [
     { label: '활성 유저',    value: (summary?.totalActiveUsers  ?? 0).toLocaleString(),            change: summary?.activeChange     ?? 0, icon: <Users      className="w-5 h-5" />, color: 'text-purple-400' },
@@ -278,7 +302,7 @@ export function DashboardPage() {
               <div className="flex items-center justify-between">
                 <div className={stat.color}>{stat.icon}</div>
                 {stat.change !== null && period !== 'lifetime'
-                  ? <Badge className={trendCls(stat.change)}>{fmtChange(stat.change)}</Badge>
+                  ? <TrendBadge v={stat.change} />
                   : <div />
                 }
               </div>
@@ -291,13 +315,20 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* 일별 차트 */}
+      {/* 일별 차트 + 게임별 원형 그래프 */}
       {loading ? (
         <div className="bg-bg-secondary border border-line rounded-lg flex items-center justify-center h-48 text-text-secondary">
           <RefreshCw className="w-5 h-5 animate-spin mr-2" /> 불러오는 중...
         </div>
       ) : (
-        <DailyTrendChart data={daily} />
+        <div className="grid grid-cols-4 gap-5 items-stretch">
+          <div className="col-span-3">
+            <DashboardTrendChart data={daily} />
+          </div>
+          <div className="col-span-1">
+            <GamePieChart games={filteredGames} />
+          </div>
+        </div>
       )}
 
       {/* 게임별 성과 */}
@@ -342,54 +373,107 @@ export function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-4">
-                {filteredGames.map((game) => (
-                  <Link
-                    key={game.id}
-                    href={`/analytics?gameId=${game.id}`}
-                    className="block p-4 bg-bg-tertiary/50 rounded-lg hover:bg-bg-tertiary border border-transparent hover:border-accent/40 transition-all"
-                  >
-                    <div className="flex items-start justify-between mb-3 gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold mb-1 truncate" style={{ fontSize: '18px' }}>{game.title}</h3>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className={`text-xs ${
-                            game.serviceType === 'live' || game.status === 'published'
-                              ? 'bg-accent-light text-accent border-accent-muted'
-                              : 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                          }`}>
-                            {game.serviceType === 'live' || game.status === 'published' ? '라이브' : '베타'}
-                          </Badge>
-                          <Badge className="text-xs border border-line text-text-secondary">
-                            {monetizationLabel(game.monetization)}
-                          </Badge>
-                          <span className="flex items-center gap-1 text-sm">
-                            <svg className="w-4 h-4 fill-yellow-400 text-yellow-400" viewBox="0 0 24 24">
-                              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                            </svg>
-                            <span>{game.rating?.toFixed?.(1) ?? '0.0'}</span>
-                          </span>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                {sortedGames.map((game) => {
+                  const active = isApproved(game)
+                  const isLive = game.serviceType === 'live' || game.status === 'published'
+                  const approvalStatusLabel: Record<string, string> = {
+                    not_submitted: '미제출',
+                    pending: '심사 대기',
+                    review: '심사 중',
+                    rejected: '심사 반려',
+                  }
+
+                  const statusColor  = active ? (isLive ? 'text-emerald-400' : 'text-blue-400') : 'text-gray-500'
+                  const statusBg     = active ? (isLive ? 'bg-emerald-400' : 'bg-blue-400')     : 'bg-gray-500'
+                  const statusLabel  = active ? (isLive ? 'LIVE' : 'BETA') : (approvalStatusLabel[game.approvalStatus ?? ''] ?? '미심사').toUpperCase()
+
+                  const hasRealMetrics = game.avgDau > 0 || game.revenue > 0 || game.cumulativeMembers > 0
+                  const d = hasRealMetrics ? null : dummyMetrics(game.id)
+
+                  const metrics = [
+                    { label: 'DAU',      value: (d ? d.dau.toLocaleString()              : game.avgDau.toLocaleString()),           color: 'text-blue-400',     bg: 'bg-blue-500/10'   },
+                    { label: '누적 회원', value: (d ? fmtCompact(d.cumMembers)            : fmtCompact(game.cumulativeMembers)),     color: 'text-text-primary', bg: 'bg-white/5'       },
+                    { label: '매출',      value: (d ? `₩${fmtCompact(d.revenue)}`        : `₩${fmtCompact(game.revenue)}`),        color: 'text-accent',       bg: 'bg-accent/10'     },
+                    { label: 'ARPU',     value: (d ? `₩${fmtCompact(d.arpu)}`           : `₩${fmtCompact(game.arpu ?? 0)}`),      color: 'text-orange-400',   bg: 'bg-orange-500/10' },
+                    { label: 'ARPPU',    value: (d ? `₩${fmtCompact(d.arppu)}`          : `₩${fmtCompact(game.arppu)}`),          color: 'text-yellow-400',   bg: 'bg-yellow-500/10' },
+                    { label: 'PUR',      value: (d ? `${d.pur}%`                         : `${game.pur}%`),                        color: 'text-purple-400',   bg: 'bg-purple-500/10' },
+                    { label: '세션',      value: (d ? fmtSession(d.session)              : fmtSession(game.avgSession ?? 0)),       color: 'text-text-primary', bg: 'bg-white/5'       },
+                  ]
+
+                  const cardInner = (
+                    <div className="p-5 h-full flex flex-col gap-4">
+                      {/* 상단: 게임 정보 */}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-end gap-2 flex-wrap">
+                            <h3 className="text-xl font-bold leading-tight">{game.title}</h3>
+                            {/* 상태 */}
+                            <span className="relative flex items-center gap-1.5 mb-0.5">
+                              <span className={`relative flex h-1.5 w-1.5`}>
+                                {active && isLive && (
+                                  <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${statusBg}`} />
+                                )}
+                                <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${statusBg}`} />
+                              </span>
+                              <span className={`text-[11px] font-bold tracking-widest uppercase ${statusColor}`}>
+                                {statusLabel}
+                              </span>
+                            </span>
+                            {/* 평점 */}
+                            <span className="flex items-center gap-0.5 text-[11px] font-medium text-yellow-400 mb-0.5">
+                              <svg className="w-3 h-3 fill-yellow-400" viewBox="0 0 24 24">
+                                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                              </svg>
+                              {game.rating?.toFixed?.(1) ?? '0.0'}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-xl font-bold text-accent">₩{game.revenue.toLocaleString()}</div>
-                        <div className="text-xs text-text-muted">매출</div>
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
-                      <Metric label="활성 유저" value={game.activeUsers.toLocaleString()} />
-                      <Metric label="평균 DAU"  value={game.avgDau.toLocaleString()}       accent="text-blue-400" />
-                      <Metric label="누적 회원" value={game.cumulativeMembers.toLocaleString()} />
-                      <Metric label="ARPPU"     value={`₩${game.arppu.toLocaleString()}`}  accent="text-yellow-400" />
-                      <Metric label="PUR"       value={`${game.pur}%`}                     accent="text-purple-400" />
-                    </div>
+                        {/* 게임 썸네일 */}
+                        <GameThumb thumbnail={game.thumbnail} title={game.title} />
+                      </div>
 
-                    <div className="mt-3 flex items-center justify-end text-xs text-accent">
-                      <BarChart3 className="w-3.5 h-3.5 mr-1" /> 세부 분석 보기 →
+                      {/* 하단: 지표 7개 */}
+                      <div className="grid grid-cols-7 gap-1.5 mt-auto">
+                        {metrics.map((m, i) => (
+                          <div key={i} className={`${m.bg} rounded-lg px-2 py-2.5 text-center border border-line/40`}>
+                            <div className={`text-xs font-bold tabular-nums leading-none ${m.color}`}>{m.value}</div>
+                            <div className="text-[10px] text-text-secondary mt-1.5 leading-none">{m.label}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {active && (
+                        <div className="flex items-center justify-end gap-1.5 text-[11px] text-text-secondary group-hover:text-accent transition-colors -mt-1">
+                          <BarChart3 className="w-3 h-3" />
+                          세부 분석 보기
+                        </div>
+                      )}
                     </div>
-                  </Link>
-                ))}
+                  )
+
+                  if (!active) {
+                    return (
+                      <div
+                        key={game.id}
+                        className="rounded-2xl border border-line/30 bg-bg-secondary/40 opacity-40 cursor-not-allowed select-none"
+                      >
+                        {cardInner}
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <Link
+                      key={game.id}
+                      href={`/analytics?gameId=${game.id}`}
+                      className="group block rounded-2xl border border-line/60 bg-bg-secondary hover:border-accent/40 hover:shadow-2xl hover:shadow-black/40 hover:-translate-y-0.5 transition-all duration-200"
+                    >
+                      {cardInner}
+                    </Link>
+                  )
+                })}
               </div>
             )}
         </div>
@@ -405,5 +489,63 @@ function Metric({ label, value, accent }: { label: string; value: string; accent
       <p className={`font-semibold ${accent || ''}`}>{value}</p>
     </div>
   )
+}
+
+function dummyMetrics(id: string) {
+  const seed = id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  const r = (base: number, range: number) => base + (seed % range)
+  return {
+    dau:        r(1_200,  3_800),
+    cumMembers: r(28_000, 72_000),
+    revenue:    r(3_400_000, 12_600_000),
+    arpu:       r(820,    1_680),
+    arppu:      r(4_200,  10_800),
+    pur:        parseFloat((2.1 + (seed % 58) / 10).toFixed(1)),
+    session:    r(142,    318),
+  }
+}
+
+function fmtSession(sec: number): string {
+  if (!sec) return '-'
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return m > 0 ? `${m}분 ${s}초` : `${s}초`
+}
+
+function GameThumb({ thumbnail, title }: { thumbnail?: string | null; title: string }) {
+  const src = thumbnail
+    ? thumbnail.startsWith('http') || thumbnail.startsWith('/uploads/')
+      ? thumbnail
+      : `/uploads/thumbnails/${thumbnail.split('/').pop()}`
+    : null
+
+  if (src) {
+    return (
+      <div className="flex-shrink-0 w-[67px] h-[67px] rounded-xl overflow-hidden border border-line/40 bg-bg-tertiary">
+        <img
+          src={src}
+          alt={title}
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            const el = e.currentTarget.parentElement!
+            e.currentTarget.remove()
+            el.innerHTML = '<div class="w-full h-full flex items-center justify-center text-2xl select-none">🎮</div>'
+          }}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-shrink-0 w-[67px] h-[67px] rounded-xl overflow-hidden border border-line/40 bg-bg-tertiary flex items-center justify-center text-2xl select-none">
+      🎮
+    </div>
+  )
+}
+
+function fmtCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 10_000)    return `${(n / 1_000).toFixed(1)}K`
+  return n.toLocaleString()
 }
 

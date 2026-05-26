@@ -25,7 +25,7 @@ export const authenticateToken = (
       return res.status(401).json({ message: '인증 토큰이 필요합니다' })
     }
 
-    const JWT_SECRET = process.env.JWT_SECRET || 'default-secret'
+    const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret-change-in-production'
 
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
       if (err) {

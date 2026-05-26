@@ -116,7 +116,6 @@ const miniHomeSchema = new Schema<IMiniHome>(
   { timestamps: true }
 )
 
-miniHomeSchema.index({ userId: 1 }, { unique: true })
 miniHomeSchema.index({ isPublic: 1, isRecommended: -1, createdAt: -1 })
 miniHomeSchema.index({ expertiseArea: 1, availability: 1, rating: -1 })
 miniHomeSchema.index({ isPublic: 1, isVerified: -1, rating: -1 })

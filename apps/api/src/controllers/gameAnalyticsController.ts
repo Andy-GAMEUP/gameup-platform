@@ -50,10 +50,11 @@ interface GameMetrics {
   mau: number
   totalRevenue: number
   payingUsers: number
-  pur: number       // 결제 유저 / DAU * 100
-  arppu: number     // 매출 / 결제 유저
-  arpu: number      // 매출 / DAU
-  activeUsers: number  // 기간 내 distinct 활동 유저
+  pur: number
+  arppu: number
+  arpu: number
+  activeUsers: number
+  avgSession: number  // 평균 세션 시간(초)
 }
 
 async function computeGameMetrics(gameId: mongoose.Types.ObjectId, from: Date, to: Date): Promise<GameMetrics> {
@@ -116,16 +117,19 @@ async function computeGameMetrics(gameId: mongoose.Types.ObjectId, from: Date, t
   const totalRevenue = revenueAgg[0]?.revenue || 0
   const payingUsers = revenueAgg[0]?.payers?.length || 0
 
-  // PUR = 결제유저 / DAU * 100  (avgDau 분모)
   const pur = avgDau > 0 ? Number(((payingUsers / avgDau) * 100).toFixed(2)) : 0
-  // ARPPU = revenue / payingUsers
   const arppu = payingUsers > 0 ? Math.round(totalRevenue / payingUsers) : 0
-  // ARPU = revenue / DAU
   const arpu = avgDau > 0 ? Math.round(totalRevenue / avgDau) : 0
+
+  const sessionAgg = await PlayerActivity.aggregate([
+    { $match: { gameId, type: 'play', sessionDuration: { $exists: true, $gt: 0 }, createdAt: { $gte: from, $lte: to } } },
+    { $group: { _id: null, avg: { $avg: '$sessionDuration' } } },
+  ] as never)
+  const avgSession = sessionAgg[0] ? Math.round(sessionAgg[0].avg) : 0
 
   return {
     cumulativeMembers, newMembers, avgDau, mau, totalRevenue, payingUsers,
-    pur, arppu, arpu, activeUsers,
+    pur, arppu, arpu, activeUsers, avgSession,
   }
 }
 
@@ -236,6 +240,7 @@ export const getDeveloperOverview = async (req: AuthRequest, res: Response) => {
       return {
         id: String(g._id),
         title: g.title,
+        thumbnail: g.thumbnail ?? null,
         genre: g.genre,
         serviceType: g.serviceType,
         monetization: g.monetization,
@@ -245,10 +250,12 @@ export const getDeveloperOverview = async (req: AuthRequest, res: Response) => {
         revenue: metrics.totalRevenue,
         activeUsers: metrics.activeUsers,
         avgDau: metrics.avgDau,
+        arpu: metrics.arpu,
         arppu: metrics.arppu,
         pur: metrics.pur,
         cumulativeMembers: metrics.cumulativeMembers,
         newMembers: metrics.newMembers,
+        avgSession: metrics.avgSession,
       }
     }))
 

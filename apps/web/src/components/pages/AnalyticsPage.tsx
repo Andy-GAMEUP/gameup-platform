@@ -13,6 +13,9 @@ import RetentionChart from '@/components/analytics/RetentionChart'
 import DailyTrendChart from '@/components/analytics/DailyTrendChart'
 import SessionTimeChart from '@/components/analytics/SessionTimeChart'
 import RevenueTrendChart from '@/components/analytics/RevenueTrendChart'
+import RevenueDetailChart from '@/components/analytics/RevenueDetailChart'
+import SalesProductChart from '@/components/analytics/SalesProductChart'
+import PaymentConversionChart from '@/components/analytics/PaymentConversionChart'
 
 interface GameOption { _id: string; title: string }
 
@@ -33,7 +36,7 @@ const toYMD = (d: Date) => d.toISOString().split('T')[0]
 const TAB_META: Record<Tab, { title: string; desc: string }> = {
   analysis:  { title: '개요',     desc: '게임의 핵심 지표와 일별 활동 현황을 한눈에 확인하세요.' },
   retention: { title: '리텐션',   desc: '유저 재방문율과 코호트별 잔존율을 분석하세요.'          },
-  revenue:   { title: '수익',     desc: '매출 · ARPPU · PUR · 결제 추이'                        },
+  revenue:   { title: '수익 (더미)', desc: '매출 · ARPPU · PUR · 결제 추이'                     },
   newusers:  { title: '신규 유저', desc: '가입 · DAU · MAU · 신규 추이'                          },
 }
 
@@ -44,7 +47,9 @@ export default function AnalyticsPage() {
   const activeTab = (searchParams.get('tab') || 'analysis') as Tab
 
   const [games,        setGames]        = useState<GameOption[]>([])
-  const [gameId,       setGameId]       = useState<string>(searchParams.get('gameId') || '')
+  const [gameId,       setGameId]       = useState<string>(
+    searchParams.get('gameId') || (typeof window !== 'undefined' ? localStorage.getItem('analytics_gameId') || '' : '')
+  )
   const [period,       setPeriod]       = useState<Period>('30d')
   const [customFrom,   setCustomFrom]   = useState(() => toYMD(new Date(Date.now() - 29 * 86400000)))
   const [customTo,     setCustomTo]     = useState(() => toYMD(new Date()))
@@ -56,9 +61,10 @@ export default function AnalyticsPage() {
   const [dropdownView, setDropdownView] = useState<'list' | 'custom'>('list')
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // gameId → URL sync (tab param은 사이드바가 관리)
+  // gameId → URL sync + localStorage 저장
   useEffect(() => {
     if (!gameId) return
+    localStorage.setItem('analytics_gameId', gameId)
     const params = new URLSearchParams(searchParams.toString())
     params.set('gameId', gameId)
     router.replace(`/analytics?${params.toString()}`, { scroll: false })
@@ -71,7 +77,11 @@ export default function AnalyticsPage() {
       .then((res) => {
         const list = ((res.games || []) as unknown as GameOption[]).map(g => ({ _id: g._id, title: g.title }))
         setGames(list)
-        if (!gameId && list.length > 0) setGameId(list[0]._id)
+        if (list.length === 0) return
+        const ids = list.map(g => g._id)
+        if (gameId && ids.includes(gameId)) return   // 현재 선택이 유효하면 유지
+        const saved = localStorage.getItem('analytics_gameId')
+        setGameId(saved && ids.includes(saved) ? saved : list[0]._id)
       })
       .catch(() => setError('게임 목록을 불러오지 못했습니다.'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -314,14 +324,14 @@ export default function AnalyticsPage() {
                 <MetricCard label="ARPU"             value={`₩${overview.arpu.toLocaleString()}`}       icon={<TrendingUp   className="w-5 h-5" />} color="text-orange-400" hint="DAU당 매출" />
                 <MetricCard label="총 매출"           value={`₩${overview.totalRevenue.toLocaleString()}`} icon={<DollarSign className="w-5 h-5" />} color="text-accent"   hint={`결제 ${overview.payingUsers}명`} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <DailyTrendChart data={data.daily} defaultActive={['dau', 'newMembers', 'payingUsers']} />
-                <RevenueTrendChart data={data.daily} defaultActive={['revenue', 'arpu', 'arppu']} gameId={gameId} />
-              </div>
+              <RevenueDetailChart data={data.daily} title="일별 추이" showRanking={false} />
               <div className="grid grid-cols-3 gap-4">
                 <RetentionChart data={data.retention} cohortTable={data.cohortTable} chartOnly />
                 <SessionTimeChart data={data.daily} />
-                <div className="bg-bg-secondary border border-line rounded-lg p-5 flex flex-col">
+                <PaymentConversionChart data={data.daily} />
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div id="revenue-status" className="bg-bg-secondary border border-line rounded-lg p-5 flex flex-col">
                   <h3 className="text-base font-bold mb-4">수익 현황 (더미)</h3>
                   <div className="flex-1 overflow-y-auto space-y-2 max-h-64">
                     {(data.topItems ?? []).length === 0 ? (
@@ -343,6 +353,14 @@ export default function AnalyticsPage() {
                       ))
                     )}
                   </div>
+                  <div className="flex justify-end mt-3">
+                    <Link
+                      href={`/analytics?tab=revenue${gameId ? `&gameId=${gameId}` : ''}`}
+                      className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover transition-colors"
+                    >
+                      수익 탭으로 바로가기 <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
@@ -356,7 +374,7 @@ export default function AnalyticsPage() {
 
           {activeTab === 'revenue' && (
             <div className="space-y-6">
-              <RevenueTrendChart data={data.daily} />
+              <SalesProductChart data={data.daily} topItems={data.topItems ?? []} />
             </div>
           )}
 

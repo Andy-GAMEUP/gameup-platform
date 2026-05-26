@@ -42,6 +42,4 @@ const levelSchema = new Schema<ILevel>(
   }
 )
 
-levelSchema.index({ level: 1 })
-
 export default mongoose.model<ILevel>('Level', levelSchema)

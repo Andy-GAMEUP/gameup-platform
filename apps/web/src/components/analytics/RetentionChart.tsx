@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { CohortTable, RetentionPoint } from '@/services/analyticsService'
+import { CohortRow, CohortTable, RetentionPoint } from '@/services/analyticsService'
 
 interface Props {
   data: RetentionPoint[]
@@ -20,14 +20,39 @@ function cellColor(count: number | null, cohortSize: number, colIndex: number): 
   return `rgba(59, 130, 246, ${opacity.toFixed(2)})`
 }
 
+function buildDummyCohortTable(): CohortTable {
+  const numCols = 14
+  const today = new Date()
+  const rates = [1, 0.46, 0.31, 0.24, 0.19, 0.16, 0.14, 0.21, 0.13, 0.12, 0.11, 0.10, 0.09, 0.08]
+  const sizes = [210, 185, 230, 195, 175, 220, 260, 180, 200, 215, 190, 205, 195, 88]
+
+  const rows: CohortRow[] = []
+  for (let i = numCols - 1; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 86400000)
+    const dateStr = d.toISOString().split('T')[0]
+    const cohortSize = sizes[numCols - 1 - i]
+    const retentions: Array<number | null> = []
+    for (let n = 0; n < numCols; n++) {
+      retentions.push(n > i ? null : Math.round(cohortSize * rates[n]))
+    }
+    rows.push({ date: dateStr, cohortSize, retentions })
+  }
+  return { rows, numCols }
+}
+
+const DUMMY_COHORT = buildDummyCohortTable()
 
 export default function RetentionChart({ data, cohortTable, chartOnly = false }: Props) {
   const [showPercent, setShowPercent] = useState(true)
   const searchParams = useSearchParams()
   const retentionHref = `/analytics?tab=retention${searchParams.get('gameId') ? `&gameId=${searchParams.get('gameId')}` : ''}`
 
-  const numCols = cohortTable?.numCols ?? 0
-  const rows = cohortTable?.rows ?? []
+  const hasRealData = (cohortTable?.rows ?? []).some(r => r.cohortSize > 0)
+  const resolvedTable = hasRealData ? cohortTable! : DUMMY_COHORT
+  const isDummy = !hasRealData
+
+  const numCols = resolvedTable.numCols
+  const rows = resolvedTable.rows
 
   const totals: number[] = Array(numCols).fill(0)
   rows.forEach(row => {
@@ -36,12 +61,16 @@ export default function RetentionChart({ data, cohortTable, chartOnly = false }:
   const lineData = totals.map((count, i) => ({ name: `${i}일`, count }))
 
   const summaryRetentions: Array<number | null> = Array(numCols).fill(0)
+  const summaryDenominators: number[] = Array(numCols).fill(0)
   rows.forEach(row => {
     row.retentions.forEach((v, i) => {
-      if (v !== null) (summaryRetentions[i] as number) += v
+      if (v !== null) {
+        (summaryRetentions[i] as number) += v
+        summaryDenominators[i] += row.cohortSize
+      }
     })
   })
-  const totalCohortSize = rows.reduce((s, r) => s + r.cohortSize, 0)
+  const totalCohortSize = summaryDenominators[0] ?? 0
 
   const cols = Array.from({ length: numCols }, (_, i) => i)
 
@@ -59,35 +88,31 @@ export default function RetentionChart({ data, cohortTable, chartOnly = false }:
     if (val === null) return ''
     if (showPercent) {
       if (colIndex === 0) return '100%'
-      if (totalCohortSize === 0) return '0%'
-      return `${parseFloat(((val / totalCohortSize) * 100).toFixed(2))}%`
+      const denom = summaryDenominators[colIndex]
+      if (denom === 0) return '0%'
+      return `${parseFloat(((val / denom) * 100).toFixed(2))}%`
     }
     return val.toLocaleString()
   }
 
-  return (
-    <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-6">
-      <div>
+  if (chartOnly) {
+    return (
+      <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
         <h3 className="text-lg font-bold">유저 리텐션</h3>
-      </div>
-
-      {/* 선 그래프 */}
-      <div className="h-56">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={lineData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey="name" stroke="#9ca3af" tick={{ fontSize: 11 }} interval={Math.floor(numCols / 7)} />
-            <YAxis stroke="#9ca3af" tick={{ fontSize: 11 }} />
-            <Tooltip
-              contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
-              formatter={(v) => [`${v}명`, '활성 유저']}
-            />
-            <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6' }} activeDot={{ r: 5 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {chartOnly && (
+        <div className="h-56">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={lineData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="name" stroke="#9ca3af" tick={{ fontSize: 11 }} interval={Math.floor(numCols / 7)} />
+              <YAxis stroke="#9ca3af" tick={{ fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
+                formatter={(v) => [`${v}명`, '활성 유저']}
+              />
+              <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6' }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
         <div className="flex justify-end">
           <Link
             href={retentionHref}
@@ -97,12 +122,42 @@ export default function RetentionChart({ data, cohortTable, chartOnly = false }:
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
-      )}
+      </div>
+    )
+  }
 
-      {/* 테이블 헤더 + 토글 */}
-      {!chartOnly && rows.length > 0 && (
-        <>
-          <div className="flex items-center justify-end">
+  return (
+    <>
+      {/* 선 그래프 카드 */}
+      <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-bold">유저 리텐션</h3>
+          {isDummy && <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">더미</span>}
+        </div>
+        <div className="h-56">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={lineData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis dataKey="name" stroke="#9ca3af" tick={{ fontSize: 11 }} interval={Math.floor(numCols / 7)} />
+              <YAxis stroke="#9ca3af" tick={{ fontSize: 11 }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: 8, fontSize: 12, color: '#ffffff' }}
+                formatter={(v) => [`${v}명`, '활성 유저']}
+              />
+              <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3, fill: '#3b82f6' }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* 코호트 테이블 카드 */}
+      {rows.length > 0 && (
+        <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-bold">코호트 리텐션 테이블</h3>
+              {isDummy && <span className="px-2 py-0.5 text-xs rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">더미</span>}
+            </div>
             <div className="flex items-center bg-bg-tertiary rounded-lg p-1 text-xs gap-1">
               <button
                 onClick={() => setShowPercent(true)}
@@ -123,43 +178,41 @@ export default function RetentionChart({ data, cohortTable, chartOnly = false }:
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse min-w-max">
-              <thead>
+          <div className="overflow-auto max-h-[480px]">
+            <table className="w-full text-xs border-separate border-spacing-0 min-w-max">
+              <thead className="sticky top-0 z-20">
                 <tr>
-                  <th className="text-left px-3 py-2 text-text-secondary font-medium w-32 sticky left-0 bg-bg-secondary z-10">날짜</th>
+                  <th className="text-left px-3 py-2 text-text-secondary font-medium w-32 sticky left-0 bg-bg-tertiary z-30 border-b border-line">날짜</th>
                   {cols.map(i => (
-                    <th key={i} className="px-2 py-2 text-center text-text-secondary font-medium min-w-[52px]">{i}일</th>
+                    <th key={i} className="px-2 py-2 text-center text-text-secondary font-medium min-w-[52px] bg-bg-tertiary border-b border-line">{i}일</th>
+                  ))}
+                </tr>
+                <tr>
+                  <th className="px-3 py-2 text-left sticky left-0 bg-bg-tertiary z-30 border-b-2 border-line">
+                    <div className="font-semibold text-text-primary">모든 사용자</div>
+                    <div className="text-text-secondary font-normal">{totalCohortSize.toLocaleString()}명</div>
+                  </th>
+                  {cols.map(i => (
+                    <th
+                      key={i}
+                      className="px-2 py-2 text-center font-semibold bg-bg-tertiary text-text-primary border-b-2 border-line"
+                    >
+                      {formatSummary(summaryRetentions[i], i)}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-t border-line">
-                  <td className="px-3 py-2 sticky left-0 bg-bg-secondary z-10">
-                    <div className="font-semibold text-text-primary">모든 사용자</div>
-                    <div className="text-text-secondary">{totalCohortSize.toLocaleString()}명</div>
-                  </td>
-                  {cols.map(i => (
-                    <td
-                      key={i}
-                      className="px-2 py-2 text-center font-semibold transition-colors text-black"
-                      style={{ backgroundColor: cellColor(summaryRetentions[i], totalCohortSize, i) }}
-                    >
-                      {formatSummary(summaryRetentions[i], i)}
-                    </td>
-                  ))}
-                </tr>
-
                 {rows.map(row => (
-                  <tr key={row.date} className="border-t border-line hover:bg-white/5 transition-colors">
-                    <td className="px-3 py-2 sticky left-0 bg-bg-secondary z-10">
+                  <tr key={row.date} className="hover:bg-white/5 transition-colors">
+                    <td className="px-3 py-2 sticky left-0 bg-bg-secondary z-10 border-b border-line">
                       <div className="text-text-primary">{row.date}</div>
                       <div className="text-text-secondary">{row.cohortSize.toLocaleString()}명</div>
                     </td>
                     {row.retentions.map((count, i) => (
                       <td
                         key={i}
-                        className="px-2 py-2 text-center transition-colors text-black"
+                        className="px-2 py-2 text-center transition-colors text-black border-b border-line"
                         style={{ backgroundColor: cellColor(count, row.cohortSize, i) }}
                       >
                         {formatCell(count, row.cohortSize, i)}
@@ -170,8 +223,8 @@ export default function RetentionChart({ data, cohortTable, chartOnly = false }:
               </tbody>
             </table>
           </div>
-        </>
+        </div>
       )}
-    </div>
+    </>
   )
 }

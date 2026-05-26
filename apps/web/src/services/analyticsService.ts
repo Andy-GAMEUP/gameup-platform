@@ -15,6 +15,7 @@ export interface OverviewSummary {
 export interface OverviewGameRow {
   id: string
   title: string
+  thumbnail?: string | null
   genre?: string
   serviceType?: string
   monetization?: string
@@ -24,10 +25,12 @@ export interface OverviewGameRow {
   revenue: number
   activeUsers: number
   avgDau: number
+  arpu: number
   arppu: number
   pur: number
   cumulativeMembers: number
   newMembers: number
+  avgSession: number
 }
 
 export interface DeveloperOverviewResponse {

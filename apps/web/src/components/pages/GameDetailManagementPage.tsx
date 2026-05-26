@@ -143,9 +143,8 @@ export default function GameDetailManagementPage() {
   const [editItemModal, setEditItemModal] = useState(false)
   const [editingItem, setEditingItem] = useState<ShopItem | null>(null)
   const [notiModal, setNotiModal] = useState(false)
-  const [newSs, setNewSs] = useState({ title: '' })
-  const [newSsFile, setNewSsFile] = useState<File | null>(null)
-  const [newSsPreview, setNewSsPreview] = useState<string | null>(null)
+  const [newSsFiles, setNewSsFiles] = useState<File[]>([])
+  const [newSsPreviews, setNewSsPreviews] = useState<string[]>([])
   const ssFileRef = useRef<HTMLInputElement>(null)
   const [newVid, setNewVid] = useState({ title: '', url: '', type: 'youtube' })
   const [newItem, setNewItem] = useState({ name: '', price: '', currency: 'KRW', type: '패키지', stock: '무제한', description: '' })
@@ -448,12 +447,14 @@ export default function GameDetailManagementPage() {
   }
 
   const addScreenshot = async () => {
-    if (!newSs.title || !newSsFile || !gameId) return
+    if (!gameId || newSsFiles.length === 0) return
     try {
-      await gameService.addGameMedia(gameId, { type: 'screenshot', title: newSs.title, file: newSsFile })
-      setNewSs({ title: '' })
-      setNewSsFile(null)
-      setNewSsPreview(null)
+      for (const file of newSsFiles) {
+        const title = file.name.replace(/\.[^.]+$/, '')
+        await gameService.addGameMedia(gameId, { type: 'screenshot', title, file })
+      }
+      setNewSsFiles([])
+      setNewSsPreviews([])
       setSsModal(false)
       loadMedia()
     } catch (err: unknown) {
@@ -463,12 +464,23 @@ export default function GameDetailManagementPage() {
   }
 
   const handleSsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setNewSsFile(file)
-    const reader = new FileReader()
-    reader.onload = (ev) => setNewSsPreview(ev.target?.result as string)
-    reader.readAsDataURL(file)
+    const selected = Array.from(e.target.files || [])
+    if (selected.length === 0) return
+    const remaining = 10 - screenshots.length - newSsFiles.length
+    if (remaining <= 0) return
+    const toAdd = selected.slice(0, remaining)
+    setNewSsFiles(prev => [...prev, ...toAdd])
+    toAdd.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (ev) => setNewSsPreviews(prev => [...prev, ev.target?.result as string])
+      reader.readAsDataURL(file)
+    })
+    e.target.value = ''
+  }
+
+  const removeSsFile = (index: number) => {
+    setNewSsFiles(prev => prev.filter((_, i) => i !== index))
+    setNewSsPreviews(prev => prev.filter((_, i) => i !== index))
   }
   const deleteScreenshot = async (mediaId: string) => {
     if (!gameId || !confirm('삭제하시겠습니까?')) return
@@ -1224,7 +1236,7 @@ export default function GameDetailManagementPage() {
 
             {/* 하단 전체폭 필드 */}
             <div>
-              <label className={labelCls}>게임 특징 소개 *</label>
+              <label className={labelCls}>게임 설명 *</label>
               <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} className={`${inputCls} min-h-32 resize-y`} />
             </div>
             <div>
@@ -1278,37 +1290,54 @@ export default function GameDetailManagementPage() {
         />
       )}
 
-      <Modal open={ssModal} onClose={() => { setSsModal(false); setNewSs({ title: '' }); setNewSsFile(null); setNewSsPreview(null) }} title="스크린샷 추가">
+      <Modal open={ssModal} onClose={() => { setSsModal(false); setNewSsFiles([]); setNewSsPreviews([]) }} title="스크린샷 추가">
         <div className="space-y-4">
           <div>
-            <label className={labelCls}>제목</label>
-            <input placeholder="예: 메인 화면" value={newSs.title} onChange={e => setNewSs({ title: e.target.value })} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>이미지 (PNG, JPG, WEBP / 최대 5MB)</label>
-            <input ref={ssFileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleSsFileChange} />
-            <div
-              className="border-2 border-dashed border-line rounded-lg overflow-hidden cursor-pointer hover:border-accent transition-colors"
-              style={{ aspectRatio: '16/9' }}
-              onClick={() => ssFileRef.current?.click()}
-            >
-              {newSsPreview ? (
-                <img src={newSsPreview} alt="미리보기" className="w-full h-full object-cover" />
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full gap-2 text-text-muted">
-                  <Upload className="w-8 h-8 opacity-40" />
-                  <p className="text-sm">클릭하여 이미지 선택</p>
-                  <p className="text-xs opacity-60">권장 해상도: 1920×1080px</p>
-                </div>
-              )}
+            <div className="flex items-center justify-between mb-1">
+              <label className={labelCls}>이미지 (PNG, JPG, WEBP / 최대 5MB)</label>
+              <span className="text-xs text-text-muted">{screenshots.length + newSsFiles.length} / 10</span>
             </div>
-            {newSsFile && (
-              <p className="text-xs text-text-muted mt-1">{newSsFile.name} · {(newSsFile.size / 1024 / 1024).toFixed(1)}MB</p>
+            <input ref={ssFileRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleSsFileChange} />
+            {newSsPreviews.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {newSsPreviews.map((preview, i) => (
+                  <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-line group">
+                    <img src={preview} alt={`미리보기 ${i + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removeSsFile(i)}
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3 h-3 text-white" />
+                    </button>
+                    <p className="absolute bottom-0 left-0 right-0 text-[10px] text-white bg-black/50 px-1 py-0.5 truncate">{newSsFiles[i]?.name}</p>
+                  </div>
+                ))}
+                {screenshots.length + newSsFiles.length < 10 && (
+                  <div
+                    className="aspect-video rounded-lg border-2 border-dashed border-line hover:border-accent cursor-pointer flex flex-col items-center justify-center gap-1 text-text-muted transition-colors"
+                    onClick={() => ssFileRef.current?.click()}
+                  >
+                    <Plus className="w-5 h-5 opacity-50" />
+                    <span className="text-xs opacity-60">추가</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div
+                className="border-2 border-dashed border-line rounded-lg cursor-pointer hover:border-accent transition-colors flex flex-col items-center justify-center gap-2 text-text-muted py-10"
+                onClick={() => ssFileRef.current?.click()}
+              >
+                <Upload className="w-8 h-8 opacity-40" />
+                <p className="text-sm">클릭하여 이미지 선택 (여러 장 가능)</p>
+                <p className="text-xs opacity-60">권장 해상도: 1920×1080px · 최대 {10 - screenshots.length}장 추가 가능</p>
+              </div>
             )}
           </div>
           <div className="flex justify-end gap-3">
-            <button onClick={() => { setSsModal(false); setNewSs({ title: '' }); setNewSsFile(null); setNewSsPreview(null) }} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-            <button onClick={addScreenshot} disabled={!newSs.title || !newSsFile} className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-sm">추가</button>
+            <button onClick={() => { setSsModal(false); setNewSsFiles([]); setNewSsPreviews([]) }} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
+            <button onClick={addScreenshot} disabled={newSsFiles.length === 0} className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-sm">
+              {newSsFiles.length > 0 ? `${newSsFiles.length}장 업로드` : '추가'}
+            </button>
           </div>
         </div>
       </Modal>

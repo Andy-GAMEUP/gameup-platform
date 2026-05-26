@@ -55,6 +55,5 @@ const gameApiKeySchema = new Schema<IGameApiKey>(
 )
 
 gameApiKeySchema.index({ gameId: 1 })
-gameApiKeySchema.index({ prefix: 1 }, { unique: true })
 
 export default mongoose.model<IGameApiKey>('GameApiKey', gameApiKeySchema)

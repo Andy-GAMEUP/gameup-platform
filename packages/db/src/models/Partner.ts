@@ -36,6 +36,5 @@ const partnerSchema = new Schema<IPartner>(
 )
 
 partnerSchema.index({ status: 1, createdAt: -1 })
-partnerSchema.index({ userId: 1 }, { unique: true })
 
 export default mongoose.model<IPartner>('Partner', partnerSchema)

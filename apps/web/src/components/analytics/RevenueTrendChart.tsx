@@ -16,11 +16,9 @@ const METRICS: { key: MetricKey; label: string; color: string }[] = [
 export default function RevenueTrendChart({
   data,
   defaultActive = ['revenue'],
-  gameId,
 }: {
   data: DailyPoint[]
   defaultActive?: MetricKey[]
-  gameId?: string
 }) {
   const [active, setActive] = useState<Set<MetricKey>>(new Set(defaultActive))
 
@@ -87,14 +85,6 @@ export default function RevenueTrendChart({
             ))}
           </LineChart>
         </ResponsiveContainer>
-      </div>
-      <div className="flex justify-end mt-3">
-        <Link
-          href={`/analytics?tab=revenue${gameId ? `&gameId=${gameId}` : ''}`}
-          className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover transition-colors"
-        >
-          수익 보드 <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
       </div>
     </div>
   )
