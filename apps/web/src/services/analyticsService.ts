@@ -2,18 +2,20 @@
 import apiClient from './api'
 
 export interface OverviewSummary {
-  totalGames: number
   totalRevenue: number
   totalActiveUsers: number
-  avgARPPU: number
+  totalNewMembers: number
+  avgPUR: number
   revenueChange: number
   activeChange: number
-  arppuChange: number
+  newMembersChange: number
+  purChange: number
 }
 
 export interface OverviewGameRow {
   id: string
   title: string
+  thumbnail?: string | null
   genre?: string
   serviceType?: string
   monetization?: string
@@ -23,10 +25,12 @@ export interface OverviewGameRow {
   revenue: number
   activeUsers: number
   avgDau: number
+  arpu: number
   arppu: number
   pur: number
   cumulativeMembers: number
   newMembers: number
+  avgSession: number
 }
 
 export interface DeveloperOverviewResponse {
@@ -57,9 +61,15 @@ export interface DailyPoint {
   newMembers: number
   payingUsers: number
   revenue: number
+  avgSession?: number
+  avgSessionPayer?: number
+  avgSessionNonPayer?: number
 }
 
 export interface RetentionPoint { day: number; rate: number; cohortSize: number }
+export interface CohortRow { date: string; cohortSize: number; retentions: Array<number | null> }
+export interface CohortTable { rows: CohortRow[]; numCols: number }
+export interface TopItem { name: string; price: number; sales: number; currency: string }
 
 export interface GameAnalyticsResponse {
   success: boolean
@@ -69,9 +79,19 @@ export interface GameAnalyticsResponse {
   overview: GameAnalyticsOverview
   daily: DailyPoint[]
   retention: RetentionPoint[]
+  cohortTable: CohortTable
+  topItems: TopItem[]
 }
 
+export interface DailyOverviewPoint { date: string; revenue: number; dau: number; newMembers: number; payingUsers: number }
+export interface DeveloperDailyResponse { success: boolean; from: string; to: string; daily: DailyOverviewPoint[] }
+
 export const analyticsService = {
+  getDeveloperDaily: async (params?: { from?: string; to?: string; mode?: 'range' | 'lifetime' }) => {
+    const response = await apiClient.get<DeveloperDailyResponse>('/games/developer/daily', { params })
+    return response.data
+  },
+
   getDeveloperOverview: async (params?: { from?: string; to?: string; mode?: 'range' | 'lifetime' }) => {
     const response = await apiClient.get<DeveloperOverviewResponse>('/games/developer/overview', { params })
     return response.data
@@ -84,6 +104,14 @@ export const analyticsService = {
 
   exportGameAnalytics: async (gameId: string, params: { from: string; to: string }) => {
     const response = await apiClient.get(`/games/${gameId}/analytics/export`, {
+      params,
+      responseType: 'blob',
+    })
+    return response.data as Blob
+  },
+
+  exportDeveloperDashboard: async (params?: { from?: string; to?: string; mode?: 'range' | 'lifetime' }) => {
+    const response = await apiClient.get('/games/developer/export', {
       params,
       responseType: 'blob',
     })

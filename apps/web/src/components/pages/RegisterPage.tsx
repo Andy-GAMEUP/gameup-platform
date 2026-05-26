@@ -190,8 +190,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-12 w-auto object-contain" />
-            <span className="text-3xl font-bold tracking-tight text-black">GameUp</span>
+            <Image src="/logo_gameup_v2_2.png" alt="" width={212} height={80} className="h-[60px] w-auto object-contain" />
           </Link>
           <h1 className="text-3xl font-bold text-text-primary mb-2">회원가입</h1>
           <p className="text-text-secondary">

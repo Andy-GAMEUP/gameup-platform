@@ -71,13 +71,16 @@ export default function AdminDashboardPage() {
     </AdminLayout>
   )
 
-  if (!stats) return (
-    <AdminLayout>
-      <p className="text-text-secondary text-center py-12">통계를 불러올 수 없습니다</p>
-    </AdminLayout>
-  )
+  const emptyStats = {
+    users: { total: 0, developers: 0, players: 0, banned: 0, newToday: 0 },
+    games: { total: 0, pending: 0, beta: 0, published: 0, rejected: 0, archived: 0 },
+    totalPlayCount: 0,
+    reviews: { total: 0, blocked: 0 },
+    playTrend: [],
+    topGames: [],
+  }
 
-  const { users, games, totalPlayCount, reviews, playTrend = [], topGames = [] } = stats as {
+  const { users, games, totalPlayCount, reviews, playTrend = [], topGames = [] } = (stats ?? emptyStats) as {
     users: { total: number; developers: number; players: number; banned: number; newToday?: number }
     games: { total: number; pending: number; beta?: number; published: number; rejected: number; archived: number }
     totalPlayCount: number

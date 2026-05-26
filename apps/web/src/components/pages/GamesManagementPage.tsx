@@ -1,13 +1,14 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Eye, Plus, Search, Users, Star, RefreshCw, Settings } from 'lucide-react'
+import { Eye, Plus, Search, Star, RefreshCw, Settings, Send } from 'lucide-react'
 import { gameService } from '@/services/gameService'
 import DeleteGameModal from '@/components/DeleteGameModal'
 
 interface Game {
   _id: string
   title: string
+  thumbnail?: string | null
   genre: string
   status: string
   approvalStatus: string
@@ -21,32 +22,30 @@ interface Game {
 }
 
 const approvalBadge: Record<string, string> = {
+  not_submitted: 'bg-bg-tertiary/40 text-text-muted border border-line/50',
   approved: 'bg-accent-light text-accent border border-accent-muted',
   pending:  'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50',
   review:   'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50',
   rejected: 'bg-red-500/20 text-red-400 border border-red-500/50',
 }
-// 요구사항: 승인상태 = 심사중 / 반려 / 완료
+// 요구사항: 승인상태 = 미제출 / 심사중 / 반려 / 완료
 const approvalLabel: Record<string, string> = {
+  not_submitted: '미제출',
   approved: '완료',
   pending:  '심사중',
   review:   '심사중',
   rejected: '반려',
 }
 
-// 요구사항: 서비스 = 베타 / 라이브 / 심사중 / 종료
-// serviceType 기반 + approvalStatus에서 파생
+// 요구사항: 서비스 = 베타 / 라이브 / 종료
 const getServiceDisplay = (game: Game): { label: string; className: string } => {
-  if (game.approvalStatus === 'pending' || game.approvalStatus === 'review') {
-    return { label: '심사중', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' }
-  }
   if (game.status === 'archived' || game.serviceType === 'ended') {
-    return { label: '종료', className: 'bg-orange-500/20 text-orange-400 border-orange-500/50' }
+    return { label: '종료', className: 'bg-orange-500 text-white border-orange-400' }
   }
   if (game.serviceType === 'live' || game.status === 'published') {
-    return { label: '라이브', className: 'bg-accent-light text-accent border-accent-muted' }
+    return { label: '라이브', className: 'bg-accent text-white border-accent shadow-sm shadow-accent/40' }
   }
-  return { label: '베타', className: 'bg-blue-500/20 text-blue-400 border-blue-500/50' }
+  return { label: '베타', className: 'bg-blue-500 text-white border-blue-400 shadow-sm shadow-blue-500/40' }
 }
 
 // 요구사항: 수익모델 4종 - 무료, 광고, 유료, 프리미엄
@@ -63,6 +62,22 @@ export default function GamesManagementPage() {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Game | null>(null)
+  const [requestingReview, setRequestingReview] = useState<string | null>(null)
+
+  const handleRequestReview = async (gameId: string, gameTitle: string) => {
+    if (!confirm(`"${gameTitle}" 게임의 심사를 요청하시겠습니까?`)) return
+    setRequestingReview(gameId)
+    try {
+      await gameService.requestReview(gameId)
+      alert('심사가 요청되었습니다. 관리자 검토 후 승인됩니다.')
+      await loadGames()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      alert(msg || '심사 요청에 실패했습니다.')
+    } finally {
+      setRequestingReview(null)
+    }
+  }
 
   const loadGames = async () => {
     setLoading(true)
@@ -84,11 +99,16 @@ export default function GamesManagementPage() {
     game.title.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const isPending = (g: Game) => g.approvalStatus === 'pending' || g.approvalStatus === 'review'
+  const liveGames = games.filter(g => g.serviceType === 'live' || g.status === 'published')
+  const betaGames = games.filter(g => !liveGames.includes(g) && g.status !== 'archived' && g.serviceType !== 'ended')
+
   const stats = [
-    { label: '전체 게임', value: games.length,                                              color: 'text-text-primary' },
-    { label: '심사중',    value: games.filter(g => g.approvalStatus === 'pending' || g.approvalStatus === 'review').length, color: 'text-yellow-400' },
-    { label: '완료',      value: games.filter(g => g.approvalStatus === 'approved').length, color: 'text-accent' },
-    { label: '반려',      value: games.filter(g => g.approvalStatus === 'rejected').length, color: 'text-red-400' },
+    { label: '전체 게임', value: games.length,                                              color: 'text-text-primary',  sub: null },
+    { label: '미제출',    value: games.filter(g => g.approvalStatus === 'not_submitted').length, color: 'text-text-muted', sub: null },
+    { label: '라이브',    value: liveGames.length, color: 'text-accent',   sub: liveGames.filter(isPending).length },
+    { label: '베타',      value: betaGames.length, color: 'text-blue-400', sub: betaGames.filter(isPending).length },
+    { label: '반려',      value: games.filter(g => g.approvalStatus === 'rejected').length, color: 'text-red-400', sub: null },
   ]
 
   const formatEndDate = (game: Game): string => {
@@ -100,7 +120,7 @@ export default function GamesManagementPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -108,14 +128,7 @@ export default function GamesManagementPage() {
           <p className="text-text-secondary">등록된 게임을 관리하세요</p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={loadGames}
-            className="flex items-center gap-2 px-3 py-2 border border-line hover:bg-bg-tertiary rounded-md text-sm transition-colors text-text-secondary"
-            title="새로고침"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          <Link href="/upload">
+<Link href="/upload">
             <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors">
               <Plus className="w-4 h-4" /> 새 게임 등록
             </button>
@@ -124,11 +137,17 @@ export default function GamesManagementPage() {
       </div>
 
       {/* 통계 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {stats.map(s => (
           <div key={s.label} className="bg-bg-secondary border border-line rounded-lg p-4">
             <div className={`text-2xl font-bold mb-1 ${s.color}`}>{s.value}</div>
             <div className="text-sm text-text-secondary">{s.label}</div>
+            {s.sub != null && s.sub > 0 && (
+              <div className="mt-1 flex items-center gap-1 text-xs text-yellow-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" />
+                심사중 {s.sub}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -161,111 +180,117 @@ export default function GamesManagementPage() {
           <div className="flex items-center justify-center py-20 text-text-secondary">
             <RefreshCw className="w-5 h-5 animate-spin mr-2" /> 불러오는 중...
           </div>
+        ) : filteredGames.length === 0 ? (
+          <div className="text-center py-16 text-text-secondary">
+            {searchQuery ? '검색 결과가 없습니다.' : '등록된 게임이 없습니다.'}
+            {!searchQuery && (
+              <div className="mt-4 flex justify-center">
+                <Link href="/upload">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors">
+                    <Plus className="w-4 h-4" /> 첫 게임 등록하기
+                  </button>
+                </Link>
+              </div>
+            )}
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-line bg-bg-tertiary/50">
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">게임명</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">서비스</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">수익모델</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">승인상태</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">플레이어</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">평점</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">등록일</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">종료예정일</th>
-                  <th className="px-4 py-3 text-right text-sm text-text-secondary font-medium">작업</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGames.map((game, idx) => {
-                  const service = getServiceDisplay(game)
-                  return (
-                    <tr
-                      key={game._id}
-                      className={`border-b border-line hover:bg-bg-tertiary/30 transition-colors ${idx % 2 !== 0 ? 'bg-bg-tertiary/10' : ''}`}
-                    >
-                      <td className="px-4 py-4">
-                        <p className="font-semibold text-text-primary">{game.title}</p>
-                        <p className="text-xs text-text-muted mt-0.5">{game.genre}</p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${service.className}`}>
-                          {service.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-xs px-2 py-1 rounded-full border border-line text-text-secondary">
-                          {monetizationLabel[game.monetization] || game.monetization || '무료'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className={`text-xs px-2 py-1 rounded-full ${approvalBadge[game.approvalStatus] || 'bg-bg-muted/20 text-text-secondary border border-line/50'}`}>
-                          {approvalLabel[game.approvalStatus] || game.approvalStatus}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="flex items-center gap-1.5 text-text-secondary text-sm">
-                          <Users className="w-4 h-4 text-text-muted" />
-                          {((game.testers ?? game.playCount) || 0).toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        {game.rating > 0 ? (
-                          <span className="flex items-center gap-1 text-text-primary text-sm">
-                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 p-4">
+            {filteredGames.map((game, idx) => {
+              const service   = getServiceDisplay(game)
+              const isLive    = service.label === '라이브'
+              const isBeta    = service.label === '베타'
+              const topBorder = isLive ? 'border-t-accent' : isBeta ? 'border-t-blue-500' : 'border-t-gray-600'
+              const thumbSrc  = game.thumbnail
+                ? (game.thumbnail.startsWith('http') || game.thumbnail.startsWith('/uploads/')
+                    ? game.thumbnail
+                    : `/uploads/thumbnails/${game.thumbnail.split('/').pop()}`)
+                : null
+
+              return (
+                <div key={game._id} className={`group flex flex-col rounded-2xl border-2 border-gray-400 border-t-4 ${topBorder} bg-bg-secondary hover:shadow-xl hover:shadow-black/30 hover:-translate-y-0.5 transition-all duration-200`}>
+
+                  {/* 상단: 썸네일 + 제목 */}
+                  <div className="flex items-start gap-3 pt-5 px-5 pb-2.5">
+                    <div className="flex-shrink-0 w-[74px] h-[74px] rounded-xl overflow-hidden border border-line/40 bg-bg-tertiary">
+                      {thumbSrc ? (
+                        <img src={thumbSrc} alt={game.title} className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[26px]">🎮</div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-bold text-text-primary truncate leading-tight text-[19px]">{game.title}</p>
+                        {game.rating > 0 && (
+                          <span className="flex-shrink-0 flex items-center gap-0.5 text-xs text-yellow-400 font-medium ml-auto">
+                            <Star className="w-3 h-3 fill-yellow-400" />
                             {game.rating.toFixed(1)}
                           </span>
-                        ) : (
-                          <span className="text-text-muted text-sm">-</span>
                         )}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-text-secondary text-sm">
-                          {new Date(game.createdAt).toLocaleDateString('ko-KR')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <span className="text-text-secondary text-sm">{formatEndDate(game)}</span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* 게임정보 */}
-                          <Link href={`/games/${game._id}`}>
-                            <button className="flex items-center gap-1 px-2 py-1.5 text-text-secondary hover:text-text-primary hover:bg-line-light rounded-md transition-colors text-xs font-medium">
-                              <Eye className="w-3.5 h-3.5" />
-                              게임정보
-                            </button>
-                          </Link>
-                          {/* 게임관리 (기존 공지알림 → 게임관리로 명칭 변경, 편집·삭제 포함) */}
-                          <Link href={`/games-management/${game._id}/manage`}>
-                            <button className="flex items-center gap-1 px-2 py-1.5 text-text-secondary hover:text-accent hover:bg-line-light rounded-md transition-colors text-xs font-medium">
-                              <Settings className="w-3.5 h-3.5" />
-                              게임관리
-                            </button>
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[16px] text-text-muted">{game.genre}</span>
+                        {/* 더미: 실제 데이터 연동 전 4가지 상태 순환 표시 */}
+                        {idx % 4 === 0 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-orange-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+                            심사중
+                          </span>
+                        )}
+                        {idx % 4 === 1 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                            출시 대기
+                          </span>
+                        )}
+                        {idx % 4 === 2 && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                            심사 반려
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-            {filteredGames.length === 0 && (
-              <div className="text-center py-16 text-text-secondary">
-                {searchQuery ? '검색 결과가 없습니다.' : '등록된 게임이 없습니다.'}
-                {!searchQuery && (
-                  <div className="mt-4 flex justify-center">
-                    <Link href="/upload">
-                      <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors">
-                        <Plus className="w-4 h-4" /> 첫 게임 등록하기
+                  {/* 구분선 + 서비스 뱃지 */}
+                  <div className="flex items-center px-4">
+                    <div className="flex-1 h-[2px] bg-line" />
+                    <span className={`mx-2 text-[13px] px-2.5 py-0.5 rounded-full border font-bold ${service.className}`}>
+                      {service.label}
+                    </span>
+                    <div className="flex-1 h-[2px] bg-line" />
+                  </div>
+
+                  {/* 액션 버튼 */}
+                  <div className="flex items-center gap-1 p-2.5">
+                    {(game.approvalStatus === 'not_submitted' || game.approvalStatus === 'rejected') && (
+                      <button
+                        onClick={() => handleRequestReview(game._id, game.title)}
+                        disabled={requestingReview === game._id}
+                        className="flex items-center gap-0.5 px-2 py-1 text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-md transition-colors text-[11px] font-medium disabled:opacity-50"
+                      >
+                        <Send className="w-2.5 h-2.5" />
+                        {requestingReview === game._id ? '요청중' : '심사요청'}
+                      </button>
+                    )}
+                    <Link href={`/games/${game._id}`} className="flex-1">
+                      <button className="w-full flex items-center justify-center gap-1 py-1 text-text-secondary hover:text-text-primary bg-bg-tertiary border border-line/60 hover:border-line rounded-md transition-colors text-[11px] font-semibold">
+                        <Eye className="w-[15px] h-[15px]" />
+                        정보
+                      </button>
+                    </Link>
+                    <Link href={`/games-management/${game._id}/manage`} className="flex-1">
+                      <button className="w-full flex items-center justify-center gap-1 py-1 text-white bg-violet-500/70 hover:bg-violet-500/90 border border-violet-400/60 rounded-md transition-colors text-[11px] font-semibold shadow-sm shadow-violet-500/20">
+                        <Settings className="w-[15px] h-[15px]" />
+                        관리
                       </button>
                     </Link>
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>

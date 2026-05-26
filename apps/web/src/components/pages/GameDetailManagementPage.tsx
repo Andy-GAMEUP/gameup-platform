@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
@@ -15,11 +15,10 @@ import { developerBalanceService } from '../../services/developerBalanceService'
 import DeleteGameModal from '../DeleteGameModal'
 import { useRouter } from 'next/navigation'
 
-interface Screenshot { id: number; title: string }
-interface Video { id: number; title: string; url: string; duration: string; views: number }
-interface ShopItem { id: number; name: string; price: number; currency: string; type: string; stock: string; sales: number; active: boolean }
-interface Announcement { id: number; title: string; date: string; type: string; priority: string; content: string; sent: boolean; recipients: number }
-type TabKey = 'announcements' | 'media' | 'shop' | 'points' | 'edit' | 'danger'
+interface MediaItem { _id: string; type: 'screenshot' | 'video'; title: string; url: string; order: number; createdAt: string }
+interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; stock: string; sales: number; active: boolean; description: string }
+interface Announcement { _id: string; title: string; createdAt: string; type: string; priority: string; content: string; sendPush: boolean; recipients: number }
+type TabKey = 'edit' | 'media' | 'shop' | 'points' | 'dev-settings' | 'announcements'
 
 interface GamePointPolicy {
   _id: string
@@ -57,12 +56,12 @@ interface BalanceInfo {
 }
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'announcements', label: '공지 & 알림' },
+  { key: 'edit', label: '게임정보 편집' },
   { key: 'media', label: '미디어' },
   { key: 'shop', label: '게임샵' },
   { key: 'points', label: '포인트 보상' },
-  { key: 'edit', label: '게임정보 편집' },
-  { key: 'danger', label: '게임 삭제' },
+  { key: 'dev-settings', label: '개발자 설정' },
+  { key: 'announcements', label: '공지 & 알림' },
 ]
 
 const POINT_TYPES = [
@@ -90,27 +89,53 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
   )
 }
 
+interface GameData {
+  _id: string
+  title: string
+  description: string
+  genre: string
+  status: string
+  approvalStatus: string
+  serviceType: string
+  rating: number
+  playCount: number
+  testers: number
+  notes?: string
+  startDate?: string
+  endDate?: string
+  isPublic?: boolean
+  thumbnail?: string
+  bannerImage?: string
+}
+
 export default function GameDetailManagementPage() {
   const { id: _id } = useParams()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<TabKey>('announcements')
+  const [activeTab, setActiveTab] = useState<TabKey>('edit')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [screenshots, setScreenshots] = useState<Screenshot[]>([
-    { id: 1, title: '메인 화면' }, { id: 2, title: '전투 장면' }, { id: 3, title: '도시 풍경' },
-  ])
-  const [videos, setVideos] = useState<Video[]>([
-    { id: 1, title: '공식 트레일러', url: 'https://youtube.com/watch?v=example1', duration: '2:45', views: 15420 },
-    { id: 2, title: '게임플레이 영상', url: 'https://youtube.com/watch?v=example2', duration: '10:30', views: 8932 },
-  ])
-  const [shopItems, setShopItems] = useState<ShopItem[]>([
-    { id: 1, name: '스타터 팩', price: 9900, currency: 'KRW', type: '패키지', stock: '무제한', sales: 450, active: true },
-    { id: 2, name: '프리미엄 스킨', price: 4900, currency: 'KRW', type: '외형', stock: '무제한', sales: 892, active: true },
-    { id: 3, name: '골드 1000개', price: 2900, currency: 'KRW', type: '재화', stock: '무제한', sales: 1240, active: true },
-  ])
-  const [announcements, setAnnouncements] = useState<Announcement[]>([
-    { id: 1, title: '긴급 점검 안내', date: '2024.02.10', type: '점검', priority: 'high', content: '서버 안정화를 위한 긴급 점검이 예정되어 있습니다.', sent: true, recipients: 2450 },
-    { id: 2, title: '신규 콘텐츠 업데이트', date: '2024.02.08', type: '업데이트', priority: 'normal', content: '새로운 던전과 아이템이 추가됩니다.', sent: true, recipients: 2450 },
-  ])
+  const [gameData, setGameData] = useState<GameData | null>(null)
+  const [gameLoading, setGameLoading] = useState(true)
+
+  // ── 게임정보 편집 폼 상태 ─────────────────────────────────────
+  const [editTitle, setEditTitle] = useState('')
+  const [editGenre, setEditGenre] = useState('')
+  const [editNotes, setEditNotes] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [editStartDate, setEditStartDate] = useState('')
+  const [editIsPublic, setEditIsPublic] = useState(true)
+  const [editSaving, setEditSaving] = useState(false)
+  const [iconUploading, setIconUploading] = useState(false)
+  const iconInputRef = useRef<HTMLInputElement>(null)
+  const [bannerUploading, setBannerUploading] = useState(false)
+  const bannerInputRef = useRef<HTMLInputElement>(null)
+
+  const [screenshots, setScreenshots] = useState<MediaItem[]>([])
+  const [videos, setVideos] = useState<MediaItem[]>([])
+  const [mediaLoading, setMediaLoading] = useState(false)
+  const [shopItems, setShopItems] = useState<ShopItem[]>([])
+  const [shopLoading, setShopLoading] = useState(false)
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false)
 
   const [ssModal, setSsModal] = useState(false)
   const [vidModal, setVidModal] = useState(false)
@@ -118,7 +143,9 @@ export default function GameDetailManagementPage() {
   const [editItemModal, setEditItemModal] = useState(false)
   const [editingItem, setEditingItem] = useState<ShopItem | null>(null)
   const [notiModal, setNotiModal] = useState(false)
-  const [newSs, setNewSs] = useState({ title: '' })
+  const [newSsFiles, setNewSsFiles] = useState<File[]>([])
+  const [newSsPreviews, setNewSsPreviews] = useState<string[]>([])
+  const ssFileRef = useRef<HTMLInputElement>(null)
   const [newVid, setNewVid] = useState({ title: '', url: '', type: 'youtube' })
   const [newItem, setNewItem] = useState({ name: '', price: '', currency: 'KRW', type: '패키지', stock: '무제한', description: '' })
   const [newNoti, setNewNoti] = useState({ title: '', content: '', type: 'notice', priority: 'normal', sendPush: false })
@@ -143,6 +170,24 @@ export default function GameDetailManagementPage() {
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null)
 
   const gameId = _id as string
+
+  useEffect(() => {
+    if (!gameId) return
+    setGameLoading(true)
+    gameService.getGameById(gameId)
+      .then(data => {
+        const g = data.game as unknown as GameData
+        setGameData(g)
+        setEditTitle(g.title || '')
+        setEditGenre(g.genre || '')
+        setEditNotes(g.notes || '')
+        setEditDescription(g.description || '')
+        setEditStartDate(g.startDate ? g.startDate.split('T')[0] : '')
+        setEditIsPublic(g.status !== 'draft' && g.status !== 'archived')
+      })
+      .catch(() => {})
+      .finally(() => setGameLoading(false))
+  }, [gameId])
 
   const loadPointPolicies = useCallback(async () => {
     if (!gameId) return
@@ -177,14 +222,86 @@ export default function GameDetailManagementPage() {
     } catch { /* ignore */ }
   }, [gameId])
 
+  const loadMedia = useCallback(async () => {
+    if (!gameId) return
+    setMediaLoading(true)
+    try {
+      const data = await gameService.getGameMedia(gameId)
+      const all: MediaItem[] = data.media || []
+      setScreenshots(all.filter((m: MediaItem) => m.type === 'screenshot'))
+      setVideos(all.filter((m: MediaItem) => m.type === 'video'))
+    } catch { /* ignore */ }
+    setMediaLoading(false)
+  }, [gameId])
+
+  const loadShopItems = useCallback(async (sort = 'default', period = 'all') => {
+    if (!gameId) return
+    setShopLoading(true)
+    try {
+      const data = await gameService.getGameShopItems(gameId, { sort, period })
+      setShopItems(data.items || [])
+    } catch { /* ignore */ }
+    setShopLoading(false)
+  }, [gameId])
+
+  const loadAnnouncements = useCallback(async () => {
+    if (!gameId) return
+    setAnnouncementsLoading(true)
+    try {
+      const data = await gameService.getGameAnnouncements(gameId)
+      setAnnouncements(data.announcements || [])
+    } catch { /* ignore */ }
+    setAnnouncementsLoading(false)
+  }, [gameId])
+
   useEffect(() => {
     if (activeTab === 'points') {
       loadPointPolicies()
       loadPointStats()
       loadBalance()
+    }
+    if (activeTab === 'dev-settings') {
       loadApiKeys()
     }
-  }, [activeTab, loadPointPolicies, loadPointStats, loadBalance, loadApiKeys])
+    if (activeTab === 'media') {
+      loadMedia()
+    }
+    if (activeTab === 'shop') {
+      loadShopItems(shopSort, shopPeriod)
+    }
+    if (activeTab === 'announcements') {
+      loadAnnouncements()
+    }
+  }, [activeTab, loadPointPolicies, loadPointStats, loadBalance, loadApiKeys, loadMedia, loadShopItems, loadAnnouncements, shopSort, shopPeriod])
+
+  const handleCreateApiKey = async () => {
+    if (!gameId || !newApiKeyName) return
+    try {
+      const data = await gameService.createApiKey(gameId, { name: newApiKeyName })
+      setCreatedApiKey(data.fullKey)
+      setNewApiKeyName('')
+      loadApiKeys()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'API Key 생성에 실패했습니다'
+      alert(msg)
+    }
+  }
+
+  const handleDeleteApiKey = async (keyId: string) => {
+    if (!gameId || !confirm('이 API Key를 삭제하시겠습니까?')) return
+    try {
+      await gameService.deleteApiKey(gameId, keyId)
+      loadApiKeys()
+    } catch { alert('삭제에 실패했습니다') }
+  }
+
+  const handleToggleApiKey = async (keyId: string) => {
+    if (!gameId) return
+    try {
+      await gameService.toggleApiKey(gameId, keyId)
+      loadApiKeys()
+    } catch { alert('토글에 실패했습니다') }
+  }
 
   const handleSavePolicy = async () => {
     if (!editingPolicy || !gameId) return
@@ -229,33 +346,93 @@ export default function GameDetailManagementPage() {
     } catch { alert('토글에 실패했습니다') }
   }
 
-  const handleCreateApiKey = async () => {
-    if (!gameId || !newApiKeyName) return
+
+  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !gameId) return
+    setIconUploading(true)
     try {
-      const data = await gameService.createApiKey(gameId, { name: newApiKeyName })
-      setCreatedApiKey(data.fullKey)
-      setNewApiKeyName('')
-      loadApiKeys()
+      const fd = new FormData()
+      fd.append('thumbnail', file)
+      const data = await gameService.updateGame(gameId, fd)
+      setGameData(prev => prev ? { ...prev, thumbnail: (data.game as unknown as GameData).thumbnail } : prev)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'API Key 생성에 실패했습니다'
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '아이콘 업로드에 실패했습니다'
+      alert(msg)
+    }
+    setIconUploading(false)
+    if (iconInputRef.current) iconInputRef.current.value = ''
+  }
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !gameId) return
+    setBannerUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('bannerImage', file)
+      const data = await gameService.updateGame(gameId, fd)
+      setGameData(prev => prev ? { ...prev, bannerImage: (data.game as unknown as GameData).bannerImage } : prev)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '배너 업로드에 실패했습니다'
+      alert(msg)
+    }
+    setBannerUploading(false)
+    if (bannerInputRef.current) bannerInputRef.current.value = ''
+  }
+
+  const handleSaveGameInfo = async () => {
+    if (!gameId) return
+    setEditSaving(true)
+    try {
+      const fd = new FormData()
+      fd.append('title', editTitle.trim())
+      fd.append('genre', editGenre)
+      fd.append('notes', editNotes)
+      fd.append('description', editDescription.trim())
+      fd.append('startDate', editStartDate)
+      if (!editIsPublic) fd.append('status', 'draft')
+      const data = await gameService.updateGame(gameId, fd)
+      setGameData(prev => prev ? { ...prev, ...(data.game as unknown as GameData) } : prev)
+      alert('저장되었습니다.')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '저장에 실패했습니다'
+      alert(msg)
+    }
+    setEditSaving(false)
+  }
+
+  const handleRequestReview = async () => {
+    if (!gameId) return
+    if (!confirm('심사를 요청하시겠습니까?')) return
+    try {
+      await gameService.requestReview(gameId)
+      const data = await gameService.getGameById(gameId)
+      setGameData(data.game as unknown as GameData)
+      alert('심사 요청이 완료되었습니다.')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '심사 요청에 실패했습니다'
       alert(msg)
     }
   }
 
-  const handleDeleteApiKey = async (keyId: string) => {
-    if (!gameId || !confirm('이 API Key를 삭제하시겠습니까?')) return
+  const handleLaunchGame = async () => {
+    if (!gameId || !gameData) return
+    if (gameData.approvalStatus !== 'approved') {
+      alert('승인된 게임만 출시할 수 있습니다.')
+      return
+    }
+    if (!confirm('게임을 출시(라이브)로 전환하시겠습니까?')) return
     try {
-      await gameService.deleteApiKey(gameId, keyId)
-      loadApiKeys()
-    } catch { alert('삭제에 실패했습니다') }
-  }
-
-  const handleToggleApiKey = async (keyId: string) => {
-    if (!gameId) return
-    try {
-      await gameService.toggleApiKey(gameId, keyId)
-      loadApiKeys()
-    } catch { alert('토글에 실패했습니다') }
+      const fd = new FormData()
+      fd.append('serviceType', 'live')
+      const data = await gameService.updateGame(gameId, fd)
+      setGameData(prev => prev ? { ...prev, ...(data.game as unknown as GameData) } : prev)
+      alert('게임이 출시되었습니다.')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '출시 전환에 실패했습니다'
+      alert(msg)
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -269,95 +446,193 @@ export default function GameDetailManagementPage() {
     return <span className={`text-xs px-2 py-0.5 rounded-full ${s.bg} ${s.text} border border-current/30`}>{s.label}</span>
   }
 
-  const game = { title: 'Cyber Nexus', description: '사이버펑크 세계를 배경으로 한 액션 RPG', genre: 'RPG', status: '진행중', rating: 4.8, testers: 2450 }
+  const addScreenshot = async () => {
+    if (!gameId || newSsFiles.length === 0) return
+    try {
+      for (const file of newSsFiles) {
+        const title = file.name.replace(/\.[^.]+$/, '')
+        await gameService.addGameMedia(gameId, { type: 'screenshot', title, file })
+      }
+      setNewSsFiles([])
+      setNewSsPreviews([])
+      setSsModal(false)
+      loadMedia()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
+      alert(msg)
+    }
+  }
 
-  const addScreenshot = () => {
-    if (!newSs.title) return
-    setScreenshots(p => [...p, { id: Date.now(), title: newSs.title }])
-    setNewSs({ title: '' }); setSsModal(false)
+  const handleSsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || [])
+    if (selected.length === 0) return
+    const remaining = 10 - screenshots.length - newSsFiles.length
+    if (remaining <= 0) return
+    const toAdd = selected.slice(0, remaining)
+    setNewSsFiles(prev => [...prev, ...toAdd])
+    toAdd.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (ev) => setNewSsPreviews(prev => [...prev, ev.target?.result as string])
+      reader.readAsDataURL(file)
+    })
+    e.target.value = ''
   }
-  const addVideo = () => {
-    if (!newVid.title || !newVid.url) return
-    setVideos(p => [...p, { id: Date.now(), title: newVid.title, url: newVid.url, duration: '0:00', views: 0 }])
-    setNewVid({ title: '', url: '', type: 'youtube' }); setVidModal(false)
+
+  const removeSsFile = (index: number) => {
+    setNewSsFiles(prev => prev.filter((_, i) => i !== index))
+    setNewSsPreviews(prev => prev.filter((_, i) => i !== index))
   }
-  const addItem = () => {
-    if (!newItem.name || !newItem.price) return
-    setShopItems(p => [...p, { id: Date.now(), name: newItem.name, price: parseInt(newItem.price), currency: newItem.currency, type: newItem.type, stock: newItem.stock, sales: 0, active: true }])
-    setNewItem({ name: '', price: '', currency: 'KRW', type: '패키지', stock: '무제한', description: '' }); setItemModal(false)
+  const deleteScreenshot = async (mediaId: string) => {
+    if (!gameId || !confirm('삭제하시겠습니까?')) return
+    try {
+      await gameService.deleteGameMedia(gameId, mediaId)
+      loadMedia()
+    } catch { alert('삭제에 실패했습니다') }
+  }
+  const addVideo = async () => {
+    if (!newVid.title || !newVid.url || !gameId) return
+    try {
+      await gameService.addGameMedia(gameId, { type: 'video', title: newVid.title, url: newVid.url })
+      setNewVid({ title: '', url: '', type: 'youtube' }); setVidModal(false)
+      loadMedia()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
+      alert(msg)
+    }
+  }
+  const deleteVideo = async (mediaId: string) => {
+    if (!gameId || !confirm('삭제하시겠습니까?')) return
+    try {
+      await gameService.deleteGameMedia(gameId, mediaId)
+      loadMedia()
+    } catch { alert('삭제에 실패했습니다') }
+  }
+  const addItem = async () => {
+    if (!newItem.name || !newItem.price || !gameId) return
+    try {
+      await gameService.createGameShopItem(gameId, {
+        name: newItem.name, price: parseInt(newItem.price),
+        currency: newItem.currency, type: newItem.type,
+        stock: newItem.stock, description: newItem.description,
+      })
+      setNewItem({ name: '', price: '', currency: 'KRW', type: '패키지', stock: '무제한', description: '' })
+      setItemModal(false)
+      loadShopItems(shopSort, shopPeriod)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
+      alert(msg)
+    }
   }
   const openEditItem = (item: ShopItem) => {
     setEditingItem({ ...item })
     setEditItemModal(true)
   }
-  const saveEditItem = () => {
-    if (!editingItem || !editingItem.name || !editingItem.price) return
-    setShopItems(p => p.map(x => x.id === editingItem.id ? editingItem : x))
-    setEditItemModal(false); setEditingItem(null)
+  const saveEditItem = async () => {
+    if (!editingItem || !editingItem.name || !editingItem.price || !gameId) return
+    try {
+      await gameService.updateGameShopItem(gameId, editingItem._id, {
+        name: editingItem.name, price: editingItem.price,
+        currency: editingItem.currency, type: editingItem.type,
+        stock: editingItem.stock, active: editingItem.active,
+      })
+      setEditItemModal(false); setEditingItem(null)
+      loadShopItems(shopSort, shopPeriod)
+    } catch { alert('수정에 실패했습니다') }
   }
-  const deleteItem = (id: number) => {
-    if (!confirm('이 아이템을 삭제하시겠습니까?')) return
-    setShopItems(p => p.filter(x => x.id !== id))
+  const deleteItem = async (itemId: string) => {
+    if (!gameId || !confirm('이 아이템을 삭제하시겠습니까?')) return
+    try {
+      await gameService.deleteGameShopItem(gameId, itemId)
+      loadShopItems(shopSort, shopPeriod)
+    } catch { alert('삭제에 실패했습니다') }
   }
-  const sortedShopItems = [...shopItems].sort((a, b) => {
-    if (shopSort === 'price_high') return b.price - a.price
-    if (shopSort === 'price_low') return a.price - b.price
-    if (shopSort === 'sales_high') return b.sales - a.sales
-    if (shopSort === 'sales_low') return a.sales - b.sales
-    return 0
-  })
-  const addAnnouncement = () => {
-    if (!newNoti.title || !newNoti.content) return
-    const today = new Date().toISOString().split('T')[0].replace(/-/g, '.')
-    setAnnouncements(p => [...p, { id: Date.now(), title: newNoti.title, content: newNoti.content, type: newNoti.type, priority: newNoti.priority, date: today, sent: newNoti.sendPush, recipients: newNoti.sendPush ? game.testers : 0 }])
-    setNewNoti({ title: '', content: '', type: 'notice', priority: 'normal', sendPush: false }); setNotiModal(false)
+  const sortedShopItems = shopItems
+  const addAnnouncement = async () => {
+    if (!newNoti.title || !newNoti.content || !gameId) return
+    try {
+      await gameService.createGameAnnouncement(gameId, {
+        title: newNoti.title, content: newNoti.content,
+        type: newNoti.type, priority: newNoti.priority, sendPush: newNoti.sendPush,
+      })
+      setNewNoti({ title: '', content: '', type: 'notice', priority: 'normal', sendPush: false })
+      setNotiModal(false)
+      loadAnnouncements()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
+      alert(msg)
+    }
   }
+  const deleteAnnouncement = async (announcementId: string) => {
+    if (!gameId || !confirm('삭제하시겠습니까?')) return
+    try {
+      await gameService.deleteGameAnnouncement(gameId, announcementId)
+      loadAnnouncements()
+    } catch { alert('삭제에 실패했습니다') }
+  }
+
+  if (gameLoading) return (
+    <div className="flex items-center justify-center h-64 text-text-secondary">불러오는 중...</div>
+  )
+
+  if (!gameData) return (
+    <div className="flex items-center justify-center h-64 text-text-secondary">게임을 찾을 수 없습니다.</div>
+  )
+
+  const serviceLabel: Record<string, string> = { beta: '베타', live: '라이브', ended: '종료' }
+  const approvalLabel: Record<string, string> = { not_submitted: '미제출', pending: '심사대기', review: '검토중', approved: '승인됨', rejected: '반려' }
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <Link href="/games-management">
-            <button className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors">
-              <ChevronLeft className="w-4 h-4" /> 게임 목록
-            </button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold mb-1">{game.title} <span className="text-base font-normal text-text-secondary">· 게임관리</span></h1>
-            <div className="flex items-center gap-3">
-              <span className="text-xs px-2 py-1 rounded-full bg-accent-light text-accent border border-accent-muted">{game.status}</span>
-              <span className="flex items-center gap-1 text-text-secondary text-sm">
-                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />{game.rating}
-              </span>
-            </div>
+      <div>
+        <Link href="/games-management">
+          <button className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors mb-2">
+            <ChevronLeft className="w-4 h-4" /> 게임 목록
+          </button>
+        </Link>
+        <div className="flex items-end gap-3">
+          <h1 className="text-3xl font-bold">{gameData.title}</h1>
+          <div className="flex items-center gap-2 pb-1">
+            <span className="text-xs px-2 py-1 rounded-full bg-accent-light text-accent border border-accent-muted">
+              {serviceLabel[gameData.serviceType] || gameData.serviceType}
+            </span>
+            <span className="text-xs px-2 py-1 rounded-full bg-bg-tertiary text-text-secondary border border-line">
+              {approvalLabel[gameData.approvalStatus] || gameData.approvalStatus}
+            </span>
           </div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors">
-          <Save className="w-4 h-4" /> 변경사항 저장
-        </button>
+        {gameData.rating > 0 && (
+          <span className="flex items-center gap-1 text-text-secondary text-sm mt-0.5">
+            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />{gameData.rating.toFixed(1)}
+          </span>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: '테스터', value: game.testers.toLocaleString(), icon: <Users className="w-5 h-5" />, color: 'text-blue-400' },
-          { label: '다운로드', value: '892', icon: <Download className="w-5 h-5" />, color: 'text-accent' },
-          { label: '피드백', value: '342', icon: <MessageSquare className="w-5 h-5" />, color: 'text-purple-400' },
-          { label: '조회수', value: '15,420', icon: <Eye className="w-5 h-5" />, color: 'text-orange-400' },
-        ].map((s, i) => (
-          <div key={i} className="bg-bg-secondary border border-line rounded-lg p-6 flex items-center gap-3">
-            <span className={s.color}>{s.icon}</span>
-            <div><div className="text-2xl font-bold">{s.value}</div><div className="text-sm text-text-secondary">{s.label}</div></div>
-          </div>
-        ))}
-      </div>
 
-      <div className="flex gap-1 bg-bg-secondary border border-line rounded-lg p-1 w-fit flex-wrap">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === t.key ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
-            {t.label}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-1 bg-bg-secondary border border-line rounded-lg p-1 flex-wrap">
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setActiveTab(t.key)}
+              className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === t.key ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            onClick={handleRequestReview}
+            disabled={gameData.approvalStatus === 'pending' || gameData.approvalStatus === 'review' || gameData.approvalStatus === 'approved'}
+            className="flex items-center gap-2 px-4 py-2 border border-accent text-accent hover:bg-accent hover:text-text-primary rounded-md text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Send className="w-4 h-4" /> 심사 등록
           </button>
-        ))}
+          <button
+            onClick={handleLaunchGame}
+            disabled={gameData.serviceType === 'live'}
+            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Globe className="w-4 h-4" /> {gameData.serviceType === 'live' ? '출시됨' : '게임 출시'}
+          </button>
+        </div>
       </div>
 
       {activeTab === 'announcements' && (
@@ -368,8 +643,12 @@ export default function GameDetailManagementPage() {
               <Megaphone className="w-4 h-4" /> 공지 작성
             </button>
           </div>
-          {announcements.map(a => (
-            <div key={a.id} className="p-4 bg-bg-tertiary/30 rounded-lg border border-line flex items-start gap-3">
+          {announcementsLoading ? (
+            <div className="text-center py-8 text-text-secondary">불러오는 중...</div>
+          ) : announcements.length === 0 ? (
+            <div className="text-center py-8 text-text-muted text-sm">등록된 공지사항이 없습니다</div>
+          ) : announcements.map(a => (
+            <div key={a._id} className="p-4 bg-bg-tertiary/30 rounded-lg border border-line flex items-start gap-3">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${a.priority === 'high' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
                 <Megaphone className="w-5 h-5" />
               </div>
@@ -377,22 +656,22 @@ export default function GameDetailManagementPage() {
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <h3 className="font-semibold">{a.title}</h3>
                   {a.priority === 'high' && <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/50">긴급</span>}
-                  {a.sent && <span className="text-xs px-1.5 py-0.5 rounded bg-accent-light text-accent border border-accent-muted flex items-center gap-1"><Check className="w-3 h-3" />발송완료</span>}
+                  {a.sendPush && <span className="text-xs px-1.5 py-0.5 rounded bg-accent-light text-accent border border-accent-muted flex items-center gap-1"><Check className="w-3 h-3" />발송완료</span>}
                 </div>
                 <p className="text-sm text-text-secondary mb-1">{a.content}</p>
                 <div className="flex items-center gap-3 text-xs text-text-secondary">
-                  <span>{a.date}</span>
-                  {a.sent && <><span>•</span><span className="flex items-center gap-1"><Bell className="w-3 h-3" />{a.recipients.toLocaleString()}명에게 발송</span></>}
+                  <span>{new Date(a.createdAt).toLocaleDateString()}</span>
+                  {a.sendPush && <><span>•</span><span className="flex items-center gap-1"><Bell className="w-3 h-3" />{a.recipients.toLocaleString()}명에게 발송</span></>}
                 </div>
               </div>
-              <button onClick={() => setAnnouncements(p => p.filter(x => x.id !== a.id))} className="text-red-400 hover:text-red-300 p-1"><Trash2 className="w-4 h-4" /></button>
+              <button onClick={() => deleteAnnouncement(a._id)} className="text-red-400 hover:text-red-300 p-1"><Trash2 className="w-4 h-4" /></button>
             </div>
           ))}
           <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <h3 className="font-semibold mb-3">알림 통계</h3>
             <div className="grid grid-cols-3 gap-4">
               <div><p className="text-sm text-text-secondary mb-1">총 공지</p><p className="text-2xl font-bold">{announcements.length}</p></div>
-              <div><p className="text-sm text-text-secondary mb-1">푸시 발송</p><p className="text-2xl font-bold text-accent">{announcements.filter(a => a.sent).length}</p></div>
+              <div><p className="text-sm text-text-secondary mb-1">푸시 발송</p><p className="text-2xl font-bold text-accent">{announcements.filter(a => a.sendPush).length}</p></div>
               <div><p className="text-sm text-text-secondary mb-1">도달률</p><p className="text-2xl font-bold text-blue-400">98.5%</p></div>
             </div>
           </div>
@@ -402,28 +681,99 @@ export default function GameDetailManagementPage() {
 
       {activeTab === 'media' && (
         <div className="space-y-6">
-          <div className="bg-bg-secondary border border-line rounded-lg p-6">
+          <div className="grid grid-cols-3 gap-6 items-start">
+            {/* 히어로 배너 - 왼쪽 */}
+            <div className="bg-bg-secondary border border-line rounded-lg p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="text-base font-bold">히어로 배너</h2>
+                  <p className="text-xs text-text-secondary mt-0.5">게임 상세 페이지 상단 배너</p>
+                </div>
+                <button
+                  onClick={() => bannerInputRef.current?.click()}
+                  disabled={bannerUploading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover rounded-md text-xs transition-colors disabled:opacity-50"
+                >
+                  <Upload className="w-3.5 h-3.5" /> {bannerUploading ? '업로드 중...' : '업로드'}
+                </button>
+              </div>
+              <input
+                ref={bannerInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handleBannerUpload}
+              />
+              <div
+                className="relative w-full aspect-video bg-bg-tertiary rounded-lg border-2 border-dashed border-line overflow-hidden cursor-pointer hover:border-accent transition-colors"
+                onClick={() => bannerInputRef.current?.click()}
+              >
+                {gameData.bannerImage ? (
+                  <>
+                    <img
+                      src={gameData.bannerImage.startsWith('/uploads/') ? gameData.bannerImage : `/uploads/banners/${gameData.bannerImage.split('/').pop()}`}
+                      alt="히어로 배너"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                      <p className="text-white text-xs font-medium">클릭하여 변경</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-text-muted gap-1.5">
+                    <ImageIcon className="w-8 h-8 opacity-30" />
+                    <p className="text-xs">클릭하여 업로드</p>
+                    <p className="text-xs opacity-50">1920×640px 권장</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 스크린샷 - 오른쪽 */}
+            <div className="col-span-2 bg-bg-secondary border border-line rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div><h2 className="text-xl font-bold">게임 스크린샷</h2><p className="text-sm text-text-secondary mt-1">최대 10개</p></div>
               <button onClick={() => setSsModal(true)} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors">
                 <Upload className="w-4 h-4" /> 스크린샷 추가
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {screenshots.map(ss => (
-                <div key={ss.id} className="relative group aspect-video bg-bg-tertiary/50 rounded-lg border-2 border-line flex items-center justify-center">
-                  <div className="text-center text-text-muted"><ImageIcon className="w-10 h-10 mx-auto mb-1 opacity-50" /><p className="text-sm">{ss.title}</p></div>
-                  <button onClick={() => setScreenshots(p => p.filter(x => x.id !== ss.id))} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 bg-red-500/20 border border-red-500/50 text-red-400 rounded-md transition-opacity">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
+            {mediaLoading ? (
+              <div className="text-center py-8 text-text-secondary">불러오는 중...</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {screenshots.map(ss => (
+                  <div key={ss._id} className="relative group aspect-video bg-bg-tertiary/50 rounded-lg border border-line overflow-hidden">
+                    {ss.url ? (
+                      <img src={ss.url} alt={ss.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center w-full h-full text-text-muted">
+                        <ImageIcon className="w-10 h-10 opacity-30 mb-1" />
+                        <p className="text-xs">{ss.title}</p>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors" />
+                    <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-xs text-white font-medium truncate">{ss.title}</p>
+                    </div>
+                    <button onClick={() => deleteScreenshot(ss._id)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 bg-red-500/80 text-white rounded-md transition-opacity">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {screenshots.length === 0 && [0, 1, 2].map(i => (
+                  <div key={i} className="aspect-video border-2 border-dashed border-line rounded-lg flex flex-col items-center justify-center text-text-muted bg-bg-tertiary/20">
+                    <ImageIcon className="w-8 h-8 mb-1.5 opacity-25" />
+                    <p className="text-xs opacity-50">스크린샷 {i + 1}</p>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg flex gap-3">
               <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-text-secondary">권장 해상도: 1920x1080px / PNG, JPG (각 최대 5MB)</p>
             </div>
           </div>
+          </div>{/* grid end */}
           <div className="bg-bg-secondary border border-line rounded-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div><h2 className="text-xl font-bold">게임 플레이 동영상</h2><p className="text-sm text-text-secondary mt-1">최대 5개</p></div>
@@ -431,26 +781,38 @@ export default function GameDetailManagementPage() {
                 <Plus className="w-4 h-4" /> 동영상 추가
               </button>
             </div>
-            <div className="space-y-4">
-              {videos.map(v => (
-                <div key={v.id} className="p-4 bg-bg-tertiary/30 rounded-lg border border-line flex items-start gap-4">
-                  <div className="w-40 aspect-video bg-bg-tertiary rounded-lg border-2 border-dashed border-line flex items-center justify-center flex-shrink-0">
-                    <Play className="w-10 h-10 text-text-muted" />
+            {mediaLoading ? (
+              <div className="text-center py-8 text-text-secondary">불러오는 중...</div>
+            ) : (
+              <div className="space-y-4">
+                {videos.map(v => (
+                  <div key={v._id} className="p-4 bg-bg-tertiary/30 rounded-lg border border-line flex items-start gap-4">
+                    <div className="w-40 aspect-video bg-bg-tertiary rounded-lg border-2 border-dashed border-line flex items-center justify-center flex-shrink-0">
+                      <Play className="w-10 h-10 text-text-muted" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold mb-1">{v.title}</h3>
+                      <p className="text-sm text-text-secondary mb-2">{v.url}</p>
+                      <p className="text-xs text-text-muted">{new Date(v.createdAt).toLocaleDateString()} 등록</p>
+                    </div>
+                    <button onClick={() => deleteVideo(v._id)} className="p-1.5 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold mb-1">{v.title}</h3>
-                    <p className="text-sm text-text-secondary mb-2">{v.url}</p>
-                    <div className="flex items-center gap-4 text-sm text-text-muted">
-                      <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{v.duration}</span>
-                      <span className="flex items-center gap-1"><Eye className="w-4 h-4" />{v.views.toLocaleString()} 조회</span>
+                ))}
+                {videos.length === 0 && (
+                  <div className="flex items-center gap-4 p-4 border-2 border-dashed border-line rounded-lg text-text-muted bg-bg-tertiary/20">
+                    <div className="w-32 aspect-video border border-line rounded-lg flex items-center justify-center flex-shrink-0 bg-bg-tertiary/30">
+                      <Film className="w-7 h-7 opacity-25" />
+                    </div>
+                    <div>
+                      <p className="text-sm">등록된 동영상이 없습니다</p>
+                      <p className="text-xs mt-0.5 opacity-60">YouTube URL 또는 직접 업로드로 추가해보세요</p>
                     </div>
                   </div>
-                  <button onClick={() => setVideos(p => p.filter(x => x.id !== v.id))} className="p-1.5 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10 transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -488,10 +850,12 @@ export default function GameDetailManagementPage() {
             <span className="text-xs text-text-muted self-center">총 {shopItems.length}개 아이템</span>
           </div>
 
-          {sortedShopItems.length === 0 ? (
+          {shopLoading ? (
+            <div className="text-center py-10 text-text-secondary">불러오는 중...</div>
+          ) : sortedShopItems.length === 0 ? (
             <div className="text-center py-10 text-text-muted text-sm">등록된 아이템이 없습니다</div>
           ) : sortedShopItems.map(item => (
-            <div key={item.id} className="p-4 bg-bg-tertiary/30 rounded-lg border border-line flex items-start justify-between">
+            <div key={item._id} className="p-4 bg-bg-tertiary/30 rounded-lg border border-line flex items-start justify-between">
               <div className="flex items-start gap-4">
                 <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Package className="w-8 h-8" />
@@ -505,7 +869,10 @@ export default function GameDetailManagementPage() {
                   <p className="text-lg font-bold text-accent flex items-center gap-1 mb-1"><DollarSign className="w-4 h-4" />{item.price.toLocaleString()} {item.currency}</p>
                   <p className="text-sm text-text-secondary">재고: {item.stock} · 누적판매: <strong>{item.sales.toLocaleString()}</strong>개</p>
                   <div className="flex items-center gap-2 mt-2">
-                    <input type="checkbox" checked={item.active} onChange={() => setShopItems(p => p.map(x => x.id === item.id ? { ...x, active: !x.active } : x))} className="w-4 h-4 accent-green-500" />
+                    <input type="checkbox" checked={item.active} onChange={async () => {
+                      await gameService.updateGameShopItem(gameId, item._id, { active: !item.active }).catch(() => {})
+                      loadShopItems(shopSort, shopPeriod)
+                    }} className="w-4 h-4 accent-green-500" />
                     <span className="text-xs text-text-secondary">판매 활성화</span>
                   </div>
                 </div>
@@ -514,7 +881,7 @@ export default function GameDetailManagementPage() {
                 <button onClick={() => openEditItem(item)} className="p-1.5 border border-line rounded-md hover:bg-bg-tertiary transition-colors" title="편집">
                   <Edit className="w-4 h-4" />
                 </button>
-                <button onClick={() => deleteItem(item.id)} className="p-1.5 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10 transition-colors" title="삭제">
+                <button onClick={() => deleteItem(item._id)} className="p-1.5 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10 transition-colors" title="삭제">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -701,6 +1068,35 @@ export default function GameDetailManagementPage() {
             )}
           </div>
 
+          {/* 포인트 타입별 통계 */}
+          {pointStats && pointStats.stats.length > 0 && (
+            <div className="bg-bg-secondary border border-line rounded-lg p-6">
+              <h2 className="text-xl font-bold mb-4">포인트 타입별 통계</h2>
+              <div className="space-y-3">
+                {pointStats.stats.map(s => {
+                  const pt = POINT_TYPES.find(p => p.type === s.type)
+                  return (
+                    <div key={s.type} className="flex items-center justify-between p-3 bg-bg-tertiary/30 rounded-lg border border-line">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium">{pt?.label || s.type}</span>
+                      </div>
+                      <div className="flex items-center gap-6 text-sm">
+                        <span className="text-text-secondary">{s.count.toLocaleString()}건</span>
+                        <span className="text-text-secondary">{s.uniqueUsers.toLocaleString()}명</span>
+                        <span className="font-bold text-accent">{s.totalPoints.toLocaleString()}P</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 개발자 설정 탭 */}
+      {activeTab === 'dev-settings' && (
+        <div className="space-y-6">
           {/* API Key 관리 */}
           <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
             <div className="flex items-center justify-between">
@@ -712,7 +1108,6 @@ export default function GameDetailManagementPage() {
                 <Plus className="w-4 h-4" /> API Key 생성
               </button>
             </div>
-
             {apiKeys.length > 0 ? (
               <div className="space-y-2">
                 {apiKeys.map(key => (
@@ -767,30 +1162,6 @@ export default function GameDetailManagementPage() {
               </div>
             </div>
           </div>
-
-          {/* 포인트 타입별 통계 */}
-          {pointStats && pointStats.stats.length > 0 && (
-            <div className="bg-bg-secondary border border-line rounded-lg p-6">
-              <h2 className="text-xl font-bold mb-4">포인트 타입별 통계</h2>
-              <div className="space-y-3">
-                {pointStats.stats.map(s => {
-                  const pt = POINT_TYPES.find(p => p.type === s.type)
-                  return (
-                    <div key={s.type} className="flex items-center justify-between p-3 bg-bg-tertiary/30 rounded-lg border border-line">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium">{pt?.label || s.type}</span>
-                      </div>
-                      <div className="flex items-center gap-6 text-sm">
-                        <span className="text-text-secondary">{s.count.toLocaleString()}건</span>
-                        <span className="text-text-secondary">{s.uniqueUsers.toLocaleString()}명</span>
-                        <span className="font-bold text-accent">{s.totalPoints.toLocaleString()}P</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -803,47 +1174,85 @@ export default function GameDetailManagementPage() {
                 <h2 className="text-xl font-bold">게임정보 편집</h2>
                 <p className="text-sm text-text-secondary mt-1">게임 제목, 장르, 설명 등 기본 정보를 수정하세요.</p>
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors">
-                <Save className="w-4 h-4" /> 저장
+              <button
+                onClick={handleSaveGameInfo}
+                disabled={editSaving}
+                className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" /> {editSaving ? '저장 중...' : '저장'}
               </button>
             </div>
 
-            {/* 게임 아이콘 */}
-            <div>
-              <label className={labelCls}>게임 아이콘</label>
-              <div className="flex items-start gap-6">
-                <div className="w-32 h-32 bg-bg-tertiary rounded-lg border-2 border-dashed border-line flex items-center justify-center">
-                  <div className="text-center text-text-muted"><ImageIcon className="w-12 h-12 mx-auto mb-1 opacity-50" /><p className="text-xs">512x512</p></div>
+            {/* 아이콘(좌) + 게임 제목·장르(우) */}
+            <div className="flex items-start gap-6">
+              <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                <label className={`${labelCls} self-start`}>게임 아이콘</label>
+                <input
+                  ref={iconInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={handleIconUpload}
+                />
+                <div
+                  className="w-32 h-32 bg-bg-tertiary rounded-lg border-2 border-dashed border-line flex items-center justify-center overflow-hidden cursor-pointer hover:border-accent transition-colors"
+                  onClick={() => iconInputRef.current?.click()}
+                >
+                  {gameData.thumbnail
+                    ? <img src={
+                        gameData.thumbnail.startsWith('http')
+                          ? gameData.thumbnail
+                          : gameData.thumbnail.startsWith('/uploads/')
+                            ? gameData.thumbnail
+                            : `/uploads/thumbnails/${gameData.thumbnail.split('/').pop()}`
+                      } alt="아이콘" className="w-full h-full object-cover" />
+                    : <div className="text-center text-text-muted"><ImageIcon className="w-12 h-12 mx-auto mb-1 opacity-50" /><p className="text-xs">512 × 512</p></div>
+                  }
                 </div>
-                <button className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary transition-colors mt-2">
-                  <Upload className="w-4 h-4" /> 아이콘 업로드
+                <button
+                  onClick={() => iconInputRef.current?.click()}
+                  disabled={iconUploading}
+                  className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary transition-colors disabled:opacity-50"
+                >
+                  <Upload className="w-4 h-4" /> {iconUploading ? '업로드 중...' : '아이콘 업로드'}
                 </button>
               </div>
+              <div className="flex-1 space-y-4">
+                <div>
+                  <label className={labelCls}>게임 제목 *</label>
+                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>게임 장르 *</label>
+                  <select value={editGenre} onChange={e => setEditGenre(e.target.value)} className={inputCls}>
+                    <option value="">장르 선택</option>
+                    {['rpg','action','fps','moba','strategy','simulation','adventure','racing','horror','sports'].map(v => (
+                      <option key={v} value={v}>{v.toUpperCase()}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
-            <hr className="border-line" />
 
-            {/* 기본 정보 */}
-            <div><label className={labelCls}>게임 제목 *</label><input defaultValue={game.title} className={inputCls} /></div>
+            {/* 하단 전체폭 필드 */}
             <div>
-              <label className={labelCls}>게임 장르 *</label>
-              <select defaultValue="rpg" className={inputCls}>
-                {['rpg','action','fps','moba','strategy','simulation','adventure','racing','horror','sports'].map(v => (
-                  <option key={v} value={v}>{v.toUpperCase()}</option>
-                ))}
-              </select>
+              <label className={labelCls}>게임 설명 *</label>
+              <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} className={`${inputCls} min-h-32 resize-y`} />
             </div>
-            <div><label className={labelCls}>게임 특징 소개 *</label><textarea defaultValue="• 압도적인 사이버펑크 그래픽" className={`${inputCls} min-h-32 resize-y`} /></div>
             <div>
               <label className={labelCls}>짧은 설명 * <span className="text-text-muted">(최대 100자)</span></label>
-              <input defaultValue={game.description} maxLength={100} className={inputCls} />
+              <input value={editDescription} onChange={e => setEditDescription(e.target.value)} maxLength={100} className={inputCls} />
             </div>
             <hr className="border-line" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className={labelCls}><Calendar className="w-4 h-4 inline mr-1" />출시 예정일</label><input type="date" defaultValue="2024-06-15" className={inputCls} /></div>
+              <div>
+                <label className={labelCls}><Calendar className="w-4 h-4 inline mr-1" />출시 예정일</label>
+                <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} className={inputCls} />
+              </div>
               <div>
                 <label className={labelCls}><Globe className="w-4 h-4 inline mr-1" />공개 여부</label>
                 <div className="flex items-center gap-3 mt-2">
-                  <input type="checkbox" defaultChecked id="public" className="w-4 h-4 accent-green-500" />
+                  <input type="checkbox" checked={editIsPublic} onChange={e => setEditIsPublic(e.target.checked)} id="public" className="w-4 h-4 accent-green-500" />
                   <label htmlFor="public" className="text-sm text-text-secondary">베타존에 게임 공개</label>
                 </div>
               </div>
@@ -860,36 +1269,14 @@ export default function GameDetailManagementPage() {
               </button>
             </Link>
           </div>
-        </div>
-      )}
 
-      {/* 게임 삭제 탭 (위험 영역) */}
-      {activeTab === 'danger' && (
-        <div className="bg-bg-secondary border border-red-500/40 rounded-lg p-6 space-y-4">
-          <div>
-            <h2 className="text-xl font-bold mb-1 text-red-400">게임 삭제</h2>
-            <p className="text-sm text-text-secondary">이 작업은 되돌릴 수 없습니다. 삭제 시 비밀번호 확인과 사유 입력이 필수이며, 모든 삭제 기록은 감사 로그에 영구 저장됩니다.</p>
-          </div>
-          <div className="p-4 bg-red-900/10 border border-red-500/30 rounded-lg space-y-3">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <div className="flex-1 text-sm text-text-secondary">
-                <p className="text-red-300 font-semibold mb-1">삭제 시 함께 제거되는 항목</p>
-                <ul className="list-disc list-inside space-y-0.5">
-                  <li>게임 파일 및 썸네일</li>
-                  <li>게임 메타데이터 및 등록 정보</li>
-                </ul>
-                <p className="text-xs text-text-muted mt-2">* 감사 로그(요청자, 사유, IP, 스냅샷)는 삭제되지 않습니다.</p>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-semibold transition-colors"
-              >
-                <Trash2 className="w-4 h-4" /> 게임 영구 삭제
-              </button>
-            </div>
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-semibold transition-colors"
+            >
+              <Trash2 className="w-4 h-4" /> 게임 영구 삭제
+            </button>
           </div>
         </div>
       )}
@@ -897,21 +1284,60 @@ export default function GameDetailManagementPage() {
       {showDeleteModal && typeof _id === 'string' && (
         <DeleteGameModal
           gameId={_id}
-          gameTitle={game.title}
+          gameTitle={gameData.title}
           onClose={() => setShowDeleteModal(false)}
           onDeleted={() => router.push('/games-management')}
         />
       )}
 
-      <Modal open={ssModal} onClose={() => setSsModal(false)} title="스크린샷 추가">
+      <Modal open={ssModal} onClose={() => { setSsModal(false); setNewSsFiles([]); setNewSsPreviews([]) }} title="스크린샷 추가">
         <div className="space-y-4">
-          <div><label className={labelCls}>제목</label><input placeholder="예: 메인 화면" value={newSs.title} onChange={e => setNewSs({ title: e.target.value })} className={inputCls} /></div>
-          <div className="border-2 border-dashed border-line rounded-lg p-8 text-center cursor-pointer hover:border-line">
-            <Upload className="w-10 h-10 mx-auto mb-2 text-text-secondary" /><p className="text-sm text-text-secondary">클릭하여 이미지 업로드</p>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className={labelCls}>이미지 (PNG, JPG, WEBP / 최대 5MB)</label>
+              <span className="text-xs text-text-muted">{screenshots.length + newSsFiles.length} / 10</span>
+            </div>
+            <input ref={ssFileRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleSsFileChange} />
+            {newSsPreviews.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {newSsPreviews.map((preview, i) => (
+                  <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-line group">
+                    <img src={preview} alt={`미리보기 ${i + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removeSsFile(i)}
+                      className="absolute top-1 right-1 w-5 h-5 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-3 h-3 text-white" />
+                    </button>
+                    <p className="absolute bottom-0 left-0 right-0 text-[10px] text-white bg-black/50 px-1 py-0.5 truncate">{newSsFiles[i]?.name}</p>
+                  </div>
+                ))}
+                {screenshots.length + newSsFiles.length < 10 && (
+                  <div
+                    className="aspect-video rounded-lg border-2 border-dashed border-line hover:border-accent cursor-pointer flex flex-col items-center justify-center gap-1 text-text-muted transition-colors"
+                    onClick={() => ssFileRef.current?.click()}
+                  >
+                    <Plus className="w-5 h-5 opacity-50" />
+                    <span className="text-xs opacity-60">추가</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div
+                className="border-2 border-dashed border-line rounded-lg cursor-pointer hover:border-accent transition-colors flex flex-col items-center justify-center gap-2 text-text-muted py-10"
+                onClick={() => ssFileRef.current?.click()}
+              >
+                <Upload className="w-8 h-8 opacity-40" />
+                <p className="text-sm">클릭하여 이미지 선택 (여러 장 가능)</p>
+                <p className="text-xs opacity-60">권장 해상도: 1920×1080px · 최대 {10 - screenshots.length}장 추가 가능</p>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-3">
-            <button onClick={() => setSsModal(false)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-            <button onClick={addScreenshot} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">추가</button>
+            <button onClick={() => { setSsModal(false); setNewSsFiles([]); setNewSsPreviews([]) }} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
+            <button onClick={addScreenshot} disabled={newSsFiles.length === 0} className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-sm">
+              {newSsFiles.length > 0 ? `${newSsFiles.length}장 업로드` : '추가'}
+            </button>
           </div>
         </div>
       </Modal>
@@ -1058,7 +1484,7 @@ export default function GameDetailManagementPage() {
             {newNoti.sendPush && (
               <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
                 <Bell className="w-4 h-4 text-blue-400" />
-                <span className="text-sm text-blue-400">{game.testers.toLocaleString()}명의 테스터에게 알림이 전송됩니다</span>
+                <span className="text-sm text-blue-400">{(gameData.testers || 0).toLocaleString()}명의 테스터에게 알림이 전송됩니다</span>
               </div>
             )}
           </div>

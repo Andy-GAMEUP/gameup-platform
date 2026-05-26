@@ -173,12 +173,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <aside className={`${open ? 'w-56' : 'w-14'} bg-bg-secondary border-r border-line flex flex-col transition-all duration-200 flex-shrink-0`}>
         {/* Logo */}
         <div className="h-14 flex items-center justify-between px-3 border-b border-line">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-7 w-auto object-contain flex-shrink-0" />
-            {open && (
-              <span className="text-base font-bold tracking-tight text-black">GameUp</span>
-            )}
-          </Link>
+          {open ? (
+            <Link href="/" className="flex items-center gap-2">
+              <div className="relative flex-shrink-0 h-[35px]">
+                <Image src="/logo_gameup_v2_2.png" alt="" width={212} height={80} className="h-full w-auto object-contain" />
+              </div>
+            </Link>
+          ) : (
+            <button onClick={() => setOpen(true)} className="flex items-center gap-2">
+              <div className="relative flex-shrink-0 h-7">
+                <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-full w-auto object-contain" />
+              </div>
+            </button>
+          )}
           <button onClick={() => setOpen(!open)} className="text-text-muted hover:text-text-primary transition-colors ml-auto">
             {open ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>

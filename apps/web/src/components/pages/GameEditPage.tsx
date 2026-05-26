@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { RefreshCw, Save, ArrowLeft, Plus, X, Upload } from 'lucide-react'
+import { RefreshCw, Save, ArrowLeft, Plus, X, Upload, Globe, Send } from 'lucide-react'
 import { gameService } from '@/services/gameService'
 
 interface GameData {
@@ -22,6 +22,7 @@ interface GameData {
   createdAt: string
   tags?: string[]
   thumbnail?: string
+  gameDomain?: string
   // 확장 필드 (등록 시 저장된 경우)
   platform?: string
   engine?: string
@@ -38,24 +39,25 @@ interface GameData {
 }
 
 const approvalBadge: Record<string, string> = {
+  not_submitted: 'bg-bg-tertiary/40 text-text-muted border border-line/50',
   approved: 'bg-accent-light text-accent border border-accent-muted',
   pending:  'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50',
   review:   'bg-blue-500/20 text-blue-400 border border-blue-500/50',
   rejected: 'bg-red-500/20 text-red-400 border border-red-500/50',
 }
 const approvalLabel: Record<string, string> = {
-  approved: '승인완료', pending: '승인대기', review: '검토중', rejected: '반려',
+  not_submitted: '미제출', approved: '승인완료', pending: '승인대기', review: '검토중', rejected: '반려',
 }
 
 export default function GameEditPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const thumbnailRef = useRef<HTMLInputElement>(null)
-  const gameFileRef = useRef<HTMLInputElement>(null)
 
   const [game, setGame] = useState<GameData | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [requestingReview, setRequestingReview] = useState(false)
   const [error, setError] = useState('')
 
   // 폼 상태
@@ -68,6 +70,7 @@ export default function GameEditPage() {
   const [monetization, setMonetization] = useState('free')
   const [price, setPrice] = useState('')
   const [status, setStatus] = useState('draft')
+  const [gameDomain, setGameDomain] = useState('')
 
   // 태그
   const [tags, setTags] = useState<string[]>([])
@@ -84,7 +87,6 @@ export default function GameEditPage() {
   const [trailer, setTrailer] = useState('')
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
-  const [gameFile, setGameFile] = useState<File | null>(null)
 
   // 추가 정보
   const [website, setWebsite] = useState('')
@@ -119,6 +121,7 @@ export default function GameEditPage() {
         setWebsite(g.website || '')
         setDiscord(g.discord || '')
         setNotes(g.notes || '')
+        setGameDomain(g.gameDomain || '')
         if (g.thumbnail) setThumbnailPreview(g.thumbnail)
       } catch (err: any) {
         setError(err.response?.data?.message || '게임 정보를 불러오지 못했습니다.')
@@ -137,6 +140,10 @@ export default function GameEditPage() {
     }
   }
 
+  const isValidUrl = (url: string) => {
+    try { new URL(url); return true } catch { return false }
+  }
+
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -147,13 +154,34 @@ export default function GameEditPage() {
     }
   }
 
-  const handleGameFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) setGameFile(file)
+  const handleRequestReview = async () => {
+    if (!id || !game) return
+    if (!gameDomain.trim()) {
+      alert('게임 서비스 URL을 먼저 입력하고 저장하세요.')
+      return
+    }
+    if (!confirm('심사를 요청하시겠습니까? 관리자 검토 후 승인됩니다.')) return
+    setRequestingReview(true)
+    try {
+      await gameService.requestReview(id)
+      alert('심사가 요청되었습니다. 관리자 검토 후 승인됩니다.')
+      const data = await gameService.getGameById(id)
+      setGame(data.game as unknown as GameData)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      alert(msg || '심사 요청에 실패했습니다.')
+    } finally {
+      setRequestingReview(false)
+    }
   }
 
   const handleSave = async () => {
     if (!id || !game) return
+
+    if (gameDomain.trim() && !isValidUrl(gameDomain.trim())) {
+      alert('유효한 URL 형식으로 입력해주세요. (예: https://mygame.com)')
+      return
+    }
 
     // 재승인 필요 안내
     const confirmed = confirm(
@@ -185,10 +213,10 @@ export default function GameEditPage() {
       fd.append('website', website)
       fd.append('discord', discord)
       fd.append('notes', notes)
+      fd.append('gameDomain', gameDomain.trim())
       fd.append('requestReview', 'true')  // 재승인 요청 플래그
       tags.forEach(tag => fd.append('tags[]', tag))
       if (thumbnail) fd.append('thumbnail', thumbnail)
-      if (gameFile) fd.append('gameFile', gameFile)
 
       await gameService.updateGame(id, fd)
       alert('변경사항이 저장되었습니다.\n관리자 재승인 후 반영됩니다.')
@@ -257,16 +285,39 @@ export default function GameEditPage() {
         </div>
       )}
 
-      {/* 재승인 안내 배너 */}
-      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-start gap-3">
-        <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        </svg>
-        <div className="text-sm">
-          <p className="text-yellow-400 font-medium mb-1">수정 시 재승인 필요</p>
-          <p className="text-text-secondary">게임 정보를 수정하면 관리자의 재승인이 필요합니다. 저장 후 승인 상태가 <span className="text-yellow-400 font-medium">승인대기</span>로 변경되며, 승인 완료 전까지 변경 내용은 검토 중 상태로 유지됩니다.</p>
+      {/* 심사 미제출 안내 배너 */}
+      {game.approvalStatus === 'not_submitted' && (
+        <div className="bg-cyan-900/20 border border-cyan-500/30 rounded-lg p-4 flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <Send className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="text-cyan-400 font-medium mb-1">심사 요청이 필요합니다</p>
+              <p className="text-text-secondary">게임 URL을 입력하고 저장한 후, 심사를 요청하면 관리자가 검토합니다. 승인 후 플레이어에게 노출됩니다.</p>
+            </div>
+          </div>
+          <button
+            onClick={handleRequestReview}
+            disabled={requestingReview}
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded-md text-sm font-semibold transition-colors text-white"
+          >
+            {requestingReview ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {requestingReview ? '요청 중...' : '심사 요청'}
+          </button>
         </div>
-      </div>
+      )}
+
+      {/* 재승인 안내 배너 (이미 한번이라도 심사를 거친 게임) */}
+      {game.approvalStatus !== 'not_submitted' && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-start gap-3">
+          <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <div className="text-sm">
+            <p className="text-yellow-400 font-medium mb-1">수정 시 재승인 필요</p>
+            <p className="text-text-secondary">게임 정보를 수정하면 관리자의 재승인이 필요합니다. 저장 후 승인 상태가 <span className="text-yellow-400 font-medium">승인대기</span>로 변경되며, 승인 완료 전까지 변경 내용은 검토 중 상태로 유지됩니다.</p>
+          </div>
+        </div>
+      )}
 
       {/* ── 서비스 유형 및 수익 모델 ── */}
       <div className="bg-bg-secondary border border-line rounded-lg">
@@ -349,7 +400,7 @@ export default function GameEditPage() {
               <select value={genre} onChange={e => setGenre(e.target.value)}
                 className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm">
                 <option value="">장르 선택</option>
-                {[['action','액션'],['rpg','RPG'],['fps','FPS'],['racing','레이싱'],['strategy','전략'],['simulation','시뮬레이션'],['adventure','어드벤처'],['horror','호러'],['puzzle','퍼즐'],['sports','스포츠']].map(([v,l]) => (
+                {[['액션','액션'],['RPG','RPG'],['FPS','FPS'],['레이싱','레이싱'],['전략','전략'],['시뮬레이션','시뮬레이션'],['어드벤처','어드벤처'],['호러','호러'],['퍼즐','퍼즐'],['스포츠','스포츠']].map(([v,l]) => (
                   <option key={v} value={v}>{l}</option>
                 ))}
               </select>
@@ -467,12 +518,30 @@ export default function GameEditPage() {
         </div>
       )}
 
-      {/* ── 미디어 & 파일 ── */}
+      {/* ── 게임 URL & 미디어 ── */}
       <div className="bg-bg-secondary border border-line rounded-lg">
         <div className="p-6 border-b border-line">
-          <h2 className="text-xl font-bold">미디어 & 파일</h2>
+          <h2 className="text-xl font-bold">게임 URL & 미디어</h2>
         </div>
         <div className="p-6 space-y-5">
+
+          {/* 게임 서비스 URL */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium block">
+              게임 서비스 URL <span className="text-text-muted font-normal">(플레이 가능한 주소)</span>
+            </label>
+            <div className="relative">
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input
+                type="url"
+                value={gameDomain}
+                onChange={e => setGameDomain(e.target.value)}
+                placeholder="https://mygame.com"
+                className="w-full pl-9 pr-3 py-2.5 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent"
+              />
+            </div>
+            <p className="text-xs text-text-muted">게임을 플레이할 수 있는 외부 URL을 입력하세요.</p>
+          </div>
 
           {/* 썸네일 */}
           <div className="space-y-2">
@@ -491,31 +560,6 @@ export default function GameEditPage() {
                   <Upload className="w-10 h-10 mx-auto mb-2 text-text-muted" />
                   <p className="text-text-secondary text-sm mb-1">클릭하여 이미지 업로드</p>
                   <p className="text-xs text-text-muted">PNG, JPG (최대 5MB, 권장 1920x1080)</p>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* 게임 파일 교체 (선택) */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium block">
-              게임 파일 교체 <span className="text-text-muted font-normal">(변경 시에만 업로드)</span>
-            </label>
-            <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${gameFile ? 'border-accent-muted bg-accent/5' : 'border-line hover:border-line'}`}
-              onClick={() => gameFileRef.current?.click()}>
-              <input ref={gameFileRef} type="file" className="hidden" accept=".html,.zip,.js" onChange={handleGameFileChange} />
-              {gameFile ? (
-                <div className="flex items-center justify-center gap-2 text-accent">
-                  <Upload className="w-5 h-5" />
-                  <span className="text-sm font-medium">{gameFile.name}</span>
-                  <span className="text-xs text-text-muted">({(gameFile.size / 1024 / 1024).toFixed(2)}MB)</span>
-                </div>
-              ) : (
-                <>
-                  <Upload className="w-10 h-10 mx-auto mb-2 text-text-muted" />
-                  <p className="text-text-secondary text-sm mb-1">클릭하여 새 게임 파일 업로드</p>
-                  <p className="text-xs text-text-muted">HTML, ZIP, JS (최대 50MB) · 업로드 안 하면 기존 파일 유지</p>
                 </>
               )}
             </div>

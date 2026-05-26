@@ -104,6 +104,9 @@ export default function PlayerGameDetailPage() {
   const [qaQuestion, setQaQuestion] = useState('')
   const [qaSubmitting, setQaSubmitting] = useState(false)
 
+  // 스크린샷
+  const [screenshots, setScreenshots] = useState<{ _id: string; title: string; url: string; order: number }[]>([])
+
   // ── 결제 모달 상태 ────────────────────────────────────────────
   const [paymentModal, setPaymentModal] = useState<{
     open: boolean
@@ -168,11 +171,20 @@ export default function PlayerGameDetailPage() {
     } catch { /* ignore */ }
   }, [id, qaPage])
 
+  const loadScreenshots = useCallback(async () => {
+    if (!id) return
+    try {
+      const data = await gameService.getGameMedia(id, 'screenshot')
+      setScreenshots(data.media || [])
+    } catch { /* ignore */ }
+  }, [id])
+
   useEffect(() => { loadGame() }, [loadGame])
   useEffect(() => { loadReviews() }, [loadReviews])
   useEffect(() => { loadMyReview() }, [loadMyReview])
   useEffect(() => { checkFavorite() }, [checkFavorite])
   useEffect(() => { loadQAs() }, [loadQAs])
+  useEffect(() => { loadScreenshots() }, [loadScreenshots])
 
   const handleFavorite = async () => {
     if (!isAuthenticated) { router.push('/login'); return }
@@ -273,10 +285,22 @@ export default function PlayerGameDetailPage() {
   const avgRating = game ? (game.rating as number) || 0 : 0
   const totalReviewCount = Object.values(ratingDist).reduce((a, b) => a + b, 0)
   const rawThumb = game?.thumbnail as string | undefined
+  const rawBanner = game?.bannerImage as string | undefined
+  const toUploadUrl = (raw: string) =>
+    raw.startsWith('http') ? raw
+    : raw.startsWith('/uploads/') ? raw
+    : `/uploads/thumbnails/${raw.split('/').pop()}`
   const thumbUrl = rawThumb
-    ? (rawThumb.startsWith('http') ? rawThumb : `/uploads/${rawThumb.replace('uploads/', '')}`)
+    ? toUploadUrl(rawThumb)
     : GENRE_IMG[(game?.genre as string) || ''] || GENRE_IMG.default
+  const bannerUrl = rawBanner
+    ? (rawBanner.startsWith('http') ? rawBanner : rawBanner.startsWith('/uploads/') ? rawBanner : `/uploads/banners/${rawBanner.split('/').pop()}`)
+    : thumbUrl
   const gameFileUrl = game?.gameFile ? `/${(game.gameFile as string)}` : null
+  const rawDomain = (game?.gameDomain as string) || null
+  const gameDomainUrl = rawDomain
+    ? `${rawDomain}${rawDomain.includes('?') ? '&' : '?'}gameup_return=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`
+    : null
   const monetization = (game?.monetization as string) || 'free'
   const gamePrice = (game?.price as number) || 0
 
@@ -303,7 +327,7 @@ export default function PlayerGameDetailPage() {
 
       {/* Hero Banner */}
       <div className="relative h-64 md:h-80 overflow-hidden">
-        <Image src={thumbUrl} alt={game.title as string} fill className="object-cover" unoptimized />
+        <Image src={bannerUrl} alt={game.title as string} fill className="object-cover" unoptimized />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <div className="max-w-5xl mx-auto flex items-end justify-between gap-4">
@@ -330,7 +354,7 @@ export default function PlayerGameDetailPage() {
                   </span>
                 )}
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-text-primary">{game.title as string}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-white">{game.title as string}</h1>
               <div className="flex items-center gap-3 mt-1">
                 <div className="flex items-center gap-1">
                   <StarRating value={Math.round(avgRating)} />
@@ -387,33 +411,121 @@ export default function PlayerGameDetailPage() {
         {/* ── 게임 소개 탭 ── */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-bg-secondary border border-line rounded-xl p-6">
-                <h2 className="text-text-primary font-bold text-lg mb-3">게임 설명</h2>
-                <p className="text-text-secondary leading-relaxed">{game.description as string}</p>
+            {/* CTA 버튼 - 전체 너비 */}
+            {((monetization === 'paid' && gamePrice > 0) || game.status !== 'archived') && (
+              <div className="lg:col-span-3 flex justify-center">
+                {monetization === 'paid' && gamePrice > 0 ? (
+                  <button
+                    onClick={() => handlePurchase(`${game.title as string} 정식 구매`, gamePrice)}
+                    className="w-[50%] bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-text-primary py-3.5 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-yellow-900/30"
+                  >
+                    💰 ₩{gamePrice.toLocaleString()} 구매하기
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setActiveTab('play')}
+                    className="w-[50%] bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-text-primary py-3.5 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-cyan-900/30"
+                  >
+                    🎮 지금 베타 테스트 참여하기
+                  </button>
+                )}
               </div>
+            )}
 
-              {/* 유료 게임 구매 버튼 */}
-              {monetization === 'paid' && gamePrice > 0 ? (
-                <button
-                  onClick={() => handlePurchase(`${game.title as string} 정식 구매`, gamePrice)}
-                  className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-text-primary py-3.5 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-yellow-900/30"
+            {/* 스크린샷 갤러리 - 전체 너비 */}
+            <div className="lg:col-span-3 bg-bg-secondary border border-line rounded-xl overflow-hidden">
+              {screenshots.length === 0 ? (
+                <div className="p-5">
+                  <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="aspect-video rounded-lg bg-bg-tertiary/50 border border-line/40 flex flex-col items-center justify-center gap-1.5"
+                      >
+                        <span className="text-2xl opacity-30">🖼️</span>
+                        <span className="text-text-muted text-xs opacity-60">스크린샷 없음</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="p-5 overflow-x-auto"
+                  style={{ scrollbarWidth: 'thin', scrollbarColor: '#334155 transparent' }}
                 >
-                  💰 ₩{gamePrice.toLocaleString()} 구매하기
-                </button>
-              ) : game.status !== 'archived' ? (
-                <button
-                  onClick={() => setActiveTab('play')}
-                  className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-text-primary py-3.5 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-cyan-900/30"
-                >
-                  🎮 지금 베타 테스트 참여하기
-                </button>
-              ) : null}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridAutoFlow: 'column',
+                      gridAutoColumns: 'calc((100% - 24px) / 3)',
+                      gap: '12px',
+                    }}
+                  >
+                    {screenshots.map((shot, i) => (
+                      <div
+                        key={shot._id || i}
+                        className="rounded-lg overflow-hidden bg-bg-tertiary border border-line/50 group cursor-pointer"
+                        style={{ aspectRatio: '16/10' }}
+                      >
+                        {shot.url ? (
+                          <img
+                            src={shot.url}
+                            alt={shot.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-text-muted">
+                            <span className="text-2xl">🖼️</span>
+                            <span className="text-xs">{shot.title}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 게임 설명 */}
+            <div className="lg:col-span-2 bg-bg-secondary border border-line rounded-xl p-6">
+              <p className="text-text-primary font-bold mb-3" style={{ fontSize: '30px' }}>게임 설명</p>
+              <p className="text-text-secondary leading-relaxed">{game.notes as string}</p>
             </div>
 
             <div className="space-y-4">
+              {/* 개발사 정보 */}
+              {game.developerId != null && typeof game.developerId === 'object' ? (
+                <div className="bg-bg-secondary border border-line rounded-xl p-5">
+                  <p className="text-text-primary font-semibold mb-3" style={{ fontSize: '30px' }}>개발사 정보</p>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-text-primary font-bold">
+                      {((game.developerId as any).username || '?')[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-text-primary font-medium text-sm">{(game.developerId as any).username}</p>
+                      <p className="text-text-muted text-xs">{(game.developerId as any).email}</p>
+                    </div>
+                  </div>
+                  {(game.developerId as any).companyInfo?.companyName && (
+                    <div className="space-y-1.5 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-text-secondary">회사명</span>
+                        <span className="text-text-primary">{(game.developerId as any).companyInfo.companyName}</span>
+                      </div>
+                      {(game.developerId as any).companyInfo?.website && (
+                        <div className="flex justify-between">
+                          <span className="text-text-secondary">웹사이트</span>
+                          <a href={(game.developerId as any).companyInfo.website} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline truncate ml-2">{(game.developerId as any).companyInfo.website}</a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {/* 게임 정보 */}
               <div className="bg-bg-secondary border border-line rounded-xl p-5">
-                <h3 className="text-text-primary font-semibold mb-4">게임 정보</h3>
+                <p className="text-text-primary font-semibold mb-4" style={{ fontSize: '30px' }}>게임 정보</p>
                 <dl className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <dt className="text-text-secondary">장르</dt>
@@ -440,32 +552,9 @@ export default function PlayerGameDetailPage() {
                 </dl>
               </div>
 
-              {/* 인앱 결제 아이템 (freemium) */}
-              {monetization === 'freemium' && (
-                <div className="bg-bg-secondary border border-line rounded-xl p-5">
-                  <h3 className="text-text-primary font-semibold mb-3">게임샵</h3>
-                  <div className="space-y-2">
-                    {[
-                      { name: '스타터 팩', price: 9900 },
-                      { name: '프리미엄 스킨', price: 4900 },
-                      { name: '골드 1000개', price: 2900 },
-                    ].map((item) => (
-                      <div key={item.name} className="flex items-center justify-between p-3 bg-bg-tertiary/50 rounded-lg">
-                        <span className="text-sm text-text-secondary">{item.name}</span>
-                        <button
-                          onClick={() => handlePurchase(item.name, item.price)}
-                          className="text-xs px-3 py-1.5 bg-accent hover:bg-accent-hover rounded-md transition-colors font-medium"
-                        >
-                          ₩{item.price.toLocaleString()}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
+              {/* 별점 분포 */}
               <div className="bg-bg-secondary border border-line rounded-xl p-5">
-                <h3 className="text-text-primary font-semibold mb-3">별점 분포</h3>
+                <p className="text-text-primary font-semibold mb-3" style={{ fontSize: '30px' }}>별점 분포</p>
                 <div className="space-y-2">
                   {[5, 4, 3, 2, 1].map((star) => {
                     const cnt = ratingDist[star] || 0
@@ -482,42 +571,12 @@ export default function PlayerGameDetailPage() {
                   })}
                 </div>
               </div>
-
-              {/* 개발사 정보 */}
-              {game.developerId != null && typeof game.developerId === 'object' ? (
-                <div className="bg-bg-secondary border border-line rounded-xl p-5">
-                  <h3 className="text-text-primary font-semibold mb-3">개발사 정보</h3>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-text-primary font-bold">
-                      {((game.developerId as any).username || '?')[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="text-text-primary font-medium text-sm">{(game.developerId as any).username}</p>
-                      <p className="text-text-muted text-xs">{(game.developerId as any).email}</p>
-                    </div>
-                  </div>
-                  {(game.developerId as any).companyInfo?.companyName && (
-                    <div className="space-y-1.5 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-text-secondary">회사명</span>
-                        <span className="text-text-primary">{(game.developerId as any).companyInfo.companyName}</span>
-                      </div>
-                      {(game.developerId as any).companyInfo?.website && (
-                        <div className="flex justify-between">
-                          <span className="text-text-secondary">웹사이트</span>
-                          <a href={(game.developerId as any).companyInfo.website} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline truncate ml-2">{(game.developerId as any).companyInfo.website}</a>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : null}
             </div>
 
             {/* Q&A 섹션 */}
             <div className="lg:col-span-3">
               <div className="bg-bg-secondary border border-line rounded-xl p-6">
-                <h2 className="text-text-primary font-bold text-lg mb-4">개발사 Q&A</h2>
+                <p className="text-text-primary font-bold mb-4" style={{ fontSize: '30px' }}>개발사 Q&A</p>
 
                 {/* 질문 작성 폼 */}
                 {isAuthenticated ? (
@@ -615,6 +674,29 @@ export default function PlayerGameDetailPage() {
                 <p className="text-2xl mb-2">📦</p>
                 <p className="text-text-secondary">이 게임의 베타 서비스가 종료되었습니다</p>
               </div>
+            ) : gameDomainUrl ? (
+              <div className="space-y-3">
+                <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center space-y-4">
+                  <button
+                    onClick={() => {
+                      const win = window.open(gameDomainUrl, '_blank', 'noopener,noreferrer')
+                      if (!win) {
+                        window.location.href = gameDomainUrl
+                      }
+                      handlePlay().catch(() => {})
+                    }}
+                    className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-text-primary px-8 py-3 rounded-xl font-semibold text-lg transition-all"
+                  >
+                    🎮 게임 시작
+                  </button>
+                  {game.description && (
+                    <p className="text-text-secondary text-sm">{game.description as string}</p>
+                  )}
+                </div>
+                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-300">
+                  💡 플레이 후 리뷰를 남겨 개발자에게 피드백을 전달하세요
+                </div>
+              </div>
             ) : gameFileUrl ? (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -626,14 +708,16 @@ export default function PlayerGameDetailPage() {
                   )}
                 </div>
                 {!isPlaying ? (
-                  <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center">
-                    <p className="text-text-secondary mb-4 text-sm">게임을 시작하면 플레이 기록이 저장됩니다</p>
+                  <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center space-y-4">
                     <button
                       onClick={handlePlay}
                       className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-text-primary px-8 py-3 rounded-xl font-semibold text-lg transition-all"
                     >
                       🎮 게임 시작
                     </button>
+                    {game.description && (
+                      <p className="text-text-secondary text-sm">{game.description as string}</p>
+                    )}
                   </div>
                 ) : (
                   <div className="w-full rounded-xl overflow-hidden border border-line bg-bg-secondary">

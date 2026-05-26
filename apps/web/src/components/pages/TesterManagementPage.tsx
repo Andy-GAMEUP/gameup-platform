@@ -71,7 +71,7 @@ export default function TesterManagementPage() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold mb-1">테스터 관리</h1>
         <p className="text-text-secondary">베타 테스터 신청을 검토하고 관리하세요</p>

@@ -101,6 +101,14 @@ export default function AdminAnalyticsPage() {
   const today = new Date().toISOString().slice(0, 10)
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
 
+  const emptyDashboard: DashboardSummary = {
+    today: { dau: 0, newVisitors: 0, returningVisitors: 0, avgDuration: 0, totalPageViews: 0, newSignups: 0, activeLogins: 0 },
+    yesterday: { dau: 0, totalPageViews: 0, avgDuration: 0 },
+    trends: { dau7d: [], wau: 0, mau: 0 },
+    topPages: [],
+    menuBreakdown: [],
+    visitorComposition: { members: 0, guests: 0 },
+  }
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null)
   const [startDate, setStartDate] = useState(weekAgo)
   const [endDate, setEndDate] = useState(today)
@@ -117,7 +125,7 @@ export default function AdminAnalyticsPage() {
     setLoading(true)
     adminService.getAnalyticsDashboard()
       .then((res) => setDashboard(res as DashboardSummary))
-      .catch(() => setDashboard(null))
+      .catch(() => setDashboard(emptyDashboard))
       .finally(() => setLoading(false))
   }, [])
 
@@ -165,7 +173,7 @@ export default function AdminAnalyticsPage() {
     </AdminLayout>
   )
 
-  const d = dashboard
+  const d = dashboard ?? emptyDashboard
   const dauChange = d ? changeRate(d.today.dau, d.yesterday.dau) : undefined
   const pvChange = d ? changeRate(d.today.totalPageViews, d.yesterday.totalPageViews) : undefined
   const durChange = d ? changeRate(d.today.avgDuration, d.yesterday.avgDuration) : undefined
@@ -180,16 +188,14 @@ export default function AdminAnalyticsPage() {
         </div>
 
         {/* ── KPI 카드 ──────────────────────────────────────── */}
-        {d && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <KpiCard label="DAU (오늘)" value={d.today.dau} change={dauChange} sub="전일 대비" icon={Users} color="text-cyan-400" />
-            <KpiCard label="총 페이지뷰" value={d.today.totalPageViews} change={pvChange} sub="전일 대비" icon={Eye} color="text-purple-400" />
-            <KpiCard label="평균 체류시간" value={formatDuration(d.today.avgDuration)} change={durChange} sub="전일 대비" icon={Clock} color="text-emerald-400" />
-            <KpiCard label="신규 방문자" value={d.today.newVisitors} icon={UserPlus} color="text-orange-400" />
-            <KpiCard label="WAU" value={d.trends.wau} sub="주간 활성" icon={TrendingUp} color="text-pink-400" />
-            <KpiCard label="MAU" value={d.trends.mau} sub="월간 활성" icon={TrendingUp} color="text-yellow-400" />
-          </div>
-        )}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <KpiCard label="DAU (오늘)" value={d.today.dau} change={dauChange} sub="전일 대비" icon={Users} color="text-cyan-400" />
+          <KpiCard label="총 페이지뷰" value={d.today.totalPageViews} change={pvChange} sub="전일 대비" icon={Eye} color="text-purple-400" />
+          <KpiCard label="평균 체류시간" value={formatDuration(d.today.avgDuration)} change={durChange} sub="전일 대비" icon={Clock} color="text-emerald-400" />
+          <KpiCard label="신규 방문자" value={d.today.newVisitors} icon={UserPlus} color="text-orange-400" />
+          <KpiCard label="WAU" value={d.trends.wau} sub="주간 활성" icon={TrendingUp} color="text-pink-400" />
+          <KpiCard label="MAU" value={d.trends.mau} sub="월간 활성" icon={TrendingUp} color="text-yellow-400" />
+        </div>
 
         {/* ── 중단: DAU 추이 + 인기 페이지 ─────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

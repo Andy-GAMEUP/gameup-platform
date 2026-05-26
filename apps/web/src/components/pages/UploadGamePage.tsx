@@ -3,14 +3,12 @@ import { useState, useRef } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { gameService } from '@/services/gameService'
-import { Plus, X, Upload, Loader2 } from 'lucide-react'
+import { Upload, Loader2, Globe } from 'lucide-react'
 
 interface FormData {
   title: string
   genre: string
   description: string
-  platform: string
-  engine: string
   serviceType: string
   monetizationType: string
   price: string
@@ -20,6 +18,7 @@ interface FormData {
   maxTesters: string
   testType: string
   requirements: string
+  gameDomain: string
   trailer: string
   website: string
   discord: string
@@ -32,12 +31,8 @@ interface FormData {
 
 export default function UploadGamePage() {
   const router = useRouter()
-  const gameFileRef = useRef<HTMLInputElement>(null)
   const thumbnailRef = useRef<HTMLInputElement>(null)
 
-  const [tags, setTags] = useState<string[]>([])
-  const [newTag, setNewTag] = useState('')
-  const [gameFile, setGameFile] = useState<File | null>(null)
   const [thumbnail, setThumbnail] = useState<File | null>(null)
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -47,8 +42,6 @@ export default function UploadGamePage() {
     title: '',
     genre: '',
     description: '',
-    platform: '',
-    engine: '',
     serviceType: 'beta',
     monetizationType: 'free',
     price: '',
@@ -58,6 +51,7 @@ export default function UploadGamePage() {
     maxTesters: '',
     testType: '',
     requirements: '',
+    gameDomain: '',
     trailer: '',
     website: '',
     discord: '',
@@ -68,17 +62,10 @@ export default function UploadGamePage() {
     battlePass: false,
   })
 
-  const handleAddTag = () => {
-    const trimmed = newTag.trim()
-    if (trimmed && !tags.includes(trimmed) && tags.length < 10) {
-      setTags([...tags, trimmed])
-      setNewTag('')
-    }
+  const isValidUrl = (url: string) => {
+    try { new URL(url); return true } catch { return false }
   }
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter((tag) => tag !== tagToRemove))
-  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
@@ -100,17 +87,17 @@ export default function UploadGamePage() {
     }
   }
 
-  const handleGameFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) setGameFile(file)
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    if (!gameFile) {
-      setError('게임 파일(.html, .zip 등)을 업로드해주세요.')
+    if (!formData.gameDomain.trim()) {
+      setError('게임 서비스 URL을 입력해주세요.')
+      return
+    }
+
+    if (!isValidUrl(formData.gameDomain.trim())) {
+      setError('유효한 URL 형식으로 입력해주세요. (예: https://mygame.com)')
       return
     }
 
@@ -120,8 +107,6 @@ export default function UploadGamePage() {
       fd.append('title', formData.title)
       fd.append('genre', formData.genre)
       fd.append('description', formData.description)
-      fd.append('platform', formData.platform)
-      fd.append('engine', formData.engine)
       fd.append('serviceType', formData.serviceType)
       fd.append('monetization', formData.monetizationType)
       fd.append('price', formData.monetizationType === 'paid' ? formData.price || '0' : '0')
@@ -132,16 +117,12 @@ export default function UploadGamePage() {
       fd.append('maxTesters', formData.maxTesters)
       fd.append('testType', formData.testType)
       fd.append('requirements', formData.requirements)
+      fd.append('gameDomain', formData.gameDomain.trim())
       fd.append('trailer', formData.trailer)
       fd.append('website', formData.website)
       fd.append('discord', formData.discord)
       fd.append('notes', formData.notes)
 
-      // ✅ 태그 추가
-      tags.forEach(tag => fd.append('tags[]', tag))
-
-      // ✅ 실제 파일 추가
-      fd.append('gameFile', gameFile)
       if (thumbnail) fd.append('thumbnail', thumbnail)
 
       await gameService.createGame(fd)
@@ -162,35 +143,6 @@ export default function UploadGamePage() {
         <p className="text-text-secondary">게임 정보를 입력하고 등록 신청을 진행하세요</p>
       </div>
 
-      {/* 등록 절차 */}
-      <div className="bg-bg-secondary border border-line rounded-lg p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {[
-              { step: 1, label: '신청', sub: '정보 입력', active: true },
-              { step: 2, label: '대기', sub: '검토 중', active: false },
-              { step: 3, label: '승인', sub: '서비스 시작', active: false },
-            ].map((s, i) => (
-              <div key={s.step} className="flex items-center gap-3">
-                {i > 0 && <div className="w-12 h-0.5 bg-bg-tertiary" />}
-                <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${s.active ? 'bg-accent' : 'bg-bg-tertiary'}`}>
-                    <span className="text-xs font-bold">{s.step}</span>
-                  </div>
-                  <div>
-                    <p className={`text-sm font-semibold ${s.active ? 'text-text-primary' : 'text-text-secondary'}`}>{s.label}</p>
-                    <p className="text-xs text-text-muted">{s.sub}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-text-secondary">평균 승인 시간</p>
-            <p className="text-lg font-semibold text-accent">1-3일</p>
-          </div>
-        </div>
-      </div>
 
       {/* 에러 메시지 */}
       {error && (
@@ -302,16 +254,16 @@ export default function UploadGamePage() {
                 <select name="genre" value={formData.genre} onChange={handleChange}
                   className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm" required>
                   <option value="">장르 선택</option>
-                  <option value="action">액션</option>
-                  <option value="rpg">RPG</option>
-                  <option value="fps">FPS</option>
-                  <option value="racing">레이싱</option>
-                  <option value="strategy">전략</option>
-                  <option value="simulation">시뮬레이션</option>
-                  <option value="adventure">어드벤처</option>
-                  <option value="horror">호러</option>
-                  <option value="puzzle">퍼즐</option>
-                  <option value="sports">스포츠</option>
+                  <option value="액션">액션</option>
+                  <option value="RPG">RPG</option>
+                  <option value="FPS">FPS</option>
+                  <option value="레이싱">레이싱</option>
+                  <option value="전략">전략</option>
+                  <option value="시뮬레이션">시뮬레이션</option>
+                  <option value="어드벤처">어드벤처</option>
+                  <option value="호러">호러</option>
+                  <option value="퍼즐">퍼즐</option>
+                  <option value="스포츠">스포츠</option>
                 </select>
               </div>
             </div>
@@ -322,54 +274,6 @@ export default function UploadGamePage() {
                 className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted min-h-32 focus:outline-none focus:border-accent" required />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium block">플랫폼 *</label>
-                <select name="platform" value={formData.platform} onChange={handleChange}
-                  className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm" required>
-                  <option value="">플랫폼 선택</option>
-                  <option value="pc">PC</option>
-                  <option value="console">콘솔</option>
-                  <option value="mobile">모바일</option>
-                  <option value="multi">멀티 플랫폼</option>
-                  <option value="web">웹 브라우저</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium block">게임 엔진</label>
-                <input name="engine" placeholder="예: Unreal Engine 5" value={formData.engine} onChange={handleChange}
-                  className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent" />
-              </div>
-            </div>
-
-            {/* ✅ 태그 */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium block">태그 <span className="text-text-muted">(최대 10개)</span></label>
-              <div className="flex flex-wrap gap-2 mb-2 min-h-8">
-                {tags.map((tag) => (
-                  <span key={tag} className="flex items-center gap-1 px-2 py-1 bg-accent-light text-accent border border-accent-muted rounded-full text-xs">
-                    {tag}
-                    <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:text-text-primary transition-colors">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-                {tags.length === 0 && <span className="text-text-muted text-xs py-1">태그를 추가해주세요</span>}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  placeholder="태그 입력 후 Enter 또는 + 클릭"
-                  className="flex-1 px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent"
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag() } }}
-                />
-                <button type="button" onClick={handleAddTag}
-                  className="px-3 py-2 border border-line hover:bg-bg-tertiary rounded-md transition-colors text-text-secondary hover:text-text-primary">
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -418,37 +322,31 @@ export default function UploadGamePage() {
           </div>
         )}
 
-        {/* 미디어 & 파일 업로드 */}
+        {/* 게임 URL & 미디어 */}
         <div className="bg-bg-secondary border border-line rounded-lg">
           <div className="p-6 border-b border-line">
-            <h2 className="text-xl font-bold">미디어 & 파일</h2>
+            <h2 className="text-xl font-bold">게임 URL & 미디어</h2>
           </div>
           <div className="p-6 space-y-5">
 
-            {/* ✅ 게임 파일 업로드 (필수) */}
+            {/* 게임 서비스 URL (필수) */}
             <div className="space-y-2">
               <label className="text-sm font-medium block">
-                게임 파일 * <span className="text-text-muted font-normal">(HTML, ZIP 등)</span>
+                게임 서비스 URL * <span className="text-text-muted font-normal">(플레이 가능한 주소)</span>
               </label>
-              <div
-                className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${gameFile ? 'border-accent-muted bg-accent/5' : 'border-line hover:border-line'}`}
-                onClick={() => gameFileRef.current?.click()}
-              >
-                <input ref={gameFileRef} type="file" className="hidden" accept=".html,.zip,.js" onChange={handleGameFileChange} />
-                {gameFile ? (
-                  <div className="flex items-center justify-center gap-2 text-accent">
-                    <Upload className="w-5 h-5" />
-                    <span className="text-sm font-medium">{gameFile.name}</span>
-                    <span className="text-xs text-text-muted">({(gameFile.size / 1024 / 1024).toFixed(2)}MB)</span>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="w-10 h-10 mx-auto mb-2 text-text-muted" />
-                    <p className="text-text-secondary text-sm mb-1">클릭하여 게임 파일 업로드</p>
-                    <p className="text-xs text-text-muted">HTML, ZIP, JS (최대 50MB)</p>
-                  </>
-                )}
+              <div className="relative">
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+                <input
+                  name="gameDomain"
+                  type="url"
+                  placeholder="https://mygame.com"
+                  value={formData.gameDomain}
+                  onChange={handleChange}
+                  className="w-full pl-9 pr-3 py-2.5 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent"
+                  required
+                />
               </div>
+              <p className="text-xs text-text-muted">게임을 플레이할 수 있는 외부 URL을 입력하세요. 승인 후 이 주소로 연결됩니다.</p>
             </div>
 
             {/* 썸네일 업로드 */}
