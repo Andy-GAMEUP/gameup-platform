@@ -85,8 +85,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5">
-            <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-9 w-auto object-contain" />
-            <span className="text-xl font-bold tracking-tight text-black">Game<span className="text-black">Up</span></span>
+            <Image src="/logo_gameup_v2_2.png" alt="" width={212} height={80} className="h-[45px] w-auto object-contain" />
           </Link>
 
           {/* Desktop Nav Links */}

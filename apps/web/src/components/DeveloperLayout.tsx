@@ -88,12 +88,19 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="px-3 h-16 border-b border-line flex items-center justify-between gap-2">
-            <Link href="/" className="flex items-center gap-2 min-w-0">
-              <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-8 w-auto object-contain flex-shrink-0" />
-              {sidebarOpen && (
-                <span className="text-base font-bold tracking-tight text-black truncate">GameUp</span>
-              )}
-            </Link>
+            {sidebarOpen ? (
+              <Link href="/" className="flex items-center gap-2 min-w-0">
+                <div className="relative flex-shrink-0 h-[41px]">
+                  <Image src="/logo_gameup_v2_2.png" alt="" width={212} height={80} className="h-full w-auto object-contain" />
+                </div>
+              </Link>
+            ) : (
+              <button onClick={() => setSidebarOpen(true)} className="flex items-center gap-2 min-w-0">
+                <div className="relative flex-shrink-0 h-8">
+                  <Image src="/logo_gameup_icon.png" alt="" width={67} height={80} className="h-full w-auto object-contain" />
+                </div>
+              </button>
+            )}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="flex-shrink-0 text-text-muted hover:text-text-primary"
