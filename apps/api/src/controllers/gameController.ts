@@ -10,16 +10,16 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
   try {
     const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType } = req.query
 
-    const filter: Record<string, unknown> = {
-      status: { $in: ['beta', 'published'] }
+    const filter: Record<string, unknown> = {}
+
+    if (serviceType && serviceType !== 'all') {
+      filter.serviceType = serviceType
+    } else {
+      filter.status = { $in: ['beta', 'published'] }
     }
 
     if (status && status !== 'all') {
       filter.status = status
-    }
-
-    if (serviceType && serviceType !== 'all') {
-      filter.serviceType = serviceType
     }
 
     if (genre && genre !== 'all') {
