@@ -689,7 +689,7 @@ export default function PlayerGameDetailPage() {
                   >
                     🎮 게임 시작
                   </button>
-                  {game.description && (
+                  {!!game.description && (
                     <p className="text-text-secondary text-sm">{game.description as string}</p>
                   )}
                 </div>
@@ -715,7 +715,7 @@ export default function PlayerGameDetailPage() {
                     >
                       🎮 게임 시작
                     </button>
-                    {game.description && (
+                    {!!game.description && (
                       <p className="text-text-secondary text-sm">{game.description as string}</p>
                     )}
                   </div>
