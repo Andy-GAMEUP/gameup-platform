@@ -30,18 +30,6 @@ const DUMMY_ITEMS: TopItem[] = [
   { name: '펫 – 황금 드래곤',    price: 12900, sales:  98, currency: 'KRW' },
 ]
 
-const DUMMY_TOP_PAYERS = [
-  { rank: 1,  nickname: 'DragonSlayer99', total: 420000 },
-  { rank: 2,  nickname: '별빛전사',        total: 385000 },
-  { rank: 3,  nickname: 'IronWolf77',     total: 312000 },
-  { rank: 4,  nickname: '퍼플나이트',      total: 278000 },
-  { rank: 5,  nickname: 'StarBreaker',    total: 241000 },
-  { rank: 6,  nickname: '천둥검사',        total: 198000 },
-  { rank: 7,  nickname: 'NightOwl42',     total: 175000 },
-  { rank: 8,  nickname: '레드드래곤',      total: 152000 },
-  { rank: 9,  nickname: 'SilverArrow',    total: 134000 },
-  { rank: 10, nickname: '골든이글',        total: 118000 },
-]
 
 const DUMMY_DAILY: DailyPoint[] = Array.from({ length: 30 }, (_, i) => {
   const d = new Date(Date.now() - (29 - i) * 86400000)
@@ -149,7 +137,7 @@ export default function SalesProductChart({ data, topItems }: { data: DailyPoint
 
   return (
     <div className="space-y-4">
-      {/* 차트 + 최대 결제자 순위 */}
+      {/* 차트 */}
       <div className="flex gap-4 items-stretch">
         <div className="flex-1 min-w-0 bg-bg-secondary border border-line rounded-lg p-6">
           <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
@@ -214,25 +202,6 @@ export default function SalesProductChart({ data, topItems }: { data: DailyPoint
           </div>
         </div>
 
-        {/* 최대 결제자 순위 */}
-        <div className="w-[21%] flex-shrink-0 bg-bg-secondary border border-line rounded-lg flex flex-col overflow-hidden">
-          <div className="px-3 py-2.5 border-b border-line bg-bg-tertiary flex-shrink-0">
-            <h4 className="text-sm font-bold">최대 결제자 순위</h4>
-          </div>
-          <div className="flex-1 overflow-y-auto min-h-0">
-            {DUMMY_TOP_PAYERS.map((p) => (
-              <div key={p.rank} className="flex items-center gap-2 px-3 py-2 border-b border-line/50 hover:bg-bg-tertiary transition-colors">
-                <span className={`text-xs font-bold w-4 flex-shrink-0 ${
-                  p.rank === 1 ? 'text-yellow-400' :
-                  p.rank === 2 ? 'text-gray-300'   :
-                  p.rank === 3 ? 'text-amber-600'  : 'text-text-muted'
-                }`}>{p.rank}</span>
-                <span className="flex-1 text-xs truncate text-text-secondary">{p.nickname}</span>
-                <span className="text-xs font-semibold text-accent flex-shrink-0">₩{p.total.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* 아이템 리스트 */}
