@@ -11,7 +11,7 @@ import notificationService from '@/services/notificationService'
 import {
   LayoutDashboard, Gamepad2, Users, MessageSquare, BarChart3, Settings,
   Bell, ChevronLeft, ChevronRight, ChevronDown, LogOut, Plus, Home, Handshake,
-  LineChart, Repeat2, DollarSign, UserPlus, Crown, TrendingUp,
+  LineChart, Repeat2, DollarSign, UserPlus,
 } from 'lucide-react'
 
 export default function DeveloperLayout({ children }: { children: React.ReactNode }) {
@@ -59,10 +59,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
         { tab: 'analysis',  label: '개요',     icon: <LineChart  className="w-4 h-4" /> },
         { tab: 'retention', label: '리텐션',   icon: <Repeat2    className="w-4 h-4" /> },
         { tab: 'revenue',   label: '수익',     icon: <DollarSign className="w-4 h-4" /> },
-        { tab: 'allusers',  label: '전체 유저', icon: <Users       className="w-4 h-4" /> },
-        { tab: 'newusers',  label: '신규 유저', icon: <UserPlus    className="w-4 h-4" /> },
-        { tab: 'vip',       label: 'VIP 유저',  icon: <Crown       className="w-4 h-4" /> },
-        { tab: 'ltvcalc',   label: 'LTV 계산',  icon: <TrendingUp  className="w-4 h-4" /> },
+        { tab: 'newusers',  label: '신규 유저', icon: <UserPlus   className="w-4 h-4" /> },
       ],
     },
     { path: '/minihome-manage', label: '미니홈 관리', icon: <Home      className="w-5 h-5" /> },

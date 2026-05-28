@@ -1,19 +1,17 @@
 'use client'
 import { ReactNode } from 'react'
-import Link from 'next/link'
-import { TrendingUp, TrendingDown, Minus, ArrowRight } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 interface MetricCardProps {
   label: string
   value: string | number
-  change?: number
+  change?: number  // percent
   icon?: ReactNode
   color?: string
   hint?: string
-  link?: { href: string; label: string }
 }
 
-export default function MetricCard({ label, value, change, icon, color = 'text-text-primary', hint, link }: MetricCardProps) {
+export default function MetricCard({ label, value, change, icon, color = 'text-text-primary', hint }: MetricCardProps) {
   const trend = change === undefined ? null : change > 0 ? 'up' : change < 0 ? 'down' : 'flat'
 
   return (
@@ -23,21 +21,11 @@ export default function MetricCard({ label, value, change, icon, color = 'text-t
         {icon && <span className={color}>{icon}</span>}
       </div>
       <div className={`text-2xl font-bold mb-1 ${color}`}>{value}</div>
-      <div className="flex items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-2">
-          {trend === 'up' && <span className="flex items-center gap-1 text-green-400"><TrendingUp className="w-3 h-3" />+{change}%</span>}
-          {trend === 'down' && <span className="flex items-center gap-1 text-red-400"><TrendingDown className="w-3 h-3" />{change}%</span>}
-          {trend === 'flat' && <span className="flex items-center gap-1 text-text-muted"><Minus className="w-3 h-3" />0%</span>}
-          {hint && <span className="text-text-muted">{hint}</span>}
-        </div>
-        {link && (
-          <Link
-            href={link.href}
-            className="flex items-center gap-0.5 text-accent hover:text-accent-hover transition-colors whitespace-nowrap"
-          >
-            {link.label} <ArrowRight className="w-3 h-3" />
-          </Link>
-        )}
+      <div className="flex items-center gap-2 text-xs">
+        {trend === 'up' && <span className="flex items-center gap-1 text-green-400"><TrendingUp className="w-3 h-3" />+{change}%</span>}
+        {trend === 'down' && <span className="flex items-center gap-1 text-red-400"><TrendingDown className="w-3 h-3" />{change}%</span>}
+        {trend === 'flat' && <span className="flex items-center gap-1 text-text-muted"><Minus className="w-3 h-3" />0%</span>}
+        {hint && <span className="text-text-muted">{hint}</span>}
       </div>
     </div>
   )
