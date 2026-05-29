@@ -218,7 +218,7 @@ export default function AnalyticsPage() {
                   return selected ? (
                     <span className="flex items-center gap-2 min-w-0">
                       {selected.thumbnail ? (
-                        <Image src={selected.thumbnail} alt={selected.title} width={20} height={20} className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                        <Image src={selected.thumbnail} alt={selected.title} width={20} height={20} className="w-5 h-5 rounded object-cover flex-shrink-0" unoptimized />
                       ) : (
                         <span className="w-5 h-5 rounded bg-bg-secondary flex-shrink-0" />
                       )}
@@ -241,7 +241,7 @@ export default function AnalyticsPage() {
                       }`}
                     >
                       {g.thumbnail ? (
-                        <Image src={g.thumbnail} alt={g.title} width={20} height={20} className="w-5 h-5 rounded object-cover flex-shrink-0" />
+                        <Image src={g.thumbnail} alt={g.title} width={20} height={20} className="w-5 h-5 rounded object-cover flex-shrink-0" unoptimized />
                       ) : (
                         <span className="w-5 h-5 rounded bg-bg-secondary flex-shrink-0" />
                       )}
