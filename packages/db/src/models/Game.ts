@@ -40,6 +40,12 @@ export interface IGame extends Document {
   notes?: string
   approvedAt?: Date
   approvedBy?: mongoose.Types.ObjectId
+  ratingCertificate?: {
+    ratingClass?: '전체이용가' | '12세이용가' | '15세이용가' | '18세이용가' | '청소년이용불가'
+    certNumber?: string
+    certDate?: string
+    isVerified?: boolean
+  }
   createdAt: Date
   updatedAt: Date
 }
@@ -53,7 +59,7 @@ const gameSchema = new Schema<IGame>(
     },
     description: {
       type: String,
-      required: true
+      default: ''
     },
     genre: {
       type: String,
@@ -158,7 +164,16 @@ const gameSchema = new Schema<IGame>(
     notes: { type: String, default: '' },    approvedBy: {
       type: Schema.Types.ObjectId,
       ref: 'User'
-    }
+    },
+    ratingCertificate: {
+      ratingClass: {
+        type: String,
+        enum: ['전체이용가', '12세이용가', '15세이용가', '18세이용가', '청소년이용불가'],
+      },
+      certNumber: { type: String },
+      certDate: { type: String },
+      isVerified: { type: Boolean, default: false },
+    },
   },
   {
     timestamps: true

@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/useAuth'
 import { gameService } from '@/services/gameService'
 import playerService, { Review } from '@/services/playerService'
 import LevelBadge from '@/components/LevelBadge'
+import GracRatingBadge from '@/components/GracRatingBadge'
 
 interface GameQA {
   _id: string
@@ -549,6 +550,18 @@ export default function PlayerGameDetailPage() {
                     <dt className="text-text-secondary">평균 별점</dt>
                     <dd className="text-yellow-400 font-bold">{avgRating.toFixed(1)} / 5.0</dd>
                   </div>
+                  {(() => {
+                    const cert = (game as any).ratingCertificate
+                    if (!cert?.ratingClass) return null
+                    return (
+                      <div className="flex justify-between items-center">
+                        <dt className="text-text-secondary">등급</dt>
+                        <dd>
+                          <GracRatingBadge ratingClass={cert.ratingClass} size="sm" />
+                        </dd>
+                      </div>
+                    )
+                  })()}
                 </dl>
               </div>
 

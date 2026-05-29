@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation'
 interface MediaItem { _id: string; type: 'screenshot' | 'video'; title: string; url: string; order: number; createdAt: string }
 interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; stock: string; sales: number; active: boolean; description: string }
 interface Announcement { _id: string; title: string; createdAt: string; type: string; priority: string; content: string; sendPush: boolean; recipients: number }
-type TabKey = 'edit' | 'media' | 'shop' | 'points' | 'dev-settings' | 'announcements'
+type TabKey = 'main-settings' | 'edit' | 'media' | 'shop' | 'points' | 'dev-settings' | 'announcements'
 
 interface GamePointPolicy {
   _id: string
@@ -56,7 +56,8 @@ interface BalanceInfo {
 }
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'edit', label: '게임정보 편집' },
+  { key: 'main-settings', label: '메인 세팅' },
+  { key: 'edit', label: '기본 정보' },
   { key: 'media', label: '미디어' },
   { key: 'shop', label: '게임샵' },
   { key: 'points', label: '포인트 보상' },
@@ -106,6 +107,12 @@ interface GameData {
   isPublic?: boolean
   thumbnail?: string
   bannerImage?: string
+  ratingCertificate?: {
+    ratingClass?: string
+    certNumber?: string
+    certDate?: string
+    isVerified?: boolean
+  }
 }
 
 export default function GameDetailManagementPage() {
@@ -169,6 +176,12 @@ export default function GameDetailManagementPage() {
   const [newApiKeyName, setNewApiKeyName] = useState('')
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null)
 
+  // ── 메인 세팅 탭 상태 ──────────────────────────────────────
+  const [certRatingClass, setCertRatingClass] = useState('')
+  const [certNumber, setCertNumber] = useState('')
+  const [certDate, setCertDate] = useState('')
+  const [certSaving, setCertSaving] = useState(false)
+
   const gameId = _id as string
 
   useEffect(() => {
@@ -184,6 +197,9 @@ export default function GameDetailManagementPage() {
         setEditDescription(g.description || '')
         setEditStartDate(g.startDate ? g.startDate.split('T')[0] : '')
         setEditIsPublic(g.status !== 'draft' && g.status !== 'archived')
+        setCertRatingClass(g.ratingCertificate?.ratingClass || '')
+        setCertNumber(g.ratingCertificate?.certNumber || '')
+        setCertDate(g.ratingCertificate?.certDate || '')
       })
       .catch(() => {})
       .finally(() => setGameLoading(false))
@@ -400,6 +416,24 @@ export default function GameDetailManagementPage() {
       alert(msg)
     }
     setEditSaving(false)
+  }
+
+  const handleSaveCert = async () => {
+    if (!gameId) return
+    setCertSaving(true)
+    try {
+      const fd = new FormData()
+      fd.append('ratingClass', certRatingClass)
+      fd.append('certNumber', certNumber)
+      fd.append('certDate', certDate)
+      const data = await gameService.updateGame(gameId, fd)
+      setGameData(prev => prev ? { ...prev, ...(data.game as unknown as GameData) } : prev)
+      alert('저장되었습니다.')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '저장에 실패했습니다'
+      alert(msg)
+    }
+    setCertSaving(false)
   }
 
   const handleRequestReview = async () => {
@@ -630,6 +664,50 @@ export default function GameDetailManagementPage() {
           </button>
         </div>
       </div>
+
+      {/* ── 메인 세팅 탭 ── */}
+      {activeTab === 'main-settings' && (
+        <div className="space-y-6">
+          {/* 게등위 등급 분류 인증서 */}
+          <div className="bg-bg-secondary border border-line rounded-lg">
+            <div className="p-6 border-b border-line">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Shield className="w-5 h-5 text-accent" /> 게등위 등급 분류 인증서
+              </h2>
+              <p className="text-sm text-text-secondary mt-1">게임물관리위원회에서 발급받은 등급 분류 정보를 입력하세요. 플레이어 화면에 등급 배지가 표시됩니다.</p>
+            </div>
+            <div className="p-6 space-y-4 max-w-lg">
+              <div>
+                <label className={labelCls}>등급 분류</label>
+                <select value={certRatingClass} onChange={e => setCertRatingClass(e.target.value)} className={inputCls}>
+                  <option value="">선택 안 함</option>
+                  <option value="전체이용가">전체이용가</option>
+                  <option value="12세이용가">12세이용가</option>
+                  <option value="15세이용가">15세이용가</option>
+                  <option value="18세이용가">18세이용가</option>
+                  <option value="청소년이용불가">청소년이용불가</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>등급 분류 번호</label>
+                <input value={certNumber} onChange={e => setCertNumber(e.target.value)} placeholder="예: 2024-게-12345" className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>등급 분류일</label>
+                <input type="date" value={certDate} onChange={e => setCertDate(e.target.value)} className={inputCls} />
+              </div>
+              {gameData.ratingCertificate?.isVerified && (
+                <p className="text-xs text-green-400 flex items-center gap-1"><Check className="w-3.5 h-3.5" /> 관리자 검증 완료</p>
+              )}
+              <div className="pt-2">
+                <button onClick={handleSaveCert} disabled={certSaving} className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-md text-sm font-semibold transition-colors">
+                  <Save className="w-4 h-4" /> {certSaving ? '저장 중...' : '저장'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === 'announcements' && (
         <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">

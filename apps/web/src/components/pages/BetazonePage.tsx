@@ -14,6 +14,8 @@ import EventBannerCarousel from '@/components/EventBannerCarousel'
 const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='256' viewBox='0 0 400 256'%3E%3Crect fill='%231e293b' width='400' height='256'/%3E%3Ctext fill='%23334155' font-family='sans-serif' font-size='24' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3EGame%3C/text%3E%3C/svg%3E"
 
 import { FILTER_GENRES as GENRES } from '@/constants/game'
+import GracRatingBadge from '@/components/GracRatingBadge'
+import { RatingClass } from '@gameup/types'
 const SORT_OPTIONS = [
   { value: 'newest', label: '최신순' },
   { value: 'popular', label: '인기순' },
@@ -71,6 +73,15 @@ function GameCard({ game }: { game: Game }) {
             </div>
             <span className="text-xs text-text-muted">{(game.playCount || 0).toLocaleString()} 플레이</span>
           </div>
+          {(() => {
+            const cert = (game as any).ratingCertificate
+            if (!cert?.ratingClass) return null
+            return (
+              <div className="mt-2">
+                <GracRatingBadge ratingClass={cert.ratingClass as RatingClass} size="sm" />
+              </div>
+            )
+          })()}
           {game.genre && (
             <div className="mt-2">
               <Badge variant="outline" className="text-xs border-accent-muted text-accent">

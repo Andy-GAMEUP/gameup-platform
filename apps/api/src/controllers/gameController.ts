@@ -110,8 +110,8 @@ export const createGame = async (req: AuthRequest, res: Response) => {
     const { title, description, genre, price, isPaid, status, monetization, serviceType, gameDomain } = req.body
     const files = req.files as { [fieldname: string]: Express.Multer.File[] }
 
-    if (!title?.trim() || !description?.trim()) {
-      return res.status(400).json({ message: '제목과 설명은 필수입니다' })
+    if (!title?.trim()) {
+      return res.status(400).json({ message: '제목은 필수입니다' })
     }
 
     if (!gameDomain?.trim()) {
@@ -126,15 +126,14 @@ export const createGame = async (req: AuthRequest, res: Response) => {
 
     const gameData: Record<string, unknown> = {
       title: title.trim(),
-      description: description.trim(),
+      description: description?.trim() || '',
       genre: genre || '',
       developerId: req.user.id,
       gameDomain: gameDomain.trim(),
       price: isPaid === 'true' ? Math.max(0, Number(price) || 0) : 0,
       isPaid: isPaid === 'true',
       status: status || 'beta',
-      approvalStatus: 'approved',
-      approvedAt: new Date(),
+      approvalStatus: 'not_submitted',
       monetization: monetization || 'free',
       serviceType: serviceType || 'beta'
     }
@@ -220,6 +219,18 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
         }
       }
       (game as any).gameDomain = gameDomain.trim()
+    }
+
+    // 등급 인증서
+    const { ratingClass, certNumber, certDate } = req.body
+    if (ratingClass !== undefined || certNumber !== undefined || certDate !== undefined) {
+      const existing = (game as any).ratingCertificate || {}
+      ;(game as any).ratingCertificate = {
+        ratingClass: ratingClass !== undefined ? ratingClass : existing.ratingClass,
+        certNumber: certNumber !== undefined ? certNumber : existing.certNumber,
+        certDate: certDate !== undefined ? certDate : existing.certDate,
+        isVerified: existing.isVerified || false,
+      }
     }
 
     // 태그

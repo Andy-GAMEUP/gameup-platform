@@ -127,13 +127,6 @@ export default function GamesManagementPage() {
           <h1 className="text-3xl font-bold mb-1">게임 관리</h1>
           <p className="text-text-secondary">등록된 게임을 관리하세요</p>
         </div>
-        <div className="flex gap-2">
-<Link href="/upload">
-            <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors">
-              <Plus className="w-4 h-4" /> 새 게임 등록
-            </button>
-          </Link>
-        </div>
       </div>
 
       {/* 통계 카드 */}

@@ -93,6 +93,11 @@ export default function GameEditPage() {
   const [discord, setDiscord] = useState('')
   const [notes, setNotes] = useState('')
 
+  // 게등위 등급 인증서
+  const [ratingClass, setRatingClass] = useState('')
+  const [certNumber, setCertNumber] = useState('')
+  const [certDate, setCertDate] = useState('')
+
   useEffect(() => {
     const loadGame = async () => {
       if (!id) return
@@ -122,6 +127,12 @@ export default function GameEditPage() {
         setDiscord(g.discord || '')
         setNotes(g.notes || '')
         setGameDomain(g.gameDomain || '')
+        const cert = (g as any).ratingCertificate
+        if (cert) {
+          setRatingClass(cert.ratingClass || '')
+          setCertNumber(cert.certNumber || '')
+          setCertDate(cert.certDate || '')
+        }
         if (g.thumbnail) setThumbnailPreview(g.thumbnail)
       } catch (err: any) {
         setError(err.response?.data?.message || '게임 정보를 불러오지 못했습니다.')
@@ -214,6 +225,9 @@ export default function GameEditPage() {
       fd.append('discord', discord)
       fd.append('notes', notes)
       fd.append('gameDomain', gameDomain.trim())
+      fd.append('ratingClass', ratingClass)
+      fd.append('certNumber', certNumber)
+      fd.append('certDate', certDate)
       fd.append('requestReview', 'true')  // 재승인 요청 플래그
       tags.forEach(tag => fd.append('tags[]', tag))
       if (thumbnail) fd.append('thumbnail', thumbnail)
@@ -596,6 +610,49 @@ export default function GameEditPage() {
             <textarea value={notes} onChange={e => setNotes(e.target.value)}
               placeholder="베타 테스터들이 알아야 할 특별한 사항"
               className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted min-h-24" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── 게등위 등급 인증서 ── */}
+      <div className="bg-bg-secondary border border-line rounded-lg">
+        <div className="p-6 border-b border-line">
+          <h2 className="text-xl font-bold">게등위 등급 인증서</h2>
+          <p className="text-sm text-text-secondary mt-1">게임물관리위원회에서 발급받은 등급 분류 정보를 입력하세요. 관리자 검토 후 플레이어 화면에 등급 배지가 표시됩니다.</p>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">등급 분류</label>
+            <select
+              value={ratingClass}
+              onChange={e => setRatingClass(e.target.value)}
+              className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm"
+            >
+              <option value="">선택 안 함</option>
+              <option value="전체이용가">전체이용가</option>
+              <option value="12세이용가">12세이용가</option>
+              <option value="15세이용가">15세이용가</option>
+              <option value="18세이용가">18세이용가</option>
+              <option value="청소년이용불가">청소년이용불가</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">등급 분류 번호</label>
+            <input
+              value={certNumber}
+              onChange={e => setCertNumber(e.target.value)}
+              placeholder="예: 2024-게-12345"
+              className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm placeholder-text-muted"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-1">등급 분류일</label>
+            <input
+              type="date"
+              value={certDate}
+              onChange={e => setCertDate(e.target.value)}
+              className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm"
+            />
           </div>
         </div>
       </div>
