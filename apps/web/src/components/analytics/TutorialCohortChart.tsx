@@ -97,7 +97,7 @@ export default function TutorialCohortChart() {
               content={(props) => (
                 <CustomTooltip
                   active={props.active}
-                  payload={props.payload as { value: number }[]}
+                  payload={props.payload as unknown as { value: number }[]}
                   label={props.label as string}
                   cohortSize={cohortSize}
                 />
