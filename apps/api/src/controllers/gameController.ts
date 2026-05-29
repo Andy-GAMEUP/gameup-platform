@@ -10,17 +10,16 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
   try {
     const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType } = req.query
 
-    const filter: Record<string, unknown> = {
-      approvalStatus: 'approved',
-      status: { $in: ['beta', 'published'] }
+    const filter: Record<string, unknown> = {}
+
+    if (serviceType && serviceType !== 'all') {
+      filter.serviceType = serviceType
+    } else {
+      filter.status = { $in: ['beta', 'published'] }
     }
 
     if (status && status !== 'all') {
       filter.status = status
-    }
-
-    if (serviceType && serviceType !== 'all') {
-      filter.serviceType = serviceType
     }
 
     if (genre && genre !== 'all') {
@@ -133,8 +132,9 @@ export const createGame = async (req: AuthRequest, res: Response) => {
       gameDomain: gameDomain.trim(),
       price: isPaid === 'true' ? Math.max(0, Number(price) || 0) : 0,
       isPaid: isPaid === 'true',
-      status: status || 'draft',
-      approvalStatus: 'not_submitted',
+      status: status || 'beta',
+      approvalStatus: 'approved',
+      approvedAt: new Date(),
       monetization: monetization || 'free',
       serviceType: serviceType || 'beta'
     }
@@ -191,7 +191,14 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
     if (price !== undefined) game.price = Math.max(0, Number(price))
     if (isPaid !== undefined) game.isPaid = isPaid === 'true'
     if (status) game.status = status
-    if (serviceType) game.serviceType = serviceType
+    if (serviceType) {
+      game.serviceType = serviceType
+      if (serviceType === 'live') {
+        game.approvalStatus = 'approved'
+        if (game.status === 'draft') game.status = 'beta'
+        if (!game.approvedAt) (game as any).approvedAt = new Date()
+      }
+    }
     if (monetization) game.monetization = monetization
 
     // 확장 필드

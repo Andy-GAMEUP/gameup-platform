@@ -418,10 +418,6 @@ export default function GameDetailManagementPage() {
 
   const handleLaunchGame = async () => {
     if (!gameId || !gameData) return
-    if (gameData.approvalStatus !== 'approved') {
-      alert('승인된 게임만 출시할 수 있습니다.')
-      return
-    }
     if (!confirm('게임을 출시(라이브)로 전환하시겠습니까?')) return
     try {
       const fd = new FormData()
