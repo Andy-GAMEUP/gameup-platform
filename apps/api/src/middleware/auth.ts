@@ -92,7 +92,9 @@ export const requireAdminLevel = (...levels: Array<'super' | 'normal' | 'monitor
         if (userLevel) req.user.adminLevel = userLevel
       } catch { /* noop */ }
     }
-    if (!userLevel || !levels.includes(userLevel)) {
+    // adminLevel 미설정 admin은 super로 처리 (기존 계정 하위 호환)
+    if (!userLevel) userLevel = 'super'
+    if (!levels.includes(userLevel)) {
       return res.status(403).json({ message: '해당 작업에 대한 권한이 없습니다' })
     }
     next()
