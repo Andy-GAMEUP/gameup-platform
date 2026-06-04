@@ -6,181 +6,123 @@ import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
 import { useEffect, useRef, useState } from 'react'
 import {
-  Bold, Italic, Strikethrough, Heading2, Heading3,
-  List, ListOrdered, Quote, Code, Link2, Image as ImageIcon,
-  Undo2, Redo2, X
+  Bold, Italic, Heading1, Heading2, Heading3,
+  Minus, Undo2, Redo2, ImageIcon, Loader2,
 } from 'lucide-react'
 
 interface EditorProps {
   content: string
   onChange: (html: string) => void
   placeholder?: string
+  onImageUpload?: (file: File) => Promise<string>
 }
 
-export default function Editor({ content, onChange, placeholder = '내용을 입력하세요...' }: EditorProps) {
-  const [linkUrl, setLinkUrl] = useState('')
-  const [showLinkInput, setShowLinkInput] = useState(false)
-  const [imageUrl, setImageUrl] = useState('')
-  const [showImageInput, setShowImageInput] = useState(false)
-  const linkInputRef = useRef<HTMLInputElement>(null)
-  const imageInputRef = useRef<HTMLInputElement>(null)
+export default function Editor({ content, onChange, placeholder = '내용을 입력하세요...', onImageUpload }: EditorProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder }),
       Image.configure({ inline: false, allowBase64: false }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-cyan-400 underline hover:text-cyan-300' } }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: { class: 'text-accent underline underline-offset-2 hover:opacity-80 transition-opacity' },
+      }),
     ],
     content,
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: 'min-h-[300px] outline-none text-text-primary text-sm leading-relaxed p-4',
+        class: 'min-h-[280px] outline-none text-text-primary text-sm leading-7 px-5 py-4',
       },
     },
-    onUpdate({ editor }) {
-      onChange(editor.getHTML())
-    },
+    onUpdate({ editor }) { onChange(editor.getHTML()) },
   })
 
   useEffect(() => {
-    if (showLinkInput) linkInputRef.current?.focus()
-  }, [showLinkInput])
-
-  useEffect(() => {
-    if (showImageInput) imageInputRef.current?.focus()
-  }, [showImageInput])
-
-  useEffect(() => {
-    if (editor && content !== editor.getHTML() && content === '') {
+    if (!editor) return
+    const current = editor.getHTML()
+    if (content === current) return
+    if (content === '') {
       editor.commands.clearContent()
+    } else if (current === '<p></p>' || current === '') {
+      editor.commands.setContent(content)
     }
   }, [content, editor])
 
-  const setLink = () => {
-    if (!linkUrl.trim()) {
-      editor?.chain().focus().unsetLink().run()
-    } else {
-      const url = /^https?:\/\//i.test(linkUrl) ? linkUrl : `https://${linkUrl}`
-      editor?.chain().focus().setLink({ href: url }).run()
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !onImageUpload || !editor) return
+    setUploading(true)
+    try {
+      const url = await onImageUpload(file)
+      editor.chain().focus().setImage({ src: url }).run()
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
-    setLinkUrl('')
-    setShowLinkInput(false)
-  }
-
-  const insertImage = () => {
-    if (imageUrl.trim()) {
-      editor?.chain().focus().setImage({ src: imageUrl.trim() }).run()
-    }
-    setImageUrl('')
-    setShowImageInput(false)
   }
 
   if (!editor) return null
 
-  const ToolBtn = ({
-    onClick, active = false, title, children
-  }: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode }) => (
-    <button
-      type="button"
-      onMouseDown={(e) => { e.preventDefault(); onClick() }}
-      title={title}
-      className={`p-1.5 rounded transition-colors ${active ? 'bg-cyan-600/30 text-cyan-300' : 'text-text-secondary hover:text-text-primary hover:bg-line-light'}`}
-    >
+  const Sep = () => <div className="w-px h-4 bg-line mx-0.5 flex-shrink-0" />
+
+  const Btn = ({ onClick, active = false, disabled = false, children }: {
+    onClick: () => void; active?: boolean; disabled?: boolean; children: React.ReactNode
+  }) => (
+    <button type="button" onMouseDown={e => { e.preventDefault(); onClick() }} disabled={disabled}
+      className={`p-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
+        active
+          ? 'bg-accent text-white shadow-sm scale-95'
+          : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
+      }`}>
       {children}
     </button>
   )
 
   return (
-    <div className="bg-bg-tertiary border border-line rounded-xl overflow-hidden focus-within:border-cyan-500 transition-colors">
-      <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-line bg-bg-tertiary/80">
-        <ToolBtn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="굵게">
-          <Bold className="w-4 h-4" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="기울임">
-          <Italic className="w-4 h-4" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')} title="취소선">
-          <Strikethrough className="w-4 h-4" />
-        </ToolBtn>
+    <div className="bg-bg-card rounded-2xl overflow-hidden border border-line focus-within:border-accent/40 focus-within:ring-2 focus-within:ring-accent/10 transition-all">
 
-        <div className="w-px h-5 bg-bg-tertiary mx-1" />
+      {/* 숨김 파일 입력 */}
+      {onImageUpload && (
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
+      )}
 
-        <ToolBtn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="제목2">
+      {/* ── 툴바 ── */}
+      <div className="flex flex-wrap items-center gap-0.5 px-3 py-2 border-b border-line bg-bg-secondary/50">
+        <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })}>
+          <Heading1 className="w-4 h-4" />
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })}>
           <Heading2 className="w-4 h-4" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })} title="제목3">
+        </Btn>
+        <Btn onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive('heading', { level: 3 })}>
           <Heading3 className="w-4 h-4" />
-        </ToolBtn>
-
-        <div className="w-px h-5 bg-bg-tertiary mx-1" />
-
-        <ToolBtn onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="목록">
-          <List className="w-4 h-4" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="번호 목록">
-          <ListOrdered className="w-4 h-4" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="인용">
-          <Quote className="w-4 h-4" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().toggleCode().run()} active={editor.isActive('code')} title="코드">
-          <Code className="w-4 h-4" />
-        </ToolBtn>
-
-        <div className="w-px h-5 bg-bg-tertiary mx-1" />
-
-        <ToolBtn onClick={() => setShowLinkInput(v => !v)} active={editor.isActive('link') || showLinkInput} title="링크">
-          <Link2 className="w-4 h-4" />
-        </ToolBtn>
-        <ToolBtn onClick={() => setShowImageInput(v => !v)} active={showImageInput} title="이미지">
-          <ImageIcon className="w-4 h-4" />
-        </ToolBtn>
-
-        <div className="w-px h-5 bg-bg-tertiary mx-1" />
-
-        <ToolBtn onClick={() => editor.chain().focus().undo().run()} active={false} title="실행 취소">
-          <Undo2 className="w-4 h-4" />
-        </ToolBtn>
-        <ToolBtn onClick={() => editor.chain().focus().redo().run()} active={false} title="다시 실행">
-          <Redo2 className="w-4 h-4" />
-        </ToolBtn>
+        </Btn>
+        <Sep />
+        <Btn onClick={() => editor.chain().focus().setHorizontalRule().run()}><Minus className="w-4 h-4" /></Btn>
+        <Sep />
+        <Btn onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')}><Bold className="w-4 h-4" /></Btn>
+        <Btn onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')}><Italic className="w-4 h-4" /></Btn>
+        {onImageUpload && (
+          <>
+            <Sep />
+            <Btn onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+            </Btn>
+          </>
+        )}
+        <Sep />
+        <Btn onClick={() => editor.chain().focus().undo().run()}><Undo2 className="w-4 h-4" /></Btn>
+        <Btn onClick={() => editor.chain().focus().redo().run()}><Redo2 className="w-4 h-4" /></Btn>
       </div>
 
-      {showLinkInput && (
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-line bg-bg-secondary/50">
-          <Link2 className="w-3.5 h-3.5 text-text-secondary flex-shrink-0" />
-          <input
-            ref={linkInputRef}
-            value={linkUrl}
-            onChange={e => setLinkUrl(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') setLink(); if (e.key === 'Escape') { setShowLinkInput(false); setLinkUrl('') } }}
-            placeholder="URL 입력 (Enter 확인, Esc 취소)"
-            className="flex-1 bg-transparent text-text-primary text-sm outline-none placeholder-text-muted"
-          />
-          <button type="button" onClick={setLink} className="text-xs text-cyan-400 hover:text-cyan-300 font-medium px-2 py-1 rounded hover:bg-cyan-600/10 transition-colors">적용</button>
-          <button type="button" onClick={() => { setShowLinkInput(false); setLinkUrl('') }} className="text-text-muted hover:text-text-primary transition-colors"><X className="w-3.5 h-3.5" /></button>
-        </div>
-      )}
-
-      {showImageInput && (
-        <div className="flex items-center gap-2 px-3 py-2 border-b border-line bg-bg-secondary/50">
-          <ImageIcon className="w-3.5 h-3.5 text-text-secondary flex-shrink-0" />
-          <input
-            ref={imageInputRef}
-            value={imageUrl}
-            onChange={e => setImageUrl(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') insertImage(); if (e.key === 'Escape') { setShowImageInput(false); setImageUrl('') } }}
-            placeholder="이미지 URL 입력 (Enter 삽입, Esc 취소)"
-            className="flex-1 bg-transparent text-text-primary text-sm outline-none placeholder-text-muted"
-          />
-          <button type="button" onClick={insertImage} className="text-xs text-cyan-400 hover:text-cyan-300 font-medium px-2 py-1 rounded hover:bg-cyan-600/10 transition-colors">삽입</button>
-          <button type="button" onClick={() => { setShowImageInput(false); setImageUrl('') }} className="text-text-muted hover:text-text-primary transition-colors"><X className="w-3.5 h-3.5" /></button>
-        </div>
-      )}
-
-      <EditorContent editor={editor} />
+      {/* ── 본문 ── */}
+      <div className="[&_h1]:!text-base [&_h1]:!font-bold [&_h2]:!text-lg [&_h2]:!font-bold [&_h3]:!text-xl [&_h3]:!font-bold [&_h1]:!my-1 [&_h2]:!my-1.5 [&_h3]:!my-2 [&_strong]:!font-black [&_b]:!font-black [&_img]:rounded-xl [&_img]:max-w-full [&_img]:my-2 [&_img]:border [&_img]:border-line">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   )
 }

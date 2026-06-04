@@ -9,6 +9,9 @@ export interface IGameAnnouncement extends Document {
   priority: 'high' | 'normal' | 'low'
   sendPush: boolean
   recipients: number
+  views: number
+  startDate?: Date
+  endDate?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -23,6 +26,9 @@ const GameAnnouncementSchema = new Schema<IGameAnnouncement>(
     priority: { type: String, enum: ['high', 'normal', 'low'], default: 'normal' },
     sendPush: { type: Boolean, default: false },
     recipients: { type: Number, default: 0 },
+    views: { type: Number, default: 0 },
+    startDate: { type: Date },
+    endDate: { type: Date },
   },
   { timestamps: true }
 )

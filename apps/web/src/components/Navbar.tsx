@@ -2,10 +2,11 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare, Building2 } from 'lucide-react'
+import { Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare, Building2, Sun, Moon } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import Button from './Button'
 import { useAuth } from '@/lib/useAuth'
+import { useTheme } from '@/lib/useTheme'
 import NotificationPanel from './NotificationPanel'
 import notificationService from '@/services/notificationService'
 
@@ -17,6 +18,7 @@ export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const { isAuthenticated, user, logout } = useAuth()
+  const { theme, toggleTheme } = useTheme()
 
   const isCorporateApproved = user?.memberType === 'corporate' && user?.companyInfo?.approvalStatus === 'approved'
   const isCorporateDeveloper = isCorporateApproved && user?.companyInfo?.companyType?.includes('developer')
@@ -113,6 +115,11 @@ export default function Navbar() {
                     </Button>
                   </Link>
                 )}
+                <button onClick={toggleTheme}
+                  className="text-text-muted hover:text-text-primary transition-colors p-1.5"
+                  title={theme === 'light' ? '다크 모드' : '라이트 모드'}>
+                  {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                </button>
                 <Link href="/messages" className="relative text-text-muted hover:text-text-primary transition-colors p-1.5">
                   <MessageSquare className="w-5 h-5" />
                 </Link>

@@ -3,7 +3,7 @@ import { useLevels } from '../hooks/useLevels'
 
 interface LevelBadgeProps {
   level?: number
-  size?: 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md'
   variant?: 'compact' | 'full'
   className?: string
 }
@@ -35,7 +35,9 @@ export default function LevelBadge({ level = 1, size = 'sm', variant = 'compact'
 
   const sizeClasses = size === 'md'
     ? 'text-xs px-1.5 py-0.5'
-    : 'text-[10px] px-1 py-0.5'
+    : size === 'xs'
+      ? 'text-[8px] px-0.5 py-0'
+      : 'text-[10px] px-1 py-0.5'
 
   return (
     <span className={`inline-flex items-center gap-0.5 rounded-full bg-bg-tertiary border border-line text-text-secondary font-medium whitespace-nowrap ${sizeClasses} ${className}`}>

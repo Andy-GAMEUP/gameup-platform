@@ -4,13 +4,15 @@ import { getDeveloperOverview, getDeveloperDaily, getGameAnalytics, exportGameAn
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/gameMediaController'
 import { getGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem } from '../controllers/gameShopController'
-import { getGameAnnouncements, createGameAnnouncement, deleteGameAnnouncement } from '../controllers/gameAnnouncementController'
+import { getGameAnnouncements, createGameAnnouncement, deleteGameAnnouncement, getRecentGameAnnouncements, getGameAnnouncementById, getPublicGameAnnouncements } from '../controllers/gameAnnouncementController'
 import { authenticateToken, requireRole } from '../middleware/auth'
 import { uploadFields, screenshotUpload } from '../middleware/upload'
 
 const router = Router()
 
 router.get('/', getAllGames)
+router.get('/announcements/recent', getRecentGameAnnouncements)
+router.get('/announcements/:announcementId', getGameAnnouncementById)
 router.get('/my', authenticateToken, requireRole('developer'), getMyGames)
 router.get('/developer/stats', authenticateToken, requireRole('developer'), getDeveloperStats)
 
@@ -55,6 +57,7 @@ router.put('/:gameId/shop-items/:itemId', authenticateToken, requireRole('develo
 router.delete('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer'), deleteGameShopItem)
 
 // 게임 공지&알림
+router.get('/:gameId/announcements/public', getPublicGameAnnouncements)
 router.get('/:gameId/announcements', authenticateToken, requireRole('developer'), getGameAnnouncements)
 router.post('/:gameId/announcements', authenticateToken, requireRole('developer'), createGameAnnouncement)
 router.delete('/:gameId/announcements/:announcementId', authenticateToken, requireRole('developer'), deleteGameAnnouncement)

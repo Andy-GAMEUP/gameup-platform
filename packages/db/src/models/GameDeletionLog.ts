@@ -10,7 +10,7 @@ export interface IGameDeletionLog extends Document {
   deletedByUsername?: string
   deletedByEmail?: string
   deletedByRole?: string
-  reason: string
+  reason?: string
   ipAddress?: string
   userAgent?: string
   gameSnapshot?: Record<string, unknown>
@@ -28,7 +28,7 @@ const gameDeletionLogSchema = new Schema<IGameDeletionLog>(
     deletedByUsername: { type: String },
     deletedByEmail: { type: String },
     deletedByRole: { type: String },
-    reason: { type: String, required: true, trim: true },
+    reason: { type: String, trim: true },
     ipAddress: { type: String },
     userAgent: { type: String },
     gameSnapshot: { type: Schema.Types.Mixed },

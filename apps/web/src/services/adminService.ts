@@ -1,6 +1,32 @@
 'use client'
 import apiClient from './api'
 
+export interface PublicAnnouncement {
+  _id: string
+  title: string
+  content: string
+  type: 'notice' | 'event' | 'maintenance' | 'update'
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  isPinned: boolean
+  targetRole: 'all' | 'developer' | 'player'
+  views: number
+  publishedAt?: string
+  expiresAt?: string
+  createdAt: string
+  authorId?: { username: string; role: string }
+}
+
+export interface CommunityBanner {
+  _id: string
+  imageUrl: string
+  linkUrl: string
+  title: string
+  sortOrder: number
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export interface AdminStats {
   users: { total: number; developers: number; players: number; banned: number }
   games: { total: number; pending: number; approved: number; rejected: number; archived: number; published: number }
@@ -234,6 +260,50 @@ export const adminService = {
 
   getPublicAnnouncements: async () => {
     const res = await apiClient.get('/admin/announcements/public')
+    return res.data
+  },
+
+  getPublicAnnouncementById: async (id: string) => {
+    const res = await apiClient.get(`/admin/announcements/public/${id}`)
+    return res.data as { announcement: PublicAnnouncement }
+  },
+
+  getCommunityBanners: async () => {
+    const res = await apiClient.get('/admin/community/banners')
+    return res.data as { banners: CommunityBanner[] }
+  },
+
+  getAllCommunityBanners: async () => {
+    const res = await apiClient.get('/admin/community/banners/all')
+    return res.data as { banners: CommunityBanner[] }
+  },
+
+  uploadCommunityBanner: async (file: File, extra?: { linkUrl?: string; title?: string }) => {
+    const form = new FormData()
+    form.append('bannerImage', file)
+    if (extra?.linkUrl) form.append('linkUrl', extra.linkUrl)
+    if (extra?.title) form.append('title', extra.title)
+    const res = await apiClient.post('/admin/community/banners', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data as { banner: CommunityBanner }
+  },
+
+  updateCommunityBanner: async (id: string, data: Partial<CommunityBanner> & { file?: File }) => {
+    const form = new FormData()
+    if (data.file) form.append('bannerImage', data.file)
+    if (data.linkUrl !== undefined) form.append('linkUrl', data.linkUrl)
+    if (data.title !== undefined) form.append('title', data.title)
+    if (data.isActive !== undefined) form.append('isActive', String(data.isActive))
+    if (data.sortOrder !== undefined) form.append('sortOrder', String(data.sortOrder))
+    const res = await apiClient.patch(`/admin/community/banners/${id}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data as { banner: CommunityBanner }
+  },
+
+  deleteCommunityBanner: async (id: string) => {
+    const res = await apiClient.delete(`/admin/community/banners/${id}`)
     return res.data
   },
 

@@ -552,7 +552,7 @@ export default function PlayerGameDetailPage() {
                   </div>
                   {(() => {
                     const cert = (game as any).ratingCertificate
-                    if (!cert?.ratingClass) return null
+                    if (!cert?.ratingClass || !cert?.isVerified) return null
                     return (
                       <div className="flex justify-between items-center">
                         <dt className="text-text-secondary">등급</dt>

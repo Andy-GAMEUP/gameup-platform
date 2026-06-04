@@ -17,6 +17,7 @@ ensureDir(path.join(UPLOAD_BASE, 'thumbnails'))
 ensureDir(path.join(UPLOAD_BASE, 'banners'))
 ensureDir(path.join(UPLOAD_BASE, 'community'))
 ensureDir(path.join(UPLOAD_BASE, 'screenshots'))
+ensureDir(path.join(UPLOAD_BASE, 'certs'))
 
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
@@ -26,6 +27,8 @@ const storage = multer.diskStorage({
       cb(null, path.join(UPLOAD_BASE, 'thumbnails'))
     } else if (file.fieldname === 'bannerImage') {
       cb(null, path.join(UPLOAD_BASE, 'banners'))
+    } else if (file.fieldname === 'certFile') {
+      cb(null, path.join(UPLOAD_BASE, 'certs'))
     } else if (file.fieldname === 'communityImages') {
       cb(null, path.join(UPLOAD_BASE, 'community'))
     } else if (file.fieldname === 'screenshot') {
@@ -79,7 +82,8 @@ export const upload = multer({
 
 export const uploadFields = upload.fields([
   { name: 'thumbnail', maxCount: 1 },
-  { name: 'bannerImage', maxCount: 1 }
+  { name: 'bannerImage', maxCount: 1 },
+  { name: 'certFile', maxCount: 1 },
 ])
 
 // 스크린샷 업로드 (1장, 5MB)

@@ -6,14 +6,20 @@ import {
   getGameMetrics,
   getAllReviews, blockReview, deleteReview,
   getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement,
-  getPublicAnnouncements
+  getPublicAnnouncements, getPublicAnnouncementById
 } from '../controllers/adminController'
+import { getCommunityBanners, getAllCommunityBanners, uploadCommunityBanner, updateCommunityBanner, deleteCommunityBanner } from '../controllers/communityBannerController'
 import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
+import { uploadFields } from '../middleware/upload'
 
 const router = Router()
 
+// 공개 — 커뮤니티 홈 배너 (인증 불필요)
+router.get('/community/banners', getCommunityBanners)
+
 // 공개 공지사항 (인증 불필요)
 router.get('/announcements/public', getPublicAnnouncements)
+router.get('/announcements/public/:id', getPublicAnnouncementById)
 
 // 이하 모두 관리자 전용
 router.use(authenticateToken, requireAdmin)
@@ -47,5 +53,11 @@ router.post('/users/create-admin', requireAdminLevel('super'), createAdminUser)
 router.patch('/games/:id/approve', requireAdminLevel('super'), approveGame)
 router.delete('/reviews/:id', requireAdminLevel('super'), deleteReview)
 router.delete('/announcements/:id', requireAdminLevel('super'), deleteAnnouncement)
+
+// 커뮤니티 배너 (관리자)
+router.get('/community/banners/all', getAllCommunityBanners)
+router.post('/community/banners', requireAdminLevel('super', 'normal'), uploadFields, uploadCommunityBanner)
+router.patch('/community/banners/:id', requireAdminLevel('super', 'normal'), uploadFields, updateCommunityBanner)
+router.delete('/community/banners/:id', requireAdminLevel('super', 'normal'), deleteCommunityBanner)
 
 export default router

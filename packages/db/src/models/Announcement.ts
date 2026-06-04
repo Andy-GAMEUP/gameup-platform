@@ -11,6 +11,7 @@ export interface IAnnouncement extends Document {
   publishedAt?: Date
   expiresAt?: Date
   targetRole: 'all' | 'developer' | 'player'
+  views: number
   createdAt: Date
   updatedAt: Date
 }
@@ -59,6 +60,10 @@ const announcementSchema = new Schema<IAnnouncement>(
       type: String,
       enum: ['all', 'developer', 'player'],
       default: 'all'
+    },
+    views: {
+      type: Number,
+      default: 0
     }
   },
   {

@@ -8,6 +8,11 @@ interface FormData {
   title: string
   serviceType: string
   gameDomain: string
+  startDate: string
+  endDate: string
+  maxTesters: string
+  testType: string
+  requirements: string
 }
 
 export default function UploadGamePage() {
@@ -19,6 +24,11 @@ export default function UploadGamePage() {
     title: '',
     serviceType: 'beta',
     gameDomain: '',
+    startDate: '',
+    endDate: '',
+    maxTesters: '',
+    testType: '',
+    requirements: '',
   })
 
   const isValidUrl = (url: string) => {
@@ -60,6 +70,11 @@ export default function UploadGamePage() {
       fd.append('isPaid', 'false')
       fd.append('status', 'draft')
       fd.append('gameDomain', formData.gameDomain.trim())
+      fd.append('startDate', formData.startDate)
+      fd.append('endDate', formData.endDate)
+      fd.append('maxTesters', formData.maxTesters)
+      fd.append('testType', formData.testType)
+      fd.append('requirements', formData.requirements)
 
       await gameService.createGame(fd)
       alert('게임이 등록되었습니다. 게임 관리에서 심사를 준비해 주세요.')
@@ -103,6 +118,23 @@ export default function UploadGamePage() {
             />
           </div>
 
+          {/* 게임 URL */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-widest text-text-muted">게임 URL</label>
+            <div className="relative">
+              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input
+                name="gameDomain"
+                type="url"
+                placeholder="https://mygame.com"
+                value={formData.gameDomain}
+                onChange={handleChange}
+                className="w-full pl-11 pr-4 py-3.5 bg-bg-secondary border border-line rounded-2xl text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
+                required
+              />
+            </div>
+          </div>
+
           {/* 서비스 유형 */}
           <div className="space-y-3">
             <label className="text-xs font-semibold uppercase tracking-widest text-text-muted">서비스 유형</label>
@@ -128,22 +160,48 @@ export default function UploadGamePage() {
             </div>
           </div>
 
-          {/* 게임 URL */}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-widest text-text-muted">게임 URL</label>
-            <div className="relative">
-              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-              <input
-                name="gameDomain"
-                type="url"
-                placeholder="https://mygame.com"
-                value={formData.gameDomain}
-                onChange={handleChange}
-                className="w-full pl-11 pr-4 py-3.5 bg-bg-secondary border border-line rounded-2xl text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
-                required
-              />
+          {/* 베타 테스트 정보 */}
+          {formData.serviceType === 'beta' && (
+            <div className="space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-widest text-text-muted">베타 테스트 정보</label>
+              <div className="bg-bg-secondary border border-line rounded-2xl p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium block text-text-secondary">시작일</label>
+                    <input name="startDate" type="date" value={formData.startDate} onChange={handleChange}
+                      className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-xl text-text-primary text-sm focus:outline-none focus:border-accent transition-colors" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium block text-text-secondary">종료일</label>
+                    <input name="endDate" type="date" value={formData.endDate} onChange={handleChange}
+                      className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-xl text-text-primary text-sm focus:outline-none focus:border-accent transition-colors" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium block text-text-secondary">최대 테스터 수</label>
+                    <input name="maxTesters" type="number" placeholder="1000" value={formData.maxTesters} onChange={handleChange}
+                      className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-xl text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent transition-colors" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium block text-text-secondary">테스트 유형</label>
+                    <select name="testType" value={formData.testType} onChange={handleChange}
+                      className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-xl text-text-primary text-sm focus:outline-none focus:border-accent transition-colors">
+                      <option value="">유형 선택</option>
+                      <option value="closed">비공개 베타</option>
+                      <option value="open">공개 베타</option>
+                      <option value="alpha">알파 테스트</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium block text-text-secondary">시스템 요구사항</label>
+                  <textarea name="requirements" placeholder="최소 및 권장 시스템 요구사항" value={formData.requirements} onChange={handleChange}
+                    className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-xl text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent transition-colors min-h-20 resize-none" />
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* 버튼 */}
           <div className="flex gap-3 pt-2">

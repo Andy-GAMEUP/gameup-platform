@@ -2,6 +2,17 @@
 import apiClient from './api'
 import { Game } from '@gameup/types'
 
+export interface RecentGameAnnouncement {
+  _id: string
+  gameId: string
+  title: string
+  content: string
+  type: 'notice' | 'update' | 'maintenance' | 'event'
+  views: number
+  createdAt: string
+  game: { _id: string; title: string; thumbnail?: string; serviceType?: string } | null
+}
+
 export const gameService = {
   getAllGames: async (params?: { genre?: string; search?: string; sort?: string; page?: number; limit?: number; serviceType?: string }) => {
     const response = await apiClient.get<{ games: Game[]; pagination?: { page: number; limit: number; total: number; pages: number } }>('/games', { params })
@@ -43,7 +54,7 @@ export const gameService = {
     return response.data
   },
 
-  deleteGame: async (id: string, payload: { password: string; reason: string }) => {
+  deleteGame: async (id: string, payload?: Record<string, unknown>) => {
     const response = await apiClient.delete(`/games/${id}`, { data: payload })
     return response.data
   },
@@ -208,7 +219,7 @@ export const gameService = {
     return response.data
   },
 
-  createGameAnnouncement: async (gameId: string, data: { title: string; content: string; type: string; priority: string; sendPush: boolean }) => {
+  createGameAnnouncement: async (gameId: string, data: { title: string; content: string; type: string; priority: string; sendPush: boolean; startDate?: string; endDate?: string }) => {
     const response = await apiClient.post(`/games/${gameId}/announcements`, data)
     return response.data
   },
@@ -216,5 +227,20 @@ export const gameService = {
   deleteGameAnnouncement: async (gameId: string, announcementId: string) => {
     const response = await apiClient.delete(`/games/${gameId}/announcements/${announcementId}`)
     return response.data
+  },
+
+  getRecentGameAnnouncements: async (limit = 15, page = 1) => {
+    const response = await apiClient.get('/games/announcements/recent', { params: { limit, page } })
+    return response.data as { announcements: RecentGameAnnouncement[]; total: number; page: number; totalPages: number }
+  },
+
+  getAnnouncementsByGame: async (gameId: string, params?: { page?: number; limit?: number }) => {
+    const response = await apiClient.get(`/games/${gameId}/announcements/public`, { params })
+    return response.data as { announcements: RecentGameAnnouncement[] }
+  },
+
+  getGameAnnouncementById: async (announcementId: string) => {
+    const response = await apiClient.get(`/games/announcements/${announcementId}`)
+    return response.data as { announcement: RecentGameAnnouncement }
   },
 }

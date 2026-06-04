@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import communityService, { PostSummary, CommentItem } from '@/services/communityService'
 import playerService from '@/services/playerService'
@@ -14,7 +14,7 @@ import {
   ThumbsUp, MessageSquare, Bookmark, Flag, Eye, ArrowLeft,
   Send, Trash2, Pencil, CornerDownRight, Loader2, ExternalLink,
   Shield, Wrench, AlertTriangle, Star, Flame, CheckCircle,
-  Share2, Film
+  Share2
 } from 'lucide-react'
 
 const CHANNEL_MAP: Record<string, { label: string; className: string }> = {
@@ -50,6 +50,8 @@ function Avatar({ username, role, size = 8 }: { username: string; role: string; 
 export default function CommunityPostPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromLabel = searchParams.get('from') || '커뮤니티'
   const { user, isAuthenticated } = useAuth()
 
   const [post, setPost] = useState<PostSummary | null>(null)
@@ -162,7 +164,7 @@ export default function CommunityPostPage() {
     if (!window.confirm('게시글을 삭제하시겠습니까?')) return
     try {
       await communityService.deletePost(id!)
-      router.push('/community')
+      router.back()
     } catch { showToast('삭제 실패', false) }
   }
 
@@ -284,9 +286,9 @@ export default function CommunityPostPage() {
 
       <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 py-8">
         {/* 뒤로가기 */}
-        <Link href="/community" className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-sm mb-5 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> 목록으로
-        </Link>
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-sm mb-5 transition-colors">
+          <ArrowLeft className="w-4 h-4" /> {fromLabel}
+        </button>
 
         {/* 게시글 본문 */}
         <article className="bg-bg-card border border-line rounded-2xl p-5 sm:p-6 lg:p-8 mb-4">
@@ -375,21 +377,6 @@ export default function CommunityPostPage() {
             </div>
           )}
 
-          {/* 동영상 링크 */}
-          {post.videoUrl && (
-            <a href={post.videoUrl} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-3 bg-accent-light border border-accent-muted rounded-xl px-4 py-3 mb-5 hover:border-accent transition-colors group">
-              <div className="w-10 h-10 bg-accent rounded-lg flex items-center justify-center flex-shrink-0">
-                <Film className="w-5 h-5 text-text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-accent group-hover:text-accent">동영상 보기</p>
-                <p className="text-xs text-text-muted truncate">{post.videoUrl}</p>
-              </div>
-              <ExternalLink className="w-4 h-4 text-accent flex-shrink-0" />
-            </a>
-          )}
-
           {/* 링크 */}
           {post.links?.length > 0 && (
             <div className="space-y-2 mb-5">
@@ -437,16 +424,16 @@ export default function CommunityPostPage() {
             <span className="flex items-center gap-1 text-text-secondary text-sm"><MessageSquare className="w-4 h-4"/>{post.commentCount}</span>
             <div className="ml-auto flex items-center gap-2">
               {(isOwner || isAdminOrDev) && (
-                <>
-                  <Link href={`/community/edit/${id}`}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-text-muted border border-line hover:text-text-primary transition-colors">
-                    <Pencil className="w-3 h-3"/> 수정
-                  </Link>
-                  <button onClick={handleDeletePost}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-red-500 border border-red-200 dark:border-red-800/40 hover:border-red-400 transition-colors">
-                    <Trash2 className="w-3 h-3"/> 삭제
-                  </button>
-                </>
+                <Link href={`/community/edit/${id}`}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-text-muted border border-line hover:text-text-primary transition-colors">
+                  <Pencil className="w-3 h-3"/> 수정
+                </Link>
+              )}
+              {(isOwner || user?.role === 'admin') && (
+                <button onClick={handleDeletePost}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-red-500 border border-red-200 dark:border-red-800/40 hover:border-red-400 transition-colors">
+                  <Trash2 className="w-3 h-3"/> 삭제
+                </button>
               )}
               {!isOwner && isAuthenticated && (
                 <button onClick={()=>setReportModal({type:'post',id:id!})}

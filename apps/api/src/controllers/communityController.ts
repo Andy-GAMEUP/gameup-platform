@@ -16,7 +16,12 @@ export const getPosts = async (req: Request, res: Response) => {
     const { page = 1, limit = 15, sort = 'latest', channel, gameId, search, tag } = req.query
     const limitNum = Math.min(Number(limit) || 15, 100)
     const filter: Record<string, unknown> = { status: 'active', isTempSave: { $ne: true } }
-    if (channel) filter.channel = channel
+    if (channel) {
+      const SUB_CHANNELS: Record<string, string[]> = { free: ['free', 'new-game-intro'] }
+      filter.channel = SUB_CHANNELS[channel as string]
+        ? { $in: SUB_CHANNELS[channel as string] }
+        : channel
+    }
     if (gameId) filter.gameId = gameId
     if (tag) filter.tags = tag
     if (search) {
@@ -36,7 +41,7 @@ export const getPosts = async (req: Request, res: Response) => {
     const total = await Post.countDocuments(filter)
     const posts = await Post.find(filter)
       .populate('author', 'username role level')
-      .populate('gameId', 'title')
+      .populate('gameId', 'title serviceType')
       .sort(sortObj)
       .skip((Number(page) - 1) * limitNum)
       .limit(limitNum)
@@ -61,7 +66,7 @@ export const getPost = async (req: Request, res: Response) => {
       { _id: id, status: 'active' },
       { $inc: { views: 1 } },
       { new: true }
-    ).populate('author', 'username role level').populate('gameId', 'title')
+    ).populate('author', 'username role level').populate('gameId', 'title serviceType')
     if (!post) return res.status(404).json({ message: '게시글을 찾을 수 없습니다' })
     const updated = { ...post.toObject(), likeCount: post.likes.length, bookmarkCount: post.bookmarks.length }
     res.json({ post: updated })

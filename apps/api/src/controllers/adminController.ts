@@ -533,6 +533,21 @@ export const deleteAnnouncement = async (req: AuthRequest, res: Response) => {
   }
 }
 
+export const getPublicAnnouncementById = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const announcement = await Announcement.findOneAndUpdate(
+      { _id: id, isPublished: true },
+      { $inc: { views: 1 } },
+      { new: true }
+    ).populate('authorId', 'username role')
+    if (!announcement) return res.status(404).json({ message: '공지사항을 찾을 수 없습니다' })
+    res.json({ announcement })
+  } catch {
+    res.status(500).json({ message: '공지사항 조회 실패' })
+  }
+}
+
 export const getPublicAnnouncements = async (req: AuthRequest, res: Response) => {
   try {
     const now = new Date()

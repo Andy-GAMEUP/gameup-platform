@@ -1,9 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Eye, Plus, Search, Star, RefreshCw, Settings, Send } from 'lucide-react'
+import { Eye, Plus, Search, Star, RefreshCw, Settings } from 'lucide-react'
 import { gameService } from '@/services/gameService'
 import DeleteGameModal from '@/components/DeleteGameModal'
+import RequestReviewButton from '@/components/RequestReviewButton'
 
 interface Game {
   _id: string
@@ -19,6 +20,10 @@ interface Game {
   rating: number
   createdAt: string
   betaEndDate?: string
+  description?: string
+  bannerImage?: string
+  hasScreenshots?: boolean
+  ratingCertificate?: { ratingClass?: string }
 }
 
 const approvalBadge: Record<string, string> = {
@@ -30,11 +35,11 @@ const approvalBadge: Record<string, string> = {
 }
 // 요구사항: 승인상태 = 미제출 / 심사중 / 반려 / 완료
 const approvalLabel: Record<string, string> = {
-  not_submitted: '미제출',
+  not_submitted: '초안 작성 중',
   approved: '완료',
   pending:  '심사중',
   review:   '심사중',
-  rejected: '반려',
+  rejected: '심사 거부',
 }
 
 // 요구사항: 서비스 = 베타 / 라이브 / 종료
@@ -62,22 +67,6 @@ export default function GamesManagementPage() {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Game | null>(null)
-  const [requestingReview, setRequestingReview] = useState<string | null>(null)
-
-  const handleRequestReview = async (gameId: string, gameTitle: string) => {
-    if (!confirm(`"${gameTitle}" 게임의 심사를 요청하시겠습니까?`)) return
-    setRequestingReview(gameId)
-    try {
-      await gameService.requestReview(gameId)
-      alert('심사가 요청되었습니다. 관리자 검토 후 승인됩니다.')
-      await loadGames()
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      alert(msg || '심사 요청에 실패했습니다.')
-    } finally {
-      setRequestingReview(null)
-    }
-  }
 
   const loadGames = async () => {
     setLoading(true)
@@ -105,10 +94,10 @@ export default function GamesManagementPage() {
 
   const stats = [
     { label: '전체 게임', value: games.length,                                              color: 'text-text-primary',  sub: null },
-    { label: '미제출',    value: games.filter(g => g.approvalStatus === 'not_submitted').length, color: 'text-text-muted', sub: null },
+    { label: '초안 작성 중',    value: games.filter(g => g.approvalStatus === 'not_submitted').length, color: 'text-text-muted', sub: null },
     { label: '라이브',    value: liveGames.length, color: 'text-accent',   sub: liveGames.filter(isPending).length },
     { label: '베타',      value: betaGames.length, color: 'text-blue-400', sub: betaGames.filter(isPending).length },
-    { label: '반려',      value: games.filter(g => g.approvalStatus === 'rejected').length, color: 'text-red-400', sub: null },
+    { label: '심사 거부',  value: games.filter(g => g.approvalStatus === 'rejected').length, color: 'text-red-400', sub: null },
   ]
 
   const formatEndDate = (game: Game): string => {
@@ -188,7 +177,7 @@ export default function GamesManagementPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 p-4">
-            {filteredGames.map((game, idx) => {
+            {filteredGames.map((game) => {
               const service   = getServiceDisplay(game)
               const isLive    = service.label === '라이브'
               const isBeta    = service.label === '베타'
@@ -224,23 +213,28 @@ export default function GamesManagementPage() {
                       </div>
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="text-[16px] text-text-muted">{game.genre}</span>
-                        {/* 더미: 실제 데이터 연동 전 4가지 상태 순환 표시 */}
-                        {idx % 4 === 0 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-orange-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+                        {game.approvalStatus === 'not_submitted' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-text-muted">
+                            <span className="w-1.5 h-1.5 rounded-full bg-text-muted" />
+                            초안 작성 중
+                          </span>
+                        )}
+                        {(game.approvalStatus === 'pending' || game.approvalStatus === 'review') && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-yellow-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
                             심사중
                           </span>
                         )}
-                        {idx % 4 === 1 && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-400">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                        {game.approvalStatus === 'approved' && game.status !== 'published' && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-accent">
+                            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
                             출시 대기
                           </span>
                         )}
-                        {idx % 4 === 2 && (
+                        {game.approvalStatus === 'rejected' && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-red-400">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                            심사 반려
+                            심사 거부
                           </span>
                         )}
                       </div>
@@ -258,16 +252,25 @@ export default function GamesManagementPage() {
 
                   {/* 액션 버튼 */}
                   <div className="flex items-center gap-1 p-2.5">
-                    {(game.approvalStatus === 'not_submitted' || game.approvalStatus === 'rejected') && (
-                      <button
-                        onClick={() => handleRequestReview(game._id, game.title)}
-                        disabled={requestingReview === game._id}
-                        className="flex items-center gap-0.5 px-2 py-1 text-cyan-400 hover:text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-md transition-colors text-[11px] font-medium disabled:opacity-50"
-                      >
-                        <Send className="w-2.5 h-2.5" />
-                        {requestingReview === game._id ? '요청중' : '심사요청'}
-                      </button>
-                    )}
+                    {(game.approvalStatus === 'not_submitted' || game.approvalStatus === 'rejected') && (() => {
+                      const missingItems = [
+                        !(game.title && game.genre && game.description) && '기본 정보',
+                        !game.bannerImage && '히어로 배너',
+                        !game.hasScreenshots && '스크린샷',
+                        !game.ratingCertificate?.ratingClass && '등급 분류',
+                      ].filter(Boolean)
+                      return (
+                        <RequestReviewButton
+                          gameId={game._id}
+                          gameTitle={game.title}
+                          approvalStatus={game.approvalStatus}
+                          onSuccess={loadGames}
+                          size="sm"
+                          extraDisabled={missingItems.length > 0}
+                          extraDisabledTitle={missingItems.length > 0 ? `등록 필요: ${missingItems.join(', ')}` : undefined}
+                        />
+                      )
+                    })()}
                     <Link href={`/games/${game._id}`} className="flex-1">
                       <button className="w-full flex items-center justify-center gap-1 py-1 text-text-secondary hover:text-text-primary bg-bg-tertiary border border-line/60 hover:border-line rounded-md transition-colors text-[11px] font-semibold">
                         <Eye className="w-[15px] h-[15px]" />

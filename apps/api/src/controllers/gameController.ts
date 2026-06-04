@@ -1,10 +1,9 @@
 import { Response } from 'express'
 import fs from 'fs'
 import path from 'path'
-import { GameModel as Game, UserModel as User, GameDeletionLogModel as GameDeletionLog, PaymentModel as Payment } from '@gameup/db'
+import { GameModel as Game, UserModel as User, GameDeletionLogModel as GameDeletionLog, PaymentModel as Payment, GameMediaModel as GameMedia } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 import { grantGameAccessPoint } from '../services/pointService'
-import { comparePassword } from '../services/authService'
 
 export const getAllGames = async (req: AuthRequest, res: Response) => {
   try {
@@ -189,14 +188,16 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
     if (genre !== undefined) game.genre = genre
     if (price !== undefined) game.price = Math.max(0, Number(price))
     if (isPaid !== undefined) game.isPaid = isPaid === 'true'
-    if (status) game.status = status
-    if (serviceType) {
-      game.serviceType = serviceType
-      if (serviceType === 'live') {
-        game.approvalStatus = 'approved'
-        if (game.status === 'draft') game.status = 'beta'
-        if (!game.approvedAt) (game as any).approvedAt = new Date()
+    if (status) {
+      if (status === 'published' && game.approvalStatus !== 'approved') {
+        return res.status(400).json({ message: '심사 승인 후 출시할 수 있습니다' })
       }
+      game.status = status
+    }
+    if (serviceType && serviceType !== game.serviceType) {
+      game.serviceType = serviceType
+      game.approvalStatus = 'not_submitted'
+      game.status = 'draft'
     }
     if (monetization) game.monetization = monetization
 
@@ -280,37 +281,18 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
     }
 
     const { id } = req.params
-    const { password, reason } = (req.body || {}) as { password?: string; reason?: string }
-
-    // 🔒 비밀번호 & 사유 필수
-    if (!password || typeof password !== 'string') {
-      return res.status(400).json({ message: '비밀번호를 입력해주세요' })
-    }
-    if (!reason || typeof reason !== 'string' || reason.trim().length < 2) {
-      return res.status(400).json({ message: '삭제 사유를 입력해주세요 (2자 이상)' })
-    }
-
     const game = await Game.findById(id)
     if (!game) {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     }
 
-    // 🔒 admin도 삭제 가능하도록 권한 확인
     if (game.developerId.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: '자신의 게임만 삭제할 수 있습니다' })
     }
 
-    // 🔒 요청자 비밀번호 검증
-    const actor = await User.findById(req.user.id).select('+password')
-    if (!actor || !actor.password) {
-      return res.status(401).json({ message: '사용자 인증 정보를 확인할 수 없습니다' })
-    }
-    const passwordOk = await comparePassword(password, actor.password)
-    if (!passwordOk) {
-      return res.status(401).json({ message: '비밀번호가 일치하지 않습니다' })
-    }
+    const actor = await User.findById(req.user.id).select('username email')
 
-    // 🔒 감사로그 기록 (삭제 전)
+    // 감사로그 기록 (삭제 전)
     let developerUsername: string | undefined
     try {
       const developer = await User.findById(game.developerId).select('username email')
@@ -327,10 +309,9 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
       developerId: game.developerId,
       developerUsername,
       deletedBy: req.user.id,
-      deletedByUsername: (actor as { username?: string }).username,
-      deletedByEmail: (actor as { email?: string }).email,
+      deletedByUsername: (actor as { username?: string })?.username,
+      deletedByEmail: (actor as { email?: string })?.email,
       deletedByRole: req.user.role,
-      reason: reason.trim(),
       ipAddress,
       userAgent,
       gameSnapshot: game.toObject(),
@@ -407,7 +388,14 @@ export const getMyGames = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
     const games = await Game.find({ developerId: req.user.id }).sort({ createdAt: -1 })
-    res.json({ success: true, games })
+    const gameIds = games.map(g => g._id)
+    const screenshotGameIds = await GameMedia.distinct('gameId', { gameId: { $in: gameIds }, type: 'screenshot' })
+    const screenshotSet = new Set(screenshotGameIds.map(id => id.toString()))
+    const result = games.map(g => ({
+      ...g.toObject(),
+      hasScreenshots: screenshotSet.has(g._id.toString()),
+    }))
+    res.json({ success: true, games: result })
   } catch (error) {
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }

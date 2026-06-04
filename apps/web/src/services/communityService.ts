@@ -6,7 +6,7 @@ export interface PostSummary {
   title: string
   content: string
   author: { _id: string; username: string; role: string; level?: number }
-  gameId?: { _id: string; title: string }
+  gameId?: { _id: string; title: string; serviceType?: string }
   channel: string
   images: string[]
   videoUrl?: string

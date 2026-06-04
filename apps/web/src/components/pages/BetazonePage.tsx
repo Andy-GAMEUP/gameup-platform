@@ -75,7 +75,7 @@ function GameCard({ game }: { game: Game }) {
           </div>
           {(() => {
             const cert = (game as any).ratingCertificate
-            if (!cert?.ratingClass) return null
+            if (!cert?.ratingClass || !cert?.isVerified) return null
             return (
               <div className="mt-2">
                 <GracRatingBadge ratingClass={cert.ratingClass as RatingClass} size="sm" />

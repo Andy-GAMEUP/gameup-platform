@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import {
   ChevronLeft, Star, Users, MessageSquare, Download, Eye,
-  Calendar, Globe, Upload, Image as ImageIcon, Film,
+  Globe, Upload, Image as ImageIcon, Film,
   Trash2, Save, AlertCircle, Plus, Edit, Bell, ShoppingBag,
   DollarSign, Package, Megaphone, Play, Clock, Send, Check,
   Gift, Shield, Zap, Trophy, CreditCard, UserPlus, LogIn, Timer,
@@ -13,6 +13,9 @@ import {
 import { gameService } from '../../services/gameService'
 import { developerBalanceService } from '../../services/developerBalanceService'
 import DeleteGameModal from '../DeleteGameModal'
+import GracRatingBadge from '../GracRatingBadge'
+import RequestReviewButton from '../RequestReviewButton'
+import { RatingClass } from '@gameup/types'
 import { useRouter } from 'next/navigation'
 
 interface MediaItem { _id: string; type: 'screenshot' | 'video'; title: string; url: string; order: number; createdAt: string }
@@ -56,7 +59,6 @@ interface BalanceInfo {
 }
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'main-settings', label: '메인 세팅' },
   { key: 'edit', label: '기본 정보' },
   { key: 'media', label: '미디어' },
   { key: 'shop', label: '게임샵' },
@@ -104,6 +106,11 @@ interface GameData {
   notes?: string
   startDate?: string
   endDate?: string
+  maxTesters?: number
+  testType?: string
+  requirements?: string
+  website?: string
+  discord?: string
   isPublic?: boolean
   thumbnail?: string
   bannerImage?: string
@@ -129,6 +136,12 @@ export default function GameDetailManagementPage() {
   const [editNotes, setEditNotes] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editStartDate, setEditStartDate] = useState('')
+  const [editEndDate, setEditEndDate] = useState('')
+  const [editMaxTesters, setEditMaxTesters] = useState('')
+  const [editTestType, setEditTestType] = useState('')
+  const [editRequirements, setEditRequirements] = useState('')
+  const [editWebsite, setEditWebsite] = useState('')
+  const [editDiscord, setEditDiscord] = useState('')
   const [editIsPublic, setEditIsPublic] = useState(true)
   const [editSaving, setEditSaving] = useState(false)
   const [iconUploading, setIconUploading] = useState(false)
@@ -181,6 +194,8 @@ export default function GameDetailManagementPage() {
   const [certNumber, setCertNumber] = useState('')
   const [certDate, setCertDate] = useState('')
   const [certSaving, setCertSaving] = useState(false)
+  const [certFile, setCertFile] = useState<File | null>(null)
+  const certFileRef = useRef<HTMLInputElement>(null)
 
   const gameId = _id as string
 
@@ -196,6 +211,12 @@ export default function GameDetailManagementPage() {
         setEditNotes(g.notes || '')
         setEditDescription(g.description || '')
         setEditStartDate(g.startDate ? g.startDate.split('T')[0] : '')
+        setEditEndDate(g.endDate ? g.endDate.split('T')[0] : '')
+        setEditMaxTesters(g.maxTesters ? String(g.maxTesters) : '')
+        setEditTestType(g.testType || '')
+        setEditRequirements(g.requirements || '')
+        setEditWebsite(g.website || '')
+        setEditDiscord(g.discord || '')
         setEditIsPublic(g.status !== 'draft' && g.status !== 'archived')
         setCertRatingClass(g.ratingCertificate?.ratingClass || '')
         setCertNumber(g.ratingCertificate?.certNumber || '')
@@ -269,6 +290,11 @@ export default function GameDetailManagementPage() {
     } catch { /* ignore */ }
     setAnnouncementsLoading(false)
   }, [gameId])
+
+  useEffect(() => {
+    if (!gameId) return
+    loadMedia()
+  }, [gameId, loadMedia])
 
   useEffect(() => {
     if (activeTab === 'points') {
@@ -407,6 +433,12 @@ export default function GameDetailManagementPage() {
       fd.append('notes', editNotes)
       fd.append('description', editDescription.trim())
       fd.append('startDate', editStartDate)
+      fd.append('endDate', editEndDate)
+      fd.append('maxTesters', editMaxTesters || '0')
+      fd.append('testType', editTestType)
+      fd.append('requirements', editRequirements)
+      fd.append('website', editWebsite)
+      fd.append('discord', editDiscord)
       if (!editIsPublic) fd.append('status', 'draft')
       const data = await gameService.updateGame(gameId, fd)
       setGameData(prev => prev ? { ...prev, ...(data.game as unknown as GameData) } : prev)
@@ -426,6 +458,7 @@ export default function GameDetailManagementPage() {
       fd.append('ratingClass', certRatingClass)
       fd.append('certNumber', certNumber)
       fd.append('certDate', certDate)
+      if (certFile) fd.append('certFile', certFile)
       const data = await gameService.updateGame(gameId, fd)
       setGameData(prev => prev ? { ...prev, ...(data.game as unknown as GameData) } : prev)
       alert('저장되었습니다.')
@@ -436,34 +469,43 @@ export default function GameDetailManagementPage() {
     setCertSaving(false)
   }
 
-  const handleRequestReview = async () => {
-    if (!gameId) return
-    if (!confirm('심사를 요청하시겠습니까?')) return
+  const handleToggleServiceType = async () => {
+    if (!gameId || !gameData) return
+    const next = gameData.serviceType === 'beta' ? '라이브' : '베타'
+    const confirmed = confirm(`게임 타입을 ${next}로 변경하면 재심사가 진행됩니다.\n기존 심사 승인이 초기화되며 심사를 다시 등록해야 합니다.\n\n계속하시겠습니까?`)
+    if (!confirmed) return
     try {
-      await gameService.requestReview(gameId)
-      const data = await gameService.getGameById(gameId)
-      setGameData(data.game as unknown as GameData)
-      alert('심사 요청이 완료되었습니다.')
+      const fd = new FormData()
+      fd.append('serviceType', gameData.serviceType === 'beta' ? 'live' : 'beta')
+      const data = await gameService.updateGame(gameId, fd)
+      setGameData(prev => prev ? { ...prev, ...(data.game as unknown as GameData) } : prev)
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '심사 요청에 실패했습니다'
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '변경에 실패했습니다'
       alert(msg)
     }
   }
 
   const handleLaunchGame = async () => {
     if (!gameId || !gameData) return
-    if (!confirm('게임을 출시(라이브)로 전환하시겠습니까?')) return
+    if (!confirm('게임을 출시하시겠습니까?')) return
     try {
       const fd = new FormData()
-      fd.append('serviceType', 'live')
+      fd.append('status', 'published')
       const data = await gameService.updateGame(gameId, fd)
       setGameData(prev => prev ? { ...prev, ...(data.game as unknown as GameData) } : prev)
       alert('게임이 출시되었습니다.')
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '출시 전환에 실패했습니다'
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '출시에 실패했습니다'
       alert(msg)
     }
   }
+
+  const reloadGameData = async () => {
+    if (!gameId) return
+    const data = await gameService.getGameById(gameId)
+    setGameData(data.game as unknown as GameData)
+  }
+
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, { bg: string; text: string; label: string }> = {
@@ -609,7 +651,21 @@ export default function GameDetailManagementPage() {
   )
 
   const serviceLabel: Record<string, string> = { beta: '베타', live: '라이브', ended: '종료' }
-  const approvalLabel: Record<string, string> = { not_submitted: '미제출', pending: '심사대기', review: '검토중', approved: '승인됨', rejected: '반려' }
+  const approvalLabel: Record<string, string> = { not_submitted: '초안 작성 중', pending: '심사대기', review: '검토중', approved: '승인됨', rejected: '심사 거부' }
+
+  const reviewChecks = {
+    basicInfo: !!(gameData.title && gameData.genre && gameData.description),
+    heroBanner: !!gameData.bannerImage,
+    screenshots: screenshots.length > 0,
+    rating: !!gameData.ratingCertificate?.ratingClass,
+  }
+  const canRequestReview = Object.values(reviewChecks).every(Boolean)
+  const reviewBlockReasons = [
+    !reviewChecks.basicInfo && '기본 정보',
+    !reviewChecks.heroBanner && '히어로 배너',
+    !reviewChecks.screenshots && '게임 스크린샷',
+    !reviewChecks.rating && '등급 분류',
+  ].filter(Boolean).join(', ')
 
   return (
     <div className="space-y-6 p-6">
@@ -638,7 +694,7 @@ export default function GameDetailManagementPage() {
       </div>
 
 
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="flex gap-1 bg-bg-secondary border border-line rounded-lg p-1 flex-wrap">
           {TABS.map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
@@ -647,39 +703,69 @@ export default function GameDetailManagementPage() {
             </button>
           ))}
         </div>
+        <button
+          onClick={() => setActiveTab('main-settings')}
+          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg border transition-colors ${activeTab === 'main-settings' ? 'bg-purple-600 border-purple-500 text-white' : 'border-purple-500/50 text-purple-400 hover:bg-purple-500/10'}`}
+        >
+          <Shield className="w-4 h-4" /> 등급 분류
+        </button>
+        <div
+          onClick={handleToggleServiceType}
+          className="flex items-center gap-0.5 p-1 rounded-lg border border-line bg-bg-secondary cursor-pointer"
+        >
+          <span className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${gameData.serviceType === 'beta' ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+            베타
+          </span>
+          <span className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${gameData.serviceType === 'live' ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+            라이브
+          </span>
+        </div>
         <div className="flex items-center gap-2 ml-auto">
-          <button
-            onClick={handleRequestReview}
-            disabled={gameData.approvalStatus === 'pending' || gameData.approvalStatus === 'review' || gameData.approvalStatus === 'approved'}
-            className="flex items-center gap-2 px-4 py-2 border border-accent text-accent hover:bg-accent hover:text-text-primary rounded-md text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Send className="w-4 h-4" /> 심사 등록
-          </button>
+          <RequestReviewButton
+            gameId={gameId}
+            gameTitle={gameData.title}
+            approvalStatus={gameData.approvalStatus}
+            onSuccess={reloadGameData}
+            size="md"
+            extraDisabled={!canRequestReview}
+            extraDisabledTitle={!canRequestReview ? `등록 필요: ${reviewBlockReasons}` : undefined}
+          />
           <button
             onClick={handleLaunchGame}
-            disabled={gameData.serviceType === 'live'}
-            className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={gameData.approvalStatus !== 'approved' || gameData.status === 'published'}
+            title={gameData.approvalStatus !== 'approved' ? '심사 완료 후 출시할 수 있습니다' : undefined}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
+              gameData.status === 'published'
+                ? 'bg-accent text-text-primary cursor-not-allowed'
+                : 'bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed'
+            }`}
           >
-            <Globe className="w-4 h-4" /> {gameData.serviceType === 'live' ? '출시됨' : '게임 출시'}
+            <Globe className="w-4 h-4" />
+            {gameData.status === 'published' ? '출시 중' : '게임 출시'}
           </button>
         </div>
       </div>
 
-      {/* ── 메인 세팅 탭 ── */}
+      {/* ── GCRB 탭 ── */}
       {activeTab === 'main-settings' && (
-        <div className="space-y-6">
-          {/* 게등위 등급 분류 인증서 */}
-          <div className="bg-bg-secondary border border-line rounded-lg">
-            <div className="p-6 border-b border-line">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <Shield className="w-5 h-5 text-accent" /> 게등위 등급 분류 인증서
-              </h2>
-              <p className="text-sm text-text-secondary mt-1">게임물관리위원회에서 발급받은 등급 분류 정보를 입력하세요. 플레이어 화면에 등급 배지가 표시됩니다.</p>
+        <div className="flex gap-10 items-start">
+
+          {/* 왼쪽: 헤더 + 폼 */}
+          <div className="flex-1 max-w-xl space-y-6">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Shield className="w-4 h-4 text-purple-400" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold">게임물관리위원회 등급분류 인증서 등록</h2>
+                <p className="text-sm text-text-muted mt-0.5">발급받은 등급 분류 정보를 입력하고 인증서 파일을 첨부하세요.</p>
+              </div>
             </div>
-            <div className="p-6 space-y-4 max-w-lg">
+
+            <div className="space-y-5">
               <div>
                 <label className={labelCls}>등급 분류</label>
-                <select value={certRatingClass} onChange={e => setCertRatingClass(e.target.value)} className={inputCls}>
+                <select value={certRatingClass} onChange={e => setCertRatingClass(e.target.value)} className="w-full px-3 py-3 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent">
                   <option value="">선택 안 함</option>
                   <option value="전체이용가">전체이용가</option>
                   <option value="12세이용가">12세이용가</option>
@@ -690,22 +776,117 @@ export default function GameDetailManagementPage() {
               </div>
               <div>
                 <label className={labelCls}>등급 분류 번호</label>
-                <input value={certNumber} onChange={e => setCertNumber(e.target.value)} placeholder="예: 2024-게-12345" className={inputCls} />
+                <input value={certNumber} onChange={e => setCertNumber(e.target.value)} placeholder="예: 2024-게-12345" className="w-full px-3 py-3 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent" />
               </div>
               <div>
                 <label className={labelCls}>등급 분류일</label>
-                <input type="date" value={certDate} onChange={e => setCertDate(e.target.value)} className={inputCls} />
+                <input type="date" value={certDate} onChange={e => setCertDate(e.target.value)} className="w-full px-3 py-3 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent" />
               </div>
-              {gameData.ratingCertificate?.isVerified && (
-                <p className="text-xs text-green-400 flex items-center gap-1"><Check className="w-3.5 h-3.5" /> 관리자 검증 완료</p>
-              )}
-              <div className="pt-2">
-                <button onClick={handleSaveCert} disabled={certSaving} className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-md text-sm font-semibold transition-colors">
-                  <Save className="w-4 h-4" /> {certSaving ? '저장 중...' : '저장'}
-                </button>
+              <div>
+                <label className={labelCls}>인증서 파일</label>
+                <input ref={certFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setCertFile(e.target.files?.[0] ?? null)} />
+                <div
+                  onClick={() => certFileRef.current?.click()}
+                  className="flex items-center gap-3 px-4 py-3 bg-bg-tertiary border border-line rounded-md cursor-pointer hover:border-accent transition-colors group"
+                >
+                  <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 transition-colors ${certFile ? 'bg-accent/10' : 'bg-bg-secondary border border-line group-hover:border-accent'}`}>
+                    {certFile ? <Check className="w-4 h-4 text-accent" /> : <Upload className="w-4 h-4 text-text-muted" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {certFile ? (
+                      <>
+                        <p className="text-sm text-text-primary font-medium truncate">{certFile.name}</p>
+                        <p className="text-xs text-text-muted">{(certFile.size / 1024).toFixed(0)} KB</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-text-secondary">파일을 선택하세요</p>
+                        <p className="text-xs text-text-muted">PDF, JPG, PNG · 최대 10MB</p>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-xs text-text-muted group-hover:text-accent transition-colors flex-shrink-0">
+                    {certFile ? '변경' : '업로드'}
+                  </span>
+                </div>
               </div>
             </div>
+
+            <button onClick={handleSaveCert} disabled={certSaving || !certRatingClass || !certNumber.trim() || !certDate || !certFile} className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-sm font-semibold transition-colors">
+              <Save className="w-4 h-4" /> {certSaving ? '저장 중...' : '저장'}
+            </button>
           </div>
+
+          {/* 구분선 */}
+          {gameData.ratingCertificate?.ratingClass && (
+            <div className="self-stretch flex flex-col pt-20">
+              <div className="w-px bg-line flex-1" />
+            </div>
+          )}
+
+          {/* 오른쪽: 등급 상태 */}
+          {gameData.ratingCertificate?.ratingClass && (
+            <div className="w-52 flex-shrink-0 pt-20">
+              <p className="text-sm text-text-secondary mb-4">등급 현황</p>
+              {(() => {
+                const cert = gameData.ratingCertificate
+                const isSubmitted = gameData.approvalStatus !== 'not_submitted'
+
+                if (cert?.isVerified) return (
+                  <div className="flex flex-col items-center gap-6 text-center">
+                    <div className="scale-[1.5] origin-top mb-[34px]">
+                      <GracRatingBadge ratingClass={cert.ratingClass as RatingClass} size="md" />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-center gap-1.5 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                        <span className="text-xs font-semibold text-green-400">승인 완료</span>
+                      </div>
+                      <p className="text-sm font-semibold text-text-primary">{cert.ratingClass}</p>
+                      {cert.certNumber && <p className="text-xs text-text-muted mt-1 font-mono">{cert.certNumber}</p>}
+                    </div>
+                    <p className="text-xs text-text-secondary">플레이어 화면에 노출 중</p>
+                  </div>
+                )
+
+                if (isSubmitted) return (
+                  <div className="flex flex-col items-center gap-6 text-center">
+                    <div className="scale-[1.5] origin-top mb-[34px]">
+                      <div className="w-14 h-[68px] rounded-lg bg-bg-tertiary border border-line flex items-center justify-center">
+                        <Clock className="w-6 h-6 text-text-muted" />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-center gap-1.5 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                        <span className="text-xs font-semibold text-yellow-400">심사 중</span>
+                      </div>
+                      <p className="text-sm font-semibold text-text-primary">{cert?.ratingClass}</p>
+                      {cert?.certNumber && <p className="text-xs text-text-muted mt-1 font-mono">{cert.certNumber}</p>}
+                    </div>
+                  </div>
+                )
+
+                return (
+                  <div className="flex flex-col items-center gap-6 text-center">
+                    <div className="scale-[1.5] origin-top mb-[34px]">
+                      <div className="w-14 h-[68px] rounded-lg bg-bg-tertiary border border-line flex items-center justify-center">
+                        <Shield className="w-6 h-6 text-text-muted" />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-center gap-1.5 mb-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
+                        <span className="text-xs font-semibold text-text-muted">미제출</span>
+                      </div>
+                      <p className="text-sm font-semibold text-text-primary">{cert?.ratingClass}</p>
+                      {cert?.certNumber && <p className="text-xs text-text-muted mt-1 font-mono">{cert.certNumber}</p>}
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
         </div>
       )}
 
@@ -1250,8 +1431,8 @@ export default function GameDetailManagementPage() {
               </div>
               <button
                 onClick={handleSaveGameInfo}
-                disabled={editSaving}
-                className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors disabled:opacity-50"
+                disabled={editSaving || !gameData.thumbnail || !editTitle.trim() || !editGenre || !editNotes.trim() || !editDescription.trim() || (gameData.serviceType !== 'live' && (!editStartDate || !editEndDate || !editMaxTesters || !editTestType))}
+                className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4" /> {editSaving ? '저장 중...' : '저장'}
               </button>
@@ -1317,32 +1498,61 @@ export default function GameDetailManagementPage() {
               <label className={labelCls}>짧은 설명 * <span className="text-text-muted">(최대 100자)</span></label>
               <input value={editDescription} onChange={e => setEditDescription(e.target.value)} maxLength={100} className={inputCls} />
             </div>
-            <hr className="border-line" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          </div>
+
+          {/* 베타 테스트 정보 */}
+          {gameData.serviceType !== 'live' && <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2"><Clock className="w-4 h-4 text-accent" />베타 테스트 정보</h3>
+              <p className="text-sm text-text-secondary mt-1">베타 테스트 기간, 모집 인원, 시스템 요구사항을 설정하세요.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}><Calendar className="w-4 h-4 inline mr-1" />출시 예정일</label>
+                <label className={labelCls}>시작일</label>
                 <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}><Globe className="w-4 h-4 inline mr-1" />공개 여부</label>
-                <div className="flex items-center gap-3 mt-2">
-                  <input type="checkbox" checked={editIsPublic} onChange={e => setEditIsPublic(e.target.checked)} id="public" className="w-4 h-4 accent-green-500" />
-                  <label htmlFor="public" className="text-sm text-text-secondary">베타존에 게임 공개</label>
-                </div>
+                <label className={labelCls}>종료일</label>
+                <input type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} className={inputCls} />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelCls}>최대 테스터 수</label>
+                <input type="number" placeholder="1000" value={editMaxTesters} onChange={e => setEditMaxTesters(e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>테스트 유형</label>
+                <select value={editTestType} onChange={e => setEditTestType(e.target.value)} className={inputCls}>
+                  <option value="">유형 선택</option>
+                  <option value="closed">비공개 베타</option>
+                  <option value="open">공개 베타</option>
+                  <option value="alpha">알파 테스트</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>시스템 요구사항</label>
+              <textarea value={editRequirements} onChange={e => setEditRequirements(e.target.value)} placeholder="최소 및 권장 시스템 요구사항" className={`${inputCls} min-h-20 resize-y`} />
+            </div>
+          </div>}
+
+          {/* 추가 정보 */}
+          <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-accent" />추가 정보</h3>
+              <p className="text-sm text-text-secondary mt-1">공식 웹사이트, 커뮤니티 링크를 등록하세요.</p>
+            </div>
+            <div>
+              <label className={labelCls}>공식 웹사이트</label>
+              <input value={editWebsite} onChange={e => setEditWebsite(e.target.value)} placeholder="https://..." className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>디스코드 서버</label>
+              <input value={editDiscord} onChange={e => setEditDiscord(e.target.value)} placeholder="https://discord.gg/..." className={inputCls} />
             </div>
           </div>
 
-          {/* 고급 편집 (전체 편집 페이지 링크) */}
-          <div className="bg-bg-secondary border border-line rounded-lg p-6">
-            <h3 className="font-semibold mb-1 flex items-center gap-2"><Edit className="w-4 h-4 text-accent" />고급 편집</h3>
-            <p className="text-sm text-text-secondary mb-4">썸네일, 게임 파일 업로드, 베타 테스트 설정, 수익 모델 등 전체 편집 기능을 사용할 수 있습니다.</p>
-            <Link href={`/games-management/${_id}/edit`}>
-              <button className="flex items-center gap-2 px-4 py-2 border border-accent text-accent hover:bg-accent hover:text-text-primary rounded-md text-sm font-semibold transition-colors">
-                <Edit className="w-4 h-4" /> 전체 편집 페이지로 이동
-              </button>
-            </Link>
-          </div>
 
           <div className="flex justify-end pt-2">
             <button
