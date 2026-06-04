@@ -676,7 +676,7 @@ export default function CommunityPage() {
                       <li key={ann._id} onClick={() => router.push(`/community/game-announcement/${ann._id}?from=${encodeURIComponent(selectedGame?.title ?? '커뮤니티')}`)}
                         className={`flex items-center gap-3 px-4 py-3 hover:bg-bg-tertiary transition-colors cursor-pointer ${i !== 0 ? 'border-t border-line' : ''}`}>
                         {ann.game?.thumbnail ? (
-                          <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL || 'http://localhost:5000'}${ann.game.thumbnail}`} alt={ann.game.title} className="w-[52px] h-[52px] rounded-lg object-cover flex-shrink-0" />
+                          <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${ann.game.thumbnail}`} alt={ann.game.title} className="w-[52px] h-[52px] rounded-lg object-cover flex-shrink-0" />
                         ) : (
                           <div className="w-[52px] h-[52px] rounded-lg bg-bg-muted flex items-center justify-center flex-shrink-0">
                             <Gamepad className="w-[26px] h-[26px] text-text-muted" />
