@@ -152,6 +152,17 @@ export interface GrantPointsData {
   reason: string
 }
 
+export interface ReportedPost {
+  _id: string
+  title: string
+  content: string
+  channel: string
+  status: 'active' | 'hidden' | 'deleted'
+  reportCount: number
+  author: { _id: string; username: string; email: string; role: string } | null
+  createdAt: string
+}
+
 export const adminService = {
   getStats: async (): Promise<AdminStats> => {
     const res = await apiClient.get('/admin/stats')
@@ -255,6 +266,16 @@ export const adminService = {
 
   deleteAnnouncement: async (id: string) => {
     const res = await apiClient.delete(`/admin/announcements/${id}`)
+    return res.data
+  },
+
+  getReportedPosts: async (params?: { page?: number; limit?: number }) => {
+    const res = await apiClient.get('/admin/community/reported-posts', { params })
+    return res.data as { posts: ReportedPost[]; total: number }
+  },
+
+  updatePostStatus: async (id: string, data: { status: string; clearReports?: boolean }) => {
+    const res = await apiClient.patch(`/admin/community/posts/${id}/status`, data)
     return res.data
   },
 

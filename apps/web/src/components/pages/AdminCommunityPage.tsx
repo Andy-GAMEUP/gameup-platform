@@ -2,13 +2,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
-import adminService, { CommunityBanner } from '@/services/adminService'
+import adminService, { CommunityBanner, ReportedPost } from '@/services/adminService'
 import communityService from '@/services/communityService'
 import {
   Search, ShieldOff, ShieldCheck, Trash2, ChevronLeft, ChevronRight,
   Loader2, AlertCircle, CheckCircle, MessageSquare, PenSquare, X,
   ImagePlus, Link2, Hash, Image as ImageIcon, Megaphone, Upload,
-  Plus, Eye, EyeOff, Pin, Bell, BellOff, Edit2, LayoutDashboard,
+  Plus, Eye, EyeOff, Pin, Bell, BellOff, Edit2, LayoutDashboard, Flag, ExternalLink,
 } from 'lucide-react'
 
 // ────────── 타입 ──────────
@@ -660,6 +660,14 @@ function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 }
 
 function MonitoringTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
+  // ── 신고된 게시글 ──
+  const [reported, setReported] = useState<ReportedPost[]>([])
+  const [reportedTotal, setReportedTotal] = useState(0)
+  const [reportedPage, setReportedPage] = useState(1)
+  const [reportedLoading, setReportedLoading] = useState(true)
+  const [reportedActionId, setReportedActionId] = useState<string | null>(null)
+
+  // ── 리뷰 ──
   const [reviews, setReviews] = useState<any[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
@@ -670,6 +678,19 @@ function MonitoringTab({ showToast }: { showToast: (msg: string, ok?: boolean) =
   const [actionId, setActionId] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<any>(null)
   const [showWriteModal, setShowWriteModal] = useState(false)
+
+  const REPORTED_LIMIT = 10
+  const reportedTotalPages = Math.max(1, Math.ceil(reportedTotal / REPORTED_LIMIT))
+
+  const loadReported = useCallback(async () => {
+    setReportedLoading(true)
+    try {
+      const data = await adminService.getReportedPosts({ page: reportedPage, limit: REPORTED_LIMIT })
+      setReported(data.posts || [])
+      setReportedTotal(data.total || 0)
+    } catch { showToast('신고 목록 불러오기 실패', false) }
+    finally { setReportedLoading(false) }
+  }, [reportedPage, showToast])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -682,7 +703,26 @@ function MonitoringTab({ showToast }: { showToast: (msg: string, ok?: boolean) =
     finally { setLoading(false) }
   }, [page, search, filterBlocked, showToast])
 
+  useEffect(() => { loadReported() }, [loadReported])
   useEffect(() => { load() }, [load])
+
+  const handlePostAction = (post: ReportedPost, action: 'hide' | 'delete' | 'restore') => {
+    const labels = { hide: '숨김', delete: '삭제', restore: '복구' }
+    const statuses = { hide: 'hidden', delete: 'deleted', restore: 'active' }
+    setConfirm({
+      msg: `"${post.title}" 게시글을 ${labels[action]}하시겠습니까?`,
+      danger: action !== 'restore',
+      onConfirm: async () => {
+        setConfirm(null); setReportedActionId(post._id)
+        try {
+          await adminService.updatePostStatus(post._id, { status: statuses[action], clearReports: action === 'restore' })
+          showToast(`${labels[action]} 처리되었습니다`)
+          loadReported()
+        } catch { showToast('처리 실패', false) }
+        finally { setReportedActionId(null) }
+      },
+    })
+  }
 
   const handleBlock = (r: any) => {
     const blocking = !r.isBlocked
@@ -711,89 +751,175 @@ function MonitoringTab({ showToast }: { showToast: (msg: string, ok?: boolean) =
     })
   }
 
+  const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
+    active: { label: '정상', cls: 'bg-green-500/10 text-green-400 border-green-500/30' },
+    hidden: { label: '숨김', cls: 'bg-orange-500/10 text-orange-400 border-orange-500/30' },
+    deleted: { label: '삭제', cls: 'bg-red-500/10 text-red-400 border-red-500/30' },
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
       {showWriteModal && <WritePostModal onClose={() => setShowWriteModal(false)} onSuccess={() => { setShowWriteModal(false); showToast('게시글이 작성되었습니다') }} />}
 
-      <div className="flex items-center justify-between">
-        <span className="text-text-muted text-sm">총 <span className="text-text-primary font-semibold">{total}</span>개</span>
-        <button onClick={() => setShowWriteModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium">
-          <PenSquare className="w-4 h-4" /> 콘텐츠 작성
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="리뷰 제목·내용 검색..."
-            className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
+      {/* ── 신고된 게시글 섹션 ── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Flag className="w-4 h-4 text-red-400" />
+          <h3 className="text-text-primary font-semibold text-sm">신고된 게시글</h3>
+          <span className="text-xs bg-red-500/10 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded">{reportedTotal}건</span>
         </div>
-        <select value={filterBlocked} onChange={e => { setFilterBlocked(e.target.value); setPage(1) }}
-          className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
-          <option value="">전체</option>
-          <option value="false">정상</option>
-          <option value="true">차단됨</option>
-        </select>
-      </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
-      ) : reviews.length === 0 ? (
-        <div className="text-center py-16 text-text-muted">리뷰가 없습니다</div>
-      ) : (
-        <div className="space-y-3">
-          {reviews.map(r => {
-            const fb = FEEDBACK_LABELS[r.feedbackType] || FEEDBACK_LABELS.general
-            return (
-              <div key={r._id} className={`bg-bg-secondary border rounded-xl p-4 ${r.isBlocked ? 'border-red-800/50 bg-red-950/10' : 'border-line'} ${actionId === r._id ? 'opacity-60 pointer-events-none' : ''}`}>
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-bg-tertiary rounded-full flex items-center justify-center text-sm font-bold text-text-primary flex-shrink-0">
-                    {(r.userId?.username || '?')[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center flex-wrap gap-2 mb-1">
-                      <span className="text-text-secondary text-sm font-medium">{r.userId?.username}</span>
-                      <span className="text-yellow-400 text-xs">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${fb.cls}`}>{fb.label}</span>
-                      {r.isBlocked && <span className="bg-red-500/10 text-red-400 text-xs px-1.5 rounded border border-red-500/30">차단됨</span>}
-                      {r.gameId && <Link href={`/admin/metrics/${r.gameId._id}`} className="text-text-muted hover:text-cyan-300 text-xs">🎮 {r.gameId.title}</Link>}
+        {reportedLoading ? (
+          <div className="flex items-center justify-center h-32"><Loader2 className="w-5 h-5 animate-spin text-text-muted" /></div>
+        ) : reported.length === 0 ? (
+          <div className="text-center py-10 text-text-muted text-sm bg-bg-secondary border border-line rounded-xl">신고된 게시글이 없습니다</div>
+        ) : (
+          <div className="space-y-2">
+            {reported.map(post => {
+              const st = STATUS_LABEL[post.status] || STATUS_LABEL.active
+              return (
+                <div key={post._id} className={`bg-bg-secondary border border-line rounded-xl p-4 ${reportedActionId === post._id ? 'opacity-60 pointer-events-none' : ''}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center flex-wrap gap-2 mb-1">
+                        <span className={`text-xs px-1.5 py-0.5 rounded border ${st.cls}`}>{st.label}</span>
+                        <span className="flex items-center gap-1 text-xs text-red-400 font-medium">
+                          <Flag className="w-3 h-3" /> 신고 {post.reportCount}건
+                        </span>
+                        <span className="text-text-muted text-xs">{post.author?.username ?? '알 수 없음'}</span>
+                        <span className="text-text-muted text-xs">{new Date(post.createdAt).toLocaleDateString('ko-KR')}</span>
+                      </div>
+                      <p className="text-text-primary text-sm font-medium truncate">{post.title}</p>
+                      <p className="text-text-secondary text-xs line-clamp-1 mt-0.5">{post.content}</p>
                     </div>
-                    <p className={`text-sm font-semibold mb-0.5 ${r.isBlocked ? 'line-through text-text-muted' : 'text-text-primary'}`}>{r.title}</p>
-                    <p className={`text-xs line-clamp-2 ${r.isBlocked ? 'text-text-muted' : 'text-text-secondary'}`}>{r.content}</p>
-                    <p className="text-text-muted text-xs mt-1">{new Date(r.createdAt).toLocaleDateString('ko-KR')} · 도움됨 {r.helpfulCount || 0}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={() => handleBlock(r)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${r.isBlocked ? 'bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40' : 'bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40'}`}>
-                      {r.isBlocked ? <><ShieldCheck className="w-3 h-3" /> 해제</> : <><ShieldOff className="w-3 h-3" /> 차단</>}
-                    </button>
-                    <button onClick={() => handleDelete(r)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
-                      <Trash2 className="w-3 h-3" /> 삭제
-                    </button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Link href={`/community/${post._id}`} target="_blank"
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border border-line bg-bg-tertiary hover:bg-bg-muted text-text-secondary transition-colors">
+                        <ExternalLink className="w-3 h-3" /> 보기
+                      </Link>
+                      {post.status === 'hidden' ? (
+                        <button onClick={() => handlePostAction(post, 'restore')}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
+                          <ShieldCheck className="w-3 h-3" /> 복구
+                        </button>
+                      ) : (
+                        <button onClick={() => handlePostAction(post, 'hide')}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40 transition-colors">
+                          <EyeOff className="w-3 h-3" /> 숨김
+                        </button>
+                      )}
+                      <button onClick={() => handlePostAction(post, 'delete')}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
+                        <Trash2 className="w-3 h-3" /> 삭제
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )}
 
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-            className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
-            <ChevronLeft className="w-4 h-4 text-text-primary" />
-          </button>
-          <span className="text-text-secondary text-sm">{page} / {totalPages}</span>
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-            className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
-            <ChevronRight className="w-4 h-4 text-text-primary" />
+        {reportedTotalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-3">
+            <button onClick={() => setReportedPage(p => Math.max(1, p - 1))} disabled={reportedPage === 1}
+              className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+              <ChevronLeft className="w-4 h-4 text-text-primary" />
+            </button>
+            <span className="text-text-secondary text-sm">{reportedPage} / {reportedTotalPages}</span>
+            <button onClick={() => setReportedPage(p => Math.min(reportedTotalPages, p + 1))} disabled={reportedPage === reportedTotalPages}
+              className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+              <ChevronRight className="w-4 h-4 text-text-primary" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── 리뷰 관리 섹션 ── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <MessageSquare className="w-4 h-4 text-accent" />
+          <h3 className="text-text-primary font-semibold text-sm">게임 리뷰 관리</h3>
+          <span className="text-text-muted text-xs">{total}개</span>
+          <div className="flex-1" />
+          <button onClick={() => setShowWriteModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium">
+            <PenSquare className="w-4 h-4" /> 콘텐츠 작성
           </button>
         </div>
-      )}
+
+        <div className="flex flex-wrap gap-3 mb-4">
+          <div className="relative flex-1 min-w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="리뷰 제목·내용 검색..."
+              className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
+          </div>
+          <select value={filterBlocked} onChange={e => { setFilterBlocked(e.target.value); setPage(1) }}
+            className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
+            <option value="">전체</option>
+            <option value="false">정상</option>
+            <option value="true">차단됨</option>
+          </select>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
+        ) : reviews.length === 0 ? (
+          <div className="text-center py-16 text-text-muted">리뷰가 없습니다</div>
+        ) : (
+          <div className="space-y-3">
+            {reviews.map(r => {
+              const fb = FEEDBACK_LABELS[r.feedbackType] || FEEDBACK_LABELS.general
+              return (
+                <div key={r._id} className={`bg-bg-secondary border rounded-xl p-4 ${r.isBlocked ? 'border-red-800/50 bg-red-950/10' : 'border-line'} ${actionId === r._id ? 'opacity-60 pointer-events-none' : ''}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-bg-tertiary rounded-full flex items-center justify-center text-sm font-bold text-text-primary flex-shrink-0">
+                      {(r.userId?.username || '?')[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center flex-wrap gap-2 mb-1">
+                        <span className="text-text-secondary text-sm font-medium">{r.userId?.username}</span>
+                        <span className="text-yellow-400 text-xs">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${fb.cls}`}>{fb.label}</span>
+                        {r.isBlocked && <span className="bg-red-500/10 text-red-400 text-xs px-1.5 rounded border border-red-500/30">차단됨</span>}
+                        {r.gameId && <Link href={`/admin/metrics/${r.gameId._id}`} className="text-text-muted hover:text-cyan-300 text-xs">🎮 {r.gameId.title}</Link>}
+                      </div>
+                      <p className={`text-sm font-semibold mb-0.5 ${r.isBlocked ? 'line-through text-text-muted' : 'text-text-primary'}`}>{r.title}</p>
+                      <p className={`text-xs line-clamp-2 ${r.isBlocked ? 'text-text-muted' : 'text-text-secondary'}`}>{r.content}</p>
+                      <p className="text-text-muted text-xs mt-1">{new Date(r.createdAt).toLocaleDateString('ko-KR')} · 도움됨 {r.helpfulCount || 0}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button onClick={() => handleBlock(r)}
+                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${r.isBlocked ? 'bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40' : 'bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40'}`}>
+                        {r.isBlocked ? <><ShieldCheck className="w-3 h-3" /> 해제</> : <><ShieldOff className="w-3 h-3" /> 차단</>}
+                      </button>
+                      <button onClick={() => handleDelete(r)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
+                        <Trash2 className="w-3 h-3" /> 삭제
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-3">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+              className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+              <ChevronLeft className="w-4 h-4 text-text-primary" />
+            </button>
+            <span className="text-text-secondary text-sm">{page} / {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+              <ChevronRight className="w-4 h-4 text-text-primary" />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

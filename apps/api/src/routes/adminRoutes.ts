@@ -9,6 +9,7 @@ import {
   getPublicAnnouncements, getPublicAnnouncementById
 } from '../controllers/adminController'
 import { getCommunityBanners, getAllCommunityBanners, uploadCommunityBanner, updateCommunityBanner, deleteCommunityBanner } from '../controllers/communityBannerController'
+import { getReportedPosts, adminUpdatePostStatus } from '../controllers/communityController'
 import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
 import { uploadFields } from '../middleware/upload'
 
@@ -53,6 +54,10 @@ router.post('/users/create-admin', requireAdminLevel('super'), createAdminUser)
 router.patch('/games/:id/approve', requireAdminLevel('super'), approveGame)
 router.delete('/reviews/:id', requireAdminLevel('super'), deleteReview)
 router.delete('/announcements/:id', requireAdminLevel('super'), deleteAnnouncement)
+
+// 신고된 커뮤니티 게시글 (모든 관리자)
+router.get('/community/reported-posts', getReportedPosts)
+router.patch('/community/posts/:id/status', requireAdminLevel('super', 'normal'), adminUpdatePostStatus)
 
 // 커뮤니티 배너 (관리자)
 router.get('/community/banners/all', getAllCommunityBanners)
