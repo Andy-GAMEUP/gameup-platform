@@ -42,7 +42,7 @@ const CHANNELS = [
   { value: 'free', label: '자유게시판' },
 ]
 
-const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL || 'http://localhost:5000'
+const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
 
 // ────────── 공통 컴포넌트 ──────────
 

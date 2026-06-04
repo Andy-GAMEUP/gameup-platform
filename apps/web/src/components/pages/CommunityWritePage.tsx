@@ -86,7 +86,7 @@ export default function CommunityWritePage() {
     initChannel === 'beta-game' || initChannel === 'live-game' ? initChannel : null
   )
 
-  const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL || 'http://localhost:5000'
+  const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
 
   useEffect(() => {
     gameService.getAllGames({ serviceType: 'beta', limit: 100 }).then(d => setBetaGames((d.games ?? []) as WriteGame[])).catch(() => {})

@@ -366,7 +366,7 @@ export default function CommunityPage() {
                   <a key={b._id} href={b.linkUrl || undefined} target={b.linkUrl ? '_blank' : undefined} rel="noopener noreferrer"
                     className={`absolute inset-0 transition-opacity duration-700 ${i === bannerIdx ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
                     style={{ cursor: b.linkUrl ? 'pointer' : 'default' }}>
-                    <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL || 'http://localhost:5000'}${b.imageUrl}`}
+                    <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${b.imageUrl}`}
                       alt={b.title || '커뮤니티 배너'} className="w-full object-cover" style={{ maxHeight: 200 }} />
                   </a>
                 ))}
@@ -388,7 +388,7 @@ export default function CommunityPage() {
                     </div>
                   </>
                 )}
-                <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL || 'http://localhost:5000'}${banners[0].imageUrl}`}
+                <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${banners[0].imageUrl}`}
                   alt="" className="w-full object-cover invisible" style={{ maxHeight: 200 }} aria-hidden />
               </div>
             )}
@@ -467,7 +467,7 @@ export default function CommunityPage() {
                       <li key={n._id} onClick={() => router.push(`/community/game-announcement/${n._id}?from=${encodeURIComponent('홈')}`)}
                         className={`flex items-center gap-3 px-4 py-3 hover:bg-bg-tertiary transition-colors cursor-pointer ${i !== 0 ? 'border-t border-line' : ''}`}>
                         {n.game?.thumbnail ? (
-                          <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL || 'http://localhost:5000'}${n.game.thumbnail}`} alt={n.game.title} className="w-[52px] h-[52px] rounded-lg object-cover flex-shrink-0" />
+                          <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${n.game.thumbnail}`} alt={n.game.title} className="w-[52px] h-[52px] rounded-lg object-cover flex-shrink-0" />
                         ) : (
                           <div className="w-[52px] h-[52px] rounded-lg bg-bg-muted flex items-center justify-center flex-shrink-0">
                             <Gamepad className="w-[26px] h-[26px] text-text-muted" />

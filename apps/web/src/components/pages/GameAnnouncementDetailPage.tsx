@@ -13,7 +13,7 @@ const TYPE_MAP: Record<string, { label: string; cls: string }> = {
   event:       { label: '이벤트',  cls: 'bg-purple-100 text-purple-700 dark:bg-purple-600/30 dark:text-purple-300' },
 }
 
-const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL || 'http://localhost:5000'
+const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
 
 export default function GameAnnouncementDetailPage() {
   const { id } = useParams<{ id: string }>()
