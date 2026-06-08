@@ -50,19 +50,20 @@ export default function Navbar() {
 
   const navLinks = (() => {
     const links = [
-      { path: '/', label: '베타존' },
+      { path: '/', label: '메인' },
+      { path: '/betazone', label: '베타존' },
       { path: '/live_games', label: '라이브게임' },
     ]
     if (!isAuthenticated) {
-      // 비로그인: 베타존, 라이브게임, 플랫폼 소개, 커뮤니티
+      // 비로그인: 메인, 베타존, 라이브게임, 플랫폼 소개, 커뮤니티
       links.push({ path: '/gameup_platform', label: '플랫폼 소개' })
       links.push({ path: '/community', label: '커뮤니티' })
     } else if (isAdmin || isCorporateApproved || showDeveloperCenter) {
-      // 관리자 / 기업회원(승인) / 개발자(개인·기업): 베타존, 라이브게임, 커뮤니티, 파트너라운지
+      // 관리자 / 기업회원(승인) / 개발자(개인·기업): 메인, 베타존, 라이브게임, 커뮤니티, 파트너라운지
       links.push({ path: '/community', label: '커뮤니티' })
       links.push({ path: '/partner', label: '파트너라운지' })
     } else {
-      // 개인회원(플레이어): 베타존, 라이브게임, 커뮤니티
+      // 개인회원(플레이어): 메인, 베타존, 라이브게임, 커뮤니티
       links.push({ path: '/community', label: '커뮤니티' })
     }
     return links
