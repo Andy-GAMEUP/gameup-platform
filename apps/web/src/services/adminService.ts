@@ -23,6 +23,7 @@ export interface CommunityBanner {
   title: string
   sortOrder: number
   isActive: boolean
+  position: 'community' | 'main' | 'event'
   createdAt: string
   updatedAt: string
 }
@@ -152,6 +153,38 @@ export interface GrantPointsData {
   reason: string
 }
 
+export interface ReportedComment {
+  _id: string
+  content: string
+  status: 'active' | 'hidden' | 'deleted'
+  reportCount: number
+  likes: string[]
+  author: { _id: string; username: string; role: string } | null
+  postId: { _id: string; title: string; channel: string } | null
+  createdAt: string
+  deletedAt?: string
+}
+
+export interface ReportedUser {
+  _id: string
+  username: string
+  email: string
+  role: string
+  isActive: boolean
+  bannedAt?: string
+  banReason?: string
+  banScope?: string[]
+  bannedUntil?: string
+  appeal?: { content: string; createdAt: string } | null
+  history?: { type: string; content: string; createdAt: string }[]
+  createdAt: string
+  postReportCount: number
+  reportedPostCount: number
+  commentReportCount: number
+  reportedCommentCount: number
+  totalReportCount: number
+}
+
 export interface ReportedPost {
   _id: string
   title: string
@@ -159,8 +192,12 @@ export interface ReportedPost {
   channel: string
   status: 'active' | 'hidden' | 'deleted'
   reportCount: number
+  views: number
+  likes: string[]
+  commentCount: number
   author: { _id: string; username: string; email: string; role: string } | null
   createdAt: string
+  deletedAt?: string
 }
 
 export const adminService = {
@@ -194,7 +231,7 @@ export const adminService = {
     return res.data
   },
 
-  banUser: async (id: string, data: { isActive: boolean; banReason?: string; bannedUntil?: string }) => {
+  banUser: async (id: string, data: { isActive: boolean; banReason?: string; bannedUntil?: string; banDuration?: number; banScope?: string[] }) => {
     const res = await apiClient.patch(`/admin/users/${id}/ban`, data)
     return res.data
   },
@@ -269,14 +306,39 @@ export const adminService = {
     return res.data
   },
 
-  getReportedPosts: async (params?: { page?: number; limit?: number }) => {
+  getReportedUsers: async () => {
+    const res = await apiClient.get('/admin/community/reported-users')
+    return res.data as { users: ReportedUser[]; total: number }
+  },
+
+  getReportedPosts: async (params?: { page?: number; limit?: number; search?: string }) => {
     const res = await apiClient.get('/admin/community/reported-posts', { params })
     return res.data as { posts: ReportedPost[]; total: number }
   },
 
-  updatePostStatus: async (id: string, data: { status: string; clearReports?: boolean }) => {
+  updatePostStatus: async (id: string, data: { status: string; clearReports?: boolean; deletedByReport?: boolean }) => {
     const res = await apiClient.patch(`/admin/community/posts/${id}/status`, data)
     return res.data
+  },
+
+  getReportedComments: async (params?: { page?: number; limit?: number; search?: string }) => {
+    const res = await apiClient.get('/admin/community/reported-comments', { params })
+    return res.data as { comments: ReportedComment[]; total: number }
+  },
+
+  adminCommentAction: async (id: string, data: { action: 'hide' | 'delete' | 'restore'; clearReports?: boolean }) => {
+    const res = await apiClient.patch(`/admin/community/comments/${id}/action`, data)
+    return res.data
+  },
+
+  getDeletedPosts: async (params?: { page?: number; limit?: number; search?: string }) => {
+    const res = await apiClient.get('/admin/community/deleted-posts', { params })
+    return res.data as { posts: ReportedPost[]; total: number }
+  },
+
+  getDeletedComments: async (params?: { page?: number; limit?: number; search?: string }) => {
+    const res = await apiClient.get('/admin/community/deleted-comments', { params })
+    return res.data as { comments: ReportedComment[]; total: number }
   },
 
   getPublicAnnouncements: async () => {
@@ -290,12 +352,12 @@ export const adminService = {
   },
 
   getCommunityBanners: async () => {
-    const res = await apiClient.get('/admin/community/banners')
+    const res = await apiClient.get('/admin/community/banners?position=community')
     return res.data as { banners: CommunityBanner[] }
   },
 
   getAllCommunityBanners: async () => {
-    const res = await apiClient.get('/admin/community/banners/all')
+    const res = await apiClient.get('/admin/community/banners/all?position=community')
     return res.data as { banners: CommunityBanner[] }
   },
 
@@ -304,6 +366,51 @@ export const adminService = {
     form.append('bannerImage', file)
     if (extra?.linkUrl) form.append('linkUrl', extra.linkUrl)
     if (extra?.title) form.append('title', extra.title)
+    form.append('position', 'community')
+    const res = await apiClient.post('/admin/community/banners', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data as { banner: CommunityBanner }
+  },
+
+  getMainBanners: async () => {
+    const res = await apiClient.get('/admin/community/banners?position=main')
+    return res.data as { banners: CommunityBanner[] }
+  },
+
+  getAllMainBanners: async () => {
+    const res = await apiClient.get('/admin/community/banners/all?position=main')
+    return res.data as { banners: CommunityBanner[] }
+  },
+
+  uploadMainBanner: async (file: File, extra?: { linkUrl?: string; title?: string }) => {
+    const form = new FormData()
+    form.append('bannerImage', file)
+    if (extra?.linkUrl) form.append('linkUrl', extra.linkUrl)
+    if (extra?.title) form.append('title', extra.title)
+    form.append('position', 'main')
+    const res = await apiClient.post('/admin/community/banners', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data as { banner: CommunityBanner }
+  },
+
+  getEventBanners: async () => {
+    const res = await apiClient.get('/admin/community/banners?position=event')
+    return res.data as { banners: CommunityBanner[] }
+  },
+
+  getAllEventBanners: async () => {
+    const res = await apiClient.get('/admin/community/banners/all?position=event')
+    return res.data as { banners: CommunityBanner[] }
+  },
+
+  uploadEventBanner: async (file: File, extra?: { linkUrl?: string; title?: string }) => {
+    const form = new FormData()
+    form.append('bannerImage', file)
+    if (extra?.linkUrl) form.append('linkUrl', extra.linkUrl)
+    if (extra?.title) form.append('title', extra.title)
+    form.append('position', 'event')
     const res = await apiClient.post('/admin/community/banners', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
@@ -385,8 +492,8 @@ export const adminService = {
   updateTerms: (type: 'privacy' | 'service', content: string) =>
     apiClient.post('/admin/terms', { type, content }).then(r => r.data),
 
-  // ── 이벤트 배너 ───────────────────────────────────────────────
-  getEventBanners: () =>
+  // ── 이벤트 배너 (EventBannerModel, 신청 기능 포함) ──────────────
+  getSupportEventBanners: () =>
     apiClient.get('/admin/event-banners').then(r => r.data),
 
   createEventBanner: (data: { title: string; description?: string; imageUrl: string; linkUrl?: string }) =>
