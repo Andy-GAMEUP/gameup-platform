@@ -143,9 +143,15 @@ export default function PlayerGameDetailPage() {
   const [shopItems, setShopItems] = useState<{
     _id: string; name: string; description: string; imageUrl: string
     price: number; currency: string; currencyType: string
-    currencyAmount: number; bonusAmount: number; isSpecial?: boolean; active: boolean; sortOrder: number
+    currencyAmount: number; bonusAmount: number; isSpecial?: boolean; specialImageUrl?: string; active: boolean; sortOrder: number
   }[]>([])
   const [shopLoading, setShopLoading] = useState(false)
+  type SpecialItem = {
+    _id: string; name: string; price: number; currency: string
+    currencyAmount: number; bonusAmount: number; specialImageUrl?: string; imageUrl: string; stock?: string
+  }
+  const [specialPopupItem, setSpecialPopupItem] = useState<SpecialItem | null>(null)
+  const [savedSpecialItem, setSavedSpecialItem] = useState<SpecialItem | null>(null)
 
   // ── 결제 모달 상태 ────────────────────────────────────────────
   const [paymentModal, setPaymentModal] = useState<{
@@ -232,7 +238,10 @@ export default function PlayerGameDetailPage() {
     setShopLoading(true)
     try {
       const data = await gameService.getGameShopItems(id)
-      setShopItems((data.items || []).filter((i: { active: boolean }) => i.active))
+      const activeItems = (data.items || []).filter((i: { active: boolean }) => i.active)
+      const special = activeItems.find((i: { isSpecial?: boolean }) => i.isSpecial)
+      setShopItems(activeItems.filter((i: { isSpecial?: boolean }) => !i.isSpecial))
+      if (special) { setSpecialPopupItem(special); setSavedSpecialItem(special) }
     } catch { /* ignore */ } finally {
       setShopLoading(false)
     }
@@ -1009,9 +1018,30 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             )}
           </div>
         )}
+        {/* ── 특별 상품 플로팅 버튼 ── */}
+        {activeTab === 'shop' && savedSpecialItem && !specialPopupItem && (
+          <button
+            onClick={() => setSpecialPopupItem(savedSpecialItem)}
+            className="fixed bottom-8 right-8 z-40 w-20 h-20 rounded-2xl overflow-hidden transition-all hover:scale-105 active:scale-95"
+          >
+            {savedSpecialItem.specialImageUrl || savedSpecialItem.imageUrl ? (
+              <img
+                src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${savedSpecialItem.specialImageUrl || savedSpecialItem.imageUrl}`}
+                alt="특별 상품"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-3xl" style={{ background: 'linear-gradient(160deg, #f97316 0%, #dc2626 100%)' }}>🎁</div>
+            )}
+            <div className="absolute inset-x-0 bottom-0 py-1 text-center text-[10px] font-extrabold text-white" style={{ background: 'rgba(0,0,0,0.55)', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+              특별 상품
+            </div>
+          </button>
+        )}
+
         {/* ── 상점 탭 ── */}
         {activeTab === 'shop' && (
-          <div className="space-y-5">
+          <div className="relative space-y-5">
             {/* 서브탭 */}
             <div className="flex items-stretch gap-3">
               <button
@@ -1123,6 +1153,70 @@ const avgRating = game ? (game.rating as number) || 0 : 0
           </div>
         )}
       </div>
+
+      {/* ── 특별 상품 팝업 ── */}
+      {specialPopupItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="relative w-[340px] mx-4 rounded-2xl overflow-hidden shadow-2xl bg-white">
+            {/* 닫기 */}
+            <button
+              onClick={() => setSpecialPopupItem(null)}
+              className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-black/10 hover:bg-black/20 flex items-center justify-center text-gray-500 text-sm transition-colors"
+            >✕</button>
+
+            {/* 헤더 */}
+            <div className="flex items-center justify-center gap-2 pt-5 pb-3 px-6">
+              <span className="text-orange-400 text-lg">❖</span>
+              <span className="text-gray-900 font-extrabold text-xl tracking-wide">특별 상품</span>
+              <span className="text-orange-400 text-lg">❖</span>
+            </div>
+
+            {/* 특별 이미지 */}
+            <div className="relative flex items-center justify-center px-4 pb-2" style={{ minHeight: 220 }}>
+              {(specialPopupItem.specialImageUrl || specialPopupItem.imageUrl) ? (
+                <img
+                  src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${specialPopupItem.specialImageUrl || specialPopupItem.imageUrl}`}
+                  alt={specialPopupItem.name}
+                  className="w-full object-contain rounded-lg"
+                  style={{ maxHeight: 220 }}
+                />
+              ) : (
+                <div className="w-48 h-48 rounded-xl bg-gray-100 flex items-center justify-center text-6xl">🎁</div>
+              )}
+            </div>
+
+            {/* 상품 정보 */}
+            <div className="px-6 pb-2 text-center">
+              <p className="text-gray-900 font-bold text-lg leading-tight">{specialPopupItem.name}</p>
+              <div className="flex items-center justify-center gap-1 mt-1">
+                {game.shopCurrencyIconUrl && (
+                  <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${game.shopCurrencyIconUrl as string}`} className="w-4 h-4 object-contain" alt="" />
+                )}
+                <p className="text-orange-500 text-sm font-semibold">
+                  {specialPopupItem.currencyAmount.toLocaleString()}
+                  {specialPopupItem.bonusAmount > 0 && <span className="text-gray-500">(+{specialPopupItem.bonusAmount.toLocaleString()})</span>}
+                </p>
+              </div>
+            </div>
+
+            {/* 구매 버튼 */}
+            <div className="px-6 pb-6 pt-2">
+              <button
+                onClick={() => { handlePurchase(specialPopupItem.name, specialPopupItem.price); setSpecialPopupItem(null) }}
+                className="w-full py-3.5 rounded-xl font-extrabold text-base text-white shadow-lg transition-all active:scale-95"
+                style={{ background: 'linear-gradient(180deg, #38bdf8 0%, #0284c7 100%)', boxShadow: '0 4px 0 #0369a1' }}
+              >
+                {specialPopupItem.currency === 'KRW' ? '₩' : specialPopupItem.currency === 'USD' ? '$' : '€'}{specialPopupItem.price.toLocaleString()}
+              </button>
+              {specialPopupItem.stock !== undefined && (
+                <p className="text-center text-xs text-gray-400 mt-2">
+                  구매 가능 수량 : {specialPopupItem.stock === '무제한' ? '무제한' : Number(specialPopupItem.stock).toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── 결제내역 모달 ── */}
       {paymentHistoryOpen && (

@@ -735,7 +735,7 @@ export default function GameDetailManagementPage() {
       })
       setEditItemModal(false); setEditingItem(null); setEditImageFile(null); setEditImagePreview('')
       loadShopItems(shopSort, shopPeriod)
-    } catch { alert('수정에 실패했습니다') }
+    } catch (e: any) { alert(e?.response?.data?.message || '수정에 실패했습니다') }
   }
   const deleteItem = async (itemId: string) => {
     if (!gameId || !confirm('이 아이템을 삭제하시겠습니까?')) return
@@ -744,20 +744,25 @@ export default function GameDetailManagementPage() {
       loadShopItems(shopSort, shopPeriod)
     } catch { alert('삭제에 실패했습니다') }
   }
-  const sortedShopItems = shopItems
+  const specialItems = shopItems.filter(item => item.isSpecial)
+  const regularItems = shopItems.filter(item => !item.isSpecial)
+  const sortedShopItems = [...specialItems, ...regularItems]
 
   const handleDragStart = (idx: number) => setDragIndex(idx)
   const handleDragOver = (e: React.DragEvent, idx: number) => { e.preventDefault(); setDragOverIndex(idx) }
   const handleDragEnd = () => { setDragIndex(null); setDragOverIndex(null) }
   const handleDrop = async (idx: number) => {
     if (dragIndex === null || dragIndex === idx) { setDragIndex(null); setDragOverIndex(null); return }
-    const newItems = [...shopItems]
-    const [moved] = newItems.splice(dragIndex, 1)
-    newItems.splice(idx, 0, moved)
-    setShopItems(newItems)
+    const newRegular = [...regularItems]
+    const [moved] = newRegular.splice(dragIndex, 1)
+    newRegular.splice(idx, 0, moved)
+    setShopItems([...specialItems, ...newRegular])
     setDragIndex(null)
     setDragOverIndex(null)
-    await gameService.reorderGameShopItems(gameId, newItems.map((item, i) => ({ _id: item._id, sortOrder: i + 1 }))).catch(() => {})
+    await gameService.reorderGameShopItems(gameId, [
+      ...specialItems.map((item, i) => ({ _id: item._id, sortOrder: i + 1 })),
+      ...newRegular.map((item, i) => ({ _id: item._id, sortOrder: specialItems.length + i + 1 })),
+    ]).catch(() => {})
   }
   const addAnnouncement = async () => {
     if (!newNoti.title || !newNoti.content || !gameId) return
@@ -1286,15 +1291,17 @@ export default function GameDetailManagementPage() {
                         '소모품': 'bg-green-500/15 text-green-400 border-green-500/30',
                       }
                       const typeColor = TYPE_COLOR[item.type] || 'bg-bg-tertiary text-text-secondary border-line'
+                      const regularIdx = idx - specialItems.length
+                      const isDraggable = !item.isSpecial
                       return (
                         <tr
                           key={item._id}
-                          draggable
-                          onDragStart={() => handleDragStart(idx)}
-                          onDragOver={e => handleDragOver(e, idx)}
-                          onDrop={() => handleDrop(idx)}
-                          onDragEnd={handleDragEnd}
-                          className={`border-b border-line last:border-b-0 transition-colors divide-x divide-white/[0.06] ${dragOverIndex === idx && dragIndex !== idx ? 'border-t-2 border-t-accent bg-accent/5' : !item.active ? 'opacity-40' : idx % 2 === 0 ? 'hover:bg-bg-tertiary/40' : 'bg-bg-tertiary/20 hover:bg-bg-tertiary/40'} ${dragIndex === idx ? 'opacity-30' : ''}`}
+                          draggable={isDraggable}
+                          onDragStart={isDraggable ? () => handleDragStart(regularIdx) : undefined}
+                          onDragOver={isDraggable ? e => handleDragOver(e, regularIdx) : undefined}
+                          onDrop={isDraggable ? () => handleDrop(regularIdx) : undefined}
+                          onDragEnd={isDraggable ? handleDragEnd : undefined}
+                          className={`border-b border-line last:border-b-0 transition-colors divide-x divide-white/[0.06] ${item.isSpecial ? 'bg-red-500/5 border-l-2 border-l-red-500/50' : dragOverIndex === regularIdx && dragIndex !== regularIdx ? 'border-t-2 border-t-accent bg-accent/5' : !item.active ? 'opacity-40' : idx % 2 === 0 ? 'hover:bg-bg-tertiary/40' : 'bg-bg-tertiary/20 hover:bg-bg-tertiary/40'} ${dragIndex === regularIdx && !item.isSpecial ? 'opacity-30' : ''}`}
                         >
                           <td className="px-1 py-2.5">
                             <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0 bg-bg-tertiary border border-line">
@@ -1346,9 +1353,15 @@ export default function GameDetailManagementPage() {
                             </div>
                           </td>
                           <td className="px-2 py-2.5 text-center select-none">
-                            <div className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-line bg-bg-tertiary hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-400 text-text-secondary cursor-grab active:cursor-grabbing transition-all text-base">
-                              ⠿
-                            </div>
+                            {item.isSpecial ? (
+                              <div className="inline-flex items-center justify-center w-7 h-7 text-red-500/60" title="특별 상품은 항상 최상단 고정">
+                                ★
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-line bg-bg-tertiary hover:border-cyan-500/50 hover:bg-cyan-500/10 hover:text-cyan-400 text-text-secondary cursor-grab active:cursor-grabbing transition-all text-base">
+                                ⠿
+                              </div>
+                            )}
                           </td>
                         </tr>
                       )
