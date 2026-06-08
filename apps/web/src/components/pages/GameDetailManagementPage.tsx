@@ -19,7 +19,7 @@ import { RatingClass } from '@gameup/types'
 import { useRouter } from 'next/navigation'
 
 interface MediaItem { _id: string; type: 'screenshot' | 'video'; title: string; url: string; order: number; createdAt: string }
-interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; currencyType: string; currencyAmount: number; bonusAmount: number; stock: string; sales: number; active: boolean; description: string; imageUrl: string; sortOrder: number; itemId?: string; isSpecial?: boolean; specialImageUrl?: string }
+interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; currencyType: string; currencyAmount: number; bonusAmount: number; stock: string; sales: number; active: boolean; description: string; imageUrl: string; sortOrder: number; itemId?: string; isSpecial?: boolean; specialImageUrl?: string; country?: string }
 interface Announcement { _id: string; title: string; createdAt: string; type: string; priority: string; content: string; sendPush: boolean; recipients: number }
 type TabKey = 'main-settings' | 'edit' | 'media' | 'shop' | 'points' | 'dev-settings' | 'announcements'
 
@@ -1319,7 +1319,7 @@ export default function GameDetailManagementPage() {
                             {item.itemId && <p className="text-[6px] text-text-muted mt-0.5">{item.itemId}</p>}
                           </td>
                           <td className="pl-3 pr-0 py-2.5">
-                            <span className="text-[17px] text-text-primary">{gameData?.shopCurrencyNames?.[item.country] ?? gameData?.shopCurrencyName ?? item.currencyType ?? '-'}</span>
+                            <span className="text-[17px] text-text-primary">{(item.country ? gameData?.shopCurrencyNames?.[item.country] : undefined) ?? gameData?.shopCurrencyName ?? item.currencyType ?? '-'}</span>
                           </td>
                           <td className="px-3 py-2.5 text-left">
                             <span className="text-[17px] text-text-primary">{item.currencyAmount ? item.currencyAmount.toLocaleString() : '-'}</span>

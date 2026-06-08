@@ -1049,7 +1049,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 className={`flex flex-col items-center gap-1.5 px-10 py-4 rounded-xl border-2 text-sm font-bold transition-all ${shopSubTab === 'currency' ? 'bg-gradient-to-b from-cyan-500 to-cyan-700 border-cyan-400 text-white' : 'bg-zinc-800/40 border-zinc-700/40 hover:bg-zinc-800/60 hover:border-zinc-600/60'}`}
               >
                 <div className="flex items-center gap-2 text-white" style={{ textShadow: '2px 2px 0px rgba(0,0,0,1)' }}>
-                  {game.shopCurrencyIconUrl && (
+                  {!!game.shopCurrencyIconUrl && (
                     <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${game.shopCurrencyIconUrl as string}`} className="w-6 h-6 object-contain" alt="" />
                   )}
                   <span className="text-lg">{(game.shopCurrencyName as string) || '재화'}</span>
@@ -1125,7 +1125,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                         )}
                       </div>
                       <div className="px-4 pt-2 pb-1 flex items-center justify-center gap-1.5">
-                        {game.shopCurrencyIconUrl && (
+                        {!!game.shopCurrencyIconUrl && (
                           <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${game.shopCurrencyIconUrl as string}`} className="w-4 h-4 object-contain" alt="" />
                         )}
                         <p className="text-sm font-medium text-text-primary">{amountLabel}</p>
@@ -1189,7 +1189,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             <div className="px-6 pb-2 text-center">
               <p className="text-gray-900 font-bold text-lg leading-tight">{specialPopupItem.name}</p>
               <div className="flex items-center justify-center gap-1 mt-1">
-                {game.shopCurrencyIconUrl && (
+                {!!game.shopCurrencyIconUrl && (
                   <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${game.shopCurrencyIconUrl as string}`} className="w-4 h-4 object-contain" alt="" />
                 )}
                 <p className="text-orange-500 text-sm font-semibold">
