@@ -119,7 +119,7 @@ export const getPaymentHistory = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id
     const payments = await Payment.find({ userId })
-      .populate('gameId', 'title')
+      .populate('gameId', 'title thumbnail shopCurrencyName shopCurrencyIconUrl')
       .sort({ createdAt: -1 })
       .limit(50)
 

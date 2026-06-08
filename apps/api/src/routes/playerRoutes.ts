@@ -35,7 +35,7 @@ const playerOnly = [authenticateToken, requireRole('player')]
 router.post('/games/:gameId/reviews', ...playerOnly, upsertReview)
 router.delete('/games/:gameId/reviews', ...playerOnly, deleteReview)
 router.post('/reviews/:reviewId/helpful', ...playerOnly, toggleHelpful)
-router.post('/games/:gameId/favorite', ...playerOnly, toggleFavorite)
+router.post('/games/:gameId/favorite', authenticateToken, toggleFavorite)
 router.post('/games/:gameId/play', authenticateToken, recordPlay)
 router.patch('/games/:gameId/play/session', authenticateToken, updatePlaySession)
 

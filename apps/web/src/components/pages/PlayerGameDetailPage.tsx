@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
@@ -71,10 +71,37 @@ export default function PlayerGameDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { user: _user, isAuthenticated } = useAuth()
+  const [shopMenuOpen, setShopMenuOpen] = useState(false)
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false)
+  const [paymentHistory, setPaymentHistory] = useState<{ _id: string; amount: number; status: string; createdAt: string; metadata?: { itemName?: string; gameName?: string }; gameId?: { _id?: string; title?: string; thumbnail?: string; shopCurrencyName?: string; shopCurrencyIconUrl?: string } }[]>([])
+  const [currencyHistoryOpen, setCurrencyHistoryOpen] = useState(false)
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false)
+
+  const loadPaymentHistory = useCallback(async () => {
+    setPaymentHistoryLoading(true)
+    try {
+      const res = await (await import('@/services/api')).default.get('/payments/history')
+      setPaymentHistory(res.data.payments ?? [])
+    } catch { /* ignore */ }
+    finally { setPaymentHistoryLoading(false) }
+  }, [])
+  const shopMenuRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!shopMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (shopMenuRef.current && !shopMenuRef.current.contains(e.target as Node)) {
+        setShopMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [shopMenuOpen])
 
   const [game, setGame] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'play' | 'reviews'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'play' | 'reviews' | 'shop' | 'challenge'>('overview')
+  const [scrollToPlay, setScrollToPlay] = useState(false)
+  const tabContentRef = useRef<HTMLDivElement>(null)
 
   const [isFavorited, setIsFavorited] = useState(false)
   const [favLoading, setFavLoading] = useState(false)
@@ -107,6 +134,18 @@ export default function PlayerGameDetailPage() {
 
   // 스크린샷
   const [screenshots, setScreenshots] = useState<{ _id: string; title: string; url: string; order: number }[]>([])
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  // 상점 서브탭
+  const [shopSubTab, setShopSubTab] = useState<'currency' | 'challenge'>('currency')
+
+  // 상점
+  const [shopItems, setShopItems] = useState<{
+    _id: string; name: string; description: string; imageUrl: string
+    price: number; currency: string; currencyType: string
+    currencyAmount: number; bonusAmount: number; isSpecial?: boolean; active: boolean; sortOrder: number
+  }[]>([])
+  const [shopLoading, setShopLoading] = useState(false)
 
   // ── 결제 모달 상태 ────────────────────────────────────────────
   const [paymentModal, setPaymentModal] = useState<{
@@ -114,6 +153,7 @@ export default function PlayerGameDetailPage() {
     itemName: string
     amount: number
   }>({ open: false, itemName: '', amount: 0 })
+
 
   const loadGame = useCallback(async () => {
     if (!id) return
@@ -186,6 +226,28 @@ export default function PlayerGameDetailPage() {
   useEffect(() => { checkFavorite() }, [checkFavorite])
   useEffect(() => { loadQAs() }, [loadQAs])
   useEffect(() => { loadScreenshots() }, [loadScreenshots])
+
+  const loadShopItems = useCallback(async () => {
+    if (!id) return
+    setShopLoading(true)
+    try {
+      const data = await gameService.getGameShopItems(id)
+      setShopItems((data.items || []).filter((i: { active: boolean }) => i.active))
+    } catch { /* ignore */ } finally {
+      setShopLoading(false)
+    }
+  }, [id])
+
+  useEffect(() => {
+    if (activeTab === 'shop') loadShopItems()
+  }, [activeTab, loadShopItems])
+
+  useEffect(() => {
+    if (scrollToPlay && activeTab === 'play') {
+      tabContentRef.current?.scrollIntoView({ behavior: 'smooth' })
+      setScrollToPlay(false)
+    }
+  }, [scrollToPlay, activeTab])
 
   const handleFavorite = async () => {
     if (!isAuthenticated) { router.push('/login'); return }
@@ -283,7 +345,7 @@ export default function PlayerGameDetailPage() {
     setPaymentModal({ open: true, itemName, amount })
   }
 
-  const avgRating = game ? (game.rating as number) || 0 : 0
+const avgRating = game ? (game.rating as number) || 0 : 0
   const totalReviewCount = Object.values(ratingDist).reduce((a, b) => a + b, 0)
   const rawThumb = game?.thumbnail as string | undefined
   const rawBanner = game?.bannerImage as string | undefined
@@ -306,9 +368,11 @@ export default function PlayerGameDetailPage() {
   const gamePrice = (game?.price as number) || 0
 
   const TABS = [
-    { key: 'overview', label: '게임 소개' },
-    { key: 'play',     label: '게임 플레이' },
-    { key: 'reviews',  label: `리뷰 (${reviewTotal})` }
+    { key: 'overview',  label: '게임 소개' },
+    { key: 'play',      label: '게임 플레이' },
+    { key: 'shop',      label: '상점' },
+    { key: 'challenge', label: '챌린지' },
+    { key: 'reviews',   label: `리뷰 (${reviewTotal})` }
   ] as const
 
   if (loading) {
@@ -322,73 +386,104 @@ export default function PlayerGameDetailPage() {
 
   if (!game) return null
 
+  const lightboxShots = screenshots.filter(s => s.url)
+
   return (
     <div className="min-h-screen bg-bg-primary">
       <Navbar />
+
+      {/* 라이트박스 */}
+      {lightboxIndex !== null && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxIndex(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/60 hover:text-white text-3xl leading-none"
+            onClick={() => setLightboxIndex(null)}
+          >
+            ×
+          </button>
+          {lightboxIndex > 0 && (
+            <button
+              className="absolute left-4 text-white/60 hover:text-white text-4xl leading-none px-2"
+              onClick={e => { e.stopPropagation(); setLightboxIndex(lightboxIndex - 1) }}
+            >
+              ‹
+            </button>
+          )}
+          <img
+            src={lightboxShots[lightboxIndex]?.url}
+            alt={lightboxShots[lightboxIndex]?.title}
+            className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+          {lightboxIndex < lightboxShots.length - 1 && (
+            <button
+              className="absolute right-4 text-white/60 hover:text-white text-4xl leading-none px-2"
+              onClick={e => { e.stopPropagation(); setLightboxIndex(lightboxIndex + 1) }}
+            >
+              ›
+            </button>
+          )}
+          <div className="absolute bottom-4 text-white/40 text-sm">
+            {lightboxIndex + 1} / {lightboxShots.length}
+          </div>
+        </div>
+      )}
 
       {/* Hero Banner */}
       <div className="relative h-64 md:h-80 overflow-hidden">
         <Image src={bannerUrl} alt={game.title as string} fill className="object-cover" unoptimized />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-6">
-          <div className="max-w-5xl mx-auto flex items-end justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 text-xs px-2 py-0.5 rounded">
-                  {game.genre as string || '기타'}
-                </span>
-                {game.approvalStatus === 'approved' && (
-                  <span className="bg-accent/30 text-accent border border-accent-muted text-xs px-2 py-0.5 rounded">승인됨</span>
-                )}
-                {game.status === 'archived' && (
-                  <span className="bg-bg-muted/30 text-text-secondary border border-line/40 text-xs px-2 py-0.5 rounded">베타종료</span>
-                )}
-                {/* 수익화 배지 */}
-                {monetization === 'paid' && (
-                  <span className="bg-yellow-600/30 text-yellow-300 border border-yellow-500/40 text-xs px-2 py-0.5 rounded">
-                    💰 유료
-                  </span>
-                )}
-                {monetization === 'freemium' && (
-                  <span className="bg-purple-600/30 text-purple-300 border border-purple-500/40 text-xs px-2 py-0.5 rounded">
-                    ✨ 부분 유료
-                  </span>
+        {/* 중앙 텍스트 */}
+        <div className="absolute inset-x-0 max-w-7xl mx-auto px-6" style={{ top: '70%', transform: 'translateY(-50%)' }}>
+          <div>
+            <h1 className="font-bold text-white drop-shadow-lg" style={{ fontSize: '58px' }}>{game.title as string}</h1>
+            <p className="text-white/60 text-sm mt-1.5">{game.genre as string || '기타'}</p>
+            <div className="flex items-center mt-1.5">
+              <div className="flex items-center gap-1">
+                <StarRating value={Math.round(avgRating)} />
+                <span className="text-yellow-400 font-bold ml-1">{avgRating.toFixed(1)}</span>
+                <span className="text-white/50 text-sm">({reviewTotal}개 리뷰)</span>
+              </div>
+              <div className="flex-1 flex justify-center pr-[20%]">
+                {game.status !== 'archived' && (
+                  <button
+                    onClick={() => { setActiveTab('play'); setScrollToPlay(true) }}
+                    className="px-[52px] py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-900/50" style={{ fontSize: '23px' }}
+                  >
+                    게임 시작
+                  </button>
                 )}
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white">{game.title as string}</h1>
-              <div className="flex items-center gap-3 mt-1">
-                <div className="flex items-center gap-1">
-                  <StarRating value={Math.round(avgRating)} />
-                  <span className="text-yellow-400 font-bold ml-1">{avgRating.toFixed(1)}</span>
-                  <span className="text-text-secondary text-sm">({reviewTotal}개 리뷰)</span>
-                </div>
-                <span className="text-text-muted">•</span>
-                <span className="text-text-secondary text-sm">플레이 {(game.playCount as number || 0).toLocaleString()}회</span>
-              </div>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={handleFavorite}
-                disabled={favLoading}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
-                  isFavorited
-                    ? 'bg-pink-600/30 border-pink-500/50 text-pink-300 hover:bg-pink-600/50'
-                    : 'bg-bg-tertiary border-line text-text-secondary hover:border-pink-500/50 hover:text-pink-300'
-                }`}
-              >
-                <svg viewBox="0 0 24 24" className={`w-4 h-4 ${isFavorited ? 'fill-pink-400' : 'fill-none stroke-current'}`} strokeWidth={2}>
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                </svg>
-                {isFavorited ? '즐겨찾기 중' : '즐겨찾기'}
-              </button>
-            </div>
+          </div>
+        </div>
+        {/* 즐겨찾기 버튼 */}
+        <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-none">
+          <div className="max-w-7xl mx-auto flex justify-end">
+            <button
+              onClick={handleFavorite}
+              style={{ pointerEvents: 'auto' }}
+              disabled={favLoading}
+              className={`p-2 rounded-lg border transition-all ${
+                isFavorited
+                  ? 'bg-pink-900/20 border-pink-700/30 hover:bg-pink-900/30'
+                  : 'bg-black/20 border-white/10 hover:border-white/20'
+              }`}
+            >
+              <svg viewBox="0 0 24 24" className={`w-5 h-5 ${isFavorited ? 'fill-pink-400/70 stroke-pink-400/70' : 'fill-none stroke-white/40'}`} strokeWidth={2}>
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="border-b border-line bg-bg-primary/80 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6">
+        <div className="max-w-7xl mx-auto px-6">
           <div className="flex gap-0">
             {TABS.map((tab) => (
               <button
@@ -407,29 +502,20 @@ export default function PlayerGameDetailPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
+      <div ref={tabContentRef} className="max-w-7xl mx-auto px-6 py-6 space-y-6">
 
         {/* ── 게임 소개 탭 ── */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* CTA 버튼 - 전체 너비 */}
-            {((monetization === 'paid' && gamePrice > 0) || game.status !== 'archived') && (
+            {monetization === 'paid' && gamePrice > 0 && (
               <div className="lg:col-span-3 flex justify-center">
-                {monetization === 'paid' && gamePrice > 0 ? (
-                  <button
-                    onClick={() => handlePurchase(`${game.title as string} 정식 구매`, gamePrice)}
-                    className="w-[50%] bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-text-primary py-3.5 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-yellow-900/30"
-                  >
-                    💰 ₩{gamePrice.toLocaleString()} 구매하기
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setActiveTab('play')}
-                    className="w-[50%] bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-text-primary py-3.5 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-cyan-900/30"
-                  >
-                    🎮 지금 베타 테스트 참여하기
-                  </button>
-                )}
+                <button
+                  onClick={() => handlePurchase(`${game.title as string} 정식 구매`, gamePrice)}
+                  className="w-[50%] bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-text-primary py-3.5 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-yellow-900/30"
+                >
+                  💰 ₩{gamePrice.toLocaleString()} 구매하기
+                </button>
               </div>
             )}
 
@@ -467,6 +553,7 @@ export default function PlayerGameDetailPage() {
                         key={shot._id || i}
                         className="rounded-lg overflow-hidden bg-bg-tertiary border border-line/50 group cursor-pointer"
                         style={{ aspectRatio: '16/10' }}
+                        onClick={() => shot.url && setLightboxIndex(i)}
                       >
                         {shot.url ? (
                           <img
@@ -700,7 +787,7 @@ export default function PlayerGameDetailPage() {
                     }}
                     className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-text-primary px-8 py-3 rounded-xl font-semibold text-lg transition-all"
                   >
-                    🎮 게임 시작
+                    게임 시작
                   </button>
                   {!!game.description && (
                     <p className="text-text-secondary text-sm">{game.description as string}</p>
@@ -726,7 +813,7 @@ export default function PlayerGameDetailPage() {
                       onClick={handlePlay}
                       className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-text-primary px-8 py-3 rounded-xl font-semibold text-lg transition-all"
                     >
-                      🎮 게임 시작
+                      게임 시작
                     </button>
                     {!!game.description && (
                       <p className="text-text-secondary text-sm">{game.description as string}</p>
@@ -922,7 +1009,236 @@ export default function PlayerGameDetailPage() {
             )}
           </div>
         )}
+        {/* ── 상점 탭 ── */}
+        {activeTab === 'shop' && (
+          <div className="space-y-5">
+            {/* 서브탭 */}
+            <div className="flex items-stretch gap-3">
+              <button
+                onClick={() => setShopSubTab('currency')}
+                className={`flex flex-col items-center gap-1.5 px-10 py-4 rounded-xl border-2 text-sm font-bold transition-all ${shopSubTab === 'currency' ? 'bg-gradient-to-b from-cyan-500 to-cyan-700 border-cyan-400 text-white' : 'bg-zinc-800/40 border-zinc-700/40 hover:bg-zinc-800/60 hover:border-zinc-600/60'}`}
+              >
+                <div className="flex items-center gap-2 text-white" style={{ textShadow: '2px 2px 0px rgba(0,0,0,1)' }}>
+                  {game.shopCurrencyIconUrl && (
+                    <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${game.shopCurrencyIconUrl as string}`} className="w-6 h-6 object-contain" alt="" />
+                  )}
+                  <span className="text-lg">{(game.shopCurrencyName as string) || '재화'}</span>
+                </div>
+                <span className="text-sm font-semibold text-white" style={{ textShadow: '2px 2px 0px rgba(0,0,0,1)' }}>
+                  보유 50,000
+                </span>
+              </button>
+              <button
+                onClick={() => setShopSubTab('challenge')}
+                className={`flex flex-col items-center justify-center px-10 rounded-xl border-2 text-sm font-bold transition-all ${shopSubTab === 'challenge' ? 'bg-gradient-to-b from-cyan-500 to-cyan-700 border-cyan-400 text-white' : 'bg-zinc-800/40 border-zinc-700/40 hover:bg-zinc-800/60 hover:border-zinc-600/60'}`}
+              >
+                <span className="text-lg font-bold text-white drop-shadow-none" style={{ textShadow: '3px 3px 0px rgba(0,0,0,1)', WebkitTextStroke: '0.5px rgba(0,0,0,0.3)' }}>챌린지 보상</span>
+              </button>
+              <div className="ml-auto relative" ref={shopMenuRef}>
+                <button
+                  onClick={() => setShopMenuOpen(v => !v)}
+                  className="flex flex-col items-center justify-center gap-1.5 w-11 h-11 rounded-xl border-2 bg-white border-black hover:bg-gray-100 transition-all"
+                >
+                  <span className="block w-5 h-0.5 bg-black"></span>
+                  <span className="block w-5 h-0.5 bg-black"></span>
+                  <span className="block w-5 h-0.5 bg-black"></span>
+                </button>
+                {shopMenuOpen && (
+                  <div className="absolute right-0 top-13 z-50 w-72 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+                    {/* 헤더 */}
+                    <div className="px-5 py-4 border-b border-gray-200">
+                      <span className="text-sm font-semibold text-gray-800">{_user?.email || '-'}</span>
+                    </div>
+                    {/* 메뉴 항목 */}
+                    <button onClick={() => { setShopMenuOpen(false); setPaymentHistoryOpen(true); loadPaymentHistory() }} className="w-full text-left px-5 py-4 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors">결제내역</button>
+                    <button onClick={() => { setShopMenuOpen(false); setCurrencyHistoryOpen(true); loadPaymentHistory() }} className="w-full text-left px-5 py-4 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors">재화내역</button>
+<button className="w-full text-left px-5 py-4 text-sm text-gray-700 hover:bg-gray-50 transition-colors">1대1 문의</button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 챌린지 보상 */}
+            {shopSubTab === 'challenge' && (
+              <div className="bg-bg-secondary border border-line rounded-xl p-12 text-center">
+                <p className="text-text-secondary text-sm">챌린지 보상 기능은 준비 중입니다</p>
+              </div>
+            )}
+
+            {/* 상품 목록 */}
+            {shopSubTab === 'currency' && (shopLoading ? (
+              <div className="text-center py-12 text-text-secondary text-sm">불러오는 중...</div>
+            ) : shopItems.length === 0 ? (
+              <div className="bg-bg-secondary border border-line rounded-xl p-12 text-center">
+                <p className="text-text-secondary text-sm">등록된 상품이 없습니다</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-4 gap-4">
+                {shopItems.map((item) => {
+                  const currencySymbol = item.currency === 'KRW' ? '₩' : item.currency === 'USD' ? '$' : '€'
+                  const amountLabel = item.bonusAmount > 0
+                    ? `${item.currencyAmount.toLocaleString()}+${item.bonusAmount.toLocaleString()} Bonus`
+                    : item.currencyAmount.toLocaleString()
+                  return (
+                    <div key={item._id} className="bg-bg-secondary border border-line rounded-xl overflow-hidden flex flex-col">
+                      <div className="px-4 pt-4 pb-1 text-center">
+                        <p className="text-sm font-semibold text-text-primary">{item.name}</p>
+                      </div>
+                      <div className="relative flex items-center justify-center pt-4 pb-2 bg-bg-tertiary/30 mx-4 rounded-lg">
+                        {item.imageUrl ? (
+                          <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${item.imageUrl}`} alt={item.name} className="h-24 object-contain" />
+                        ) : (
+                          <div className="h-24 w-24 bg-bg-tertiary rounded-lg flex items-center justify-center text-text-muted text-3xl">💎</div>
+                        )}
+                        {item.isSpecial && (
+                          <span className="absolute bottom-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded">HOT!</span>
+                        )}
+                      </div>
+                      <div className="px-4 pt-2 pb-1 flex items-center justify-center gap-1.5">
+                        {game.shopCurrencyIconUrl && (
+                          <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${game.shopCurrencyIconUrl as string}`} className="w-4 h-4 object-contain" alt="" />
+                        )}
+                        <p className="text-sm font-medium text-text-primary">{amountLabel}</p>
+                      </div>
+                      <div className="p-4 mt-auto">
+                        <button
+                          onClick={() => handlePurchase(item.name, item.price)}
+                          className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-lg transition-colors text-sm"
+                        >
+                          {currencySymbol}{item.price.toLocaleString()}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── 챌린지 탭 ── */}
+        {activeTab === 'challenge' && (
+          <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center">
+            <p className="text-text-secondary">챌린지 기능은 준비 중입니다</p>
+          </div>
+        )}
       </div>
+
+      {/* ── 결제내역 모달 ── */}
+      {paymentHistoryOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h2 className="text-base font-bold text-gray-900">결제내역</h2>
+              <button onClick={() => setPaymentHistoryOpen(false)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
+            </div>
+            <div className="overflow-y-auto max-h-[60vh]">
+              {paymentHistoryLoading ? (
+                <div className="py-12 text-center text-sm text-gray-400">불러오는 중...</div>
+              ) : paymentHistory.length === 0 ? (
+                <div className="py-12 text-center text-sm text-gray-400">결제 내역이 없습니다</div>
+              ) : (
+                <>
+                  <div className="px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">총 결제금액</span>
+                    <span className="text-sm font-bold text-gray-900">
+                      ₩{paymentHistory.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <ul className="divide-y divide-gray-100">
+                  {paymentHistory.map(p => (
+                    <li key={p._id} className="px-6 py-4 flex items-center gap-3">
+                      {p.gameId?.thumbnail ? (
+                        <img
+                          src={p.gameId.thumbnail.startsWith('http') ? p.gameId.thumbnail : `${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${p.gameId.thumbnail}`}
+                          alt={p.gameId.title}
+                          className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-gray-200 flex-shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-gray-400">{p.gameId?.title || p.metadata?.gameName || '-'}</p>
+                        <p className="text-sm font-semibold text-gray-800 truncate">{p.metadata?.itemName || '-'}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{new Date(p.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gray-900">₩{p.amount.toLocaleString()}</p>
+                        <p className={`text-xs mt-0.5 ${p.status === 'completed' ? 'text-green-500' : p.status === 'failed' ? 'text-red-400' : 'text-gray-400'}`}>
+                          {p.status === 'completed' ? '결제완료' : p.status === 'failed' ? '실패' : '처리중'}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 재화내역 모달 ── */}
+      {currencyHistoryOpen && (() => {
+        const gameMap = new Map<string, { title: string; thumbnail?: string; shopCurrencyName?: string; shopCurrencyIconUrl?: string }>()
+        paymentHistory.forEach(p => {
+          if (p.gameId?._id && !gameMap.has(p.gameId._id)) {
+            gameMap.set(p.gameId._id, {
+              title: p.gameId.title ?? p.metadata?.gameName ?? '-',
+              thumbnail: p.gameId.thumbnail,
+              shopCurrencyName: p.gameId.shopCurrencyName,
+              shopCurrencyIconUrl: p.gameId.shopCurrencyIconUrl,
+            })
+          }
+        })
+        const games = Array.from(gameMap.values())
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h2 className="text-base font-bold text-gray-900">재화내역</h2>
+                <button onClick={() => setCurrencyHistoryOpen(false)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
+              </div>
+              <div className="overflow-y-auto max-h-[60vh]">
+                {paymentHistoryLoading ? (
+                  <div className="py-12 text-center text-sm text-gray-400">불러오는 중...</div>
+                ) : games.length === 0 ? (
+                  <div className="py-12 text-center text-sm text-gray-400">보유 재화 내역이 없습니다</div>
+                ) : (
+                  <ul className="divide-y divide-gray-100">
+                    {games.map((g, i) => (
+                      <li key={i} className="px-6 py-4 flex items-center gap-3">
+                        {g.thumbnail ? (
+                          <img
+                            src={g.thumbnail.startsWith('http') ? g.thumbnail : `${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${g.thumbnail}`}
+                            alt={g.title}
+                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-gray-200 flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800">{g.title}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {g.shopCurrencyIconUrl && (
+                              <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${g.shopCurrencyIconUrl}`} className="w-3.5 h-3.5 object-contain" alt="" />
+                            )}
+                            <p className="text-xs text-gray-400">{g.shopCurrencyName || '재화'}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-gray-900">-</p>
+                          <p className="text-xs text-gray-400 mt-0.5">보유량</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── 결제 모달 ── */}
       {paymentModal.open && (
