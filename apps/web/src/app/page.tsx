@@ -1,6 +1,6 @@
 'use client'
-import BetazonePage from '@/components/pages/BetazonePage'
+import MainPage from '@/components/pages/MainPage'
 
 export default function Page() {
-  return <BetazonePage />
+  return <MainPage />
 }
