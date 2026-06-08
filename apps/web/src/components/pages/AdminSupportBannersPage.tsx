@@ -412,7 +412,7 @@ function EventBannersSection() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await adminService.getEventBanners()
+      const data = await adminService.getSupportEventBanners()
       setBanners(data.banners)
     } catch { showToast('불러오기 실패', false) }
     finally { setLoading(false) }
@@ -567,7 +567,7 @@ function EventRegistrationsSection() {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    adminService.getEventBanners().then(d => setBanners(d.banners)).catch(() => {})
+    adminService.getSupportEventBanners().then(d => setBanners(d.banners)).catch(() => {})
   }, [])
 
   return (
