@@ -1301,7 +1301,7 @@ export default function GameDetailManagementPage() {
                           onDragOver={isDraggable ? e => handleDragOver(e, regularIdx) : undefined}
                           onDrop={isDraggable ? () => handleDrop(regularIdx) : undefined}
                           onDragEnd={isDraggable ? handleDragEnd : undefined}
-                          className={`border-b border-line last:border-b-0 transition-colors divide-x divide-white/[0.06] ${item.isSpecial ? 'bg-red-500/5 border-l-2 border-l-red-500/50' : dragOverIndex === regularIdx && dragIndex !== regularIdx ? 'border-t-2 border-t-accent bg-accent/5' : !item.active ? 'opacity-40' : idx % 2 === 0 ? 'hover:bg-bg-tertiary/40' : 'bg-bg-tertiary/20 hover:bg-bg-tertiary/40'} ${dragIndex === regularIdx && !item.isSpecial ? 'opacity-30' : ''}`}
+                          className={`border-b border-line last:border-b-0 transition-colors divide-x divide-white/[0.06] ${!item.active ? 'opacity-40' : item.isSpecial ? 'bg-red-500/5 border-l-2 border-l-red-500/50' : dragOverIndex === regularIdx && dragIndex !== regularIdx ? 'border-t-2 border-t-accent bg-accent/5' : idx % 2 === 0 ? 'hover:bg-bg-tertiary/40' : 'bg-bg-tertiary/20 hover:bg-bg-tertiary/40'} ${dragIndex === regularIdx && !item.isSpecial ? 'opacity-30' : ''}`}
                         >
                           <td className="px-1 py-2.5">
                             <div className="w-12 h-12 rounded-md overflow-hidden flex-shrink-0 bg-bg-tertiary border border-line">
