@@ -197,6 +197,10 @@ export const gameService = {
     const response = await apiClient.get(`/games/${gameId}/shop-items`, { params })
     return response.data
   },
+  getPublicShopItems: async (gameId: string) => {
+    const response = await apiClient.get(`/games/${gameId}/shop-items/public`)
+    return response.data
+  },
 
   createGameShopItem: async (gameId: string, data: {
     name: string; price: number; currency: string; type: string

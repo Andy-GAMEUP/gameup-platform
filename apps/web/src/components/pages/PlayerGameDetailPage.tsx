@@ -237,7 +237,7 @@ export default function PlayerGameDetailPage() {
     if (!id) return
     setShopLoading(true)
     try {
-      const data = await gameService.getGameShopItems(id)
+      const data = await gameService.getPublicShopItems(id)
       const activeItems = (data.items || []).filter((i: { active: boolean }) => i.active)
       const special = activeItems.find((i: { isSpecial?: boolean }) => i.isSpecial)
       setShopItems(activeItems.filter((i: { isSpecial?: boolean }) => !i.isSpecial))

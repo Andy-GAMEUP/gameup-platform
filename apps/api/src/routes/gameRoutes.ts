@@ -51,6 +51,7 @@ router.post('/:gameId/media', authenticateToken, requireRole('developer'), scree
 router.delete('/:gameId/media/:mediaId', authenticateToken, requireRole('developer'), deleteGameMedia)
 
 // 게임샵 아이템
+router.get('/:gameId/shop-items/public', getGameShopItems)
 router.get('/:gameId/shop-items', authenticateToken, requireRole('developer'), getGameShopItems)
 router.post('/:gameId/shop-items', authenticateToken, requireRole('developer'), shopItemUpload, createGameShopItem)
 router.put('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer'), shopItemUpload, updateGameShopItem)
