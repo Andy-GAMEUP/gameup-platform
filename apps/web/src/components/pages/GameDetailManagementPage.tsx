@@ -650,9 +650,10 @@ export default function GameDetailManagementPage() {
       } catch {}
       localStorage.removeItem(EXCHANGE_CACHE_KEY)
     }
-    fetch('/api/exchange-rates')
+    fetch('https://api.frankfurter.app/latest?from=USD&to=KRW,JPY,CNY,EUR')
       .then(r => r.json())
       .then(data => {
+        if (!data.rates?.KRW) return
         const usdToKrw = data.rates.KRW
         const rates: Record<string, number> = {
           KRW: 1,
