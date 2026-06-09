@@ -3,7 +3,7 @@ import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGame
 import { getDeveloperOverview, getDeveloperDaily, getGameAnalytics, exportGameAnalytics, exportDeveloperDashboard } from '../controllers/gameAnalyticsController'
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/gameMediaController'
-import { getGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem, reorderGameShopItems, updateShopCurrencyIcon, updateShopCurrencyName } from '../controllers/gameShopController'
+import { getGameShopItems, getPublicGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem, reorderGameShopItems, updateShopCurrencyIcon, updateShopCurrencyName } from '../controllers/gameShopController'
 import { getGameAnnouncements, createGameAnnouncement, deleteGameAnnouncement, getRecentGameAnnouncements, getGameAnnouncementById, getPublicGameAnnouncements } from '../controllers/gameAnnouncementController'
 import { authenticateToken, requireRole } from '../middleware/auth'
 import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload } from '../middleware/upload'
@@ -51,7 +51,7 @@ router.post('/:gameId/media', authenticateToken, requireRole('developer'), scree
 router.delete('/:gameId/media/:mediaId', authenticateToken, requireRole('developer'), deleteGameMedia)
 
 // 게임샵 아이템
-router.get('/:gameId/shop-items/public', getGameShopItems)
+router.get('/:gameId/shop-items/public', getPublicGameShopItems)
 router.get('/:gameId/shop-items', authenticateToken, requireRole('developer'), getGameShopItems)
 router.post('/:gameId/shop-items', authenticateToken, requireRole('developer'), shopItemUpload, createGameShopItem)
 router.put('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer'), shopItemUpload, updateGameShopItem)

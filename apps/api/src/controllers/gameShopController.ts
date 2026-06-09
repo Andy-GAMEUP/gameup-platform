@@ -11,6 +11,17 @@ const verifyGameOwner = async (gameId: string, userId: string) => {
   return game
 }
 
+export const getPublicGameShopItems = async (req: AuthRequest, res: Response) => {
+  try {
+    const { gameId } = req.params
+    const items = await GameShopItemModel.find({ gameId, active: true }).sort({ sortOrder: 1, createdAt: 1 })
+    res.json({ success: true, items })
+  } catch (error) {
+    console.error('Get public shop items error:', error)
+    res.status(500).json({ message: '아이템 조회에 실패했습니다' })
+  }
+}
+
 export const getGameShopItems = async (req: AuthRequest, res: Response) => {
   try {
     const { gameId } = req.params
