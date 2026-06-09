@@ -1868,7 +1868,7 @@ export default function GameDetailManagementPage() {
 
       {/* 기본 세팅 모달 */}
       <Modal open={basicSettingModal} onClose={() => setBasicSettingModal(false)} title="재화 세팅" disableBackdropClose showCloseButton>
-        {(() => { const isLive = gameData?.serviceType === 'live'; return (
+        {(() => { const isLive = gameData?.approvalStatus === 'approved' && gameData?.status === 'published'; return (
         <div className="space-y-6 py-2">
           {/* 재화 아이콘 */}
           <div className="space-y-3">
@@ -1945,7 +1945,7 @@ export default function GameDetailManagementPage() {
 
           {/* 버튼 */}
           <div className="flex items-center justify-end gap-2 pt-2">
-            <p className="text-xs text-text-muted mr-auto">게임 라이브 이후에는 재화 세팅을 수정할 수 없습니다</p>
+            <p className="text-xs text-text-muted mr-auto">게임 오픈 이후에는 재화 세팅을 수정할 수 없습니다</p>
             {!isLive && <button
               disabled={basicSettingSaving}
               onClick={async () => {
