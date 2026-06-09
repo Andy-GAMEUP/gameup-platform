@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { register, login, getProfile, updateProfile, changePassword, deleteAccount } from '../controllers/userController'
+import { register, login, getProfile, updateProfile, changePassword, deleteAccount, submitAppeal } from '../controllers/userController'
 import { getPublicLevels, getMyActivityScores } from '../controllers/levelController'
 import { authenticateToken } from '../middleware/auth'
 
@@ -11,5 +11,6 @@ router.get('/profile', authenticateToken, getProfile)
 router.patch('/profile', authenticateToken, updateProfile)
 router.patch('/password', authenticateToken, changePassword)
 router.delete('/account', authenticateToken, deleteAccount)
+router.post('/appeal', authenticateToken, submitAppeal)
 
 export default router

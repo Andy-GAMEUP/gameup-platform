@@ -300,3 +300,21 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }
 }
+
+export const submitAppeal = async (req: AuthRequest, res: Response) => {
+  try {
+    const { content } = req.body
+    if (!content?.trim()) return res.status(400).json({ message: '이의 신청 내용을 입력해주세요' })
+    const user = await User.findById(req.user!.id).select('isActive')
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (user.isActive) return res.status(400).json({ message: '차단 중인 계정이 아닙니다' })
+    const now = new Date()
+    await User.findByIdAndUpdate(req.user!.id, {
+      $set: { appeal: { content: content.trim(), createdAt: now } },
+      $push: { history: { type: 'appeal', content: `이의 신청 - ${content.trim()}`, createdAt: now } },
+    })
+    res.json({ success: true })
+  } catch {
+    res.status(500).json({ message: '이의 신청 실패' })
+  }
+}

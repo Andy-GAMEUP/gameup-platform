@@ -6,6 +6,7 @@ export interface ICommunityBanner extends Document {
   title?: string
   sortOrder: number
   isActive: boolean
+  position: 'community' | 'main' | 'event'
   createdAt: Date
   updatedAt: Date
 }
@@ -17,6 +18,7 @@ const communityBannerSchema = new Schema<ICommunityBanner>(
     title:    { type: String, default: '' },
     sortOrder: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
+    position: { type: String, enum: ['community', 'main', 'event'], default: 'community' },
   },
   { timestamps: true }
 )

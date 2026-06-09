@@ -18,6 +18,7 @@ ensureDir(path.join(UPLOAD_BASE, 'banners'))
 ensureDir(path.join(UPLOAD_BASE, 'community'))
 ensureDir(path.join(UPLOAD_BASE, 'screenshots'))
 ensureDir(path.join(UPLOAD_BASE, 'certs'))
+ensureDir(path.join(UPLOAD_BASE, 'shop-items'))
 
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
@@ -33,6 +34,8 @@ const storage = multer.diskStorage({
       cb(null, path.join(UPLOAD_BASE, 'community'))
     } else if (file.fieldname === 'screenshot') {
       cb(null, path.join(UPLOAD_BASE, 'screenshots'))
+    } else if (file.fieldname === 'shopItemImage' || file.fieldname === 'shopCurrencyIcon' || file.fieldname === 'specialItemImage') {
+      cb(null, path.join(UPLOAD_BASE, 'shop-items'))
     } else {
       cb(null, UPLOAD_BASE)
     }
@@ -54,7 +57,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     } else {
       cb(new Error('게임 파일은 HTML 또는 ZIP 형식만 가능합니다'))
     }
-  } else if (file.fieldname === 'thumbnail' || file.fieldname === 'bannerImage' || file.fieldname === 'communityImages' || file.fieldname === 'screenshot') {
+  } else if (['thumbnail','bannerImage','communityImages','screenshot','shopItemImage','shopCurrencyIcon'].includes(file.fieldname)) {
     const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     const allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     const ext = path.extname(file.originalname).toLowerCase()
@@ -85,6 +88,38 @@ export const uploadFields = upload.fields([
   { name: 'bannerImage', maxCount: 1 },
   { name: 'certFile', maxCount: 1 },
 ])
+
+const shopImageFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+  const allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+  const ext = path.extname(file.originalname).toLowerCase()
+  if (allowedTypes.includes(ext) && allowedMime.includes(file.mimetype)) {
+    cb(null, true)
+  } else {
+    cb(new Error('이미지 파일(JPG, PNG, GIF, WEBP)만 업로드 가능합니다'))
+  }
+}
+
+export const shopItemUpload = multer({
+  storage,
+  fileFilter: shopImageFilter,
+  limits: { fileSize: 5 * 1024 * 1024, files: 2 }
+}).fields([{ name: 'shopItemImage', maxCount: 1 }, { name: 'specialItemImage', maxCount: 1 }])
+
+const pngOnlyFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const ext = path.extname(file.originalname).toLowerCase()
+  if (ext === '.png' && file.mimetype === 'image/png') {
+    cb(null, true)
+  } else {
+    cb(new Error('PNG 파일만 업로드 가능합니다'))
+  }
+}
+
+export const shopCurrencyIconUpload = multer({
+  storage,
+  fileFilter: pngOnlyFilter,
+  limits: { fileSize: 2 * 1024 * 1024, files: 1 }
+}).single('shopCurrencyIcon')
 
 // 스크린샷 업로드 (1장, 5MB)
 export const screenshotUpload = multer({

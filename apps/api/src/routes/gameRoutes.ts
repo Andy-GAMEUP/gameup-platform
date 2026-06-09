@@ -3,10 +3,10 @@ import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGame
 import { getDeveloperOverview, getDeveloperDaily, getGameAnalytics, exportGameAnalytics, exportDeveloperDashboard } from '../controllers/gameAnalyticsController'
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/gameMediaController'
-import { getGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem } from '../controllers/gameShopController'
+import { getGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem, reorderGameShopItems, updateShopCurrencyIcon, updateShopCurrencyName } from '../controllers/gameShopController'
 import { getGameAnnouncements, createGameAnnouncement, deleteGameAnnouncement, getRecentGameAnnouncements, getGameAnnouncementById, getPublicGameAnnouncements } from '../controllers/gameAnnouncementController'
 import { authenticateToken, requireRole } from '../middleware/auth'
-import { uploadFields, screenshotUpload } from '../middleware/upload'
+import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload } from '../middleware/upload'
 
 const router = Router()
 
@@ -52,9 +52,12 @@ router.delete('/:gameId/media/:mediaId', authenticateToken, requireRole('develop
 
 // 게임샵 아이템
 router.get('/:gameId/shop-items', authenticateToken, requireRole('developer'), getGameShopItems)
-router.post('/:gameId/shop-items', authenticateToken, requireRole('developer'), createGameShopItem)
-router.put('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer'), updateGameShopItem)
+router.post('/:gameId/shop-items', authenticateToken, requireRole('developer'), shopItemUpload, createGameShopItem)
+router.put('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer'), shopItemUpload, updateGameShopItem)
 router.delete('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer'), deleteGameShopItem)
+router.put('/:gameId/shop-items-reorder', authenticateToken, requireRole('developer'), reorderGameShopItems)
+router.put('/:gameId/shop-currency-icon', authenticateToken, requireRole('developer'), shopCurrencyIconUpload, updateShopCurrencyIcon)
+router.put('/:gameId/shop-currency-name', authenticateToken, requireRole('developer'), updateShopCurrencyName)
 
 // 게임 공지&알림
 router.get('/:gameId/announcements/public', getPublicGameAnnouncements)

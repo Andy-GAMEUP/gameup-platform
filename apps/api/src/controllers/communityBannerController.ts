@@ -3,11 +3,12 @@ import { CommunityBannerModel } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 
 /** GET /api/admin/community/banners (공개) — 활성 배너 목록 */
-export const getCommunityBanners = async (_req: Request, res: Response) => {
+export const getCommunityBanners = async (req: Request, res: Response) => {
   try {
-    const banners = await CommunityBannerModel.find({ isActive: true })
+    const position = (req.query.position as string) || 'community'
+    const banners = await CommunityBannerModel.find({ isActive: true, position })
       .sort({ sortOrder: 1, createdAt: 1 })
-      .select('imageUrl linkUrl title createdAt')
+      .select('imageUrl linkUrl title createdAt position')
     res.json({ banners })
   } catch {
     res.status(500).json({ message: '배너 조회 실패' })
@@ -15,9 +16,10 @@ export const getCommunityBanners = async (_req: Request, res: Response) => {
 }
 
 /** GET /api/admin/community/banners/all — 전체 목록 (관리자) */
-export const getAllCommunityBanners = async (_req: AuthRequest, res: Response) => {
+export const getAllCommunityBanners = async (req: AuthRequest, res: Response) => {
   try {
-    const banners = await CommunityBannerModel.find()
+    const position = (req.query.position as string) || 'community'
+    const banners = await CommunityBannerModel.find({ position })
       .sort({ sortOrder: 1, createdAt: 1 })
     res.json({ banners })
   } catch {
@@ -25,10 +27,12 @@ export const getAllCommunityBanners = async (_req: AuthRequest, res: Response) =
   }
 }
 
-/** POST /api/admin/community/banners — 배너 추가 (최대 5개) */
+/** POST /api/admin/community/banners — 배너 추가 (위치별 최대 5개) */
 export const uploadCommunityBanner = async (req: AuthRequest, res: Response) => {
   try {
-    const count = await CommunityBannerModel.countDocuments()
+    const allowed = ['community', 'main', 'event']
+    const position = allowed.includes(req.body.position) ? req.body.position : 'community'
+    const count = await CommunityBannerModel.countDocuments({ position })
     if (count >= 5) return res.status(400).json({ message: '배너는 최대 5개까지 등록 가능합니다' })
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] }
@@ -41,6 +45,7 @@ export const uploadCommunityBanner = async (req: AuthRequest, res: Response) => 
       linkUrl: linkUrl?.trim() || '',
       title: title?.trim() || '',
       sortOrder: count,
+      position,
     })
     res.status(201).json({ banner })
   } catch {

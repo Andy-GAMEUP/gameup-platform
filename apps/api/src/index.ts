@@ -48,6 +48,7 @@ import { getPublicLevels, getMyActivityScores } from './controllers/levelControl
 import { authenticateToken } from './middleware/auth'
 import { errorHandler, notFound } from './middleware/errorHandler'
 import { initSocket } from './socket'
+import { startCleanupJob } from './jobs/cleanupDeletedContent'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -171,6 +172,7 @@ const server = http.createServer(app)
 initSocket(server)
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
+  startCleanupJob()
 })
 
 export default server

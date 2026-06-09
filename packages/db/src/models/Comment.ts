@@ -9,6 +9,7 @@ export interface IComment extends Document {
   isOfficial: boolean
   status: 'active' | 'hidden' | 'deleted'
   reportCount: number
+  deletedAt?: Date
   reports: {
     userId: mongoose.Types.ObjectId
     reason: string
@@ -28,6 +29,7 @@ const commentSchema = new Schema<IComment>(
     isOfficial: { type: Boolean, default: false },
     status: { type: String, enum: ['active', 'hidden', 'deleted'], default: 'active' },
     reportCount: { type: Number, default: 0 },
+    deletedAt: { type: Date, default: null },
     reports: [{
       userId: { type: Schema.Types.ObjectId, ref: 'User' },
       reason: String,

@@ -9,7 +9,8 @@ import {
   MessageSquare, ChevronLeft, ChevronRight, ChevronDown,
   Home, LogOut, Shield, UserPlus, Handshake, Tags,
   Smartphone, Globe, Calendar, FileCheck, ImageIcon, Bell, Package,
-  BarChart3, PieChart, UserCircle, Building2, Award, Activity, FileText, Gift,
+  BarChart3, PieChart, UserCircle, Building2, Award, Activity, FileText, Gift, Flag,
+  MessageCircle, ShieldBan, Trash2,
 } from 'lucide-react'
 
 interface AdminLayoutProps { children: ReactNode }
@@ -26,7 +27,18 @@ const navItems: NavItem[] = [
   { path: '/admin',            label: '대시보드',    icon: LayoutDashboard, exact: true },
   { path: '/admin/games',      label: '게임 관리',   icon: Gamepad2 },
   { path: '/admin/game-deletion-logs', label: '게임 삭제 로그', icon: Gamepad2 },
-  { path: '/admin/community',  label: '커뮤니티',    icon: MessageSquare },
+  { path: '/admin/community', label: '커뮤니티', icon: MessageSquare, exact: true },
+  {
+    path: '/admin/community/reported',
+    label: '신고센터',
+    icon: Flag,
+    children: [
+      { path: '/admin/community/reported',           label: '게시글',     icon: Flag,        exact: true },
+      { path: '/admin/community/reported/comments',  label: '댓글',       icon: MessageCircle },
+      { path: '/admin/community/reported/blacklist', label: '블랙리스트', icon: ShieldBan },
+      { path: '/admin/community/reported/deleted',   label: '삭제 보관함', icon: Trash2 },
+    ],
+  },
   {
     path: '/admin/members',
     label: '계정관리',

@@ -2,13 +2,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
-import adminService, { CommunityBanner, ReportedPost } from '@/services/adminService'
+import adminService, { CommunityBanner, ReportedPost, ReportedComment } from '@/services/adminService'
 import communityService from '@/services/communityService'
 import {
   Search, ShieldOff, ShieldCheck, Trash2, ChevronLeft, ChevronRight,
   Loader2, AlertCircle, CheckCircle, MessageSquare, PenSquare, X,
   ImagePlus, Link2, Hash, Image as ImageIcon, Megaphone, Upload,
-  Plus, Eye, EyeOff, Pin, Bell, BellOff, Edit2, LayoutDashboard, Flag, ExternalLink,
+  Plus, Eye, EyeOff, Pin, Bell, BellOff, Edit2, LayoutDashboard, Flag, ExternalLink, ThumbsUp, MessageCircle, ArrowUpDown, ArrowUp, ArrowDown,
 } from 'lucide-react'
 
 // ────────── 타입 ──────────
@@ -46,7 +46,7 @@ const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
 
 // ────────── 공통 컴포넌트 ──────────
 
-function Toast({ msg, ok }: { msg: string; ok: boolean }) {
+export function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
     <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${ok ? 'bg-accent' : 'bg-red-600'} text-white`}>
       {ok ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
@@ -73,7 +73,152 @@ function ConfirmModal({ msg, onConfirm, onCancel, danger = true }: {
 
 // ────────── 탭 1: 배너 관리 ──────────
 
+function BannerSection({
+  title,
+  subtitle,
+  banners,
+  loading,
+  uploading,
+  addForm,
+  formFile,
+  formTitle,
+  formLinkUrl,
+  addFileRef,
+  onToggleAddForm,
+  onFileChange,
+  onTitleChange,
+  onLinkChange,
+  onAdd,
+  onCancelAdd,
+  onToggleActive,
+  onDelete,
+}: {
+  title: string
+  subtitle: string
+  banners: CommunityBanner[]
+  loading: boolean
+  uploading: boolean
+  addForm: boolean
+  formFile: File | null
+  formTitle: string
+  formLinkUrl: string
+  addFileRef: React.RefObject<HTMLInputElement | null>
+  onToggleAddForm: () => void
+  onFileChange: (f: File | null) => void
+  onTitleChange: (v: string) => void
+  onLinkChange: (v: string) => void
+  onAdd: () => void
+  onCancelAdd: () => void
+  onToggleActive: (b: CommunityBanner) => void
+  onDelete: (id: string) => void
+}) {
+  const fmt = (d: string) => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  return (
+    <div className="bg-bg-secondary border border-line rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-text-primary font-semibold">{title}</h3>
+          <p className="text-text-muted text-xs mt-0.5">{subtitle}</p>
+        </div>
+        {banners.length < 5 && (
+          <button onClick={onToggleAddForm}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors">
+            <Plus className="w-4 h-4" /> 배너 추가
+          </button>
+        )}
+      </div>
+
+      {addForm && (
+        <div className="mb-4 p-4 bg-bg-tertiary border border-line rounded-xl space-y-3">
+          <input type="file" ref={addFileRef} accept="image/jpeg,image/png,image/gif,image/webp" className="hidden"
+            onChange={e => onFileChange(e.target.files?.[0] || null)} />
+          <div>
+            <label className="text-xs text-text-muted mb-1 block">이미지 *</label>
+            <button onClick={() => addFileRef.current?.click()}
+              className="flex items-center gap-2 px-3 py-2 border border-dashed border-line rounded-lg text-sm text-text-muted hover:text-text-secondary transition-colors">
+              <ImageIcon className="w-4 h-4" />
+              {formFile ? formFile.name : '이미지 선택 (JPG, PNG, GIF, WebP)'}
+            </button>
+          </div>
+          <div>
+            <label className="text-xs text-text-muted mb-1 block">제목 (선택)</label>
+            <input value={formTitle} onChange={e => onTitleChange(e.target.value)} placeholder="배너 제목"
+              className="w-full bg-bg-secondary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent" />
+          </div>
+          <div>
+            <label className="text-xs text-text-muted mb-1 block">링크 URL (선택)</label>
+            <input value={formLinkUrl} onChange={e => onLinkChange(e.target.value)} placeholder="https://..."
+              className="w-full bg-bg-secondary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent" />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={onCancelAdd}
+              className="px-3 py-1.5 border border-line rounded-lg text-sm text-text-secondary hover:bg-bg-secondary">취소</button>
+            <button onClick={onAdd} disabled={uploading || !formFile}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm disabled:opacity-50">
+              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} 등록
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center h-32"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
+      ) : banners.length === 0 ? (
+        <div className="text-center py-12 text-text-muted text-sm">등록된 배너가 없습니다</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-text-muted text-xs">
+                <th className="text-left py-2 px-3 font-medium w-12">순서</th>
+                <th className="text-left py-2 px-3 font-medium w-24">미리보기</th>
+                <th className="text-left py-2 px-3 font-medium">제목</th>
+                <th className="text-left py-2 px-3 font-medium">링크</th>
+                <th className="text-left py-2 px-3 font-medium w-28">등록일</th>
+                <th className="text-left py-2 px-3 font-medium w-16">상태</th>
+                <th className="py-2 px-3 w-16" />
+              </tr>
+            </thead>
+            <tbody>
+              {banners.map((b, i) => (
+                <tr key={b._id} className="border-b border-line last:border-0 hover:bg-bg-tertiary transition-colors">
+                  <td className="py-3 px-3 text-text-muted">{i + 1}</td>
+                  <td className="py-3 px-3">
+                    <div className="w-20 h-12 rounded-lg overflow-hidden border border-line bg-bg-tertiary">
+                      <img src={`${UPLOADS_URL}${b.imageUrl}`} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  </td>
+                  <td className="py-3 px-3 text-text-primary">{b.title || <span className="text-text-muted">-</span>}</td>
+                  <td className="py-3 px-3">
+                    {b.linkUrl
+                      ? <span className="text-accent text-xs truncate max-w-[160px] block">{b.linkUrl}</span>
+                      : <span className="text-text-muted">-</span>}
+                  </td>
+                  <td className="py-3 px-3 text-text-muted text-xs">{fmt(b.createdAt)}</td>
+                  <td className="py-3 px-3">
+                    <button onClick={() => onToggleActive(b)}
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${b.isActive ? 'bg-green-500/10 text-green-400' : 'bg-bg-tertiary text-text-muted'}`}>
+                      {b.isActive ? '활성' : '비활성'}
+                    </button>
+                  </td>
+                  <td className="py-3 px-3">
+                    <button onClick={() => onDelete(b._id)}
+                      className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
+  // 커뮤니티 배너 상태
   const [banners, setBanners] = useState<CommunityBanner[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -82,8 +227,28 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
   const [formLinkUrl, setFormLinkUrl] = useState('')
   const [formTitle, setFormTitle] = useState('')
   const [formFile, setFormFile] = useState<File | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
   const addFileRef = useRef<HTMLInputElement>(null)
+
+  // 메인 배너 상태
+  const [mainBanners, setMainBanners] = useState<CommunityBanner[]>([])
+  const [mainLoading, setMainLoading] = useState(true)
+  const [mainUploading, setMainUploading] = useState(false)
+  const [mainConfirm, setMainConfirm] = useState<{ id: string } | null>(null)
+  const [mainAddForm, setMainAddForm] = useState(false)
+  const [mainFormLinkUrl, setMainFormLinkUrl] = useState('')
+  const [mainFormTitle, setMainFormTitle] = useState('')
+  const [mainFormFile, setMainFormFile] = useState<File | null>(null)
+  const mainAddFileRef = useRef<HTMLInputElement>(null)
+
+  const [eventBanners, setEventBanners] = useState<CommunityBanner[]>([])
+  const [eventLoading, setEventLoading] = useState(true)
+  const [eventUploading, setEventUploading] = useState(false)
+  const [eventConfirm, setEventConfirm] = useState<{ id: string } | null>(null)
+  const [eventAddForm, setEventAddForm] = useState(false)
+  const [eventFormLinkUrl, setEventFormLinkUrl] = useState('')
+  const [eventFormTitle, setEventFormTitle] = useState('')
+  const [eventFormFile, setEventFormFile] = useState<File | null>(null)
+  const eventAddFileRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -94,7 +259,25 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
     finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  const loadMain = useCallback(async () => {
+    setMainLoading(true)
+    try {
+      const data = await adminService.getAllMainBanners()
+      setMainBanners(data.banners)
+    } catch { /* silent */ }
+    finally { setMainLoading(false) }
+  }, [])
+
+  const loadEvent = useCallback(async () => {
+    setEventLoading(true)
+    try {
+      const data = await adminService.getAllEventBanners()
+      setEventBanners(data.banners)
+    } catch { /* silent */ }
+    finally { setEventLoading(false) }
+  }, [])
+
+  useEffect(() => { load(); loadMain(); loadEvent() }, [load, loadMain, loadEvent])
 
   const handleAdd = async () => {
     if (!formFile) { showToast('이미지를 선택해주세요', false); return }
@@ -125,114 +308,135 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
     } catch { showToast('삭제 실패', false) }
   }
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  const handleMainAdd = async () => {
+    if (!mainFormFile) { showToast('이미지를 선택해주세요', false); return }
+    setMainUploading(true)
+    try {
+      await adminService.uploadMainBanner(mainFormFile, { linkUrl: mainFormLinkUrl, title: mainFormTitle })
+      showToast('배너가 등록되었습니다')
+      setMainAddForm(false); setMainFormFile(null); setMainFormLinkUrl(''); setMainFormTitle('')
+      loadMain()
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || '업로드 실패', false)
+    } finally { setMainUploading(false) }
+  }
+
+  const handleMainToggleActive = async (b: CommunityBanner) => {
+    try {
+      await adminService.updateCommunityBanner(b._id, { isActive: !b.isActive })
+      loadMain()
+    } catch { showToast('변경 실패', false) }
+  }
+
+  const handleMainDelete = async () => {
+    if (!mainConfirm) return
+    try {
+      await adminService.deleteCommunityBanner(mainConfirm.id)
+      showToast('삭제되었습니다')
+      setMainConfirm(null); loadMain()
+    } catch { showToast('삭제 실패', false) }
+  }
+
+  const handleEventAdd = async () => {
+    if (!eventFormFile) { showToast('이미지를 선택해주세요', false); return }
+    setEventUploading(true)
+    try {
+      await adminService.uploadEventBanner(eventFormFile, { linkUrl: eventFormLinkUrl, title: eventFormTitle })
+      showToast('배너가 등록되었습니다')
+      setEventAddForm(false); setEventFormFile(null); setEventFormLinkUrl(''); setEventFormTitle('')
+      loadEvent()
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || '업로드 실패', false)
+    } finally { setEventUploading(false) }
+  }
+
+  const handleEventToggleActive = async (b: CommunityBanner) => {
+    try {
+      await adminService.updateCommunityBanner(b._id, { isActive: !b.isActive })
+      loadEvent()
+    } catch { showToast('변경 실패', false) }
+  }
+
+  const handleEventDelete = async () => {
+    if (!eventConfirm) return
+    try {
+      await adminService.deleteCommunityBanner(eventConfirm.id)
+      showToast('삭제되었습니다')
+      setEventConfirm(null); loadEvent()
+    } catch { showToast('삭제 실패', false) }
+  }
 
   return (
     <div className="space-y-5">
       {confirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleDelete} onCancel={() => setConfirm(null)} />}
+      {mainConfirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleMainDelete} onCancel={() => setMainConfirm(null)} />}
+      {eventConfirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleEventDelete} onCancel={() => setEventConfirm(null)} />}
 
-      <div className="bg-bg-secondary border border-line rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-text-primary font-semibold">커뮤니티 홈 배너</h3>
-            <p className="text-text-muted text-xs mt-0.5">최대 5개 · 등록된 순서로 자동 롤링됩니다</p>
-          </div>
-          {banners.length < 5 && (
-            <button onClick={() => setAddForm(v => !v)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors">
-              <Plus className="w-4 h-4" /> 배너 추가
-            </button>
-          )}
-        </div>
+      {/* 메인 탭 배너 */}
+      <BannerSection
+        title="메인 탭 배너"
+        subtitle="메인 페이지 상단에 표시됩니다 · 최대 5개 · 자동 롤링"
+        banners={mainBanners}
+        loading={mainLoading}
+        uploading={mainUploading}
+        addForm={mainAddForm}
+        formFile={mainFormFile}
+        formTitle={mainFormTitle}
+        formLinkUrl={mainFormLinkUrl}
+        addFileRef={mainAddFileRef}
+        onToggleAddForm={() => setMainAddForm(v => !v)}
+        onFileChange={setMainFormFile}
+        onTitleChange={setMainFormTitle}
+        onLinkChange={setMainFormLinkUrl}
+        onAdd={handleMainAdd}
+        onCancelAdd={() => { setMainAddForm(false); setMainFormFile(null); setMainFormLinkUrl(''); setMainFormTitle('') }}
+        onToggleActive={handleMainToggleActive}
+        onDelete={id => setMainConfirm({ id })}
+      />
 
-        {/* 추가 폼 */}
-        {addForm && (
-          <div className="mb-4 p-4 bg-bg-tertiary border border-line rounded-xl space-y-3">
-            <input type="file" ref={addFileRef} accept="image/jpeg,image/png,image/gif,image/webp" className="hidden"
-              onChange={e => setFormFile(e.target.files?.[0] || null)} />
-            <div>
-              <label className="text-xs text-text-muted mb-1 block">이미지 *</label>
-              <button onClick={() => addFileRef.current?.click()}
-                className="flex items-center gap-2 px-3 py-2 border border-dashed border-line rounded-lg text-sm text-text-muted hover:text-text-secondary transition-colors">
-                <ImageIcon className="w-4 h-4" />
-                {formFile ? formFile.name : '이미지 선택 (JPG, PNG, GIF, WebP)'}
-              </button>
-            </div>
-            <div>
-              <label className="text-xs text-text-muted mb-1 block">제목 (선택)</label>
-              <input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="배너 제목"
-                className="w-full bg-bg-secondary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent" />
-            </div>
-            <div>
-              <label className="text-xs text-text-muted mb-1 block">링크 URL (선택)</label>
-              <input value={formLinkUrl} onChange={e => setFormLinkUrl(e.target.value)} placeholder="https://..."
-                className="w-full bg-bg-secondary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent" />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => { setAddForm(false); setFormFile(null); setFormLinkUrl(''); setFormTitle('') }}
-                className="px-3 py-1.5 border border-line rounded-lg text-sm text-text-secondary hover:bg-bg-secondary">취소</button>
-              <button onClick={handleAdd} disabled={uploading || !formFile}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm disabled:opacity-50">
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} 등록
-              </button>
-            </div>
-          </div>
-        )}
+      {/* 커뮤니티 홈 배너 */}
+      <BannerSection
+        title="커뮤니티 홈 배너"
+        subtitle="커뮤니티 홈 상단에 표시됩니다 · 최대 5개 · 자동 롤링"
+        banners={banners}
+        loading={loading}
+        uploading={uploading}
+        addForm={addForm}
+        formFile={formFile}
+        formTitle={formTitle}
+        formLinkUrl={formLinkUrl}
+        addFileRef={addFileRef}
+        onToggleAddForm={() => setAddForm(v => !v)}
+        onFileChange={setFormFile}
+        onTitleChange={setFormTitle}
+        onLinkChange={setFormLinkUrl}
+        onAdd={handleAdd}
+        onCancelAdd={() => { setAddForm(false); setFormFile(null); setFormLinkUrl(''); setFormTitle('') }}
+        onToggleActive={handleToggleActive}
+        onDelete={id => setConfirm({ id })}
+      />
 
-        {/* 테이블 */}
-        {loading ? (
-          <div className="flex items-center justify-center h-32"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
-        ) : banners.length === 0 ? (
-          <div className="text-center py-12 text-text-muted text-sm">등록된 배너가 없습니다</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-text-muted text-xs">
-                  <th className="text-left py-2 px-3 font-medium w-12">순서</th>
-                  <th className="text-left py-2 px-3 font-medium w-24">미리보기</th>
-                  <th className="text-left py-2 px-3 font-medium">제목</th>
-                  <th className="text-left py-2 px-3 font-medium">링크</th>
-                  <th className="text-left py-2 px-3 font-medium w-28">등록일</th>
-                  <th className="text-left py-2 px-3 font-medium w-16">상태</th>
-                  <th className="py-2 px-3 w-16" />
-                </tr>
-              </thead>
-              <tbody>
-                {banners.map((b, i) => (
-                  <tr key={b._id} className="border-b border-line last:border-0 hover:bg-bg-tertiary transition-colors">
-                    <td className="py-3 px-3 text-text-muted">{i + 1}</td>
-                    <td className="py-3 px-3">
-                      <div className="w-20 h-12 rounded-lg overflow-hidden border border-line bg-bg-tertiary">
-                        <img src={`${UPLOADS_URL}${b.imageUrl}`} alt="" className="w-full h-full object-cover" />
-                      </div>
-                    </td>
-                    <td className="py-3 px-3 text-text-primary">{b.title || <span className="text-text-muted">-</span>}</td>
-                    <td className="py-3 px-3">
-                      {b.linkUrl
-                        ? <span className="text-accent text-xs truncate max-w-[160px] block">{b.linkUrl}</span>
-                        : <span className="text-text-muted">-</span>}
-                    </td>
-                    <td className="py-3 px-3 text-text-muted text-xs">{fmt(b.createdAt)}</td>
-                    <td className="py-3 px-3">
-                      <button onClick={() => handleToggleActive(b)}
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${b.isActive ? 'bg-green-500/10 text-green-400' : 'bg-bg-tertiary text-text-muted'}`}>
-                        {b.isActive ? '활성' : '비활성'}
-                      </button>
-                    </td>
-                    <td className="py-3 px-3">
-                      <button onClick={() => setConfirm({ id: b._id })}
-                        className="p-1.5 text-text-muted hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      {/* 이벤트 박스 배너 */}
+      <BannerSection
+        title="이벤트 박스 배너"
+        subtitle="메인 페이지 이벤트 박스에 표시됩니다 · 최대 5개 · 자동 롤링"
+        banners={eventBanners}
+        loading={eventLoading}
+        uploading={eventUploading}
+        addForm={eventAddForm}
+        formFile={eventFormFile}
+        formTitle={eventFormTitle}
+        formLinkUrl={eventFormLinkUrl}
+        addFileRef={eventAddFileRef}
+        onToggleAddForm={() => setEventAddForm(v => !v)}
+        onFileChange={setEventFormFile}
+        onTitleChange={setEventFormTitle}
+        onLinkChange={setEventFormLinkUrl}
+        onAdd={handleEventAdd}
+        onCancelAdd={() => { setEventAddForm(false); setEventFormFile(null); setEventFormLinkUrl(''); setEventFormTitle('') }}
+        onToggleActive={handleEventToggleActive}
+        onDelete={id => setEventConfirm({ id })}
+      />
     </div>
   )
 }
@@ -661,10 +865,17 @@ function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 
 // ────────── 탭 3: 신고글 관리 ──────────
 
-function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
+type SortField = 'reportCount' | 'title' | 'author' | 'createdAt' | 'views' | 'likes' | 'commentCount'
+type SortDir = 'asc' | 'desc'
+
+export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
   const [reported, setReported] = useState<ReportedPost[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [sortField, setSortField] = useState<SortField>('reportCount')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [loading, setLoading] = useState(true)
   const [actionId, setActionId] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<any>(null)
@@ -672,15 +883,39 @@ function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: boolean
   const LIMIT = 10
   const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDir('desc') }
+  }
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 opacity-30" />
+    return sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-accent" /> : <ArrowDown className="w-3 h-3 text-accent" />
+  }
+
+  const sorted = [...reported].filter(p => !statusFilter || p.status === statusFilter).sort((a, b) => {
+    let av: number | string = 0, bv: number | string = 0
+    if (sortField === 'reportCount') { av = a.reportCount; bv = b.reportCount }
+    else if (sortField === 'title') { av = a.title; bv = b.title }
+    else if (sortField === 'author') { av = a.author?.username ?? ''; bv = b.author?.username ?? '' }
+    else if (sortField === 'createdAt') { av = a.createdAt; bv = b.createdAt }
+    else if (sortField === 'views') { av = a.views ?? 0; bv = b.views ?? 0 }
+    else if (sortField === 'likes') { av = a.likes?.length ?? 0; bv = b.likes?.length ?? 0 }
+    else if (sortField === 'commentCount') { av = a.commentCount ?? 0; bv = b.commentCount ?? 0 }
+    if (av < bv) return sortDir === 'asc' ? -1 : 1
+    if (av > bv) return sortDir === 'asc' ? 1 : -1
+    return 0
+  })
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await adminService.getReportedPosts({ page, limit: LIMIT })
+      const data = await adminService.getReportedPosts({ page, limit: LIMIT, search: search || undefined })
       setReported(data.posts || [])
       setTotal(data.total || 0)
     } catch { showToast('신고 목록 불러오기 실패', false) }
     finally { setLoading(false) }
-  }, [page, showToast])
+  }, [page, search, showToast])
 
   useEffect(() => { load() }, [load])
 
@@ -693,7 +928,7 @@ function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: boolean
       onConfirm: async () => {
         setConfirm(null); setActionId(post._id)
         try {
-          await adminService.updatePostStatus(post._id, { status: statuses[action], clearReports: action === 'restore' })
+          await adminService.updatePostStatus(post._id, { status: statuses[action], clearReports: action === 'restore', deletedByReport: action === 'delete' })
           showToast(`${labels[action]} 처리되었습니다`)
           load()
         } catch { showToast('처리 실패', false) }
@@ -703,7 +938,7 @@ function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: boolean
   }
 
   const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-    active: { label: '정상', cls: 'bg-green-500/10 text-green-400 border-green-500/30' },
+    active: { label: '배포 중', cls: 'bg-green-500/10 text-green-400 border-green-500/30' },
     hidden: { label: '숨김', cls: 'bg-orange-500/10 text-orange-400 border-orange-500/30' },
     deleted: { label: '삭제', cls: 'bg-red-500/10 text-red-400 border-red-500/30' },
   }
@@ -712,8 +947,19 @@ function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: boolean
     <div className="space-y-4">
       {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
 
-      <div className="flex items-center gap-2">
-        <span className="text-text-muted text-sm">총 <span className="text-text-primary font-semibold">{total}</span>건</span>
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="제목·내용 검색..."
+            className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
+        </div>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
+          <option value="">전체 상태</option>
+          <option value="active">정상</option>
+          <option value="hidden">숨김</option>
+        </select>
+        <span className="text-text-muted text-sm flex-shrink-0">총 <span className="text-text-primary font-semibold">{total}</span>건</span>
       </div>
 
       {loading ? (
@@ -721,49 +967,132 @@ function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: boolean
       ) : reported.length === 0 ? (
         <div className="text-center py-16 text-text-muted">신고된 게시글이 없습니다</div>
       ) : (
-        <div className="space-y-2">
-          {reported.map(post => {
-            const st = STATUS_LABEL[post.status] || STATUS_LABEL.active
-            return (
-              <div key={post._id} className={`bg-bg-secondary border border-line rounded-xl p-4 ${actionId === post._id ? 'opacity-60 pointer-events-none' : ''}`}>
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center flex-wrap gap-2 mb-1">
-                      <span className={`text-xs px-1.5 py-0.5 rounded border ${st.cls}`}>{st.label}</span>
-                      <span className="flex items-center gap-1 text-xs text-red-400 font-medium">
-                        <Flag className="w-3 h-3" /> 신고 {post.reportCount}건
+        <div className="rounded-xl border border-line overflow-hidden">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide">
+                <th className="w-1 px-0" />
+                <th className="px-4 py-3 text-left whitespace-nowrap">상태</th>
+                <th className="px-4 py-3 text-left">
+                  <button onClick={() => handleSort('title')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                    제목 <SortIcon field="title" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">탭</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('author')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                    작성자 <SortIcon field="author" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('createdAt')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                    날짜 <SortIcon field="createdAt" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">
+                  <button onClick={() => handleSort('reportCount')} className="flex items-center gap-1 mx-auto hover:text-text-primary transition-colors">
+                    <Flag className="w-3.5 h-3.5" /> <SortIcon field="reportCount" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">
+                  <button onClick={() => handleSort('views')} className="flex items-center gap-1 mx-auto hover:text-text-primary transition-colors">
+                    <Eye className="w-3.5 h-3.5" /> <SortIcon field="views" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">
+                  <button onClick={() => handleSort('likes')} className="flex items-center gap-1 mx-auto hover:text-text-primary transition-colors">
+                    <ThumbsUp className="w-3.5 h-3.5" /> <SortIcon field="likes" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">
+                  <button onClick={() => handleSort('commentCount')} className="flex items-center gap-1 mx-auto hover:text-text-primary transition-colors">
+                    <MessageCircle className="w-3.5 h-3.5" /> <SortIcon field="commentCount" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">게시물보기</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">숨김</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">삭제</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(post => {
+                const st = STATUS_LABEL[post.status] || STATUS_LABEL.active
+                const ch = CHANNELS.find(c => c.value === post.channel)
+                return (
+                  <tr key={post._id} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors ${actionId === post._id ? 'opacity-50 pointer-events-none' : ''}`}>
+                    {/* 위험도 바 */}
+                    <td className={`w-1 p-0 ${post.reportCount >= 5 ? 'bg-red-500' : post.reportCount >= 3 ? 'bg-orange-400' : ''}`} />
+
+                    {/* 상태 */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`text-xs px-2 py-1 rounded-full border font-semibold ${st.cls}`}>{st.label}</span>
+                    </td>
+
+                    {/* 제목 */}
+                    <td className="px-4 py-3 max-w-xs">
+                      <p className="text-text-primary font-semibold text-sm truncate">{post.title}</p>
+                    </td>
+
+                    {/* 등록 탭 위치 */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-xs text-text-secondary bg-bg-tertiary border border-line px-2 py-0.5 rounded-md">
+                        {ch ? ch.label : post.channel}
                       </span>
-                      <span className="text-text-muted text-xs">{post.author?.username ?? '알 수 없음'}</span>
-                      <span className="text-text-muted text-xs">{new Date(post.createdAt).toLocaleDateString('ko-KR')}</span>
-                    </div>
-                    <p className="text-text-primary text-sm font-medium truncate">{post.title}</p>
-                    <p className="text-text-secondary text-xs line-clamp-1 mt-0.5">{post.content}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Link href={`/community/${post._id}`} target="_blank"
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border border-line bg-bg-tertiary hover:bg-bg-muted text-text-secondary transition-colors">
-                      <ExternalLink className="w-3 h-3" /> 보기
-                    </Link>
-                    {post.status === 'hidden' ? (
-                      <button onClick={() => handleAction(post, 'restore')}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
-                        <ShieldCheck className="w-3 h-3" /> 복구
+                    </td>
+
+                    {/* 작성자 */}
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text-secondary font-medium">{post.author?.username ?? '—'}</td>
+
+                    {/* 날짜 */}
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{new Date(post.createdAt).toLocaleDateString('ko-KR')}</td>
+
+                    {/* 신고 수 */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center gap-0.5 text-sm font-bold text-red-400 justify-center">
+                        <Flag className="w-3.5 h-3.5" />{post.reportCount}
+                      </span>
+                    </td>
+
+                    {/* 통계 */}
+                    <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.views ?? 0}</td>
+                    <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.likes?.length ?? 0}</td>
+                    <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.commentCount ?? 0}</td>
+
+                    {/* 게시물보기 */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <Link href={`/community/${post._id}`} target="_blank"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
+                        <ExternalLink className="w-3 h-3" /> 게시물보기
+                      </Link>
+                    </td>
+
+                    {/* 숨김/복구 */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {post.status === 'hidden' ? (
+                        <button onClick={() => handleAction(post, 'restore')}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
+                          <ShieldCheck className="w-3 h-3" /> 복구
+                        </button>
+                      ) : (
+                        <button onClick={() => handleAction(post, 'hide')}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40 transition-colors">
+                          <EyeOff className="w-3 h-3" /> 숨김
+                        </button>
+                      )}
+                    </td>
+
+                    {/* 삭제 */}
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <button onClick={() => handleAction(post, 'delete')}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
+                        <Trash2 className="w-3 h-3" /> 삭제
                       </button>
-                    ) : (
-                      <button onClick={() => handleAction(post, 'hide')}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40 transition-colors">
-                        <EyeOff className="w-3 h-3" /> 숨김
-                      </button>
-                    )}
-                    <button onClick={() => handleAction(post, 'delete')}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
-                      <Trash2 className="w-3 h-3" /> 삭제
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -925,12 +1254,533 @@ function ReviewsTab({ showToast }: { showToast: (msg: string, ok?: boolean) => v
   )
 }
 
+// ────────── 신고센터: 댓글 탭 ──────────
+
+export function ReportedCommentsTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
+  const [comments, setComments] = useState<ReportedComment[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [sortField, setSortField] = useState<SortField>('reportCount')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [loading, setLoading] = useState(true)
+  const [actionId, setActionId] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<any>(null)
+
+  const LIMIT = 10
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortField(field); setSortDir('desc') }
+  }
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 opacity-30" />
+    return sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-accent" /> : <ArrowDown className="w-3 h-3 text-accent" />
+  }
+
+  const sorted = [...comments].filter(c => !statusFilter || c.status === statusFilter).sort((a, b) => {
+    let av: number | string = 0, bv: number | string = 0
+    if (sortField === 'reportCount') { av = a.reportCount; bv = b.reportCount }
+    else if (sortField === 'author') { av = a.author?.username ?? ''; bv = b.author?.username ?? '' }
+    else if (sortField === 'createdAt') { av = a.createdAt; bv = b.createdAt }
+    else if (sortField === 'likes') { av = a.likes?.length ?? 0; bv = b.likes?.length ?? 0 }
+    if (av < bv) return sortDir === 'asc' ? -1 : 1
+    if (av > bv) return sortDir === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await adminService.getReportedComments({ page, limit: LIMIT, search: search || undefined })
+      setComments(data.comments || [])
+      setTotal(data.total || 0)
+    } catch { showToast('신고 댓글 목록 불러오기 실패', false) }
+    finally { setLoading(false) }
+  }, [page, search, showToast])
+
+  useEffect(() => { load() }, [load])
+
+  const handleAction = (comment: ReportedComment, action: 'hide' | 'delete' | 'restore') => {
+    const labels = { hide: '숨김', delete: '댓글 삭제', restore: '복구' }
+    setConfirm({
+      msg: action === 'hide'
+        ? '이 댓글을 숨김 처리하시겠습니까?'
+        : action === 'delete'
+        ? '이 댓글을 삭제하시겠습니까?'
+        : '이 댓글을 복구하시겠습니까?',
+      danger: action !== 'restore',
+      onConfirm: async () => {
+        setConfirm(null); setActionId(comment._id)
+        try {
+          await adminService.adminCommentAction(comment._id, { action })
+          showToast(`${labels[action]} 처리되었습니다`)
+          load()
+        } catch { showToast('처리 실패', false) }
+        finally { setActionId(null) }
+      },
+    })
+  }
+
+  const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
+    active: { label: '배포 중', cls: 'bg-green-500/10 text-green-400 border-green-500/30' },
+    hidden: { label: '숨김',   cls: 'bg-orange-500/10 text-orange-400 border-orange-500/30' },
+    deleted: { label: '삭제',  cls: 'bg-red-500/10 text-red-400 border-red-500/30' },
+  }
+
+  const CHANNELS = [
+    { value: 'notice', label: '공지사항' },
+    { value: 'new-game-intro', label: '신작게임소개' },
+    { value: 'beta-game', label: '베타게임' },
+    { value: 'live-game', label: '라이브게임' },
+    { value: 'free', label: '자유게시판' },
+  ]
+
+  return (
+    <div className="space-y-4">
+      {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
+
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="댓글 내용 검색..."
+            className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
+        </div>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
+          <option value="">전체 상태</option>
+          <option value="active">배포 중</option>
+          <option value="hidden">숨김</option>
+        </select>
+        <span className="text-text-muted text-sm flex-shrink-0">총 <span className="text-text-primary font-semibold">{total}</span>건</span>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
+      ) : comments.length === 0 ? (
+        <div className="text-center py-16 text-text-muted">신고된 댓글이 없습니다</div>
+      ) : (
+        <div className="rounded-xl border border-line overflow-hidden">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide">
+                <th className="w-1 px-0" />
+                <th className="px-4 py-3 text-left whitespace-nowrap">상태</th>
+                <th className="px-4 py-3 text-left">댓글 내용</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">게시글</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">탭</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('author')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                    작성자 <SortIcon field="author" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">
+                  <button onClick={() => handleSort('createdAt')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                    날짜 <SortIcon field="createdAt" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">
+                  <button onClick={() => handleSort('reportCount')} className="flex items-center gap-1 mx-auto hover:text-text-primary transition-colors">
+                    <Flag className="w-3.5 h-3.5" /> <SortIcon field="reportCount" />
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">게시물보기</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">숨김</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">댓글삭제</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(comment => {
+                const st = STATUS_LABEL[comment.status] || STATUS_LABEL.active
+                const ch = CHANNELS.find(c => c.value === comment.postId?.channel)
+                return (
+                  <tr key={comment._id} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors ${actionId === comment._id ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <td className={`w-1 p-0 ${comment.reportCount >= 5 ? 'bg-red-500' : comment.reportCount >= 3 ? 'bg-orange-400' : ''}`} />
+
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`text-xs px-2 py-1 rounded-full border font-semibold ${st.cls}`}>{st.label}</span>
+                    </td>
+
+                    <td className="px-4 py-3 max-w-xs">
+                      <p className="text-text-primary font-medium text-sm truncate">{comment.content}</p>
+                    </td>
+
+                    <td className="px-4 py-3 max-w-[160px]">
+                      <p className="text-text-secondary text-sm truncate">{comment.postId?.title ?? '—'}</p>
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-xs text-text-secondary bg-bg-tertiary border border-line px-2 py-0.5 rounded-md">
+                        {ch ? ch.label : (comment.postId?.channel ?? '—')}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text-secondary font-medium">{comment.author?.username ?? '—'}</td>
+
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{new Date(comment.createdAt).toLocaleDateString('ko-KR')}</td>
+
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center gap-0.5 text-sm font-bold text-red-400 justify-center">
+                        <Flag className="w-3.5 h-3.5" />{comment.reportCount}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {comment.postId && (
+                        <Link href={`/community/${comment.postId._id}`} target="_blank"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
+                          <ExternalLink className="w-3 h-3" /> 게시물보기
+                        </Link>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {comment.status === 'hidden' ? (
+                        <button onClick={() => handleAction(comment, 'restore')}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
+                          <ShieldCheck className="w-3 h-3" /> 복구
+                        </button>
+                      ) : (
+                        <button onClick={() => handleAction(comment, 'hide')}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40 transition-colors">
+                          <EyeOff className="w-3 h-3" /> 숨김
+                        </button>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <button onClick={() => handleAction(comment, 'delete')}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
+                        <Trash2 className="w-3 h-3" /> 삭제
+                      </button>
+                    </td>
+
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2">
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+            className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+            <ChevronLeft className="w-4 h-4 text-text-primary" />
+          </button>
+          <span className="text-text-secondary text-sm">{page} / {totalPages}</span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+            className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+            <ChevronRight className="w-4 h-4 text-text-primary" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ────────── 신고센터: 삭제 보관함 탭 ──────────
+
+function DeletedCountdown({ deletedAt }: { deletedAt?: string }) {
+  if (!deletedAt) return <span className="text-text-muted text-xs">—</span>
+  const deleted = new Date(deletedAt)
+  const now = new Date()
+  const daysSince = Math.floor((now.getTime() - deleted.getTime()) / (1000 * 60 * 60 * 24))
+  const daysLeft = 30 - daysSince
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-xs text-text-secondary">{daysSince}일 경과</span>
+      <span className={`text-xs font-semibold ${daysLeft <= 7 ? 'text-red-400' : daysLeft <= 14 ? 'text-orange-400' : 'text-text-muted'}`}>
+        D-{Math.max(0, daysLeft)}
+      </span>
+    </div>
+  )
+}
+
+export function DeletedArchiveTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
+  const [subTab, setSubTab] = useState<'posts' | 'comments'>('posts')
+  const [confirm, setConfirm] = useState<any>(null)
+  const [actionId, setActionId] = useState<string | null>(null)
+
+  // ── 게시글 ──
+  const [posts, setPosts] = useState<ReportedPost[]>([])
+  const [postsTotal, setPostsTotal] = useState(0)
+  const [postsPage, setPostsPage] = useState(1)
+  const [postsSearch, setPostsSearch] = useState('')
+  const [postsLoading, setPostsLoading] = useState(true)
+  const LIMIT = 10
+  const postsTotalPages = Math.max(1, Math.ceil(postsTotal / LIMIT))
+
+  const loadPosts = useCallback(async () => {
+    setPostsLoading(true)
+    try {
+      const data = await adminService.getDeletedPosts({ page: postsPage, limit: LIMIT, search: postsSearch || undefined })
+      setPosts(data.posts || [])
+      setPostsTotal(data.total || 0)
+    } catch { showToast('불러오기 실패', false) }
+    finally { setPostsLoading(false) }
+  }, [postsPage, postsSearch, showToast])
+
+  useEffect(() => { if (subTab === 'posts') loadPosts() }, [subTab, loadPosts])
+
+  const handleRestorePost = (post: ReportedPost) => {
+    setConfirm({
+      msg: `"${post.title}" 게시글을 신고 상태로 복구하시겠습니까?`,
+      danger: false,
+      onConfirm: async () => {
+        setConfirm(null); setActionId(post._id)
+        try {
+          await adminService.updatePostStatus(post._id, { status: 'active' })
+          showToast('복구되었습니다')
+          loadPosts()
+        } catch { showToast('복구 실패', false) }
+        finally { setActionId(null) }
+      },
+    })
+  }
+
+  // ── 댓글 ──
+  const [comments, setComments] = useState<ReportedComment[]>([])
+  const [commentsTotal, setCommentsTotal] = useState(0)
+  const [commentsPage, setCommentsPage] = useState(1)
+  const [commentsSearch, setCommentsSearch] = useState('')
+  const [commentsLoading, setCommentsLoading] = useState(true)
+  const commentsTotalPages = Math.max(1, Math.ceil(commentsTotal / LIMIT))
+
+  const loadComments = useCallback(async () => {
+    setCommentsLoading(true)
+    try {
+      const data = await adminService.getDeletedComments({ page: commentsPage, limit: LIMIT, search: commentsSearch || undefined })
+      setComments(data.comments || [])
+      setCommentsTotal(data.total || 0)
+    } catch { showToast('불러오기 실패', false) }
+    finally { setCommentsLoading(false) }
+  }, [commentsPage, commentsSearch, showToast])
+
+  useEffect(() => { if (subTab === 'comments') loadComments() }, [subTab, loadComments])
+
+  const handleRestoreComment = (comment: ReportedComment) => {
+    setConfirm({
+      msg: '이 댓글을 신고 상태로 복구하시겠습니까?',
+      danger: false,
+      onConfirm: async () => {
+        setConfirm(null); setActionId(comment._id)
+        try {
+          await adminService.adminCommentAction(comment._id, { action: 'restore' })
+          showToast('복구되었습니다')
+          loadComments()
+        } catch { showToast('복구 실패', false) }
+        finally { setActionId(null) }
+      },
+    })
+  }
+
+  const CHANNELS_MAP: Record<string, string> = {
+    'notice': '공지사항', 'new-game-intro': '신작게임소개',
+    'beta-game': '베타게임', 'live-game': '라이브게임', 'free': '자유게시판',
+  }
+
+  const SUB_TABS = [
+    { key: 'posts' as const,    label: '게시글', icon: MessageSquare },
+    { key: 'comments' as const, label: '댓글',   icon: MessageCircle },
+  ]
+
+  return (
+    <div className="space-y-4">
+      {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
+      {/* 서브 탭 */}
+      <div className="flex gap-1 border-b border-line">
+        {SUB_TABS.map(t => {
+          const Icon = t.icon
+          return (
+            <button key={t.key} onClick={() => setSubTab(t.key)}
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                subTab === t.key ? 'border-accent text-accent' : 'border-transparent text-text-muted hover:text-text-primary'
+              }`}>
+              <Icon className="w-4 h-4" />{t.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* 게시글 목록 */}
+      {subTab === 'posts' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input value={postsSearch} onChange={e => { setPostsSearch(e.target.value); setPostsPage(1) }} placeholder="제목·내용 검색..."
+                className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
+            </div>
+            <span className="text-text-muted text-sm flex-shrink-0">총 <span className="text-text-primary font-semibold">{postsTotal}</span>건</span>
+          </div>
+          {postsLoading ? (
+            <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
+          ) : posts.length === 0 ? (
+            <div className="text-center py-16 text-text-muted">삭제된 게시글이 없습니다</div>
+          ) : (
+            <div className="rounded-xl border border-line overflow-hidden">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide">
+                    <th className="px-4 py-3 text-left">제목</th>
+                    <th className="px-4 py-3 text-left whitespace-nowrap">탭</th>
+                    <th className="px-4 py-3 text-left whitespace-nowrap">작성자</th>
+                    <th className="px-4 py-3 text-left whitespace-nowrap">삭제일</th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap"><Eye className="w-3.5 h-3.5 mx-auto" /></th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap"><ThumbsUp className="w-3.5 h-3.5 mx-auto" /></th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap"><MessageCircle className="w-3.5 h-3.5 mx-auto" /></th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap"><Flag className="w-3.5 h-3.5 mx-auto" /></th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap">삭제 카운트</th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap">복구</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {posts.map(post => (
+                    <tr key={post._id} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors ${actionId === post._id ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <td className="px-4 py-3 max-w-xs">
+                        <p className="text-text-primary font-semibold text-sm truncate">{post.title}</p>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs text-text-secondary bg-bg-tertiary border border-line px-2 py-0.5 rounded-md">
+                          {CHANNELS_MAP[post.channel] ?? post.channel}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-text-secondary font-medium">{post.author?.username ?? '—'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{new Date(post.createdAt).toLocaleDateString('ko-KR')}</td>
+                      <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.views ?? 0}</td>
+                      <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.likes?.length ?? 0}</td>
+                      <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.commentCount ?? 0}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center gap-0.5 text-sm font-bold text-red-400 justify-center">
+                          <Flag className="w-3.5 h-3.5" />{post.reportCount}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <DeletedCountdown deletedAt={post.deletedAt} />
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <button onClick={() => handleRestorePost(post)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
+                          <ShieldCheck className="w-3 h-3" /> 복구
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {postsTotalPages > 1 && (
+            <div className="flex justify-center items-center gap-2">
+              <button onClick={() => setPostsPage(p => Math.max(1, p - 1))} disabled={postsPage === 1}
+                className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+                <ChevronLeft className="w-4 h-4 text-text-primary" />
+              </button>
+              <span className="text-text-secondary text-sm">{postsPage} / {postsTotalPages}</span>
+              <button onClick={() => setPostsPage(p => Math.min(postsTotalPages, p + 1))} disabled={postsPage === postsTotalPages}
+                className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+                <ChevronRight className="w-4 h-4 text-text-primary" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 댓글 목록 */}
+      {subTab === 'comments' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input value={commentsSearch} onChange={e => { setCommentsSearch(e.target.value); setCommentsPage(1) }} placeholder="댓글 내용 검색..."
+                className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
+            </div>
+            <span className="text-text-muted text-sm flex-shrink-0">총 <span className="text-text-primary font-semibold">{commentsTotal}</span>건</span>
+          </div>
+          {commentsLoading ? (
+            <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
+          ) : comments.length === 0 ? (
+            <div className="text-center py-16 text-text-muted">삭제된 댓글이 없습니다</div>
+          ) : (
+            <div className="rounded-xl border border-line overflow-hidden">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide">
+                    <th className="px-4 py-3 text-left">댓글 내용</th>
+                    <th className="px-4 py-3 text-left whitespace-nowrap">게시글</th>
+                    <th className="px-4 py-3 text-left whitespace-nowrap">탭</th>
+                    <th className="px-4 py-3 text-left whitespace-nowrap">작성자</th>
+                    <th className="px-4 py-3 text-left whitespace-nowrap">삭제일</th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap"><Flag className="w-3.5 h-3.5 mx-auto" /></th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap">삭제 카운트</th>
+                    <th className="px-4 py-3 text-center whitespace-nowrap">복구</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comments.map(comment => (
+                    <tr key={comment._id} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors ${actionId === comment._id ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <td className="px-4 py-3 max-w-xs">
+                        <p className="text-text-primary font-semibold text-sm truncate">{comment.content}</p>
+                      </td>
+                      <td className="px-4 py-3 max-w-[160px]">
+                        <p className="text-text-secondary text-sm truncate">{comment.postId?.title ?? '—'}</p>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="text-xs text-text-secondary bg-bg-tertiary border border-line px-2 py-0.5 rounded-md">
+                          {CHANNELS_MAP[comment.postId?.channel ?? ''] ?? (comment.postId?.channel ?? '—')}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-text-secondary font-medium">{comment.author?.username ?? '—'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{new Date(comment.createdAt).toLocaleDateString('ko-KR')}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center gap-0.5 text-sm font-bold text-red-400 justify-center">
+                          <Flag className="w-3.5 h-3.5" />{comment.reportCount}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <DeletedCountdown deletedAt={comment.deletedAt} />
+                      </td>
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <button onClick={() => handleRestoreComment(comment)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
+                          <ShieldCheck className="w-3 h-3" /> 복구
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {commentsTotalPages > 1 && (
+            <div className="flex justify-center items-center gap-2">
+              <button onClick={() => setCommentsPage(p => Math.max(1, p - 1))} disabled={commentsPage === 1}
+                className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+                <ChevronLeft className="w-4 h-4 text-text-primary" />
+              </button>
+              <span className="text-text-secondary text-sm">{commentsPage} / {commentsTotalPages}</span>
+              <button onClick={() => setCommentsPage(p => Math.min(commentsTotalPages, p + 1))} disabled={commentsPage === commentsTotalPages}
+                className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+                <ChevronRight className="w-4 h-4 text-text-primary" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ────────── 메인 페이지 ──────────
 
 const TABS = [
   { key: 'banner', label: '배너 관리', icon: ImageIcon },
   { key: 'announcements', label: '공지사항', icon: Megaphone },
-  { key: 'reported', label: '신고글 관리', icon: Flag },
   { key: 'reviews', label: '게임 리뷰 관리', icon: MessageSquare },
 ]
 
@@ -973,7 +1823,6 @@ export default function AdminCommunityPage() {
         {/* 탭 콘텐츠 */}
         {activeTab === 'banner' && <BannerTab showToast={showToast} />}
         {activeTab === 'announcements' && <AnnouncementsTab showToast={showToast} />}
-        {activeTab === 'reported' && <ReportedPostsTab showToast={showToast} />}
         {activeTab === 'reviews' && <ReviewsTab showToast={showToast} />}
       </div>
     </AdminLayout>

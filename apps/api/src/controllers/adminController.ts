@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
-import { UserModel as User, GameModel as Game, AnnouncementModel as Announcement, ReviewModel as Review, PlayerActivityModel as PlayerActivity } from '@gameup/db'
+import { UserModel as User, GameModel as Game, AnnouncementModel as Announcement, ReviewModel as Review, PlayerActivityModel as PlayerActivity, NotificationModel as Notification } from '@gameup/db'
 import { hashPassword } from '../services/authService'
 
 // ── 플랫폼 전체 통계 ──────────────────────────────────────────────
@@ -106,18 +106,65 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
 export const banUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
-    const { isActive, banReason, bannedUntil, banDuration } = req.body
+    const { isActive, banReason, bannedUntil, banDuration, banScope } = req.body
     let updateOp: Record<string, unknown>
     if (!isActive) {
+      const scope: string[] = Array.isArray(banScope) && banScope.length > 0 ? banScope : ['posts', 'comments']
       const bannedUntilDate = bannedUntil
         ? new Date(bannedUntil)
         : banDuration ? new Date(Date.now() + banDuration * 24 * 60 * 60 * 1000) : undefined
-      updateOp = { $set: { isActive: false, banReason: banReason || '관리자에 의해 정지됨', ...(bannedUntilDate ? { bannedUntil: bannedUntilDate } : {}) } }
+      updateOp = { $set: { isActive: false, bannedAt: new Date(), banReason: '반복 신고 누적', banScope: scope, ...(bannedUntilDate ? { bannedUntil: bannedUntilDate } : {}) } }
     } else {
-      updateOp = { $set: { isActive: true }, $unset: { banReason: '', bannedUntil: '' } }
+      updateOp = { $set: { isActive: true }, $unset: { bannedAt: '', banReason: '', bannedUntil: '', banScope: '' } }
     }
     const user = await User.findByIdAndUpdate(id, updateOp, { new: true }).select('-password')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+
+    if (!isActive) {
+      const scope: string[] = Array.isArray(banScope) && banScope.length > 0 ? banScope : ['posts', 'comments']
+      const bannedUntilDate = user.bannedUntil
+      const untilStr = bannedUntilDate
+        ? (() => {
+            const d = bannedUntilDate
+            return ` (${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}까지)`
+          })()
+        : ' (영구)'
+      const isPermanent = !bannedUntilDate
+      const scopeLabel = scope.includes('posts') && scope.includes('comments')
+        ? '커뮤니티 이용이'
+        : scope.includes('posts') ? '게시글 작성이' : '댓글 작성이'
+      const title = isPermanent ? '커뮤니티 이용 불가' : '커뮤니티 이용 제한 안내'
+      const content = isPermanent
+        ? '커뮤니티 이용이 불가합니다. 사유: 반복 신고 누적'
+        : `${scopeLabel} 제한되었습니다. 사유: 반복 신고 누적${untilStr}`
+      const scopeStr = scope.includes('posts') && scope.includes('comments') ? '전체'
+        : scope.includes('posts') ? '게시글' : '댓글'
+      const durationStr = bannedUntilDate
+        ? (() => { const d = bannedUntilDate; return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}까지` })()
+        : '영구'
+      User.findByIdAndUpdate(id, {
+        $push: { history: { type: 'ban', content: `차단 - 범위: ${scopeStr} / 기간: ${durationStr}`, createdAt: new Date() } }
+      }).catch(() => {})
+      Notification.create({
+        userId: id,
+        type: 'system',
+        title,
+        content,
+        linkUrl: '',
+      }).catch(() => {})
+    } else {
+      User.findByIdAndUpdate(id, {
+        $push: { history: { type: 'unban', content: '차단 해제', createdAt: new Date() } }
+      }).catch(() => {})
+      Notification.create({
+        userId: id,
+        type: 'system',
+        title: '커뮤니티 이용 제한 해제 안내',
+        content: '커뮤니티 이용 제한이 해제되었습니다. 자유롭게 이용하실 수 있습니다.',
+        linkUrl: '',
+      }).catch(() => {})
+    }
+
     res.json({ message: isActive ? '정지가 해제되었습니다' : '정지되었습니다', user })
   } catch {
     res.status(500).json({ message: '정지 처리 실패' })

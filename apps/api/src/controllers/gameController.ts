@@ -227,7 +227,7 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
     if (ratingClass !== undefined || certNumber !== undefined || certDate !== undefined) {
       const existing = (game as any).ratingCertificate || {}
       ;(game as any).ratingCertificate = {
-        ratingClass: ratingClass !== undefined ? ratingClass : existing.ratingClass,
+        ratingClass: ratingClass || existing.ratingClass,
         certNumber: certNumber !== undefined ? certNumber : existing.certNumber,
         certDate: certDate !== undefined ? certDate : existing.certDate,
         isVerified: existing.isVerified || false,
@@ -265,12 +265,12 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
       game.bannerImage = '/uploads/banners/' + files.bannerImage[0].filename
     }
 
-    await game.save()
+    await game.save({ validateBeforeSave: false })
 
     res.json({ success: true, message: '게임이 수정되었습니다. 관리자 재승인 후 반영됩니다.', game })
   } catch (error) {
     console.error('Update game error:', error)
-    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+    res.status(500).json({ message: (error as Error)?.message || '서버 오류가 발생했습니다' })
   }
 }
 

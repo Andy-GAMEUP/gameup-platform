@@ -9,7 +9,7 @@ import {
   getPublicAnnouncements, getPublicAnnouncementById
 } from '../controllers/adminController'
 import { getCommunityBanners, getAllCommunityBanners, uploadCommunityBanner, updateCommunityBanner, deleteCommunityBanner } from '../controllers/communityBannerController'
-import { getReportedPosts, adminUpdatePostStatus } from '../controllers/communityController'
+import { getReportedPosts, adminUpdatePostStatus, getReportedComments, adminUpdateCommentStatus, getDeletedPosts, getDeletedComments, getReportedUsers } from '../controllers/communityController'
 import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
 import { uploadFields } from '../middleware/upload'
 
@@ -55,9 +55,14 @@ router.patch('/games/:id/approve', requireAdminLevel('super'), approveGame)
 router.delete('/reviews/:id', requireAdminLevel('super'), deleteReview)
 router.delete('/announcements/:id', requireAdminLevel('super'), deleteAnnouncement)
 
-// 신고된 커뮤니티 게시글 (모든 관리자)
+// 신고된 커뮤니티 게시글/댓글 (모든 관리자)
 router.get('/community/reported-posts', getReportedPosts)
 router.patch('/community/posts/:id/status', requireAdminLevel('super', 'normal'), adminUpdatePostStatus)
+router.get('/community/reported-comments', getReportedComments)
+router.patch('/community/comments/:id/action', requireAdminLevel('super', 'normal'), adminUpdateCommentStatus)
+router.get('/community/deleted-posts', getDeletedPosts)
+router.get('/community/deleted-comments', getDeletedComments)
+router.get('/community/reported-users', getReportedUsers)
 
 // 커뮤니티 배너 (관리자)
 router.get('/community/banners/all', getAllCommunityBanners)

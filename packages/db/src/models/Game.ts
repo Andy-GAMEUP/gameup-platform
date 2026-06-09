@@ -46,6 +46,9 @@ export interface IGame extends Document {
     certDate?: string
     isVerified?: boolean
   }
+  shopCurrencyIconUrl?: string
+  shopCurrencyName?: string
+  shopCurrencyNames?: Record<string, string>
   createdAt: Date
   updatedAt: Date
 }
@@ -161,7 +164,11 @@ const gameSchema = new Schema<IGame>(
     trailer: { type: String, default: '' },
     website: { type: String, default: '' },
     discord: { type: String, default: '' },
-    notes: { type: String, default: '' },    approvedBy: {
+    notes: { type: String, default: '' },
+    shopCurrencyIconUrl: { type: String, default: '' },
+    shopCurrencyName: { type: String, default: '' },
+    shopCurrencyNames: { type: Map, of: String, default: {} },
+    approvedBy: {
       type: Schema.Types.ObjectId,
       ref: 'User'
     },

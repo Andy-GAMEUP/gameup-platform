@@ -38,7 +38,7 @@ export default function EventBannerCarousel({ banners }: { banners: EventBanner[
   return (
     <div className="relative w-full overflow-hidden rounded-2xl group">
       <Link href={href}>
-        <div className="relative h-56 md:h-72 bg-bg-secondary">
+        <div className="relative h-[269px] md:h-[346px] bg-bg-secondary">
           {banner.imageUrl && (
             <Image
               src={banner.imageUrl}

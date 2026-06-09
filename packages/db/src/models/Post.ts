@@ -21,6 +21,8 @@ export interface IPost extends Document {
   hotScore: number
   isTempSave: boolean
   reportCount: number
+  deletedByReport: boolean
+  deletedAt?: Date
   reports: {
     userId: mongoose.Types.ObjectId
     reason: string
@@ -52,6 +54,8 @@ const postSchema = new Schema<IPost>(
     hotScore: { type: Number, default: 0 },
     isTempSave: { type: Boolean, default: false },
     reportCount: { type: Number, default: 0 },
+    deletedByReport: { type: Boolean, default: false },
+    deletedAt: { type: Date, default: null },
     reports: [{
       userId: { type: Schema.Types.ObjectId, ref: 'User' },
       reason: String,

@@ -37,8 +37,12 @@ export interface IUser extends Document {
   bio?: string
   favoriteGenres?: string[]
   isActive: boolean
+  bannedAt?: Date
   bannedUntil?: Date
   banReason?: string
+  banScope?: string[]
+  appeal?: { content: string; createdAt: Date }
+  history?: { type: string; content: string; createdAt: Date }[]
   oauthProviders?: IOAuthProvider[]
   memberType?: 'individual' | 'corporate'
   approvalStatus?: 'pending' | 'approved' | 'rejected'
@@ -96,12 +100,28 @@ const userSchema = new Schema<IUser>(
       type: Boolean,
       default: true
     },
+    bannedAt: {
+      type: Date
+    },
     bannedUntil: {
       type: Date
     },
     banReason: {
       type: String
     },
+    banScope: {
+      type: [String],
+      default: undefined,
+    },
+    appeal: {
+      content: { type: String },
+      createdAt: { type: Date },
+    },
+    history: [{
+      type: { type: String, required: true },
+      content: { type: String, default: '' },
+      createdAt: { type: Date, default: Date.now },
+    }],
     oauthProviders: [{
       provider: { type: String, enum: ['kakao', 'naver'] },
       providerId: { type: String },

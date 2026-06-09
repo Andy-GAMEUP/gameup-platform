@@ -26,9 +26,60 @@ function relativeTime(dateStr: string): string {
   return `${Math.floor(h / 24)}일 전`
 }
 
+function AppealModal({ onClose }: { onClose: () => void }) {
+  const [content, setContent] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [done, setDone] = useState(false)
+
+  const submit = async () => {
+    if (!content.trim()) return
+    setLoading(true)
+    try {
+      await notificationService.submitAppeal(content.trim())
+      setDone(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+      <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-sm p-5 shadow-2xl">
+        {done ? (
+          <>
+            <p className="text-text-primary text-sm mb-4">이의 신청이 접수되었습니다.</p>
+            <div className="flex justify-end">
+              <button onClick={onClose} className="px-3 py-1.5 text-sm text-white bg-accent rounded-lg">확인</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 className="text-text-primary font-semibold mb-3">이의 신청</h3>
+            <textarea
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              placeholder="이의 신청 내용을 입력해주세요"
+              rows={4}
+              className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none resize-none mb-3"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={onClose} className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">취소</button>
+              <button onClick={submit} disabled={loading || !content.trim()}
+                className="px-3 py-1.5 text-sm text-white bg-accent rounded-lg disabled:opacity-50">
+                {loading ? '전송 중...' : '보내기'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [filter, setFilter] = useState('all')
+  const [appealOpen, setAppealOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -50,6 +101,8 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
 
   if (!isOpen) return null
 
+  if (appealOpen) return <AppealModal onClose={() => setAppealOpen(false)} />
+
   const filtered = filter === 'all' ? notifications : notifications.filter((n) => n.type === filter)
 
   const handleMarkAll = async () => {
@@ -57,7 +110,7 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
   }
 
-  const handleClick = async (n: AppNotification) => {
+  const handleRead = async (n: AppNotification) => {
     if (!n.isRead) {
       await notificationService.markAsRead(n._id).catch(() => {})
       setNotifications((prev) => prev.map((item) => item._id === n._id ? { ...item, isRead: true } : item))
@@ -104,21 +157,34 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
             filtered.map((n) => {
               const Icon = TYPE_ICONS[n.type] ?? Bell
               return (
-                <button
+                <div
                   key={n._id}
-                  onClick={() => handleClick(n)}
-                  className={`w-full flex items-start gap-3 px-4 py-3 border-b border-line hover:bg-bg-tertiary/50 transition-colors text-left ${!n.isRead ? 'bg-bg-tertiary/30' : ''}`}
+                  onClick={() => handleRead(n)}
+                  className={`flex items-start gap-3 px-4 py-3 border-b border-line hover:bg-bg-tertiary/50 transition-colors cursor-pointer ${!n.isRead ? 'bg-bg-tertiary/30' : ''}`}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!n.isRead ? 'bg-red-600/20' : 'bg-bg-tertiary'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${!n.isRead ? 'bg-red-600/20' : 'bg-bg-tertiary'}`}>
                     <Icon className={`w-4 h-4 ${!n.isRead ? 'text-red-400' : 'text-text-secondary'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm truncate ${!n.isRead ? 'text-text-primary font-medium' : 'text-text-secondary'}`}>{n.title}</p>
-                    <p className="text-text-secondary text-xs mt-0.5 truncate">{n.content}</p>
-                    <p className="text-text-muted text-xs mt-1">{relativeTime(n.createdAt)}</p>
+                    {/* 1줄: 제목 */}
+                    <p className={`text-sm font-medium ${!n.isRead ? 'text-text-primary' : 'text-text-secondary'}`}>{n.title}</p>
+                    {/* 2줄: 내용 */}
+                    {n.content && (
+                      <p className="text-text-secondary text-xs mt-1 leading-relaxed break-words whitespace-pre-wrap">{n.content}</p>
+                    )}
+                    {/* 3줄: 시간 + 이의신청 */}
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-text-muted text-xs">{relativeTime(n.createdAt)}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setAppealOpen(true) }}
+                        className="text-xs text-text-muted hover:text-accent transition-colors border border-line rounded px-2 py-0.5"
+                      >
+                        이의 신청
+                      </button>
+                    </div>
                   </div>
-                  {!n.isRead && <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1" />}
-                </button>
+                  {!n.isRead && <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 mt-1.5" />}
+                </div>
               )
             })
           )}
