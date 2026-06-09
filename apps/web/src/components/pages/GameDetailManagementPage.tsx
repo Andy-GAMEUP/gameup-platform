@@ -2179,7 +2179,7 @@ export default function GameDetailManagementPage() {
               </div>
               <div className="mt-2 p-3 bg-bg-tertiary rounded-lg space-y-1">
                 <p className="text-[10px] text-text-tertiary">판매 국가 변경 시 해당 환율 금액이 판매가에 자동 세팅됩니다.</p>
-                <p className="text-[10px] text-text-tertiary">환율은 30일마다 자동 갱신됩니다. (환율 적용 날짜: {rateDate})</p>
+                <p className="text-[10px] text-text-tertiary">환율은 30일마다 자동 갱신됩니다.{rateDate ? ` (환율 적용 날짜: ${rateDate})` : ''}</p>
               </div>
             </>
           )}
