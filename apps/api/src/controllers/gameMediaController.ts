@@ -31,14 +31,15 @@ export const addGameMedia = async (req: AuthRequest, res: Response) => {
 
     const { gameId } = req.params
     const { type, title, url } = req.body
-    const file = req.file
+    const files = req.files as Record<string, Express.Multer.File[]> | undefined
+    const screenshotFile = files?.screenshot?.[0]
+    const videoFile = files?.videoFile?.[0]
 
     if (!type || !['screenshot', 'video'].includes(type)) {
       return res.status(400).json({ message: 'type은 screenshot 또는 video여야 합니다' })
     }
-    if (!title?.trim()) return res.status(400).json({ message: '제목을 입력해주세요' })
-    if (type === 'video' && !url?.trim()) return res.status(400).json({ message: '동영상 URL을 입력해주세요' })
-    if (type === 'screenshot' && !file && !url?.trim()) {
+    if (type === 'video' && !videoFile) return res.status(400).json({ message: '동영상 파일을 업로드해주세요' })
+    if (type === 'screenshot' && !screenshotFile && !url?.trim()) {
       return res.status(400).json({ message: '스크린샷 이미지를 업로드해주세요' })
     }
 
@@ -46,18 +47,21 @@ export const addGameMedia = async (req: AuthRequest, res: Response) => {
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
     const count = await GameMediaModel.countDocuments({ gameId, type })
-    const limit = type === 'screenshot' ? 10 : 5
+    const limit = type === 'screenshot' ? 10 : 3
     if (count >= limit) return res.status(400).json({ message: `${type === 'screenshot' ? '스크린샷' : '동영상'}은 최대 ${limit}개까지 등록할 수 있습니다` })
 
-    const mediaUrl = type === 'screenshot' && file
-      ? '/uploads/screenshots/' + file.filename
-      : url?.trim() || ''
+    const mediaUrl = type === 'video' && videoFile
+      ? '/uploads/videos/' + videoFile.filename
+      : type === 'screenshot' && screenshotFile
+        ? '/uploads/screenshots/' + screenshotFile.filename
+        : url?.trim() || ''
 
+    const resolvedTitle = title?.trim() || (videoFile?.originalname ?? screenshotFile?.originalname ?? 'untitled').replace(/\.[^/.]+$/, '')
     const media = await GameMediaModel.create({
       gameId,
       developerId: req.user.id,
       type,
-      title: title.trim(),
+      title: resolvedTitle,
       url: mediaUrl,
       order: count,
     })

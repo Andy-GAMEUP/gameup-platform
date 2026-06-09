@@ -190,8 +190,6 @@ export default function GameDetailManagementPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [announcementsLoading, setAnnouncementsLoading] = useState(false)
 
-  const [ssModal, setSsModal] = useState(false)
-  const [vidModal, setVidModal] = useState(false)
   const [itemModal, setItemModal] = useState(false)
   const [editItemModal, setEditItemModal] = useState(false)
   const [priceSettingModal, setPriceSettingModal] = useState(false)
@@ -211,10 +209,8 @@ export default function GameDetailManagementPage() {
   const [newItemErrors, setNewItemErrors] = useState<{ image?: string; name?: string; price?: string; currencyAmount?: string; stock?: string; specialImage?: string; itemId?: string }>({})
   const [editingItem, setEditingItem] = useState<ShopItem | null>(null)
   const [notiModal, setNotiModal] = useState(false)
-  const [newSsFiles, setNewSsFiles] = useState<File[]>([])
-  const [newSsPreviews, setNewSsPreviews] = useState<string[]>([])
   const ssFileRef = useRef<HTMLInputElement>(null)
-  const [newVid, setNewVid] = useState({ title: '', url: '', type: 'youtube' })
+  const vidFileRef = useRef<HTMLInputElement>(null)
   const [newItem, setNewItem] = useState({ name: '', price: '', currency: 'KRW', type: '패키지', currencyType: '', currencyAmount: '', bonusAmount: '', stock: '무제한', description: '', country: 'KR', itemId: '', imageFile: null as File | null, imagePreview: '', isSpecial: false, specialImageFile: null as File | null, specialImagePreview: '' })
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [editImagePreview, setEditImagePreview] = useState('')
@@ -572,62 +568,47 @@ export default function GameDetailManagementPage() {
     return <span className={`text-xs px-2 py-0.5 rounded-full ${s.bg} ${s.text} border border-current/30`}>{s.label}</span>
   }
 
-  const addScreenshot = async () => {
-    if (!gameId || newSsFiles.length === 0) return
+  const handleSsFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files || [])
+    if (!gameId || selected.length === 0) return
+    const toAdd = selected.slice(0, 10 - screenshots.length)
     try {
-      for (const file of newSsFiles) {
+      for (const file of toAdd) {
         const title = file.name.replace(/\.[^.]+$/, '')
         await gameService.addGameMedia(gameId, { type: 'screenshot', title, file })
       }
-      setNewSsFiles([])
-      setNewSsPreviews([])
-      setSsModal(false)
       loadMedia()
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
       alert(msg)
     }
-  }
-
-  const handleSsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = Array.from(e.target.files || [])
-    if (selected.length === 0) return
-    const remaining = 10 - screenshots.length - newSsFiles.length
-    if (remaining <= 0) return
-    const toAdd = selected.slice(0, remaining)
-    setNewSsFiles(prev => [...prev, ...toAdd])
-    toAdd.forEach(file => {
-      const reader = new FileReader()
-      reader.onload = (ev) => setNewSsPreviews(prev => [...prev, ev.target?.result as string])
-      reader.readAsDataURL(file)
-    })
     e.target.value = ''
   }
 
-  const removeSsFile = (index: number) => {
-    setNewSsFiles(prev => prev.filter((_, i) => i !== index))
-    setNewSsPreviews(prev => prev.filter((_, i) => i !== index))
-  }
   const deleteScreenshot = async (mediaId: string) => {
-    if (!gameId || !confirm('삭제하시겠습니까?')) return
+    if (!gameId) return
     try {
       await gameService.deleteGameMedia(gameId, mediaId)
       loadMedia()
     } catch { alert('삭제에 실패했습니다') }
   }
-  const addVideo = async () => {
-    if (!newVid.title || !newVid.url || !gameId) return
-    try {
-      await gameService.addGameMedia(gameId, { type: 'video', title: newVid.title, url: newVid.url })
-      setNewVid({ title: '', url: '', type: 'youtube' }); setVidModal(false)
-      loadMedia()
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
-      alert(msg)
+  const handleVidFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!gameId) return
+    const files = Array.from(e.target.files || []).slice(0, 3 - videos.length)
+    for (const file of files) {
+      const title = file.name.replace(/\.[^/.]+$/, '')
+      try {
+        await gameService.addGameMedia(gameId, { type: 'video', title, videoFile: file })
+      } catch (err: unknown) {
+        const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
+        alert(msg)
+      }
     }
+    if (files.length > 0) loadMedia()
+    e.target.value = ''
   }
   const deleteVideo = async (mediaId: string) => {
-    if (!gameId || !confirm('삭제하시겠습니까?')) return
+    if (!gameId) return
     try {
       await gameService.deleteGameMedia(gameId, mediaId)
       loadMedia()
@@ -642,7 +623,7 @@ export default function GameDetailManagementPage() {
       try {
         const { rates, date, cachedAt } = JSON.parse(cached)
         const ageMs = Date.now() - cachedAt
-        if (date && ageMs < EXCHANGE_CACHE_DAYS * 24 * 60 * 60 * 1000) {
+        if (date && /^\d{4}\.\d{2}\.\d{2}$/.test(date) && ageMs < EXCHANGE_CACHE_DAYS * 24 * 60 * 60 * 1000) {
           setExchangeRates(rates)
           setRateDate(date)
           return
@@ -650,7 +631,7 @@ export default function GameDetailManagementPage() {
       } catch {}
       localStorage.removeItem(EXCHANGE_CACHE_KEY)
     }
-    fetch('https://api.frankfurter.app/latest?from=USD&to=KRW,JPY,CNY,EUR')
+    void fetch('https://open.er-api.com/v6/latest/USD')
       .then(r => r.json())
       .then(data => {
         if (!data.rates?.KRW) return
@@ -662,9 +643,11 @@ export default function GameDetailManagementPage() {
           CNY: data.rates.CNY / usdToKrw,
           EUR: data.rates.EUR / usdToKrw,
         }
+        const d = new Date(data.time_last_update_utc as string)
+        const date = `${d.getUTCFullYear()}.${String(d.getUTCMonth() + 1).padStart(2, '0')}.${String(d.getUTCDate()).padStart(2, '0')}`
         setExchangeRates(rates)
-        setRateDate(data.date)
-        localStorage.setItem(EXCHANGE_CACHE_KEY, JSON.stringify({ rates, date: data.date, cachedAt: Date.now() }))
+        setRateDate(date)
+        localStorage.setItem(EXCHANGE_CACHE_KEY, JSON.stringify({ rates, date, cachedAt: Date.now() }))
       })
       .catch(e => console.error('[환율] fetch 실패:', e))
   }, [])
@@ -802,16 +785,26 @@ export default function GameDetailManagementPage() {
   const reviewChecks = {
     basicInfo: !!(gameData.title && gameData.genre && gameData.description),
     heroBanner: !!gameData.bannerImage,
-    screenshots: screenshots.length > 0,
+    trailer: videos.length >= 1,
+    screenshots: screenshots.length >= 4,
     rating: !!gameData.ratingCertificate?.ratingClass,
   }
   const canRequestReview = Object.values(reviewChecks).every(Boolean)
   const reviewBlockReasons = [
     !reviewChecks.basicInfo && '기본 정보',
     !reviewChecks.heroBanner && '히어로 배너',
-    !reviewChecks.screenshots && '게임 스크린샷',
+    !reviewChecks.trailer && '트레일러 (최소 1개)',
+    !reviewChecks.screenshots && '게임 스크린샷 (최소 4개)',
     !reviewChecks.rating && '등급 분류',
   ].filter(Boolean).join(', ')
+
+  const isEditPriceCtx = editItemModal && editingItem !== null
+  const priceModalPrice = isEditPriceCtx ? String(editingItem!.price) : newItem.price
+  const priceModalCurrency = isEditPriceCtx ? (editingItem!.currency ?? 'KRW') : newItem.currency
+  const priceModalMap: Record<string, string> = {}
+  if (priceModalPrice) {
+    calcPriceList(priceModalPrice, priceModalCurrency, exchangeRates).forEach(c => { priceModalMap[c.code] = String(c.price) })
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -1081,23 +1074,15 @@ export default function GameDetailManagementPage() {
 
 
       {activeTab === 'media' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-3 gap-6 items-start">
-            {/* 히어로 배너 - 왼쪽 */}
-            <div className="bg-bg-secondary border border-line rounded-lg p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h2 className="text-base font-bold">히어로 배너</h2>
-                  <p className="text-xs text-text-secondary mt-0.5">게임 상세 페이지 상단 배너</p>
-                </div>
-                <button
-                  onClick={() => bannerInputRef.current?.click()}
-                  disabled={bannerUploading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover rounded-md text-xs transition-colors disabled:opacity-50"
-                >
-                  <Upload className="w-3.5 h-3.5" /> {bannerUploading ? '업로드 중...' : '업로드'}
-                </button>
-              </div>
+        <div className="space-y-5">
+          <input ref={ssFileRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleSsFileChange} />
+          <input ref={vidFileRef} type="file" accept="video/mp4,video/quicktime,video/webm,video/avi,.mp4,.mov,.webm,.avi" multiple className="hidden" onChange={handleVidFileChange} />
+
+          {/* ── 상단: 히어로 배너 + 트레일러 ──────────────────────── */}
+          <div className="grid grid-cols-[5fr_7fr] gap-5 items-start">
+
+            {/* 히어로 배너 */}
+            <div className="rounded-2xl overflow-hidden border border-line bg-bg-secondary">
               <input
                 ref={bannerInputRef}
                 type="file"
@@ -1105,116 +1090,144 @@ export default function GameDetailManagementPage() {
                 className="hidden"
                 onChange={handleBannerUpload}
               />
-              <div
-                className="relative w-full aspect-video bg-bg-tertiary rounded-lg border-2 border-dashed border-line overflow-hidden cursor-pointer hover:border-accent transition-colors"
-                onClick={() => bannerInputRef.current?.click()}
-              >
+              <div className="px-5 py-4 border-b border-line">
+                <h2 className="text-sm font-bold leading-none">히어로 배너</h2>
+              </div>
+              <div className="p-4">
                 {gameData.bannerImage ? (
-                  <>
+                  <div
+                    className="relative w-full h-40 rounded-xl overflow-hidden border border-line cursor-pointer group"
+                    onClick={() => bannerInputRef.current?.click()}
+                  >
                     <img
                       src={gameData.bannerImage.startsWith('/uploads/') ? gameData.bannerImage : `/uploads/banners/${gameData.bannerImage.split('/').pop()}`}
                       alt="히어로 배너"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/0 hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
-                      <p className="text-white text-xs font-medium">클릭하여 변경</p>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium border border-white/20">
+                        <Upload className="w-3.5 h-3.5" /> 변경
+                      </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-text-muted gap-1.5">
-                    <ImageIcon className="w-8 h-8 opacity-30" />
-                    <p className="text-xs">클릭하여 업로드</p>
-                    <p className="text-xs opacity-50">1920×640px 권장</p>
+                  <div
+                    className="w-full h-40 border-2 border-dashed border-line rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
+                    onClick={() => bannerInputRef.current?.click()}
+                  >
+                    <ImageIcon className="w-6 h-6 opacity-40" />
+                    <p className="text-xs">배너 업로드</p>
                   </div>
                 )}
+              </div>
+              <div className="px-4 pb-4">
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <AlertCircle className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                  <p className="text-[11px] text-text-secondary">권장 1920×640px · PNG, JPG, WEBP · 최대 5MB</p>
+                </div>
               </div>
             </div>
 
-            {/* 스크린샷 - 오른쪽 */}
-            <div className="col-span-2 bg-bg-secondary border border-line rounded-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div><h2 className="text-xl font-bold">게임 스크린샷</h2><p className="text-sm text-text-secondary mt-1">최대 10개</p></div>
-              <button onClick={() => setSsModal(true)} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors">
-                <Upload className="w-4 h-4" /> 스크린샷 추가
-              </button>
-            </div>
-            {mediaLoading ? (
-              <div className="text-center py-8 text-text-secondary">불러오는 중...</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {screenshots.map(ss => (
-                  <div key={ss._id} className="relative group aspect-video bg-bg-tertiary/50 rounded-lg border border-line overflow-hidden">
-                    {ss.url ? (
-                      <img src={ss.url} alt={ss.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center w-full h-full text-text-muted">
-                        <ImageIcon className="w-10 h-10 opacity-30 mb-1" />
-                        <p className="text-xs">{ss.title}</p>
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors" />
-                    <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <p className="text-xs text-white font-medium truncate">{ss.title}</p>
-                    </div>
-                    <button onClick={() => deleteScreenshot(ss._id)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 bg-red-500/80 text-white rounded-md transition-opacity">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-                {screenshots.length === 0 && [0, 1, 2].map(i => (
-                  <div key={i} className="aspect-video border-2 border-dashed border-line rounded-lg flex flex-col items-center justify-center text-text-muted bg-bg-tertiary/20">
-                    <ImageIcon className="w-8 h-8 mb-1.5 opacity-25" />
-                    <p className="text-xs opacity-50">스크린샷 {i + 1}</p>
-                  </div>
-                ))}
+            {/* 트레일러 */}
+
+            <div className="rounded-2xl border border-line bg-bg-secondary overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+                <div>
+                  <h2 className="text-sm font-bold leading-none">트레일러 영상</h2>
+                </div>
+                <p className="text-xs text-text-muted">{videos.length} / 3</p>
               </div>
-            )}
-            <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg flex gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-text-secondary">권장 해상도: 1920x1080px / PNG, JPG (각 최대 5MB)</p>
-            </div>
-          </div>
-          </div>{/* grid end */}
-          <div className="bg-bg-secondary border border-line rounded-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div><h2 className="text-xl font-bold">게임 플레이 동영상</h2><p className="text-sm text-text-secondary mt-1">최대 5개</p></div>
-              <button onClick={() => setVidModal(true)} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors">
-                <Plus className="w-4 h-4" /> 동영상 추가
-              </button>
-            </div>
-            {mediaLoading ? (
-              <div className="text-center py-8 text-text-secondary">불러오는 중...</div>
-            ) : (
-              <div className="space-y-4">
-                {videos.map(v => (
-                  <div key={v._id} className="p-4 bg-bg-tertiary/30 rounded-lg border border-line flex items-start gap-4">
-                    <div className="w-40 aspect-video bg-bg-tertiary rounded-lg border-2 border-dashed border-line flex items-center justify-center flex-shrink-0">
-                      <Play className="w-10 h-10 text-text-muted" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold mb-1">{v.title}</h3>
-                      <p className="text-sm text-text-secondary mb-2">{v.url}</p>
-                      <p className="text-xs text-text-muted">{new Date(v.createdAt).toLocaleDateString()} 등록</p>
-                    </div>
-                    <button onClick={() => deleteVideo(v._id)} className="p-1.5 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-                {videos.length === 0 && (
-                  <div className="flex items-center gap-4 p-4 border-2 border-dashed border-line rounded-lg text-text-muted bg-bg-tertiary/20">
-                    <div className="w-32 aspect-video border border-line rounded-lg flex items-center justify-center flex-shrink-0 bg-bg-tertiary/30">
-                      <Film className="w-7 h-7 opacity-25" />
-                    </div>
-                    <div>
-                      <p className="text-sm">등록된 동영상이 없습니다</p>
-                      <p className="text-xs mt-0.5 opacity-60">YouTube URL 또는 직접 업로드로 추가해보세요</p>
-                    </div>
+
+              <div className="p-4 space-y-3">
+                {mediaLoading ? (
+                  <div className="text-center py-10 text-text-secondary text-sm">불러오는 중...</div>
+                ) : (
+                  <div className="flex gap-2.5">
+                    {videos.map((v, idx) => (
+                      <div key={v._id} className="relative group flex-1 rounded-xl overflow-hidden border border-line bg-black h-40">
+                        <video
+                          src={`${UPLOADS_URL}${v.url}`}
+                          className="w-full h-full object-cover"
+                          muted
+                          preload="metadata"
+                          onLoadedMetadata={e => { (e.target as HTMLVideoElement).currentTime = 1 }}
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors" />
+                        <div className="absolute top-2 left-2 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] font-bold flex items-center justify-center">
+                          {idx + 1}
+                        </div>
+                        <button
+                          onClick={() => deleteVideo(v._id)}
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 bg-red-500/80 hover:bg-red-500 text-white rounded-md transition-all"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {Array.from({ length: 3 - videos.length }).map((_, i) => (
+                      <div
+                        key={`empty-${i}`}
+                        className="flex-1 h-40 border-2 border-dashed border-line rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
+                        onClick={() => vidFileRef.current?.click()}
+                      >
+                        <Film className="w-6 h-6 opacity-40" />
+                        <p className="text-xs">트레일러 업로드 {videos.length + i + 1}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
+              <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <AlertCircle className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                <p className="text-[11px] text-text-secondary">MP4, MOV, WEBM · 최대 500MB · <span className="text-yellow-400">최소 1개 필수</span></p>
               </div>
-            )}
+              </div>
+            </div>
+
+          </div>{/* 상단 2열 end */}
+
+          {/* ── 하단: 게임 스크린샷 ──────────────────────── */}
+          <div className="rounded-2xl border border-line bg-bg-secondary overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+              <h2 className="text-sm font-bold leading-none">게임 스크린샷</h2>
+              <p className="text-xs text-text-muted">{screenshots.length} / 10</p>
+            </div>
+
+            <div className="p-4 space-y-3">
+              {mediaLoading ? (
+                <div className="text-center py-10 text-text-secondary text-sm">불러오는 중...</div>
+              ) : (
+                <div className="grid grid-cols-5 gap-2.5">
+                  {screenshots.map(ss => (
+                    <div key={ss._id} className="relative group aspect-video rounded-xl border border-line overflow-hidden">
+                      <img src={ss.url} alt={ss.title} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors" />
+                      <button
+                        onClick={() => deleteScreenshot(ss._id)}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 bg-red-500/80 hover:bg-red-500 text-white rounded-md transition-all"
+                      >
+                        <Trash2 className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                  {Array.from({ length: screenshots.length < 10 ? Math.max(1, 5 - screenshots.length) : 0 }).map((_, i) => (
+                    <div
+                      key={`empty-${i}`}
+                      className="aspect-video border-2 border-dashed border-line rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
+                      onClick={() => ssFileRef.current?.click()}
+                    >
+                      <ImageIcon className="w-6 h-6 opacity-40" />
+                      <p className="text-xs">스크린샷 업로드 {screenshots.length + i + 1}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <AlertCircle className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                <p className="text-[11px] text-text-secondary">권장 1920×1080px · PNG, JPG, WEBP · 최대 5MB · <span className="text-yellow-400">최소 4개 필수</span></p>
+              </div>
+            </div>
           </div>
+
         </div>
       )}
 
@@ -1795,78 +1808,6 @@ export default function GameDetailManagementPage() {
         />
       )}
 
-      <Modal open={ssModal} onClose={() => { setSsModal(false); setNewSsFiles([]); setNewSsPreviews([]) }} title="스크린샷 추가">
-        <div className="space-y-4">
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className={labelCls}>이미지 (PNG, JPG, WEBP / 최대 5MB)</label>
-              <span className="text-xs text-text-muted">{screenshots.length + newSsFiles.length} / 10</span>
-            </div>
-            <input ref={ssFileRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleSsFileChange} />
-            {newSsPreviews.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
-                {newSsPreviews.map((preview, i) => (
-                  <div key={i} className="relative aspect-video rounded-lg overflow-hidden border border-line group">
-                    <img src={preview} alt={`미리보기 ${i + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => removeSsFile(i)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-red-500/80 hover:bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <Trash2 className="w-3 h-3 text-white" />
-                    </button>
-                    <p className="absolute bottom-0 left-0 right-0 text-[10px] text-white bg-black/50 px-1 py-0.5 truncate">{newSsFiles[i]?.name}</p>
-                  </div>
-                ))}
-                {screenshots.length + newSsFiles.length < 10 && (
-                  <div
-                    className="aspect-video rounded-lg border-2 border-dashed border-line hover:border-accent cursor-pointer flex flex-col items-center justify-center gap-1 text-text-muted transition-colors"
-                    onClick={() => ssFileRef.current?.click()}
-                  >
-                    <Plus className="w-5 h-5 opacity-50" />
-                    <span className="text-xs opacity-60">추가</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div
-                className="border-2 border-dashed border-line rounded-lg cursor-pointer hover:border-accent transition-colors flex flex-col items-center justify-center gap-2 text-text-muted py-10"
-                onClick={() => ssFileRef.current?.click()}
-              >
-                <Upload className="w-8 h-8 opacity-40" />
-                <p className="text-sm">클릭하여 이미지 선택 (여러 장 가능)</p>
-                <p className="text-xs opacity-60">권장 해상도: 1920×1080px · 최대 {10 - screenshots.length}장 추가 가능</p>
-              </div>
-            )}
-          </div>
-          <div className="flex justify-end gap-3">
-            <button onClick={() => { setSsModal(false); setNewSsFiles([]); setNewSsPreviews([]) }} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-            <button onClick={addScreenshot} disabled={newSsFiles.length === 0} className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-md text-sm">
-              {newSsFiles.length > 0 ? `${newSsFiles.length}장 업로드` : '추가'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal open={vidModal} onClose={() => setVidModal(false)} title="동영상 추가">
-        <div className="space-y-4">
-          <div><label className={labelCls}>제목</label><input placeholder="예: 공식 트레일러" value={newVid.title} onChange={e => setNewVid(p => ({ ...p, title: e.target.value }))} className={inputCls} /></div>
-          <div>
-            <label className={labelCls}>타입</label>
-            <select value={newVid.type} onChange={e => setNewVid(p => ({ ...p, type: e.target.value }))} className={inputCls}>
-              <option value="youtube">YouTube</option><option value="upload">직접 업로드</option>
-            </select>
-          </div>
-          {newVid.type === 'youtube'
-            ? <div><label className={labelCls}>YouTube URL</label><input placeholder="https://youtube.com/watch?v=..." value={newVid.url} onChange={e => setNewVid(p => ({ ...p, url: e.target.value }))} className={inputCls} /></div>
-            : <div className="border-2 border-dashed border-line rounded-lg p-8 text-center"><Film className="w-10 h-10 mx-auto mb-2 text-text-secondary" /><p className="text-sm text-text-secondary">MP4 (최대 100MB)</p></div>
-          }
-          <div className="flex justify-end gap-3">
-            <button onClick={() => setVidModal(false)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-            <button onClick={addVideo} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">추가</button>
-          </div>
-        </div>
-      </Modal>
-
       {/* 기본 세팅 모달 */}
       <Modal open={basicSettingModal} onClose={() => setBasicSettingModal(false)} title="재화 세팅" disableBackdropClose showCloseButton>
         {(() => { const isLive = gameData?.approvalStatus === 'approved' && gameData?.status === 'published'; return (
@@ -1946,7 +1887,7 @@ export default function GameDetailManagementPage() {
 
           {/* 버튼 */}
           <div className="flex items-center justify-end gap-2 pt-2">
-            <p className="text-xs text-text-muted mr-auto">게임 오픈 이후에는 재화 세팅을 수정할 수 없습니다</p>
+            <p className="text-xs text-text-muted mr-auto">게임 출시 이후에는 재화 세팅을 수정할 수 없습니다</p>
             {!isLive && <button
               disabled={basicSettingSaving}
               onClick={async () => {
@@ -2160,33 +2101,6 @@ export default function GameDetailManagementPage() {
         </div>
       </Modal>
 
-      <Modal open={priceSettingModal} onClose={() => setPriceSettingModal(false)} title="나라별 환율 가격" disableBackdropClose showCloseButton>
-        <div className="space-y-3">
-          {!newItem.price ? (
-            <p className="text-sm text-text-secondary text-center py-4">판매가를 먼저 입력해주세요.</p>
-          ) : (
-            <>
-              <p className="text-xs text-text-tertiary">기준가 <span className="font-semibold text-text-primary">{Number(newItem.price).toLocaleString()} {newItem.currency}</span></p>
-              <div className="divide-y divide-line">
-                {COUNTRY_INFO.map(c => (
-                  <div key={c.code} className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{c.name}</span>
-                      <span className="text-xs text-text-tertiary">{c.currency}</span>
-                    </div>
-                    <span className="text-sm font-semibold">{c.symbol}{Number(priceMap[c.code] ?? 0).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-2 p-3 bg-bg-tertiary rounded-lg space-y-1">
-                <p className="text-[10px] text-text-tertiary">판매 국가 변경 시 해당 환율 금액이 판매가에 자동 세팅됩니다.</p>
-                <p className="text-[10px] text-text-tertiary">환율은 30일마다 자동 갱신됩니다.{rateDate ? ` (환율 적용 날짜: ${rateDate})` : ''}</p>
-              </div>
-            </>
-          )}
-        </div>
-      </Modal>
-
       <Modal open={editItemModal} onClose={() => { setEditItemModal(false); setEditingItem(null); setEditImageFile(null); setEditImagePreview(''); setEditSpecialImageFile(null); setEditSpecialImagePreview(''); setEditItemErrors({}) }} title="상품 편집" size="xl" disableBackdropClose showCloseButton>
         {editingItem && (
           <div className="max-h-[75vh] overflow-y-auto pr-1">
@@ -2355,6 +2269,33 @@ export default function GameDetailManagementPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal open={priceSettingModal} onClose={() => setPriceSettingModal(false)} title="나라별 환율 가격" disableBackdropClose showCloseButton>
+        <div className="space-y-3">
+          {!priceModalPrice ? (
+            <p className="text-sm text-text-secondary text-center py-4">판매가를 먼저 입력해주세요.</p>
+          ) : (
+            <>
+              <p className="text-xs text-text-tertiary">기준가 <span className="font-semibold text-text-primary">{Number(priceModalPrice).toLocaleString()} {priceModalCurrency}</span></p>
+              <div className="divide-y divide-line">
+                {COUNTRY_INFO.map(c => (
+                  <div key={c.code} className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{c.name}</span>
+                      <span className="text-xs text-text-tertiary">{c.currency}</span>
+                    </div>
+                    <span className="text-sm font-semibold">{c.symbol}{Number(priceModalMap[c.code] ?? 0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 p-3 bg-bg-tertiary rounded-lg space-y-1">
+                <p className="text-[10px] text-text-tertiary">판매 국가 변경 시 해당 환율 금액이 판매가에 자동 세팅됩니다.</p>
+                {rateDate && <p className="text-[10px] text-text-tertiary">{rateDate} 환율 적용</p>}
+              </div>
+            </>
+          )}
+        </div>
       </Modal>
 
       <Modal open={apiKeyModal} onClose={() => { setApiKeyModal(false); setCreatedApiKey(null) }} title="API Key 생성">

@@ -132,9 +132,11 @@ export default function PlayerGameDetailPage() {
   const [qaQuestion, setQaQuestion] = useState('')
   const [qaSubmitting, setQaSubmitting] = useState(false)
 
-  // 스크린샷
+  // 스크린샷 & 동영상
   const [screenshots, setScreenshots] = useState<{ _id: string; title: string; url: string; order: number }[]>([])
+  const [videos, setVideos] = useState<{ _id: string; title: string; url: string; order: number }[]>([])
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [selectedShotIdx, setSelectedShotIdx] = useState(0)
 
   // 상점 서브탭
   const [shopSubTab, setShopSubTab] = useState<'currency' | 'challenge'>('currency')
@@ -221,8 +223,12 @@ export default function PlayerGameDetailPage() {
   const loadScreenshots = useCallback(async () => {
     if (!id) return
     try {
-      const data = await gameService.getGameMedia(id, 'screenshot')
-      setScreenshots(data.media || [])
+      const [ssData, vidData] = await Promise.all([
+        gameService.getGameMedia(id, 'screenshot'),
+        gameService.getGameMedia(id, 'video'),
+      ])
+      setScreenshots((ssData.media || []).slice().sort((a: { order: number }, b: { order: number }) => a.order - b.order))
+      setVideos((vidData.media || []).slice().sort((a: { order: number }, b: { order: number }) => a.order - b.order))
     } catch { /* ignore */ }
   }, [id])
 
@@ -515,10 +521,10 @@ const avgRating = game ? (game.rating as number) || 0 : 0
 
         {/* ── 게임 소개 탭 ── */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[11fr_4fr] gap-6">
             {/* CTA 버튼 - 전체 너비 */}
             {monetization === 'paid' && gamePrice > 0 && (
-              <div className="lg:col-span-3 flex justify-center">
+              <div className="lg:col-span-2 flex justify-center">
                 <button
                   onClick={() => handlePurchase(`${game.title as string} 정식 구매`, gamePrice)}
                   className="w-[50%] bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-text-primary py-3.5 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-yellow-900/30"
@@ -528,16 +534,21 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               </div>
             )}
 
-            {/* 스크린샷 갤러리 - 전체 너비 */}
-            <div className="lg:col-span-3 bg-bg-secondary border border-line rounded-xl overflow-hidden">
-              {screenshots.length === 0 ? (
+            {/* 스크린샷 + 게임설명 (왼쪽 컬럼) */}
+            {(() => {
+              const videoEntries = videos.map(v => ({ kind: 'video' as const, _id: v._id, title: v.title, url: v.url }))
+              const shotEntries = screenshots.filter(s => s.url).map(s => ({ kind: 'screenshot' as const, _id: s._id, title: s.title, url: s.url }))
+              const mediaList = [...videoEntries, ...shotEntries]
+              const selected = mediaList[selectedShotIdx]
+              const UPLOADS_BASE = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
+              return (
+            <div className="space-y-6">
+            <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
+              {mediaList.length === 0 ? (
                 <div className="p-5">
                   <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                     {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="aspect-video rounded-lg bg-bg-tertiary/50 border border-line/40 flex flex-col items-center justify-center gap-1.5"
-                      >
+                      <div key={i} className="aspect-video rounded-lg bg-bg-tertiary/50 border border-line/40 flex flex-col items-center justify-center gap-1.5">
                         <span className="text-2xl opacity-30">🖼️</span>
                         <span className="text-text-muted text-xs opacity-60">스크린샷 없음</span>
                       </div>
@@ -545,35 +556,65 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                   </div>
                 </div>
               ) : (
-                <div
-                  className="p-5 overflow-x-auto"
-                  style={{ scrollbarWidth: 'thin', scrollbarColor: '#334155 transparent' }}
-                >
+                <div className="p-5 flex gap-4 h-[437px]">
+                  {/* 왼쪽: 메인 뷰 */}
+                  <div className="flex-1 rounded-xl overflow-hidden bg-bg-tertiary border border-line/50">
+                    {selected?.kind === 'video' ? (
+                      <video
+                        key={selected.url}
+                        src={`${UPLOADS_BASE}${selected.url}`}
+                        className="w-full h-full object-contain bg-black"
+                        autoPlay
+                        controls
+                        playsInline
+                      />
+                    ) : selected?.url ? (
+                      <img
+                        src={selected.url}
+                        alt={selected.title}
+                        className="w-full h-full object-cover cursor-zoom-in"
+                        onClick={() => {
+                          const shotIdx = shotEntries.findIndex(s => s._id === selected._id)
+                          if (shotIdx >= 0) setLightboxIndex(shotIdx)
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-text-muted">
+                        <span className="text-4xl opacity-30">🖼️</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 오른쪽: 썸네일 리스트 */}
                   <div
-                    style={{
-                      display: 'grid',
-                      gridAutoFlow: 'column',
-                      gridAutoColumns: 'calc((100% - 24px) / 3)',
-                      gap: '12px',
-                    }}
+                    className="w-[186px] flex flex-col gap-2 overflow-y-auto flex-shrink-0"
+                    style={{ scrollbarWidth: 'thin', scrollbarColor: '#334155 transparent' }}
                   >
-                    {screenshots.map((shot, i) => (
+                    {mediaList.map((item, i) => (
                       <div
-                        key={shot._id || i}
-                        className="rounded-lg overflow-hidden bg-bg-tertiary border border-line/50 group cursor-pointer"
-                        style={{ aspectRatio: '16/10' }}
-                        onClick={() => shot.url && setLightboxIndex(i)}
+                        key={item._id || i}
+                        className={`flex-shrink-0 rounded-lg overflow-hidden cursor-pointer border-2 transition-all duration-150 relative ${
+                          i === selectedShotIdx
+                            ? 'border-accent shadow-sm shadow-accent/30'
+                            : 'border-transparent hover:border-line'
+                        }`}
+                        style={{ aspectRatio: '16/9' }}
+                        onClick={() => setSelectedShotIdx(i)}
                       >
-                        {shot.url ? (
-                          <img
-                            src={shot.url}
-                            alt={shot.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
+                        {item.kind === 'video' ? (
+                          <>
+                            <video src={`${UPLOADS_BASE}${item.url}`} className="w-full h-full object-cover" muted preload="metadata" onLoadedMetadata={e => { (e.target as HTMLVideoElement).currentTime = 1 }} />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                              <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center">
+                                <svg className="w-3.5 h-3.5 text-black ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                              </div>
+                            </div>
+                          </>
+                        ) : item.url ? (
+                          <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-text-muted">
-                            <span className="text-2xl">🖼️</span>
-                            <span className="text-xs">{shot.title}</span>
+                          <div className="w-full h-full flex items-center justify-center bg-bg-tertiary">
+                            <span className="text-text-muted text-xs">🖼️</span>
                           </div>
                         )}
                       </div>
@@ -584,10 +625,13 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             </div>
 
             {/* 게임 설명 */}
-            <div className="lg:col-span-2 bg-bg-secondary border border-line rounded-xl p-6">
+            <div className="bg-bg-secondary border border-line rounded-xl p-6 min-h-[500px]">
               <p className="text-text-primary font-bold mb-3" style={{ fontSize: '30px' }}>게임 설명</p>
               <p className="text-text-secondary leading-relaxed">{game.notes as string}</p>
             </div>
+            </div>
+              )
+            })()}
 
             <div className="space-y-4">
               {/* 개발사 정보 */}
@@ -683,7 +727,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             </div>
 
             {/* Q&A 섹션 */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-2">
               <div className="bg-bg-secondary border border-line rounded-xl p-6">
                 <p className="text-text-primary font-bold mb-4" style={{ fontSize: '30px' }}>개발사 Q&A</p>
 

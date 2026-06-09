@@ -19,6 +19,7 @@ ensureDir(path.join(UPLOAD_BASE, 'community'))
 ensureDir(path.join(UPLOAD_BASE, 'screenshots'))
 ensureDir(path.join(UPLOAD_BASE, 'certs'))
 ensureDir(path.join(UPLOAD_BASE, 'shop-items'))
+ensureDir(path.join(UPLOAD_BASE, 'videos'))
 
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
@@ -34,6 +35,8 @@ const storage = multer.diskStorage({
       cb(null, path.join(UPLOAD_BASE, 'community'))
     } else if (file.fieldname === 'screenshot') {
       cb(null, path.join(UPLOAD_BASE, 'screenshots'))
+    } else if (file.fieldname === 'videoFile') {
+      cb(null, path.join(UPLOAD_BASE, 'videos'))
     } else if (file.fieldname === 'shopItemImage' || file.fieldname === 'shopCurrencyIcon' || file.fieldname === 'specialItemImage') {
       cb(null, path.join(UPLOAD_BASE, 'shop-items'))
     } else {
@@ -127,6 +130,40 @@ export const screenshotUpload = multer({
   fileFilter,
   limits: { fileSize: 5 * 1024 * 1024, files: 1 }
 }).single('screenshot')
+
+// 게임 미디어 업로드 (스크린샷 또는 동영상)
+const videoFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  if (file.fieldname === 'screenshot') {
+    const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+    const allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    const ext = path.extname(file.originalname).toLowerCase()
+    if (allowedTypes.includes(ext) && allowedMime.includes(file.mimetype)) {
+      cb(null, true)
+    } else {
+      cb(new Error('이미지 파일(JPG, PNG, GIF, WEBP)만 업로드 가능합니다'))
+    }
+  } else if (file.fieldname === 'videoFile') {
+    const allowedTypes = ['.mp4', '.mov', '.webm', '.avi']
+    const allowedMime = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo', 'video/avi']
+    const ext = path.extname(file.originalname).toLowerCase()
+    if (allowedTypes.includes(ext) && allowedMime.includes(file.mimetype)) {
+      cb(null, true)
+    } else {
+      cb(new Error('동영상 파일(MP4, MOV, WEBM)만 업로드 가능합니다'))
+    }
+  } else {
+    cb(null, true)
+  }
+}
+
+export const mediaUpload = multer({
+  storage,
+  fileFilter: videoFilter,
+  limits: { fileSize: 500 * 1024 * 1024, files: 1 }
+}).fields([
+  { name: 'screenshot', maxCount: 1 },
+  { name: 'videoFile', maxCount: 1 },
+])
 
 // 커뮤니티 게시글 이미지 업로드 (최대 5장, 5MB/장)
 export const communityUpload = multer({
