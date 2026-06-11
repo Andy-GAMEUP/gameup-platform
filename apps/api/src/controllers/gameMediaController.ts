@@ -1,6 +1,8 @@
 import { Response } from 'express'
 import { GameMediaModel, GameModel } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
+import fs from 'fs'
+import path from 'path'
 
 const verifyGameOwner = async (gameId: string, userId: string) => {
   const game = await GameModel.findById(gameId)
@@ -84,6 +86,11 @@ export const deleteGameMedia = async (req: AuthRequest, res: Response) => {
 
     const media = await GameMediaModel.findOne({ _id: mediaId, gameId })
     if (!media) return res.status(404).json({ message: '미디어를 찾을 수 없습니다' })
+
+    if (media.url && media.url.startsWith('/uploads/')) {
+      const filePath = path.join(process.cwd(), media.url.slice(1))
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+    }
 
     await media.deleteOne()
     res.json({ success: true, message: '삭제되었습니다' })
