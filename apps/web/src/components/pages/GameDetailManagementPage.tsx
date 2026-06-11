@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import {
-  ChevronLeft, Star, Users, MessageSquare, Download, Eye,
+  ChevronLeft, ChevronDown, Star, Users, MessageSquare, Download, Eye,
   Globe, Upload, Image as ImageIcon, Film,
   Trash2, Save, AlertCircle, Plus, Edit, Bell, ShoppingBag,
   DollarSign, Package, Megaphone, Play, Clock, Send, Check,
@@ -181,6 +181,8 @@ export default function GameDetailManagementPage() {
   const [editSaving, setEditSaving] = useState(false)
   const [iconUploading, setIconUploading] = useState(false)
   const iconInputRef = useRef<HTMLInputElement>(null)
+  const [genreOpen, setGenreOpen] = useState(false)
+  const genreRef = useRef<HTMLDivElement>(null)
   const [bannerUploading, setBannerUploading] = useState(false)
   const bannerInputRef = useRef<HTMLInputElement>(null)
 
@@ -252,6 +254,14 @@ export default function GameDetailManagementPage() {
   const certFileRef = useRef<HTMLInputElement>(null)
 
   const gameId = _id as string
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (genreRef.current && !genreRef.current.contains(e.target as Node)) setGenreOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   useEffect(() => {
     if (!gameId) return
@@ -1717,12 +1727,35 @@ export default function GameDetailManagementPage() {
                 </div>
                 <div>
                   <label className={labelCls}>게임 장르 *</label>
-                  <select value={editGenre} onChange={e => setEditGenre(e.target.value)} className={inputCls}>
-                    <option value="">장르 선택</option>
-                    {FORM_GENRES.map(g => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
+                  <div className="relative" ref={genreRef}>
+                    <button
+                      type="button"
+                      onClick={() => setGenreOpen(o => !o)}
+                      className={`${inputCls} flex items-center justify-between w-full text-left`}
+                    >
+                      <span className={editGenre ? 'text-text-primary' : 'text-text-muted'}>{editGenre || '장르 선택'}</span>
+                      <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform ${genreOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {genreOpen && (
+                      <div className="absolute left-0 top-full mt-1 w-full bg-bg-primary border border-line rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                        <div
+                          className="px-3 py-2 text-sm text-text-muted hover:bg-bg-tertiary cursor-pointer"
+                          onClick={() => { setEditGenre(''); setGenreOpen(false) }}
+                        >
+                          장르 선택
+                        </div>
+                        {FORM_GENRES.map(g => (
+                          <div
+                            key={g}
+                            onClick={() => { setEditGenre(g); setGenreOpen(false) }}
+                            className={`px-3 py-2 text-sm cursor-pointer hover:bg-bg-tertiary ${editGenre === g ? 'bg-accent/10 text-accent font-medium' : 'text-text-primary'}`}
+                          >
+                            {g}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
