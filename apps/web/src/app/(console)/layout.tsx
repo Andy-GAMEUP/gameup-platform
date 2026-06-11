@@ -1,11 +1,11 @@
 'use client'
-import React from 'react'
+import React, { Suspense } from 'react'
 import { useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 import DeveloperLayout from '@/components/DeveloperLayout'
 
-export default function ConsoleLayout({ children }: { children: React.ReactNode }) {
+function ConsoleLayoutInner({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -21,4 +21,12 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
   if (user?.role === 'admin' && !adminView) return null
   if (user?.role === 'admin' && adminView) return <>{children}</>
   return <DeveloperLayout>{children}</DeveloperLayout>
+}
+
+export default function ConsoleLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense>
+      <ConsoleLayoutInner>{children}</ConsoleLayoutInner>
+    </Suspense>
+  )
 }
