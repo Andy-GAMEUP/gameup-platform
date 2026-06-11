@@ -2,7 +2,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { Search, Download, ChevronDown, LayoutGrid, RefreshCw } from 'lucide-react'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { gameService } from '@/services/gameService'
+import { adminService } from '@/services/adminService'
 
 interface GameOption { _id: string; title: string; thumbnail?: string }
 
@@ -27,6 +29,9 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 export default function PaymentsPage() {
+  const searchParams = useSearchParams()
+  const isAdminView  = searchParams.get('adminView') === '1'
+
   const [games,            setGames]            = useState<GameOption[]>([])
   const [gameId,           setGameId]           = useState('')
   const [gameDropdownOpen, setGameDropdownOpen] = useState(false)
@@ -68,10 +73,11 @@ export default function PaymentsPage() {
   })()
 
   useEffect(() => {
-    gameService.getMyGames()
-      .then(res => setGames((res.games || []) as GameOption[]))
-      .catch(() => {})
-  }, [])
+    const fetch = isAdminView
+      ? adminService.getAllGames().then(res => res.games || [])
+      : gameService.getMyGames().then(res => res.games || [])
+    fetch.then(g => setGames(g as GameOption[])).catch(() => {})
+  }, [isAdminView])
 
   useEffect(() => {
     localStorage.setItem('payments_period', period)

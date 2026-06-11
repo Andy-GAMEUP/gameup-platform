@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { Search, Download, ChevronDown, LayoutGrid, RefreshCw } from 'lucide-react'
 import Image from 'next/image'
 import { gameService } from '@/services/gameService'
+import { adminService } from '@/services/adminService'
 
 interface DeveloperOption { _id: string; name: string }
 interface GameOption { _id: string; title: string; thumbnail?: string; developerId?: { _id: string; username: string; companyInfo?: { companyName?: string } } }
@@ -77,7 +78,7 @@ export default function AdminPaymentsPage() {
   })()
 
   useEffect(() => {
-    gameService.getMyGames().then(res => {
+    adminService.getAllGames().then(res => {
       const g = (res.games || []) as unknown as GameOption[]
       setAllGames(g)
       const devMap = new Map<string, DeveloperOption>()
