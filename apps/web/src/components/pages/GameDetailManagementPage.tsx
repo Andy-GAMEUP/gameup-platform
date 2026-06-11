@@ -899,6 +899,30 @@ export default function GameDetailManagementPage() {
         </div>
       </div>
 
+      {/* 심사 등록 체크리스트 */}
+      {!canRequestReview && !adminView && !gameData.suspendedAt && (
+        <div className="bg-bg-secondary border border-line rounded-lg px-4 py-3 flex flex-wrap gap-x-6 gap-y-2">
+          {[
+            { key: 'basicInfo',    label: '기본 정보' },
+            { key: 'heroBanner',   label: '히어로 배너' },
+            { key: 'trailer',      label: '트레일러 1개 이상' },
+            { key: 'screenshots',  label: '스크린샷 4개 이상' },
+            { key: 'rating',       label: '등급 분류' },
+          ].map(({ key, label }) => {
+            const ok = reviewChecks[key as keyof typeof reviewChecks]
+            return (
+              <span key={key} className={`flex items-center gap-1.5 text-sm ${ok ? 'text-emerald-400' : 'text-text-muted'}`}>
+                {ok
+                  ? <Check className="w-3.5 h-3.5 flex-shrink-0" />
+                  : <div className="w-3.5 h-3.5 rounded-full border border-text-muted flex-shrink-0" />
+                }
+                {label}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
       {/* ── GCRB 탭 ── */}
       {activeTab === 'main-settings' && (
         <div className="flex gap-10 items-start">
