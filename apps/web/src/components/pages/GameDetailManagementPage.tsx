@@ -17,6 +17,7 @@ import GracRatingBadge from '../GracRatingBadge'
 import RequestReviewButton from '../RequestReviewButton'
 import { RatingClass } from '@gameup/types'
 import { useRouter } from 'next/navigation'
+import { FORM_GENRES } from '@/constants/game'
 
 interface MediaItem { _id: string; type: 'screenshot' | 'video'; title: string; url: string; order: number; createdAt: string }
 interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; currencyType: string; currencyAmount: number; bonusAmount: number; stock: string; sales: number; active: boolean; description: string; imageUrl: string; sortOrder: number; itemId?: string; isSpecial?: boolean; specialImageUrl?: string; country?: string }
@@ -1718,8 +1719,8 @@ export default function GameDetailManagementPage() {
                   <label className={labelCls}>게임 장르 *</label>
                   <select value={editGenre} onChange={e => setEditGenre(e.target.value)} className={inputCls}>
                     <option value="">장르 선택</option>
-                    {['rpg','action','fps','moba','strategy','simulation','adventure','racing','horror','sports'].map(v => (
-                      <option key={v} value={v}>{v.toUpperCase()}</option>
+                    {FORM_GENRES.map(g => (
+                      <option key={g} value={g}>{g}</option>
                     ))}
                   </select>
                 </div>
