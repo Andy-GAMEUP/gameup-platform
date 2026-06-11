@@ -33,6 +33,16 @@ interface GameOption { _id: string; title: string; thumbnail?: string }
 type Period = '1d' | '7d' | '30d' | '6m' | '1y' | 'custom'
 type Tab    = 'analysis' | 'retention' | 'revenue' | 'allusers' | 'newusers' | 'vip' | 'ltvcalc'
 
+const ANALYTICS_TABS: { tab: Tab; label: string }[] = [
+  { tab: 'analysis',  label: '개요' },
+  { tab: 'retention', label: '리텐션' },
+  { tab: 'revenue',   label: '수익' },
+  { tab: 'allusers',  label: '전체 유저' },
+  { tab: 'newusers',  label: '신규 유저' },
+  { tab: 'vip',       label: 'VIP 유저' },
+  { tab: 'ltvcalc',   label: 'LTV 계산' },
+]
+
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: '1d',     label: '어제'    },
   { value: '7d',     label: '1주일'   },
@@ -58,7 +68,13 @@ export default function AnalyticsPage() {
   const router       = useRouter()
   const searchParams = useSearchParams()
 
-  const activeTab = (searchParams.get('tab') || 'analysis') as Tab
+  const rawTab = searchParams.get('tab') || 'analysis'
+  const activeTab = (rawTab in TAB_META ? rawTab : 'analysis') as Tab
+  const adminView = searchParams.get('adminView') === '1'
+
+  useEffect(() => {
+    if (rawTab === 'payments') router.replace('/payments')
+  }, [rawTab, router])
 
   const [games,        setGames]        = useState<GameOption[]>([])
   const [gameId,       setGameId]       = useState<string>(
@@ -81,6 +97,7 @@ export default function AnalyticsPage() {
   const [submittedTargetDays, setSubmittedTargetDays] = useState<number | ''>('')
   const [paybackResult, setPaybackResult] = useState<number | null | undefined>(undefined)
   const [ltvStats, setLtvStats] = useState<{ retainedAtTarget: number; avgPct: number; newMembers: number } | null>(null)
+
   const vipSelectedRank = Number(searchParams.get('vipRank')) || 1
   const dropdownRef = useRef<HTMLDivElement>(null)
   const gameDropdownRef = useRef<HTMLDivElement>(null)
@@ -99,17 +116,29 @@ export default function AnalyticsPage() {
 
   // 게임 목록 로드
   useEffect(() => {
+    const urlGameId = searchParams.get('gameId')
+
+    const fetchSingleGame = () => {
+      if (!urlGameId) { setError('게임 목록을 불러오지 못했습니다.'); return }
+      gameService.getGameById(urlGameId)
+        .then((res) => {
+          const g = res.game as unknown as GameOption
+          setGames([{ _id: g._id, title: g.title, thumbnail: g.thumbnail }])
+        })
+        .catch(() => setError('게임 목록을 불러오지 못했습니다.'))
+    }
+
     gameService.getMyGames()
       .then((res) => {
         const list = ((res.games || []) as unknown as GameOption[]).map(g => ({ _id: g._id, title: g.title, thumbnail: g.thumbnail }))
+        if (list.length === 0) { fetchSingleGame(); return }
         setGames(list)
-        if (list.length === 0) return
         const ids = list.map(g => g._id)
         if (gameId && ids.includes(gameId)) return   // 현재 선택이 유효하면 유지
         const saved = localStorage.getItem('analytics_gameId')
         setGameId(saved && ids.includes(saved) ? saved : list[0]._id)
       })
-      .catch(() => setError('게임 목록을 불러오지 못했습니다.'))
+      .catch(fetchSingleGame)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -188,7 +217,7 @@ export default function AnalyticsPage() {
     }
   }
 
-  const { title: tabTitle, desc: tabDesc } = TAB_META[activeTab]
+  const { title: tabTitle, desc: tabDesc } = TAB_META[activeTab] ?? TAB_META['analysis']
   const overview = data?.overview
 
   const periodRangeLabel = (() => {
@@ -199,6 +228,20 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
+      {/* ── adminView 탭 네비게이션 ── */}
+      {adminView && (
+        <div className="flex gap-1 bg-bg-secondary border border-line rounded-lg p-1 flex-wrap">
+          {ANALYTICS_TABS.map(({ tab, label }) => (
+            <Link
+              key={tab}
+              href={`/analytics?tab=${tab}&gameId=${gameId}&adminView=1`}
+              className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === tab ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
       {/* ── 헤더 ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -841,6 +884,7 @@ export default function AnalyticsPage() {
           onStatsResult={setLtvStats}
         />
       )}
+
     </div>
   )
 }

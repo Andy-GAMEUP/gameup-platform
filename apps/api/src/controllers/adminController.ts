@@ -228,18 +228,49 @@ export const getPendingGames = async (req: AuthRequest, res: Response) => {
 // ── 전체 게임 목록 (관리자) ───────────────────────────────────────
 export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
   try {
-    const { page = 1, limit = 20, status, approvalStatus, search } = req.query
+    const { page = 1, limit = 20, status, approvalStatus, search, serviceType, suspended } = req.query
     const filter: Record<string, unknown> = {}
-    if (status) filter.status = status
-    if (approvalStatus) filter.approvalStatus = approvalStatus
-    if (search) filter.title = { $regex: search, $options: 'i' }
+    if (suspended === 'true') {
+      filter.suspendedAt = { $exists: true, $ne: null }
+    } else {
+      if (status) filter.status = status
+    }
+    if (serviceType) filter.serviceType = serviceType
+    if (approvalStatus === 'pending') {
+      filter.approvalStatus = { $in: ['pending', 'review'] }
+    } else if (approvalStatus) {
+      filter.approvalStatus = approvalStatus
+    }
+    if (search) {
+      const safeSearch = (search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const matchedUsers = await User.find({
+        $or: [
+          { username: { $regex: safeSearch, $options: 'i' } },
+          { email: { $regex: safeSearch, $options: 'i' } },
+        ]
+      }).select('_id')
+      const developerIds = matchedUsers.map(u => u._id)
+      filter.$or = [
+        { title: { $regex: safeSearch, $options: 'i' } },
+        { genre: { $regex: safeSearch, $options: 'i' } },
+        { developerId: { $in: developerIds } },
+      ]
+    }
     const total = await Game.countDocuments(filter)
     const games = await Game.find(filter)
       .populate('developerId', 'username email')
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
-    res.json({ games, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
+
+    const allIds = await Game.find({}, '_id').sort({ _id: 1 }).lean()
+    const rankMap = new Map(allIds.map((g, i) => [(g._id as any).toString(), i + 1]))
+    const gamesWithNo = games.map(g => ({
+      ...(g as any).toObject(),
+      gameNo: rankMap.get((g._id as any).toString()) || 0,
+    }))
+
+    res.json({ games: gamesWithNo, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
   } catch {
     res.status(500).json({ message: '게임 목록 조회 실패' })
   }

@@ -1,7 +1,25 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, Eye, X } from 'lucide-react'
+import { Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, Eye, X, RotateCcw } from 'lucide-react'
 import { gameService } from '@/services/gameService'
+import adminService from '@/services/adminService'
+import AdminLayout from '@/components/AdminLayout'
+
+const GENRE_NORMALIZE: Record<string, string> = {
+  rpg: 'RPG', RPG: 'RPG',
+  action: '액션', Action: '액션',
+  strategy: '전략', Strategy: '전략',
+  racing: '레이싱', Racing: '레이싱',
+  adventure: '어드벤처', Adventure: '어드벤처',
+  simulation: '시뮬레이션', Simulation: '시뮬레이션',
+  puzzle: '퍼즐', Puzzle: '퍼즐',
+  fps: 'FPS', FPS: 'FPS',
+  sports: '스포츠', Sports: '스포츠',
+  horror: '호러', Horror: '호러',
+}
+const normalizeGenre = (v?: string) => (v ? (GENRE_NORMALIZE[v] ?? v) : '-')
+
+
 
 interface DeletionLog {
   _id: string
@@ -19,6 +37,7 @@ interface DeletionLog {
   userAgent?: string
   gameSnapshot?: Record<string, unknown>
   deletedAt: string
+  totalRevenue?: number
 }
 
 export default function AdminGameDeletionLogsPage() {
@@ -31,6 +50,7 @@ export default function AdminGameDeletionLogsPage() {
   const [pages, setPages] = useState(1)
   const [total, setTotal] = useState(0)
   const [detail, setDetail] = useState<DeletionLog | null>(null)
+  const [restoring, setRestoring] = useState<string | null>(null)
   const limit = 20
 
   useEffect(() => {
@@ -57,14 +77,14 @@ export default function AdminGameDeletionLogsPage() {
   useEffect(() => { load() }, [load])
 
   return (
+    <AdminLayout>
     <div className="space-y-6 p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold mb-1 flex items-center gap-2">
             <Trash2 className="w-6 h-6 text-red-400" />
-            게임 삭제 감사 로그
+            삭제 게임 관리
           </h1>
-          <p className="text-text-secondary">삭제된 게임의 요청자, 사유, IP 기록을 확인합니다. (총 {total.toLocaleString()}건)</p>
         </div>
         <button
           onClick={load}
@@ -80,7 +100,7 @@ export default function AdminGameDeletionLogsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
           <input
             type="text"
-            placeholder="게임명, 요청자, 사유로 검색..."
+            placeholder="게임명, 개발사, 삭제 유저로 검색..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             className="w-full pl-10 pr-4 py-2 bg-bg-tertiary border border-line rounded-md text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
@@ -103,44 +123,77 @@ export default function AdminGameDeletionLogsPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-line bg-bg-tertiary/50">
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">삭제일시</th>
+                <tr className="border-b border-line bg-bg-tertiary/50 divide-x divide-line/30">
                   <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">게임명</th>
                   <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">개발사</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">요청자</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">권한</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">사유</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">IP</th>
-                  <th className="px-4 py-3 text-right text-sm text-text-secondary font-medium">상세</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">삭제 유저</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">삭제 당시 상태</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">삭제일시</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">게임 복구</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">상세</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map((log, idx) => (
-                  <tr key={log._id} className={`border-b border-line hover:bg-bg-tertiary/30 transition-colors ${idx % 2 !== 0 ? 'bg-bg-tertiary/10' : ''}`}>
-                    <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
-                      {new Date(log.deletedAt).toLocaleString('ko-KR')}
-                    </td>
+                  <tr key={log._id} className={`border-b border-line divide-x divide-line/30 hover:bg-bg-tertiary/30 transition-colors ${idx % 2 !== 0 ? 'bg-bg-tertiary/10' : ''}`}>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-text-primary">{log.gameTitle}</p>
-                      {log.gameGenre && <p className="text-xs text-text-muted">{log.gameGenre}</p>}
+                      {log.gameGenre && <p className="text-xs text-text-muted">{normalizeGenre(log.gameGenre)}</p>}
                     </td>
                     <td className="px-4 py-3 text-sm text-text-secondary">{log.developerUsername || '-'}</td>
                     <td className="px-4 py-3 text-sm">
                       <p className="text-text-primary">{log.deletedByUsername || '-'}</p>
-                      <p className="text-xs text-text-muted">{log.deletedByEmail}</p>
+                      <p className="text-xs text-text-muted">{log.deletedByEmail || '-'}</p>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                        log.deletedByRole === 'admin'
-                          ? 'bg-red-500/20 text-red-400 border-red-500/50'
-                          : 'bg-blue-500/20 text-blue-400 border-blue-500/50'
-                      }`}>
-                        {log.deletedByRole || '-'}
-                      </span>
+                      {(() => {
+                        const snap = log.gameSnapshot as Record<string, string> | undefined
+                        if (!snap) return <span className="text-xs text-text-muted">-</span>
+                        const isSuspended = !!snap.suspendedAt
+                        const s =
+                          isSuspended ? { label: '강제 중지 중', color: 'text-red-400', dot: 'bg-red-400', pulse: false }
+                          : snap.approvalStatus === 'not_submitted' ? { label: '초안 작성 중', color: 'text-text-muted', dot: 'bg-text-muted', pulse: false }
+                          : snap.approvalStatus === 'pending' || snap.approvalStatus === 'review' ? { label: '심사 중', color: 'text-yellow-400', dot: 'bg-yellow-400', pulse: true }
+                          : snap.approvalStatus === 'rejected' ? { label: '심사 거부', color: 'text-red-400', dot: 'bg-red-400', pulse: false }
+                          : snap.approvalStatus === 'approved' && snap.status !== 'published' ? { label: '출시 대기', color: 'text-emerald-400', dot: 'bg-emerald-400', pulse: true }
+                          : snap.approvalStatus === 'approved' ? { label: '운영 중', color: 'text-blue-500', dot: 'bg-blue-500', pulse: true }
+                          : { label: '-', color: 'text-text-muted', dot: 'bg-text-muted', pulse: false }
+                        return (
+                          <span className={`inline-flex items-center gap-1 text-sm font-medium whitespace-nowrap ${s.color}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot} ${s.pulse ? 'animate-pulse' : ''}`} />
+                            {s.label}
+                          </span>
+                        )
+                      })()}
                     </td>
-                    <td className="px-4 py-3 text-sm text-text-secondary max-w-xs truncate" title={log.reason}>{log.reason}</td>
-                    <td className="px-4 py-3 text-xs text-text-muted font-mono">{log.ipAddress || '-'}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
+                      {new Date(log.deletedAt).toLocaleString('ko-KR')}
+                    </td>
+                    <td className="px-4 py-3 text-left">
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`"${log.gameTitle}" 게임을 복구하시겠습니까?`)) return
+                          setRestoring(log._id)
+                          try {
+                            await adminService.restoreGame(log._id)
+                            alert('게임이 복구되었습니다.')
+                            load()
+                          } catch (e: unknown) {
+                            const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+                            alert(msg || '복구에 실패했습니다.')
+                          } finally {
+                            setRestoring(null)
+                          }
+                        }}
+                        disabled={restoring === log._id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-500 hover:bg-blue-400 text-black rounded-md disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        title="게임 복구"
+                      >
+                        <RotateCcw className={`w-3.5 h-3.5 ${restoring === log._id ? 'animate-spin' : ''}`} />
+                        복구하기
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-left">
                       <button
                         onClick={() => setDetail(log)}
                         className="p-1.5 text-text-secondary hover:text-accent rounded-md"
@@ -197,21 +250,17 @@ export default function AdminGameDeletionLogsPage() {
               </button>
             </div>
             <div className="p-5 space-y-3 text-sm">
-              <Row label="삭제일시" value={new Date(detail.deletedAt).toLocaleString('ko-KR')} />
               <Row label="게임명" value={detail.gameTitle} />
               <Row label="게임 ID" value={detail.gameId} mono />
               <Row label="장르" value={detail.gameGenre || '-'} />
               <Row label="개발사" value={detail.developerUsername || detail.developerId} />
+              <Row label="총 발생 매출" value={`${(detail.totalRevenue ?? 0).toLocaleString('ko-KR')}원`} />
               <Row label="요청자" value={`${detail.deletedByUsername || '-'} (${detail.deletedByEmail || '-'})`} />
               <Row label="권한" value={detail.deletedByRole || '-'} />
+              <Row label="등록 일시" value={detail.gameSnapshot?.createdAt ? new Date(detail.gameSnapshot.createdAt as string).toLocaleString('ko-KR') : '-'} />
+              <Row label="삭제일시" value={new Date(detail.deletedAt).toLocaleString('ko-KR')} />
               <Row label="IP 주소" value={detail.ipAddress || '-'} mono />
               <Row label="User Agent" value={detail.userAgent || '-'} mono />
-              <div>
-                <p className="text-text-secondary mb-1">삭제 사유</p>
-                <div className="p-3 bg-bg-tertiary rounded-md border border-line whitespace-pre-wrap text-text-primary">
-                  {detail.reason}
-                </div>
-              </div>
               {detail.gameSnapshot && (
                 <div>
                   <p className="text-text-secondary mb-1">게임 스냅샷</p>
@@ -225,6 +274,7 @@ export default function AdminGameDeletionLogsPage() {
         </div>
       )}
     </div>
+    </AdminLayout>
   )
 }
 

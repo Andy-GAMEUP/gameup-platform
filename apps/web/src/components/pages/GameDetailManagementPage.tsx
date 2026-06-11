@@ -1,13 +1,13 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import {
   ChevronLeft, Star, Users, MessageSquare, Download, Eye,
   Globe, Upload, Image as ImageIcon, Film,
   Trash2, Save, AlertCircle, Plus, Edit, Bell, ShoppingBag,
   DollarSign, Package, Megaphone, Play, Clock, Send, Check,
-  Gift, Shield, Zap, Trophy, CreditCard, UserPlus, LogIn, Timer, Settings,
+  Gift, Shield, Zap, Trophy, CreditCard, UserPlus, LogIn, Timer, Settings, BarChart2,
 } from 'lucide-react'
 
 import { gameService } from '../../services/gameService'
@@ -142,6 +142,7 @@ interface GameData {
   isPublic?: boolean
   thumbnail?: string
   bannerImage?: string
+  suspendedAt?: string
   shopCurrencyIconUrl?: string
   shopCurrencyName?: string
   shopCurrencyNames?: Record<string, string>
@@ -156,6 +157,8 @@ interface GameData {
 export default function GameDetailManagementPage() {
   const { id: _id } = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const adminView = searchParams.get('adminView') === '1'
   const [activeTab, setActiveTab] = useState<TabKey>('edit')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [gameData, setGameData] = useState<GameData | null>(null)
@@ -849,13 +852,13 @@ export default function GameDetailManagementPage() {
           <Shield className="w-4 h-4" /> 등급 분류
         </button>
         <div
-          onClick={handleToggleServiceType}
-          className="flex items-center gap-0.5 p-1 rounded-lg border border-line bg-bg-secondary cursor-pointer"
+          onClick={adminView ? undefined : handleToggleServiceType}
+          className={`flex items-center gap-0.5 p-1 rounded-lg border border-line bg-bg-secondary ${adminView ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          <span className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${gameData.serviceType === 'beta' ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+          <span className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${gameData.serviceType === 'beta' ? 'bg-accent text-text-primary' : 'text-text-secondary'}`}>
             베타
           </span>
-          <span className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${gameData.serviceType === 'live' ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+          <span className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${gameData.serviceType === 'live' ? 'bg-accent text-text-primary' : 'text-text-secondary'}`}>
             라이브
           </span>
         </div>
@@ -866,13 +869,13 @@ export default function GameDetailManagementPage() {
             approvalStatus={gameData.approvalStatus}
             onSuccess={reloadGameData}
             size="md"
-            extraDisabled={!canRequestReview}
-            extraDisabledTitle={!canRequestReview ? `등록 필요: ${reviewBlockReasons}` : undefined}
+            extraDisabled={adminView || !!gameData.suspendedAt || !canRequestReview}
+            extraDisabledTitle={adminView ? '관리자는 심사 등록할 수 없습니다' : gameData.suspendedAt ? '강제 중지 상태에서는 심사 등록이 불가합니다' : !canRequestReview ? `등록 필요: ${reviewBlockReasons}` : undefined}
           />
           <button
-            onClick={handleLaunchGame}
-            disabled={gameData.approvalStatus !== 'approved' || gameData.status === 'published'}
-            title={gameData.approvalStatus !== 'approved' ? '심사 완료 후 출시할 수 있습니다' : undefined}
+            onClick={adminView ? undefined : handleLaunchGame}
+            disabled={adminView || !!gameData.suspendedAt || gameData.approvalStatus !== 'approved' || gameData.status === 'published'}
+            title={adminView ? '관리자는 출시할 수 없습니다' : gameData.suspendedAt ? '강제 중지 상태에서는 출시가 불가합니다' : gameData.approvalStatus !== 'approved' ? '심사 완료 후 출시할 수 있습니다' : undefined}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${
               gameData.status === 'published'
                 ? 'bg-accent text-text-primary cursor-not-allowed'

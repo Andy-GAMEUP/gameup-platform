@@ -7,7 +7,7 @@ import AdminLayout from '@/components/AdminLayout'
 import adminService from '@/services/adminService'
 import {
   Search, CheckCircle, XCircle, Clock, Archive, Play, Pause,
-  RotateCcw, BarChart2, ChevronLeft, ChevronRight, Loader2, AlertCircle
+  RotateCcw, BarChart2, ChevronLeft, ChevronRight, Loader2, AlertCircle, Settings, Gamepad2
 } from 'lucide-react'
 
 const APPROVAL_STATUS: Record<string, { label: string; cls: string }> = {
@@ -56,9 +56,10 @@ export default function AdminGamesPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [approvalFilter, setApprovalFilter] = useState(searchParams.get('filter') === 'pending' ? 'pending' : '')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [gameStateFilter, setGameStateFilter] = useState(searchParams.get('filter') === 'pending' ? 'reviewing' : '')
+  const [serviceTypeFilter, setServiceTypeFilter] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [confirm, setConfirm] = useState<{ title: string; desc: string; onConfirm: (r?: string) => void; danger?: boolean } | null>(null)
@@ -68,31 +69,51 @@ export default function AdminGamesPage() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  const stateToParams = (f: string) => {
+    if (f === 'draft')     return { approvalStatus: 'not_submitted' }
+    if (f === 'reviewing') return { approvalStatus: 'pending' }
+    if (f === 'waiting')   return { approvalStatus: 'approved', status: 'beta' }
+    if (f === 'live')      return { approvalStatus: 'approved', status: 'published' }
+    if (f === 'rejected')  return { approvalStatus: 'rejected' }
+    if (f === 'suspended') return { suspended: 'true' }
+    return {}
+  }
+
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
-      const data = await adminService.getAllGames({ page, search, approvalStatus: approvalFilter, status: statusFilter })
+      const data = await adminService.getAllGames({ page, search, ...stateToParams(gameStateFilter), ...(serviceTypeFilter ? { serviceType: serviceTypeFilter } : {}) })
       setGames(data.games || [])
       setTotal(data.total || 0)
       setTotalPages(data.totalPages || 1)
-    } catch { showToast('불러오기 실패', false) }
+    } catch (e: any) {
+      const status = e?.response?.status
+      const msg = status === 401 ? '로그인이 필요합니다'
+        : status === 403 ? '관리자 권한이 필요합니다'
+        : e?.response?.data?.message || '불러오기 실패'
+      setLoadError(msg)
+      showToast(msg, false)
+    }
     finally { setLoading(false) }
-  }, [page, search, approvalFilter, statusFilter])
+  }, [page, search, gameStateFilter, serviceTypeFilter])
 
   useEffect(() => { load() }, [load])
 
-  const handleApprove = (id: string, action: 'approve' | 'reject' | 'review') => {
-    const labels: Record<string, string> = { approve: '승인', reject: '거부', review: '검토 중으로 변경' }
+  const handleAction = (id: string, type: 'approve' | 'reject' | 'suspend' | 'reactivate', title: string) => {
     setConfirm({
-      title: `게임을 ${labels[action]}하시겠습니까?`,
-      desc: action === 'reject' ? '거부 시 개발자에게 사유가 전달됩니다.' : '',
-      danger: action === 'reject',
+      title,
+      desc: type !== 'approve' ? '이 작업은 서비스에 즉시 반영됩니다.' : '',
+      danger: type !== 'approve' && type !== 'reactivate',
       onConfirm: async (reason) => {
         setConfirm(null)
         setActionLoading(id)
         try {
-          await adminService.approveGame(id, { action, rejectionReason: reason })
-          showToast(`게임이 ${labels[action]}되었습니다`)
+          if (type === 'approve') await adminService.approveGame(id, { action: 'approve' })
+          else if (type === 'reject') await adminService.approveGame(id, { action: 'reject', rejectionReason: reason })
+          else if (type === 'reactivate') await adminService.controlGameStatus(id, { action: 'reactivate' })
+          else await adminService.controlGameStatus(id, { action: 'suspend', reason })
+          showToast(`${title} 완료`)
           load()
         } catch (e: any) {
           showToast(e?.response?.data?.message || '처리 실패', false)
@@ -101,78 +122,7 @@ export default function AdminGamesPage() {
     })
   }
 
-  const handleControl = (id: string, action: string, label: string, danger = false) => {
-    setConfirm({
-      title: `${label} 처리하시겠습니까?`,
-      desc: danger ? '이 작업은 서비스에 즉시 반영됩니다.' : '',
-      danger,
-      onConfirm: async (reason) => {
-        setConfirm(null)
-        setActionLoading(id)
-        try {
-          await adminService.controlGameStatus(id, { action, reason })
-          showToast(`${label} 완료`)
-          load()
-        } catch (e: any) {
-          showToast(e?.response?.data?.message || '처리 실패', false)
-        } finally { setActionLoading(null) }
-      }
-    })
-  }
 
-  const approvalButtons = (g: any) => {
-    if (g.approvalStatus === 'pending' || g.approvalStatus === 'review') return (
-      <div className="flex gap-1.5">
-        <button onClick={() => handleApprove(g._id, 'approve')}
-          className="flex items-center gap-1 bg-green-700/30 text-accent hover:bg-accent-hover/50 border border-green-600/40 px-2.5 py-1 rounded text-xs transition-colors">
-          <CheckCircle className="w-3 h-3" /> 승인
-        </button>
-        <button onClick={() => handleApprove(g._id, 'review')}
-          className="flex items-center gap-1 bg-blue-700/30 text-blue-300 hover:bg-blue-700/50 border border-blue-600/40 px-2.5 py-1 rounded text-xs transition-colors">
-          <Clock className="w-3 h-3" /> 검토
-        </button>
-        <button onClick={() => handleApprove(g._id, 'reject')}
-          className="flex items-center gap-1 bg-red-700/30 text-accent-text hover:bg-red-700/50 border border-red-600/40 px-2.5 py-1 rounded text-xs transition-colors">
-          <XCircle className="w-3 h-3" /> 거부
-        </button>
-      </div>
-    )
-    return null
-  }
-
-  const statusButtons = (g: any) => {
-    const btns = []
-    if (g.approvalStatus === 'approved' && g.status !== 'archived') {
-      if (g.status !== 'draft') btns.push(
-        <button key="suspend" onClick={() => handleControl(g._id, 'suspend', '서비스 중지', true)}
-          className="flex items-center gap-1 bg-orange-700/30 text-orange-300 hover:bg-orange-700/50 border border-orange-600/40 px-2.5 py-1 rounded text-xs transition-colors">
-          <Pause className="w-3 h-3" /> 중지
-        </button>
-      )
-      if (g.status === 'draft' || g.status === 'beta') btns.push(
-        <button key="publish" onClick={() => handleControl(g._id, 'set_published', '정식 출시')}
-          className="flex items-center gap-1 bg-purple-700/30 text-purple-300 hover:bg-purple-700/50 border border-purple-600/40 px-2.5 py-1 rounded text-xs transition-colors">
-          <Play className="w-3 h-3" /> 출시
-        </button>
-      )
-      if (g.status === 'draft') btns.push(
-        <button key="reactivate" onClick={() => handleControl(g._id, 'reactivate', '재활성화')}
-          className="flex items-center gap-1 bg-cyan-700/30 text-cyan-300 hover:bg-cyan-700/50 border border-cyan-600/40 px-2.5 py-1 rounded text-xs transition-colors">
-          <RotateCcw className="w-3 h-3" /> 재활성화
-        </button>
-      )
-      btns.push(
-        <button key="archive" onClick={() => handleControl(g._id, 'archive', '서비스 종료', true)}
-          className="flex items-center gap-1 bg-bg-tertiary/50 text-text-secondary hover:bg-line-light border border-line/40 px-2.5 py-1 rounded text-xs transition-colors">
-          <Archive className="w-3 h-3" /> 종료
-        </button>
-      )
-    }
-    if (g.status === 'archived') btns.push(
-      <span key="done" className="text-text-muted text-xs px-2 py-1">서비스 종료됨</span>
-    )
-    return <div className="flex flex-wrap gap-1.5">{btns}</div>
-  }
 
   return (
     <AdminLayout>
@@ -195,75 +145,158 @@ export default function AdminGamesPage() {
           <div className="relative flex-1 min-w-48">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
             <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              placeholder="게임 이름 검색..."
+              placeholder="게임 이름, 개발자명, 장르 검색..."
               className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-line" />
           </div>
-          <select value={approvalFilter} onChange={(e) => { setApprovalFilter(e.target.value); setPage(1) }}
+          <select value={serviceTypeFilter} onChange={(e) => { setServiceTypeFilter(e.target.value); setPage(1) }}
             className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
-            <option value="">전체 심사상태</option>
-            <option value="not_submitted">미제출</option>
-            <option value="pending">심사대기</option>
-            <option value="review">검토중</option>
-            <option value="approved">승인됨</option>
-            <option value="rejected">거부됨</option>
-          </select>
-          <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1) }}
-            className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
-            <option value="">전체 서비스상태</option>
-            <option value="draft">드래프트</option>
+            <option value="">전체 구분</option>
             <option value="beta">베타</option>
-            <option value="published">출시</option>
-            <option value="archived">종료</option>
+            <option value="live">라이브</option>
+          </select>
+          <select value={gameStateFilter} onChange={(e) => { setGameStateFilter(e.target.value); setPage(1) }}
+            className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none ml-auto">
+            <option value="">전체 게임상태</option>
+            <option value="draft">초안 작성 중</option>
+            <option value="reviewing">심사 중</option>
+            <option value="waiting">출시 대기</option>
+            <option value="live">운영 중</option>
+            <option value="rejected">심사 거부</option>
+            <option value="suspended">강제 중지 중</option>
           </select>
         </div>
 
         {/* 테이블 */}
         {loading ? (
           <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-secondary" /></div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center justify-center h-48 gap-2">
+            <AlertCircle className="w-8 h-8 text-red-400" />
+            <p className="text-red-400 font-medium">{loadError}</p>
+            <button onClick={load} className="mt-2 px-4 py-1.5 text-sm bg-bg-tertiary border border-line rounded-lg text-text-secondary hover:text-text-primary transition-colors">다시 시도</button>
+          </div>
         ) : games.length === 0 ? (
           <div className="text-center py-16 text-text-muted">게임이 없습니다</div>
         ) : (
-          <div className="space-y-3">
-            {games.map((g) => {
-              const appr = APPROVAL_STATUS[g.approvalStatus] || APPROVAL_STATUS.pending
-              const stat = GAME_STATUS[g.status] || GAME_STATUS.draft
-              const isLoading = actionLoading === g._id
-              return (
-                <div key={g._id} className={`bg-bg-secondary border border-line rounded-xl p-4 transition-opacity ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}>
-                  <div className="flex items-start gap-4">
-                    {/* 썸네일 */}
-                    <div className="w-16 h-12 bg-bg-tertiary rounded-lg overflow-hidden flex-shrink-0">
-                      {g.thumbnail
-                        ? <Image src={`/uploads/${g.thumbnail.replace('uploads/','')}`} alt={g.title} width={64} height={48} className="w-full h-full object-cover" unoptimized />
-                        : <div className="w-full h-full flex items-center justify-center text-text-muted text-xs">No img</div>}
-                    </div>
-
-                    {/* 정보 */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-text-primary font-semibold text-sm truncate max-w-xs">{g.title}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded border ${appr.cls}`}>{appr.label}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${stat.cls}`}>{stat.label}</span>
-                        {g.genre && <span className="text-text-muted text-xs">{g.genre}</span>}
-                      </div>
-                      <p className="text-text-muted text-xs mb-2">
-                        개발자: {(g.developerId as any)?.username} · 플레이:{(g.playCount||0).toLocaleString()} · ★{(g.rating||0).toFixed(1)} · {new Date(g.createdAt).toLocaleDateString('ko-KR')}
-                      </p>
-                      {/* 승인 버튼 */}
-                      {approvalButtons(g)}
-                      {/* 상태 컨트롤 */}
-                      <div className="mt-2">{statusButtons(g)}</div>
-                    </div>
-
-                    {/* 지표 링크 */}
-                    <Link href={`/admin/metrics/${g._id}`}
-                      className="flex-shrink-0 flex items-center gap-1 text-xs text-text-secondary hover:text-cyan-300 border border-line hover:border-cyan-600/40 px-2.5 py-1.5 rounded-lg transition-colors">
-                      <BarChart2 className="w-3 h-3" /> 지표
-                    </Link>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="bg-bg-secondary border border-line rounded-xl overflow-x-auto">
+            <table className="w-full min-w-[770px] text-sm text-text-primary">
+              <thead>
+                <tr className="border-b border-line bg-bg-tertiary/50 text-sm font-semibold text-text-primary">
+                  <th className="px-3 py-2.5 text-center w-10 border-r border-line/20">NO.</th>
+                  <th className="px-3 py-2.5 text-left w-14 border-r border-line/20">썸네일</th>
+                  <th className="px-3 py-2.5 text-left w-52 max-w-[208px] border-r border-line/20">이름</th>
+                  <th className="px-3 py-2.5 text-left w-36 border-r border-line/20">개발자</th>
+                  <th className="px-3 py-2.5 text-left w-28 border-r border-line/20">구분</th>
+                  <th className="px-3 py-2.5 text-center w-24 border-r border-line/20">게임 테스트</th>
+                  <th className="px-3 py-2.5 text-center w-24 border-r border-line/20">관리 현황</th>
+                  <th className="px-3 py-2.5 text-left w-32 border-r border-line/20">게임 상태</th>
+                  <th className="px-3 py-2.5 text-center w-28 border-r border-line/20">심사 통과</th>
+                  <th className="px-3 py-2.5 text-center w-28 border-r border-line/20">심사 거부</th>
+                  <th className="px-3 py-2.5 text-center w-28 border-r border-line/20">강제 중지</th>
+                  <th className="px-3 py-2.5 text-center w-14">지표</th>
+                </tr>
+              </thead>
+              <tbody>
+                {games.map((g) => {
+                  const isLoading = actionLoading === g._id
+                  const isSuspended = !!g.suspendedAt
+                  const gameStateLabel =
+                    isSuspended ? { label: '강제 중지 중', color: 'text-red-400', dot: 'bg-red-400', pulse: false }
+                    : g.approvalStatus === 'not_submitted' ? { label: '초안 작성 중', color: 'text-text-muted', dot: 'bg-text-muted', pulse: false }
+                    : g.approvalStatus === 'pending' || g.approvalStatus === 'review' ? { label: '심사 중', color: 'text-yellow-400', dot: 'bg-yellow-400', pulse: true }
+                    : g.approvalStatus === 'rejected' ? { label: '심사 거부', color: 'text-red-400', dot: 'bg-red-400', pulse: false }
+                    : g.approvalStatus === 'approved' && g.status !== 'published' ? { label: '출시 대기', color: 'text-emerald-400', dot: 'bg-emerald-400', pulse: true }
+                    : { label: '운영 중', color: 'text-blue-500', dot: 'bg-blue-500', pulse: true }
+                  return (
+                    <tr key={g._id} className={`border-b border-line/50 last:border-0 transition-colors ${isLoading ? 'opacity-60 pointer-events-none' : ''} ${isSuspended ? 'bg-red-500/10 hover:bg-red-500/15' : 'hover:bg-bg-tertiary/20'}`}>
+                      {/* 번호 */}
+                      <td className="px-3 py-2.5 text-center text-sm text-text-muted border-r border-line/20">
+                        {g.gameNo || '-'}
+                      </td>
+                      {/* 썸네일 */}
+                      <td className="px-3 py-2.5 border-r border-line/20">
+                        <div className="w-20 h-16 bg-bg-tertiary rounded overflow-hidden">
+                          {g.thumbnail
+                            ? <Image src={`/uploads/${g.thumbnail.replace('uploads/','')}`} alt={g.title} width={80} height={64} className="w-full h-full object-cover" unoptimized />
+                            : <div className="w-full h-full flex items-center justify-center text-[10px]">-</div>}
+                        </div>
+                      </td>
+                      {/* 이름 */}
+                      <td className="px-3 py-2.5 w-52 max-w-[208px] border-r border-line/20">
+                        <p className="font-medium truncate">{g.title}</p>
+                        <p className="text-xs truncate">{g.genre || '-'}</p>
+                      </td>
+                      {/* 개발자 */}
+                      <td className="px-3 py-2.5 text-base truncate max-w-[128px] border-r border-line/20">{(g.developerId as any)?.username || '-'}</td>
+                      {/* 구분 */}
+                      <td className="px-3 py-2.5 border-r border-line/20">
+                        {g.serviceType === 'beta' && <span className="text-sm font-bold px-3 py-1 rounded-full bg-blue-500 text-white whitespace-nowrap">베타</span>}
+                        {g.serviceType === 'live' && <span className="text-sm font-bold px-3 py-1 rounded-full bg-green-500 text-white whitespace-nowrap">라이브</span>}
+                      </td>
+                      {/* 게임 테스트 */}
+                      <td className="px-3 py-2.5 text-center border-r border-line/20">
+                        <Link href={`/games/${g._id}`} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center w-10 h-9 hover:text-indigo-400 border border-line hover:border-indigo-500/40 rounded transition-colors">
+                          <Gamepad2 className="w-5 h-5" />
+                        </Link>
+                      </td>
+                      {/* 관리 현황 */}
+                      <td className="px-3 py-2.5 text-center border-r border-line/20">
+                        <Link href={`/games-management/${g._id}/manage?adminView=1`} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center w-10 h-9 hover:text-indigo-400 border border-line hover:border-indigo-500/40 rounded transition-colors">
+                          <Settings className="w-5 h-5" />
+                        </Link>
+                      </td>
+                      {/* 게임 상태 */}
+                      <td className="px-3 py-2.5 border-r border-line/20">
+                        <span className={`inline-flex items-center gap-1 text-base font-medium whitespace-nowrap ${gameStateLabel.color}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${gameStateLabel.dot} ${gameStateLabel.pulse ? 'animate-pulse' : ''}`} />
+                          {gameStateLabel.label}
+                        </span>
+                      </td>
+                      {/* 심사 통과 */}
+                      <td className="px-3 py-2.5 text-center border-r border-line/20">
+                        <button onClick={() => handleAction(g._id, 'approve', '심사 통과')}
+                          disabled={g.approvalStatus === 'not_submitted' || g.approvalStatus === 'approved'}
+                          className="px-3 py-1.5 rounded-md text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
+                          심사 통과
+                        </button>
+                      </td>
+                      {/* 심사 거부 */}
+                      <td className="px-3 py-2.5 text-center border-r border-line/20">
+                        <button onClick={() => handleAction(g._id, 'reject', '심사 거부')}
+                          disabled={g.approvalStatus === 'not_submitted' || g.approvalStatus === 'rejected' || g.approvalStatus === 'approved'}
+                          className="px-3 py-1.5 rounded-md text-xs font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
+                          심사 거부
+                        </button>
+                      </td>
+                      {/* 강제 중지 / 중지 취소 */}
+                      <td className="px-3 py-2.5 text-center border-r border-line/20">
+                        {isSuspended ? (
+                          <button onClick={() => handleAction(g._id, 'reactivate', '중지 취소')}
+                            className="px-3 py-1.5 rounded-md text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors whitespace-nowrap">
+                            중지 취소
+                          </button>
+                        ) : (
+                          <button onClick={() => handleAction(g._id, 'suspend', '강제 중지')}
+                            disabled={!['approved', 'pending', 'review', 'rejected'].includes(g.approvalStatus)}
+                            className="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-600 text-white hover:bg-slate-500 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
+                            강제 중지
+                          </button>
+                        )}
+                      </td>
+                      {/* 지표 */}
+                      <td className="px-3 py-2.5 text-center">
+                        <Link href={`/analytics?tab=analysis&gameId=${g._id}&adminView=1`} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center w-10 h-9 hover:text-indigo-400 border border-line hover:border-indigo-500/40 rounded transition-colors">
+                          <BarChart2 className="w-5 h-5" />
+                        </Link>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
 

@@ -35,9 +35,6 @@ function LiveGameCard({ game }: { game: Game }) {
             className="object-cover group-hover:scale-110 transition-transform duration-300"
             unoptimized
           />
-          <div className="absolute top-3 left-3">
-            <Badge className="bg-accent text-text-primary">라이브</Badge>
-          </div>
           <div className="absolute top-3 right-3">
             <button
               className="w-8 h-8 rounded-full bg-bg-primary/70 backdrop-blur-sm flex items-center justify-center hover:bg-bg-tertiary transition-colors"

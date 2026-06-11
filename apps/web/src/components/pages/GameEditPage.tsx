@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { RefreshCw, Save, ArrowLeft, Plus, X, Upload, Globe, Send } from 'lucide-react'
 import { gameService } from '@/services/gameService'
+import { FORM_GENRES } from '@/constants/game'
 
 interface GameData {
   _id: string
@@ -414,8 +415,8 @@ export default function GameEditPage() {
               <select value={genre} onChange={e => setGenre(e.target.value)}
                 className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-md text-text-primary text-sm">
                 <option value="">장르 선택</option>
-                {[['액션','액션'],['RPG','RPG'],['FPS','FPS'],['레이싱','레이싱'],['전략','전략'],['시뮬레이션','시뮬레이션'],['어드벤처','어드벤처'],['호러','호러'],['퍼즐','퍼즐'],['스포츠','스포츠']].map(([v,l]) => (
-                  <option key={v} value={v}>{l}</option>
+                {FORM_GENRES.map(g => (
+                  <option key={g} value={g}>{g}</option>
                 ))}
               </select>
             </div>

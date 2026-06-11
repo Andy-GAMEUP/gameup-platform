@@ -306,4 +306,31 @@ export const gameService = {
     const response = await apiClient.get(`/games/announcements/${announcementId}`)
     return response.data as { announcement: RecentGameAnnouncement }
   },
+
+  getGamePayments: async (gameId: string, params?: {
+    startDate?: string; endDate?: string; status?: string; search?: string; page?: number; limit?: number
+  }) => {
+    const response = await apiClient.get(`/games/${gameId}/payments`, { params })
+    return response.data as {
+      payments: any[]
+      pagination: { page: number; limit: number; total: number; pages: number }
+      summary: { totalAmount: number; totalCount: number; uniqueBuyers: number }
+    }
+  },
+
+  getAllDeveloperPayments: async (params?: {
+    startDate?: string; endDate?: string; status?: string; pgProvider?: string; search?: string; page?: number; limit?: number
+  }) => {
+    const response = await apiClient.get('/games/developer/payments', { params })
+    return response.data as {
+      payments: any[]
+      pagination: { page: number; limit: number; total: number; pages: number }
+      summary: { totalAmount: number; totalCount: number; uniqueBuyers: number }
+    }
+  },
+
+  getPaymentProviders: async () => {
+    const response = await apiClient.get('/games/developer/payment-providers')
+    return response.data as { providers: string[] }
+  },
 }

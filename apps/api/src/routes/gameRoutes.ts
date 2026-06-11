@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGames, getDeveloperStats, getGameDeletionLogs, requestReview } from '../controllers/gameController'
+import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGames, getDeveloperStats, getGameDeletionLogs, requestReview, restoreGame, getGamePayments, getAllDeveloperPayments, getPaymentProviders } from '../controllers/gameController'
 import { getDeveloperOverview, getDeveloperDaily, getGameAnalytics, exportGameAnalytics, exportDeveloperDashboard } from '../controllers/gameAnalyticsController'
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/gameMediaController'
@@ -13,8 +13,8 @@ const router = Router()
 router.get('/', getAllGames)
 router.get('/announcements/recent', getRecentGameAnnouncements)
 router.get('/announcements/:announcementId', getGameAnnouncementById)
-router.get('/my', authenticateToken, requireRole('developer'), getMyGames)
-router.get('/developer/stats', authenticateToken, requireRole('developer'), getDeveloperStats)
+router.get('/my', authenticateToken, requireRole('developer', 'admin'), getMyGames)
+router.get('/developer/stats', authenticateToken, requireRole('developer', 'admin'), getDeveloperStats)
 
 // 개발자 대시보드 Overview (실데이터)
 router.get('/developer/overview', authenticateToken, requireRole('developer', 'admin'), getDeveloperOverview)
@@ -23,10 +23,11 @@ router.get('/developer/export', authenticateToken, requireRole('developer', 'adm
 
 // 게임 삭제 감사로그 (admin)
 router.get('/admin/deletion-logs', authenticateToken, requireRole('admin'), getGameDeletionLogs)
+router.post('/admin/deletion-logs/:logId/restore', authenticateToken, requireRole('admin'), restoreGame)
 
 // 개발자 Q&A 관리 (피드백 관리)
-router.get('/developer/qas', authenticateToken, requireRole('developer'), getDeveloperQAs)
-router.put('/developer/qas/:qaId/answer', authenticateToken, requireRole('developer'), answerGameQA)
+router.get('/developer/qas', authenticateToken, requireRole('developer', 'admin'), getDeveloperQAs)
+router.put('/developer/qas/:qaId/answer', authenticateToken, requireRole('developer', 'admin'), answerGameQA)
 
 // 내 Q&A 조회 (마이페이지)
 router.get('/my-qas', authenticateToken, getMyQAs)
@@ -34,12 +35,19 @@ router.get('/my-qas', authenticateToken, getMyQAs)
 router.get('/:id', getGameById)
 router.post('/', authenticateToken, requireRole('developer'), uploadFields, createGame)
 router.post('/:id/request-review', authenticateToken, requireRole('developer'), requestReview)
-router.put('/:id', authenticateToken, requireRole('developer'), uploadFields, updateGame)
+router.put('/:id', authenticateToken, requireRole('developer', 'admin'), uploadFields, updateGame)
 router.delete('/:id', authenticateToken, requireRole('developer', 'admin'), deleteGame)
 
 // 게임별 Q&A
 router.get('/:gameId/qas', getGameQAs)
 router.post('/:gameId/qas', authenticateToken, createGameQA)
+
+// 전체 게임 결제 내역 (개발자 소유 게임 통합)
+router.get('/developer/payments', authenticateToken, requireRole('developer', 'admin'), getAllDeveloperPayments)
+router.get('/developer/payment-providers', authenticateToken, requireRole('developer', 'admin'), getPaymentProviders)
+
+// 게임별 결제 내역
+router.get('/:gameId/payments', authenticateToken, requireRole('developer', 'admin'), getGamePayments)
 
 // 게임별 분석
 router.get('/:gameId/analytics', authenticateToken, requireRole('developer', 'admin'), getGameAnalytics)
@@ -47,23 +55,23 @@ router.get('/:gameId/analytics/export', authenticateToken, requireRole('develope
 
 // 게임 미디어 (스크린샷 / 동영상)
 router.get('/:gameId/media', getGameMedia)
-router.post('/:gameId/media', authenticateToken, requireRole('developer'), mediaUpload, addGameMedia)
-router.delete('/:gameId/media/:mediaId', authenticateToken, requireRole('developer'), deleteGameMedia)
+router.post('/:gameId/media', authenticateToken, requireRole('developer', 'admin'), mediaUpload, addGameMedia)
+router.delete('/:gameId/media/:mediaId', authenticateToken, requireRole('developer', 'admin'), deleteGameMedia)
 
 // 게임샵 아이템
 router.get('/:gameId/shop-items/public', getPublicGameShopItems)
-router.get('/:gameId/shop-items', authenticateToken, requireRole('developer'), getGameShopItems)
-router.post('/:gameId/shop-items', authenticateToken, requireRole('developer'), shopItemUpload, createGameShopItem)
-router.put('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer'), shopItemUpload, updateGameShopItem)
-router.delete('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer'), deleteGameShopItem)
-router.put('/:gameId/shop-items-reorder', authenticateToken, requireRole('developer'), reorderGameShopItems)
-router.put('/:gameId/shop-currency-icon', authenticateToken, requireRole('developer'), shopCurrencyIconUpload, updateShopCurrencyIcon)
-router.put('/:gameId/shop-currency-name', authenticateToken, requireRole('developer'), updateShopCurrencyName)
+router.get('/:gameId/shop-items', authenticateToken, requireRole('developer', 'admin'), getGameShopItems)
+router.post('/:gameId/shop-items', authenticateToken, requireRole('developer', 'admin'), shopItemUpload, createGameShopItem)
+router.put('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer', 'admin'), shopItemUpload, updateGameShopItem)
+router.delete('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer', 'admin'), deleteGameShopItem)
+router.put('/:gameId/shop-items-reorder', authenticateToken, requireRole('developer', 'admin'), reorderGameShopItems)
+router.put('/:gameId/shop-currency-icon', authenticateToken, requireRole('developer', 'admin'), shopCurrencyIconUpload, updateShopCurrencyIcon)
+router.put('/:gameId/shop-currency-name', authenticateToken, requireRole('developer', 'admin'), updateShopCurrencyName)
 
 // 게임 공지&알림
 router.get('/:gameId/announcements/public', getPublicGameAnnouncements)
-router.get('/:gameId/announcements', authenticateToken, requireRole('developer'), getGameAnnouncements)
-router.post('/:gameId/announcements', authenticateToken, requireRole('developer'), createGameAnnouncement)
-router.delete('/:gameId/announcements/:announcementId', authenticateToken, requireRole('developer'), deleteGameAnnouncement)
+router.get('/:gameId/announcements', authenticateToken, requireRole('developer', 'admin'), getGameAnnouncements)
+router.post('/:gameId/announcements', authenticateToken, requireRole('developer', 'admin'), createGameAnnouncement)
+router.delete('/:gameId/announcements/:announcementId', authenticateToken, requireRole('developer', 'admin'), deleteGameAnnouncement)
 
 export default router

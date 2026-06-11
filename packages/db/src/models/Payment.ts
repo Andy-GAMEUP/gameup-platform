@@ -12,6 +12,7 @@ export interface IPayment extends Document {
   metadata: {
     gameName?: string
     itemName?: string
+    itemId?: string
   }
   createdAt: Date
   updatedAt: Date
@@ -29,6 +30,7 @@ const PaymentSchema = new Schema<IPayment>({
   metadata: {
     gameName: String,
     itemName: String,
+    itemId:   String,
   }
 }, { timestamps: true })
 

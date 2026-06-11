@@ -246,7 +246,7 @@ export const adminService = {
     return res.data
   },
 
-  getAllGames: async (params?: { page?: number; limit?: number; status?: string; approvalStatus?: string; search?: string }) => {
+  getAllGames: async (params?: { page?: number; limit?: number; status?: string; approvalStatus?: string; search?: string; serviceType?: string; suspended?: string }) => {
     const res = await apiClient.get('/admin/games', { params })
     return res.data
   },
@@ -546,6 +546,9 @@ export const adminService = {
 
   updatePointPackage: (id: string, data: Partial<{ name: string; points: number; price: number; description: string; sortOrder: number; isActive: boolean }>) =>
     apiClient.put(`/admin/point-packages/${id}`, data).then(r => r.data),
+
+  restoreGame: (logId: string) =>
+    apiClient.post(`/games/admin/deletion-logs/${logId}/restore`).then(r => r.data),
 }
 
 export default adminService

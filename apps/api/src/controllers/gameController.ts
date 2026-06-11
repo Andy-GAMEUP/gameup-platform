@@ -9,12 +9,13 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
   try {
     const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType } = req.query
 
-    const filter: Record<string, unknown> = {}
+    const filter: Record<string, unknown> = {
+      approvalStatus: 'approved',
+      status: 'published',
+    }
 
     if (serviceType && serviceType !== 'all') {
       filter.serviceType = serviceType
-    } else {
-      filter.status = { $in: ['beta', 'published'] }
     }
 
     if (status && status !== 'all') {
@@ -302,7 +303,7 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
     const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress
     const userAgent = req.headers['user-agent'] as string | undefined
 
-    await GameDeletionLog.create({
+    const createdLog = await GameDeletionLog.create({
       gameId: game._id,
       gameTitle: game.title,
       gameGenre: game.genre,
@@ -318,22 +319,24 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
       deletedAt: new Date(),
     })
 
-    // 🔒 실제 파일도 함께 삭제
-    if (game.gameFile && fs.existsSync(game.gameFile)) {
-      fs.unlinkSync(game.gameFile)
+    // 파일을 삭제 대신 deleted 폴더로 이동 (복구 시 되돌리기 위해)
+    const logId = (createdLog._id as { toString(): string }).toString()
+    const deletedDir = path.join(process.cwd(), 'uploads', 'deleted', logId)
+    if (!fs.existsSync(deletedDir)) fs.mkdirSync(deletedDir, { recursive: true })
+
+    const moveFile = (filePath: string) => {
+      const absPath = filePath.startsWith('/uploads/')
+        ? path.join(process.cwd(), filePath.slice(1))
+        : filePath
+      if (fs.existsSync(absPath)) {
+        const dest = path.join(deletedDir, path.basename(absPath))
+        fs.renameSync(absPath, dest)
+      }
     }
-    if (game.thumbnail) {
-      const thumbPath = game.thumbnail.startsWith('/uploads/')
-        ? path.join(process.cwd(), game.thumbnail.slice(1))
-        : game.thumbnail
-      if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath)
-    }
-    if (game.bannerImage) {
-      const bannerPath = game.bannerImage.startsWith('/uploads/')
-        ? path.join(process.cwd(), game.bannerImage.slice(1))
-        : game.bannerImage
-      if (fs.existsSync(bannerPath)) fs.unlinkSync(bannerPath)
-    }
+
+    if (game.gameFile) moveFile(game.gameFile)
+    if (game.thumbnail) moveFile(game.thumbnail)
+    if (game.bannerImage) moveFile(game.bannerImage)
 
     await Game.findByIdAndDelete(id)
 
@@ -357,14 +360,14 @@ export const getGameDeletionLogs = async (req: AuthRequest, res: Response) => {
     const limitNum = Math.min(100, Math.max(1, Number(limit)))
     const skip = (pageNum - 1) * limitNum
 
-    const filter: Record<string, unknown> = {}
+    const filter: Record<string, unknown> = { restoredAt: { $exists: false } }
     if (search) {
       const safe = (search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
       filter.$or = [
         { gameTitle: { $regex: safe, $options: 'i' } },
+        { developerUsername: { $regex: safe, $options: 'i' } },
         { deletedByUsername: { $regex: safe, $options: 'i' } },
         { deletedByEmail: { $regex: safe, $options: 'i' } },
-        { reason: { $regex: safe, $options: 'i' } },
       ]
     }
 
@@ -373,9 +376,22 @@ export const getGameDeletionLogs = async (req: AuthRequest, res: Response) => {
       GameDeletionLog.countDocuments(filter),
     ])
 
+    const gameIds = logs.map(l => l.gameId)
+    const revenueAgg = await Payment.aggregate([
+      { $match: { gameId: { $in: gameIds }, status: 'completed' } },
+      { $group: { _id: '$gameId', total: { $sum: '$amount' } } },
+    ])
+    const revenueMap: Record<string, number> = {}
+    revenueAgg.forEach(r => { revenueMap[String(r._id)] = r.total })
+
+    const logsWithRevenue = logs.map(l => ({
+      ...l.toObject(),
+      totalRevenue: revenueMap[String(l.gameId)] ?? 0,
+    }))
+
     res.json({
       success: true,
-      logs,
+      logs: logsWithRevenue,
       pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
     })
   } catch (error) {
@@ -384,10 +400,240 @@ export const getGameDeletionLogs = async (req: AuthRequest, res: Response) => {
   }
 }
 
+export const restoreGame = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: '관리자만 복구할 수 있습니다' })
+    }
+
+    const { logId } = req.params
+    const log = await GameDeletionLog.findById(logId)
+    if (!log) return res.status(404).json({ message: '삭제 로그를 찾을 수 없습니다' })
+    if (!log.gameSnapshot) return res.status(400).json({ message: '스냅샷 데이터가 없습니다' })
+
+    const existing = await Game.findById(log.gameId)
+    if (existing) return res.status(409).json({ message: '이미 해당 ID의 게임이 존재합니다' })
+
+    const { _id, __v, id, ...snapshot } = log.gameSnapshot as Record<string, unknown>
+    const VALID_STATUS = ['draft', 'beta', 'published', 'archived']
+    const VALID_APPROVAL = ['not_submitted', 'pending', 'review', 'approved', 'rejected']
+    const VALID_SERVICE_TYPE = ['beta', 'live', 'review', 'ended']
+    const VALID_MONETIZATION = ['free', 'ad', 'paid', 'freemium']
+    if (!VALID_STATUS.includes(snapshot.status as string)) snapshot.status = 'draft'
+    if (!VALID_APPROVAL.includes(snapshot.approvalStatus as string)) snapshot.approvalStatus = 'not_submitted'
+    if (!VALID_SERVICE_TYPE.includes(snapshot.serviceType as string)) snapshot.serviceType = 'beta'
+    if (!VALID_MONETIZATION.includes(snapshot.monetization as string)) snapshot.monetization = 'free'
+    await Game.create({ _id: log.gameId, ...snapshot })
+
+    // deleted 폴더의 파일을 원래 경로로 복원
+    const deletedDir = path.join(process.cwd(), 'uploads', 'deleted', logId)
+    if (fs.existsSync(deletedDir)) {
+      const restoreFile = (filePath: string) => {
+        const absPath = filePath.startsWith('/uploads/')
+          ? path.join(process.cwd(), filePath.slice(1))
+          : filePath
+        const src = path.join(deletedDir, path.basename(absPath))
+        if (fs.existsSync(src)) {
+          const dir = path.dirname(absPath)
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+          fs.renameSync(src, absPath)
+        }
+      }
+      const snap = snapshot as { thumbnail?: string; bannerImage?: string; gameFile?: string }
+      if (snap.thumbnail) restoreFile(snap.thumbnail)
+      if (snap.bannerImage) restoreFile(snap.bannerImage)
+      if (snap.gameFile) restoreFile(snap.gameFile)
+    }
+
+    await GameDeletionLog.findByIdAndUpdate(logId, { restoredAt: new Date() })
+
+    res.json({ success: true, message: '게임이 복구되었습니다' })
+  } catch (error) {
+    console.error('Restore game error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+export const getPaymentProviders = async (req: AuthRequest, res: Response) => {
+  try {
+    const gameQuery = req.user?.role === 'admin'
+      ? {}
+      : { developerId: req.user?.id }
+    const games = await Game.find(gameQuery).select('_id')
+    const gameIds = games.map(g => g._id)
+    const providers = await Payment.distinct('pgProvider', {
+      gameId: { $in: gameIds },
+      pgProvider: { $exists: true, $ne: '' },
+    })
+    res.json({ success: true, providers: providers.filter(Boolean).sort() })
+  } catch (error) {
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+export const getGamePayments = async (req: AuthRequest, res: Response) => {
+  try {
+    const { gameId } = req.params
+    const { startDate, endDate, status, pgProvider, search, page = 1, limit = 50 } = req.query
+
+    const game = await Game.findById(gameId).select('developerId')
+    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    if (req.user?.role !== 'admin' && String(game.developerId) !== req.user?.id) {
+      return res.status(403).json({ message: '권한이 없습니다' })
+    }
+
+    const filter: Record<string, unknown> = { gameId }
+    if (status && status !== 'all') filter.status = status
+    if (pgProvider && pgProvider !== 'all') filter.pgProvider = pgProvider
+    if (startDate || endDate) {
+      const dateFilter: Record<string, Date> = {}
+      if (startDate) dateFilter.$gte = new Date(startDate as string)
+      if (endDate) {
+        const end = new Date(endDate as string)
+        end.setHours(23, 59, 59, 999)
+        dateFilter.$lte = end
+      }
+      filter.createdAt = dateFilter
+    }
+
+    const pageNum = Math.max(1, Number(page))
+    const limitNum = Math.min(200, Math.max(1, Number(limit)))
+    const skip = (pageNum - 1) * limitNum
+
+    let query = Payment.find(filter)
+      .populate('userId', 'username email')
+      .populate('gameId', 'title thumbnail shopCurrencyName')
+      .sort({ createdAt: -1 })
+
+    if (search) {
+      const safe = (search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const userIds = await (await import('@gameup/db')).UserModel
+        .find({ username: { $regex: safe, $options: 'i' } })
+        .select('_id')
+      const { $in: gameIdFilter, ...baseFilter } = filter as any
+      filter.$or = [
+        { userId: { $in: userIds.map((u: { _id: unknown }) => u._id) } },
+        { 'metadata.itemName': { $regex: safe, $options: 'i' } },
+      ]
+      query = Payment.find(filter)
+        .populate('userId', 'username email')
+        .populate('gameId', 'title thumbnail shopCurrencyName')
+        .sort({ createdAt: -1 })
+    }
+
+    const [payments, total] = await Promise.all([
+      query.skip(skip).limit(limitNum),
+      Payment.countDocuments(filter),
+    ])
+
+    const completedPayments = await Payment.find({ ...filter, status: 'completed' })
+    const totalAmount = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0)
+    const uniqueBuyers = new Set(completedPayments.map(p => String(p.userId))).size
+
+    const providers = (await Payment.distinct('pgProvider', { gameId, pgProvider: { $ne: '' } })).filter(Boolean).sort()
+
+    res.json({
+      success: true,
+      payments,
+      pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
+      summary: { totalAmount, totalCount: total, uniqueBuyers },
+      providers,
+    })
+  } catch (error) {
+    console.error('Get game payments error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+export const getAllDeveloperPayments = async (req: AuthRequest, res: Response) => {
+  try {
+    const { startDate, endDate, status, pgProvider, search, page = 1, limit = 50 } = req.query
+
+    const gameQuery = req.user?.role === 'admin'
+      ? {}
+      : { developerId: req.user?.id }
+    const games = await Game.find(gameQuery).select('_id')
+    const gameIds = games.map(g => g._id)
+
+    const filter: Record<string, unknown> = { gameId: { $in: gameIds } }
+    if (status && status !== 'all') filter.status = status
+    if (pgProvider && pgProvider !== 'all') filter.pgProvider = pgProvider
+    if (startDate || endDate) {
+      const dateFilter: Record<string, Date> = {}
+      if (startDate) dateFilter.$gte = new Date(startDate as string)
+      if (endDate) {
+        const end = new Date(endDate as string)
+        end.setHours(23, 59, 59, 999)
+        dateFilter.$lte = end
+      }
+      filter.createdAt = dateFilter
+    }
+
+    const pageNum = Math.max(1, Number(page))
+    const limitNum = Math.min(200, Math.max(1, Number(limit)))
+    const skip = (pageNum - 1) * limitNum
+
+    const gamePopulate = {
+      path: 'gameId',
+      select: 'title thumbnail shopCurrencyName developerId',
+      populate: { path: 'developerId', select: 'username companyInfo' },
+    }
+
+    let query = Payment.find(filter)
+      .populate('userId', 'username email')
+      .populate(gamePopulate)
+      .sort({ createdAt: -1 })
+
+    if (search) {
+      const safe = (search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const userIds = await (await import('@gameup/db')).UserModel
+        .find({ username: { $regex: safe, $options: 'i' } })
+        .select('_id')
+      const { $in: gameIdFilter, ...baseFilter } = filter as any
+      filter.$or = [
+        { userId: { $in: userIds.map((u: { _id: unknown }) => u._id) } },
+        { 'metadata.itemName': { $regex: safe, $options: 'i' } },
+      ]
+      query = Payment.find(filter)
+        .populate('userId', 'username email')
+        .populate(gamePopulate)
+        .sort({ createdAt: -1 })
+    }
+
+    const [payments, total] = await Promise.all([
+      query.skip(skip).limit(limitNum),
+      Payment.countDocuments(filter),
+    ])
+
+    const completedPayments = await Payment.find({ ...filter, status: 'completed' })
+    const totalAmount = completedPayments.reduce((sum, p) => sum + (p.amount || 0), 0)
+    const uniqueBuyers = new Set(completedPayments.map(p => String(p.userId))).size
+
+    const baseFilter = { gameId: { $in: gameIds } }
+    const providers = (await Payment.distinct('pgProvider', { ...baseFilter, pgProvider: { $ne: '' } })).filter(Boolean).sort()
+
+    res.json({
+      success: true,
+      payments,
+      pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
+      summary: { totalAmount, totalCount: total, uniqueBuyers },
+      providers,
+    })
+  } catch (error) {
+    console.error('Get all developer payments error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
 export const getMyGames = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
-    const games = await Game.find({ developerId: req.user.id }).sort({ createdAt: -1 })
+    const gameQuery = req.user.role === 'admin' ? {} : { developerId: req.user.id }
+    const gamesQuery = Game.find(gameQuery).sort({ createdAt: -1 })
+    if (req.user.role === 'admin') {
+      gamesQuery.populate('developerId', 'username companyInfo')
+    }
+    const games = await gamesQuery
     const gameIds = games.map(g => g._id)
     const screenshotGameIds = await GameMedia.distinct('gameId', { gameId: { $in: gameIds }, type: 'screenshot' })
     const screenshotSet = new Set(screenshotGameIds.map(id => id.toString()))

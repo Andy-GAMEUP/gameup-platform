@@ -15,6 +15,7 @@ export interface IGameDeletionLog extends Document {
   userAgent?: string
   gameSnapshot?: Record<string, unknown>
   deletedAt: Date
+  restoredAt?: Date
 }
 
 const gameDeletionLogSchema = new Schema<IGameDeletionLog>(
@@ -33,6 +34,7 @@ const gameDeletionLogSchema = new Schema<IGameDeletionLog>(
     userAgent: { type: String },
     gameSnapshot: { type: Schema.Types.Mixed },
     deletedAt: { type: Date, default: Date.now, index: true },
+    restoredAt: { type: Date },
   },
   { timestamps: false }
 )

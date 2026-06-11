@@ -77,7 +77,7 @@ export default function UploadGamePage() {
       fd.append('requirements', formData.requirements)
 
       await gameService.createGame(fd)
-      alert('게임이 등록되었습니다. 게임 관리에서 심사를 준비해 주세요.')
+      alert('게임이 등록되었습니다. 게임 세팅을 진행해주세요.')
       router.push('/games-management')
     } catch (err: any) {
       setError(err.response?.data?.message || '게임 등록 중 오류가 발생했습니다.')

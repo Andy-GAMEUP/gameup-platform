@@ -10,7 +10,7 @@ import {
   Home, LogOut, Shield, UserPlus, Handshake, Tags,
   Smartphone, Globe, Calendar, FileCheck, ImageIcon, Bell, Package,
   BarChart3, PieChart, UserCircle, Building2, Award, Activity, FileText, Gift, Flag,
-  MessageCircle, ShieldBan, Trash2,
+  MessageCircle, ShieldBan, Trash2, CreditCard, Calculator,
 } from 'lucide-react'
 
 interface AdminLayoutProps { children: ReactNode }
@@ -26,7 +26,9 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/admin',            label: '대시보드',    icon: LayoutDashboard, exact: true },
   { path: '/admin/games',      label: '게임 관리',   icon: Gamepad2 },
-  { path: '/admin/game-deletion-logs', label: '게임 삭제 로그', icon: Gamepad2 },
+  { path: '/admin/game-deletion-logs', label: '삭제 게임 관리', icon: Gamepad2 },
+  { path: '/admin/payments', label: '결제 / 환불', icon: CreditCard },
+  { path: '/admin/settlements', label: '정산', icon: Calculator },
   { path: '/admin/community', label: '커뮤니티', icon: MessageSquare, exact: true },
   {
     path: '/admin/community/reported',
@@ -92,8 +94,13 @@ const navItems: NavItem[] = [
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { logout, user } = useAuth()
+  const { logout, user, isLoading } = useAuth()
   const [open, setOpen] = useState(true)
+
+  if (!isLoading && (!user || user.role !== 'admin')) {
+    router.replace('/login')
+    return null
+  }
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {}

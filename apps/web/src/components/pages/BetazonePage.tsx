@@ -27,12 +27,6 @@ function GameCard({ game }: { game: Game }) {
   const id = (game as any)._id || game.id
   const [favorite, setFavorite] = useState(false)
 
-  const statusLabel = game.status === 'beta' ? '베타' : game.status === 'published' ? '공개' : game.status
-  const statusClass =
-    game.status === 'beta'
-      ? 'bg-accent text-text-primary'
-      : 'bg-blue-600/80 text-text-primary'
-
   return (
     <div className="cursor-pointer group" onClick={() => router.push(`/games/${id}`)}>
       <Card className="bg-bg-secondary/50 border-2 border-accent-muted overflow-hidden hover:border-accent transition-all h-full">
@@ -44,9 +38,6 @@ function GameCard({ game }: { game: Game }) {
             className="object-cover group-hover:scale-110 transition-transform duration-300"
             unoptimized
           />
-          <div className="absolute top-3 left-3">
-            <Badge className={statusClass}>{statusLabel}</Badge>
-          </div>
           <div className="absolute top-3 right-3">
             <button
               className="w-8 h-8 rounded-full bg-bg-primary/70 backdrop-blur-sm flex items-center justify-center hover:bg-bg-tertiary transition-colors"

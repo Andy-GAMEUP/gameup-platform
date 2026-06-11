@@ -11,7 +11,7 @@ import notificationService from '@/services/notificationService'
 import {
   LayoutDashboard, Gamepad2, Users, MessageSquare, BarChart3, Settings,
   Bell, ChevronLeft, ChevronRight, ChevronDown, LogOut, Plus, Home, Handshake,
-  LineChart, Repeat2, DollarSign, UserPlus, Crown, TrendingUp,
+  LineChart, Repeat2, DollarSign, UserPlus, Crown, TrendingUp, CreditCard,
 } from 'lucide-react'
 
 export default function DeveloperLayout({ children }: { children: React.ReactNode }) {
@@ -65,6 +65,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
         { tab: 'ltvcalc',   label: 'LTV 계산',  icon: <TrendingUp  className="w-4 h-4" /> },
       ],
     },
+    { path: '/payments', label: '결제 / 환불', icon: <CreditCard className="w-5 h-5" /> },
     { path: '/minihome-manage', label: '미니홈 관리', icon: <Home      className="w-5 h-5" /> },
     { path: '/proposals',       label: '제안 관리',   icon: <Handshake className="w-5 h-5" /> },
     { path: '/settings',        label: '설정',       icon: <Settings  className="w-5 h-5" /> },

@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/useAuth'
 import playerService, { FavoriteGame, Activity, ActivityScoreItem } from '@/services/playerService'
 import { authService } from '@/services/authService'
 import { gameService } from '@/services/gameService'
+import { FILTER_GENRES } from '@/constants/game'
 import MiniHomeManagementPage from '@/components/pages/MiniHomeManagementPage'
 import {
   User, Heart, Activity as ActivityIcon, Star, Award,
@@ -24,7 +25,7 @@ const ACTIVITY_CONFIG: Record<string, { label: string; icon: string; color: stri
   helpful:   { label: '도움됨 표시',  icon: '👍', color: 'text-accent'  },
 }
 
-const GENRE_LIST = ['RPG', '액션', 'FPS', '전략', '퍼즐', '스포츠', '레이싱', '어드벤처', '시뮬레이션']
+const GENRE_LIST = FILTER_GENRES.filter(g => g !== '전체')
 const PLACEHOLDER = 'https://images.unsplash.com/photo-1738071665033-7ba9885c2c20?w=400&q=80'
 
 interface MyQA {

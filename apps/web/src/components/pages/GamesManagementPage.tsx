@@ -23,6 +23,8 @@ interface Game {
   bannerImage?: string
   hasScreenshots?: boolean
   ratingCertificate?: { ratingClass?: string }
+  suspendedAt?: string
+  suspendReason?: string
 }
 
 const approvalBadge: Record<string, string> = {
@@ -117,22 +119,6 @@ const filteredGames = games.filter((game) =>
         </div>
       </div>
 
-      {/* 통계 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {stats.map(s => (
-          <div key={s.label} className="bg-bg-secondary border border-line rounded-lg p-4">
-            <div className={`text-2xl font-bold mb-1 ${s.color}`}>{s.value}</div>
-            <div className="text-sm text-text-secondary">{s.label}</div>
-            {s.sub != null && s.sub > 0 && (
-              <div className="mt-1 flex items-center gap-1 text-xs text-yellow-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 inline-block" />
-                심사중 {s.sub}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
       {/* 검색 */}
       <div className="bg-bg-secondary border border-line rounded-lg p-4">
         <div className="relative">
@@ -214,31 +200,37 @@ const filteredGames = games.filter((game) =>
                       </div>
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="text-[13px] text-text-muted">{game.genre}</span>
-                        {game.approvalStatus === 'not_submitted' && (
+                        {game.suspendedAt && (
+                          <span className="inline-flex items-center gap-1 text-[15px] font-medium text-red-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                            강제 중지
+                          </span>
+                        )}
+                        {!game.suspendedAt && game.approvalStatus === 'not_submitted' && (
                           <span className="inline-flex items-center gap-1 text-[15px] font-medium text-text-muted">
                             <span className="w-1.5 h-1.5 rounded-full bg-text-muted" />
                             초안 작성 중
                           </span>
                         )}
-                        {(game.approvalStatus === 'pending' || game.approvalStatus === 'review') && (
+                        {!game.suspendedAt && (game.approvalStatus === 'pending' || game.approvalStatus === 'review') && (
                           <span className="inline-flex items-center gap-1 text-[15px] font-medium text-yellow-400">
                             <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
                             심사중
                           </span>
                         )}
-                        {game.approvalStatus === 'approved' && game.status === 'published' && (
+                        {!game.suspendedAt && game.approvalStatus === 'approved' && game.status === 'published' && (
                           <span className="inline-flex items-center gap-1 text-[15px] font-medium text-blue-500">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                             운영 중
                           </span>
                         )}
-                        {game.approvalStatus === 'approved' && game.status !== 'published' && (
+                        {!game.suspendedAt && game.approvalStatus === 'approved' && game.status !== 'published' && (
                           <span className="inline-flex items-center gap-1 text-[15px] font-medium text-accent">
                             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
                             출시 대기
                           </span>
                         )}
-                        {game.approvalStatus === 'rejected' && (
+                        {!game.suspendedAt && game.approvalStatus === 'rejected' && (
                           <span className="inline-flex items-center gap-1 text-[15px] font-medium text-red-400">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
                             심사 거부
