@@ -258,7 +258,7 @@ export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
     }
     const total = await Game.countDocuments(filter)
     const games = await Game.find(filter)
-      .populate('developerId', 'username email')
+      .populate('developerId', 'username email companyInfo')
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
