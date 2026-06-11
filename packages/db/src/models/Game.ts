@@ -35,6 +35,7 @@ export interface IGame extends Document {
   betaEndDate?: Date
   suspendReason?: string
   suspendedAt?: Date
+  suspendAppeal?: { message?: string; sentAt?: Date; isRead?: boolean }
   archivedAt?: Date
   archiveReason?: string
   tags: string[]
