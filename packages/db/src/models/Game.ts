@@ -11,6 +11,7 @@ const GENRE_NORMALIZE: Record<string, string> = {
   fps: 'FPS', FPS: 'FPS',
   sports: '스포츠', Sports: '스포츠',
   horror: '호러', Horror: '호러',
+  기타: '기타', etc: '기타', Etc: '기타',
 }
 
 export interface IGame extends Document {

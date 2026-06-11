@@ -4,19 +4,9 @@ import { Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, Eye, X, RotateCcw
 import { gameService } from '@/services/gameService'
 import adminService from '@/services/adminService'
 import AdminLayout from '@/components/AdminLayout'
+import { GENRES } from '@/constants/game'
 
-const GENRE_NORMALIZE: Record<string, string> = {
-  rpg: 'RPG', RPG: 'RPG',
-  action: '액션', Action: '액션',
-  strategy: '전략', Strategy: '전략',
-  racing: '레이싱', Racing: '레이싱',
-  adventure: '어드벤처', Adventure: '어드벤처',
-  simulation: '시뮬레이션', Simulation: '시뮬레이션',
-  puzzle: '퍼즐', Puzzle: '퍼즐',
-  fps: 'FPS', FPS: 'FPS',
-  sports: '스포츠', Sports: '스포츠',
-  horror: '호러', Horror: '호러',
-}
+const GENRE_NORMALIZE: Record<string, string> = Object.fromEntries(GENRES.map(g => [g, g]))
 const normalizeGenre = (v?: string) => (v ? (GENRE_NORMALIZE[v] ?? v) : '-')
 
 

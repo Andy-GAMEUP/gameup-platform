@@ -22,7 +22,7 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
   const [errorMsg, setErrorMsg] = useState('')
 
   const [gameTitle, setGameTitle] = useState('')
-  const [gameGenre, setGameGenre] = useState('RPG')
+  const [gameGenre, setGameGenre] = useState(GENRES[0])
   const [gameDescription, setGameDescription] = useState('')
   const [gameIconUrl, setGameIconUrl] = useState('')
   const [gameCoverUrl, setGameCoverUrl] = useState('')

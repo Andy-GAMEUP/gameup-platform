@@ -305,7 +305,7 @@ function GameCard({ game, isOwner, onRefresh }: { game: MiniHomeGame; isOwner: b
 
 function AddGameForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [title, setTitle] = useState('')
-  const [genre, setGenre] = useState('RPG')
+  const [genre, setGenre] = useState(GENRES[0])
   const [description, setDescription] = useState('')
   const [iconUrl, setIconUrl] = useState('')
   const [coverUrl, setCoverUrl] = useState('')
