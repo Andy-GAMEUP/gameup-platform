@@ -49,6 +49,18 @@ export const authenticateToken = (
   }
 }
 
+export const optionalAuth = (req: AuthRequest, _res: Response, next: NextFunction) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1]
+    if (!token) return next()
+    const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret-change-in-production'
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+      if (!err && decoded) req.user = decoded as AuthRequest['user']
+      next()
+    })
+  } catch { next() }
+}
+
 export const requireRole = (...roles: Array<'developer' | 'player' | 'admin'>) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {

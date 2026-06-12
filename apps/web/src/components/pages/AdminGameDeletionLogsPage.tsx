@@ -18,6 +18,7 @@ interface DeletionLog {
   gameGenre?: string
   developerId: string
   developerUsername?: string
+  developerCompanyName?: string
   deletedBy: string
   deletedByUsername?: string
   deletedByEmail?: string
@@ -130,7 +131,7 @@ export default function AdminGameDeletionLogsPage() {
                       <p className="font-semibold text-text-primary">{log.gameTitle}</p>
                       {log.gameGenre && <p className="text-xs text-text-muted">{normalizeGenre(log.gameGenre)}</p>}
                     </td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">{log.developerUsername || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{log.developerCompanyName || log.developerUsername || '-'}</td>
                     <td className="px-4 py-3 text-sm">
                       <p className="text-text-primary">{log.deletedByUsername || '-'}</p>
                       <p className="text-xs text-text-muted">{log.deletedByEmail || '-'}</p>
@@ -243,7 +244,7 @@ export default function AdminGameDeletionLogsPage() {
               <Row label="게임명" value={detail.gameTitle} />
               <Row label="게임 ID" value={detail.gameId} mono />
               <Row label="장르" value={detail.gameGenre || '-'} />
-              <Row label="개발사" value={detail.developerUsername || detail.developerId} />
+              <Row label="개발사" value={detail.developerCompanyName || detail.developerUsername || detail.developerId} />
               <Row label="총 발생 매출" value={`${(detail.totalRevenue ?? 0).toLocaleString('ko-KR')}원`} />
               <Row label="요청자" value={`${detail.deletedByUsername || '-'} (${detail.deletedByEmail || '-'})`} />
               <Row label="권한" value={detail.deletedByRole || '-'} />

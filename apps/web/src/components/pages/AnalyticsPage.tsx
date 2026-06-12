@@ -28,7 +28,7 @@ import AllUsersFunnelChart from '@/components/analytics/AllUsersFunnelChart'
 import LtvCalculatorChart from '@/components/analytics/LtvCalculatorChart'
 import TutorialCohortChart from '@/components/analytics/TutorialCohortChart'
 
-interface GameOption { _id: string; title: string; thumbnail?: string }
+interface GameOption { _id: string; title: string; thumbnail?: string; status?: string; approvalStatus?: string }
 
 type Period = '1d' | '7d' | '30d' | '6m' | '1y' | 'custom'
 type Tab    = 'analysis' | 'retention' | 'revenue' | 'allusers' | 'newusers' | 'vip' | 'ltvcalc'
@@ -130,7 +130,9 @@ export default function AnalyticsPage() {
 
     gameService.getMyGames()
       .then((res) => {
-        const list = ((res.games || []) as unknown as GameOption[]).map(g => ({ _id: g._id, title: g.title, thumbnail: g.thumbnail }))
+        const list = ((res.games || []) as unknown as GameOption[])
+          .filter(g => g.status !== 'archived')
+          .map(g => ({ _id: g._id, title: g.title, thumbnail: g.thumbnail }))
         if (list.length === 0) { fetchSingleGame(); return }
         setGames(list)
         const ids = list.map(g => g._id)

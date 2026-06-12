@@ -228,12 +228,13 @@ export const getPendingGames = async (req: AuthRequest, res: Response) => {
 // ── 전체 게임 목록 (관리자) ───────────────────────────────────────
 export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
   try {
-    const { page = 1, limit = 20, status, approvalStatus, search, serviceType, suspended } = req.query
+    const { page = 1, limit = 20, status, approvalStatus, search, serviceType, suspended, excludePublished } = req.query
     const filter: Record<string, unknown> = {}
     if (suspended === 'true') {
       filter.suspendedAt = { $exists: true, $ne: null }
     } else {
       if (status) filter.status = status
+      if (excludePublished === 'true') filter.status = { $ne: 'published' }
     }
     if (serviceType) filter.serviceType = serviceType
     if (approvalStatus === 'pending') {
@@ -259,7 +260,7 @@ export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
     const total = await Game.countDocuments(filter)
     const games = await Game.find(filter)
       .populate('developerId', 'username email companyInfo')
-      .sort({ createdAt: -1 })
+      .sort({ updatedAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
 
@@ -283,12 +284,21 @@ export const approveGame = async (req: AuthRequest, res: Response) => {
     const { action, rejectionReason, adminNote } = req.body
     if (!['approve', 'reject', 'review'].includes(action))
       return res.status(400).json({ message: '유효하지 않은 액션입니다' })
+    const existing = await Game.findById(id)
+    if (!existing) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    const isReApproval = existing.status === 'published' || existing.status === 'beta'
     const update: Record<string, unknown> = {}
     if (action === 'approve') {
       update.approvalStatus = 'approved'
-      update.status = 'beta'
+      update.status = isReApproval ? existing.status : 'beta'
       update.approvedAt = new Date()
       update.approvedBy = req.user!.id
+      const snap = (existing as any).toObject()
+      delete snap._id; delete snap.developerId; delete snap.status; delete snap.approvalStatus
+      delete snap.suspendedAt; delete snap.approvedAt; delete snap.approvedBy
+      delete snap.publishedSnapshot; delete snap.createdAt; delete snap.updatedAt
+      delete snap.playCount; delete snap.reviewCount; delete snap.__v
+      update.publishedSnapshot = snap
     } else if (action === 'reject') {
       update.approvalStatus = 'rejected'
       update.rejectionReason = rejectionReason || '심사 기준 미충족'
@@ -318,14 +328,24 @@ export const controlGameStatus = async (req: AuthRequest, res: Response) => {
     let msg = ''
 
     if (action === 'suspend') {
+      const target = await Game.findById(id)
+      if (!target) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+      update.statusBeforeSuspend = target.status
       update.status = 'draft'
       update.suspendReason = reason || '관리자에 의해 중지됨'
       update.suspendedAt = new Date()
       msg = '게임 서비스가 중지되었습니다'
     } else if (action === 'reactivate') {
+      const target = await Game.findById(id)
+      if (!target) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+
+      const restoredStatus = target.statusBeforeSuspend || 'published'
       const game = await Game.findByIdAndUpdate(
         id,
-        { $set: { status: 'beta' }, $unset: { suspendReason: '', suspendedAt: '' } },
+        {
+          $set: { status: restoredStatus },
+          $unset: { suspendReason: '', suspendedAt: '', statusBeforeSuspend: '' },
+        },
         { new: true }
       ).populate('developerId', 'username email')
       if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })

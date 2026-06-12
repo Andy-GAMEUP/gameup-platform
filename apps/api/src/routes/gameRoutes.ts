@@ -1,11 +1,11 @@
 import { Router } from 'express'
-import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGames, getDeveloperStats, getGameDeletionLogs, requestReview, restoreGame, getGamePayments, getAllDeveloperPayments, getPaymentProviders } from '../controllers/gameController'
+import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGames, getDeveloperStats, getGameDeletionLogs, requestReview, cancelReview, restoreGame, getGamePayments, getAllDeveloperPayments, getPaymentProviders } from '../controllers/gameController'
 import { getDeveloperOverview, getDeveloperDaily, getGameAnalytics, exportGameAnalytics, exportDeveloperDashboard } from '../controllers/gameAnalyticsController'
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/gameMediaController'
 import { getGameShopItems, getPublicGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem, reorderGameShopItems, updateShopCurrencyIcon, updateShopCurrencyName } from '../controllers/gameShopController'
 import { getGameAnnouncements, createGameAnnouncement, deleteGameAnnouncement, getRecentGameAnnouncements, getGameAnnouncementById, getPublicGameAnnouncements } from '../controllers/gameAnnouncementController'
-import { authenticateToken, requireRole } from '../middleware/auth'
+import { authenticateToken, requireRole, optionalAuth } from '../middleware/auth'
 import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload, mediaUpload } from '../middleware/upload'
 
 const router = Router()
@@ -32,9 +32,10 @@ router.put('/developer/qas/:qaId/answer', authenticateToken, requireRole('develo
 // 내 Q&A 조회 (마이페이지)
 router.get('/my-qas', authenticateToken, getMyQAs)
 
-router.get('/:id', getGameById)
+router.get('/:id', optionalAuth, getGameById)
 router.post('/', authenticateToken, requireRole('developer'), uploadFields, createGame)
 router.post('/:id/request-review', authenticateToken, requireRole('developer'), requestReview)
+router.post('/:id/cancel-review', authenticateToken, requireRole('developer'), cancelReview)
 router.put('/:id', authenticateToken, requireRole('developer', 'admin'), uploadFields, updateGame)
 router.delete('/:id', authenticateToken, requireRole('developer', 'admin'), deleteGame)
 

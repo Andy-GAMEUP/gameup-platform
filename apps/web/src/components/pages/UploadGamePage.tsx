@@ -65,7 +65,7 @@ export default function UploadGamePage() {
       const fd = new FormData()
       fd.append('title', formData.title)
       fd.append('serviceType', formData.serviceType)
-      fd.append('monetization', 'free')
+      fd.append('monetization', 'freemium')
       fd.append('price', '0')
       fd.append('isPaid', 'false')
       fd.append('status', 'draft')
@@ -194,11 +194,6 @@ export default function UploadGamePage() {
                     </select>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium block text-text-secondary">시스템 요구사항</label>
-                  <textarea name="requirements" placeholder="최소 및 권장 시스템 요구사항" value={formData.requirements} onChange={handleChange}
-                    className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-xl text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent transition-colors min-h-20 resize-none" />
-                </div>
               </div>
             </div>
           )}
@@ -214,8 +209,8 @@ export default function UploadGamePage() {
             </button>
             <button
               type="submit"
-              disabled={submitting}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-accent hover:bg-accent-hover disabled:opacity-50 text-sm font-bold transition-colors"
+              disabled={submitting || (formData.serviceType === 'beta' && (!formData.startDate || !formData.endDate || !formData.maxTesters || !formData.testType))}
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold transition-colors"
             >
               {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> 등록 중...</> : '게임 생성'}
             </button>

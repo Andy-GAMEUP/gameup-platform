@@ -36,6 +36,7 @@ export interface IGame extends Document {
   betaEndDate?: Date
   suspendReason?: string
   suspendedAt?: Date
+  statusBeforeSuspend?: string
   suspendAppeal?: { message?: string; sentAt?: Date; isRead?: boolean }
   archivedAt?: Date
   archiveReason?: string
@@ -59,11 +60,13 @@ export interface IGame extends Document {
     ratingClass?: '전체이용가' | '12세이용가' | '15세이용가' | '18세이용가' | '청소년이용불가'
     certNumber?: string
     certDate?: string
+    certFileUrl?: string
     isVerified?: boolean
   }
   shopCurrencyIconUrl?: string
   shopCurrencyName?: string
   shopCurrencyNames?: Record<string, string>
+  publishedSnapshot?: Record<string, unknown>
   createdAt: Date
   updatedAt: Date
 }
@@ -136,7 +139,7 @@ const gameSchema = new Schema<IGame>(
     monetization: {
       type: String,
       enum: ['free', 'ad', 'paid', 'freemium'],
-      default: 'free'
+      default: 'freemium'
     },
     testers: {
       type: Number,
@@ -154,6 +157,9 @@ const gameSchema = new Schema<IGame>(
     },
     suspendedAt: {
       type: Date
+    },
+    statusBeforeSuspend: {
+      type: String
     },
     suspendAppeal: {
       message: { type: String },
@@ -174,6 +180,9 @@ const gameSchema = new Schema<IGame>(
     },
     approvedAt: {
       type: Date
+    },
+    publishedSnapshot: {
+      type: Object
     },
     platform: { type: String, default: '' },
     engine: { type: String, default: '' },
@@ -200,6 +209,7 @@ const gameSchema = new Schema<IGame>(
       },
       certNumber: { type: String },
       certDate: { type: String },
+      certFileUrl: { type: String },
       isVerified: { type: Boolean, default: false },
     },
   },

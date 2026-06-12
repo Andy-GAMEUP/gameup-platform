@@ -10,12 +10,15 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
     const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType } = req.query
 
     const filter: Record<string, unknown> = {
-      approvalStatus: 'approved',
       status: 'published',
     }
 
     if (serviceType && serviceType !== 'all') {
-      filter.serviceType = serviceType
+      // 재심사 중인 published 게임은 스냅샷의 serviceType으로 판단해야 하므로 DB 필터에서 제외하고 앱 레이어에서 처리
+      filter.$or = [
+        { serviceType },
+        { approvalStatus: { $nin: ['approved'] } }
+      ]
     }
 
     if (status && status !== 'all') {
@@ -59,9 +62,20 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
 
     const total = await Game.countDocuments(filter)
 
+    const applySnapshot = (obj: any) => {
+      if (['published', 'beta'].includes(obj.status) && obj.approvalStatus !== 'approved' && obj.publishedSnapshot) {
+        return { ...obj, ...obj.publishedSnapshot, _id: obj._id, developerId: obj.developerId, status: obj.status, approvalStatus: obj.approvalStatus, suspendedAt: obj.suspendedAt, approvedAt: obj.approvedAt, approvedBy: obj.approvedBy, publishedSnapshot: obj.publishedSnapshot, createdAt: obj.createdAt, updatedAt: obj.updatedAt, playCount: obj.playCount }
+      }
+      return obj
+    }
+
+    const processedGames = games
+      .map(g => applySnapshot((g as any).toObject()))
+      .filter(g => !serviceType || serviceType === 'all' || g.serviceType === serviceType)
+
     res.json({
       success: true,
-      games,
+      games: processedGames,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -92,6 +106,14 @@ export const getGameById = async (req: AuthRequest, res: Response) => {
     // 게임 접속 포인트 (로그인 유저, 게임별 1일 1회)
     if (req.user?.id) {
       grantGameAccessPoint(req.user.id, id).catch(() => {})
+    }
+
+    const gameObj = (game as any).toObject()
+    const developerIdStr = gameObj.developerId?._id?.toString() ?? gameObj.developerId?.toString()
+    const isOwner = req.user && (req.user.id === developerIdStr || req.user.role === 'admin')
+    if (!isOwner && ['published', 'beta'].includes(gameObj.status) && gameObj.approvalStatus !== 'approved' && gameObj.publishedSnapshot) {
+      const merged = { ...gameObj, ...gameObj.publishedSnapshot, _id: gameObj._id, developerId: gameObj.developerId, status: gameObj.status, approvalStatus: gameObj.approvalStatus, suspendedAt: gameObj.suspendedAt, approvedAt: gameObj.approvedAt, approvedBy: gameObj.approvedBy, publishedSnapshot: gameObj.publishedSnapshot, createdAt: gameObj.createdAt, updatedAt: gameObj.updatedAt }
+      return res.json({ success: true, game: merged })
     }
 
     res.json({ success: true, game })
@@ -198,7 +220,9 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
     if (serviceType && serviceType !== game.serviceType) {
       game.serviceType = serviceType
       game.approvalStatus = 'not_submitted'
-      game.status = 'draft'
+      if (game.status !== 'published') {
+        game.status = 'draft'
+      }
     }
     if (monetization) game.monetization = monetization
 
@@ -225,12 +249,14 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
 
     // 등급 인증서
     const { ratingClass, certNumber, certDate } = req.body
-    if (ratingClass !== undefined || certNumber !== undefined || certDate !== undefined) {
+    const certFileUploaded = files && files.certFile && files.certFile[0]
+    if (ratingClass !== undefined || certNumber !== undefined || certDate !== undefined || certFileUploaded) {
       const existing = (game as any).ratingCertificate || {}
       ;(game as any).ratingCertificate = {
         ratingClass: ratingClass || existing.ratingClass,
         certNumber: certNumber !== undefined ? certNumber : existing.certNumber,
         certDate: certDate !== undefined ? certDate : existing.certDate,
+        certFileUrl: certFileUploaded ? '/uploads/certs/' + certFileUploaded.filename : existing.certFileUrl,
         isVerified: existing.isVerified || false,
       }
     }
@@ -372,7 +398,7 @@ export const getGameDeletionLogs = async (req: AuthRequest, res: Response) => {
     }
 
     const [logs, total] = await Promise.all([
-      GameDeletionLog.find(filter).sort({ deletedAt: -1 }).skip(skip).limit(limitNum),
+      GameDeletionLog.find(filter).sort({ deletedAt: -1 }).skip(skip).limit(limitNum).populate('developerId', 'username companyInfo'),
       GameDeletionLog.countDocuments(filter),
     ])
 
@@ -384,10 +410,15 @@ export const getGameDeletionLogs = async (req: AuthRequest, res: Response) => {
     const revenueMap: Record<string, number> = {}
     revenueAgg.forEach(r => { revenueMap[String(r._id)] = r.total })
 
-    const logsWithRevenue = logs.map(l => ({
-      ...l.toObject(),
-      totalRevenue: revenueMap[String(l.gameId)] ?? 0,
-    }))
+    const logsWithRevenue = logs.map(l => {
+      const obj = l.toObject() as unknown as Record<string, unknown>
+      const dev = obj.developerId as { username?: string; companyInfo?: { companyName?: string } } | null
+      return {
+        ...obj,
+        developerCompanyName: dev?.companyInfo?.companyName || null,
+        totalRevenue: revenueMap[String(l.gameId)] ?? 0,
+      }
+    })
 
     res.json({
       success: true,
@@ -693,7 +724,6 @@ export const requestReview = async (req: AuthRequest, res: Response) => {
     const game = await Game.findById(req.params.id)
     if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     if (game.developerId.toString() !== req.user.id) return res.status(403).json({ message: '자신의 게임만 심사 요청할 수 있습니다' })
-    if (game.approvalStatus === 'approved') return res.status(400).json({ message: '이미 승인된 게임입니다' })
     if (game.approvalStatus === 'pending' || game.approvalStatus === 'review') return res.status(400).json({ message: '이미 심사 중입니다' })
     if (!game.gameDomain?.trim()) return res.status(400).json({ message: '게임 URL을 먼저 등록해주세요' })
     game.approvalStatus = 'pending'
@@ -701,6 +731,32 @@ export const requestReview = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, message: '심사가 요청되었습니다. 관리자 검토 후 승인됩니다.' })
   } catch (error) {
     console.error('Request review error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+export const cancelReview = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+    const game = await Game.findById(req.params.id)
+    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    if (game.developerId.toString() !== req.user.id) return res.status(403).json({ message: '자신의 게임만 취소할 수 있습니다' })
+    if (game.approvalStatus !== 'pending' && game.approvalStatus !== 'review') return res.status(400).json({ message: '심사 중인 게임만 취소할 수 있습니다' })
+    const snapshot = (game as any).publishedSnapshot
+    if (snapshot) {
+      // 운영 중이던 게임의 심사 취소 → 스냅샷 데이터 복원 + approved 상태로 복귀
+      const SKIP = new Set(['_id', 'id', '__v', 'developerId', 'status', 'approvalStatus', 'suspendedAt', 'approvedAt', 'approvedBy', 'publishedSnapshot', 'createdAt', 'updatedAt', 'playCount'])
+      for (const key of Object.keys(snapshot)) {
+        if (!SKIP.has(key)) (game as any)[key] = snapshot[key]
+      }
+      game.approvalStatus = 'approved'
+    } else {
+      game.approvalStatus = 'not_submitted'
+    }
+    await game.save({ validateBeforeSave: false })
+    res.json({ success: true, message: '심사가 취소되었습니다.' })
+  } catch (error) {
+    console.error('Cancel review error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }
 }

@@ -54,6 +54,11 @@ export const gameService = {
     return response.data
   },
 
+  cancelReview: async (id: string) => {
+    const response = await apiClient.post(`/games/${id}/cancel-review`)
+    return response.data
+  },
+
   deleteGame: async (id: string, payload?: Record<string, unknown>) => {
     const response = await apiClient.delete(`/games/${id}`, { data: payload })
     return response.data
