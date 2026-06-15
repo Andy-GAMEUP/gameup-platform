@@ -59,7 +59,6 @@ export default function AdminGamesPage() {
   const [companyFilter, setCompanyFilter] = useState('')
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([])
   const [serviceFilter, setServiceFilter] = useState('')
-  const [gameStateFilter, setGameStateFilter] = useState('')
   const [reviewFilter, setReviewFilter] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -81,13 +80,13 @@ export default function AdminGamesPage() {
       const params: Record<string, string> = { page: String(page), search }
       if (companyFilter) params.developerId = companyFilter
       if (serviceFilter) params.serviceType = serviceFilter
-      if (gameStateFilter === 'operating') params.status = 'published'
-      else if (gameStateFilter === 'suspended') params.suspended = 'true'
-      else if (gameStateFilter === 'pre') params.excludePublished = 'true'
-      if (reviewFilter === 'draft')    params.approvalStatus = 'not_submitted'
-      if (reviewFilter === 'pending')  params.approvalStatus = 'pending'
-      if (reviewFilter === 'waiting')  { params.approvalStatus = 'approved'; params.excludePublished = 'true' }
-      if (reviewFilter === 'rejected') params.approvalStatus = 'rejected'
+      if (reviewFilter === 'operating') params.status = 'published'
+      else if (reviewFilter === 'suspended') params.suspended = 'true'
+      else if (reviewFilter === 'pre') params.excludePublished = 'true'
+      else if (reviewFilter === 'draft')    params.approvalStatus = 'not_submitted'
+      else if (reviewFilter === 'pending')  params.approvalStatus = 'pending'
+      else if (reviewFilter === 'waiting')  { params.approvalStatus = 'approved'; params.excludePublished = 'true' }
+      else if (reviewFilter === 'rejected') params.approvalStatus = 'rejected'
       const data = await adminService.getAllGames(params)
       let gamesData: any[] = data.games || []
       if (priorityId) {
@@ -109,7 +108,7 @@ export default function AdminGamesPage() {
       showToast(msg, false)
     }
     finally { setLoading(false) }
-  }, [page, search, companyFilter, serviceFilter, gameStateFilter, reviewFilter])
+  }, [page, search, companyFilter, serviceFilter, reviewFilter])
 
   useEffect(() => { load() }, [load])
 
@@ -126,6 +125,26 @@ export default function AdminGamesPage() {
       setCompanyOptions(Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)))
     }).catch(() => {})
   }, [])
+
+  const handleShopReview = (gameId: string, type: 'approve' | 'reject') => {
+    setConfirm({
+      title: type === 'approve' ? '상품 심사 통과' : '상품 심사 거부',
+      desc: '심사 중인 모든 상품에 즉시 반영됩니다.',
+      danger: type === 'reject',
+      onConfirm: async () => {
+        setConfirm(null)
+        setActionLoading(gameId)
+        try {
+          if (type === 'approve') await adminService.approveShopReview(gameId)
+          else await adminService.rejectShopReview(gameId)
+          showToast(`상품 심사 ${type === 'approve' ? '통과' : '거부'} 완료`)
+          load(gameId)
+        } catch (e: any) {
+          showToast(e?.response?.data?.message || '처리 실패', false)
+        } finally { setActionLoading(null) }
+      }
+    })
+  }
 
   const handleAction = (id: string, type: 'approve' | 'reject' | 'suspend' | 'reactivate', title: string) => {
     setConfirm({
@@ -199,16 +218,12 @@ export default function AdminGamesPage() {
             <option value="beta">베타</option>
             <option value="live">라이브</option>
           </select>
-          <select value={gameStateFilter} onChange={(e) => { setGameStateFilter(e.target.value); setPage(1) }}
-            className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
-            <option value="">게임 상태</option>
-            <option value="operating">운영 중</option>
-            <option value="pre">출시 전</option>
-            <option value="suspended">중지 중</option>
-          </select>
           <select value={reviewFilter} onChange={(e) => { setReviewFilter(e.target.value); setPage(1) }}
             className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
-            <option value="">심사 현황</option>
+            <option value="">게임 현황</option>
+            <option value="operating">운영 중</option>
+            <option value="suspended">중지 중</option>
+            <option value="pre">출시 전</option>
             <option value="draft">초안 작성 중</option>
             <option value="pending">심사 중</option>
             <option value="waiting">출시 대기</option>
@@ -250,13 +265,12 @@ export default function AdminGamesPage() {
                   <th className="px-2 py-2 text-left w-40 border-r border-line/20">이름</th>
                   <th className="px-2 py-2 text-left w-24 border-r border-line/20">개발사</th>
                   <th className="px-2 py-2 text-left w-24 border-r border-line/20">서비스 상태</th>
-                  <th className="px-2 py-2 text-left w-24 border-r border-line/20">게임 상태</th>
                   <th className="px-1 py-2 text-center w-10 border-r border-line/20">테스트</th>
                   <th className="px-1 py-2 text-center w-10 border-r border-line/20">관리</th>
                   <th className="px-1 py-2 text-center w-10 border-r border-line/20">인증서</th>
-                  <th className="px-2 py-2 text-left w-24 border-r border-line/20">심사 현황</th>
-                  <th className="px-2 py-2 text-center w-20 border-r border-line/20">심사 통과</th>
-                  <th className="px-2 py-2 text-center w-20 border-r border-line/20">심사 거부</th>
+                  <th className="px-2 py-2 text-left w-24 border-r border-line/20">게임 현황</th>
+                  <th className="px-2 py-2 text-center w-24 border-r border-line/20">게임 심사</th>
+                  <th className="px-2 py-2 text-center w-24 border-r border-line/20">상품 심사</th>
                   <th className="px-2 py-2 text-center w-20 border-r border-line/20">강제 중지</th>
                   <th className="px-1 py-2 text-center w-10">지표</th>
                 </tr>
@@ -266,7 +280,8 @@ export default function AdminGamesPage() {
                   const isLoading = actionLoading === g._id
                   const isSuspended = !!g.suspendedAt
                   const gameStateLabel =
-                    isSuspended ? null
+                    isSuspended ? { label: '중지 중', color: 'text-red-400', dot: 'bg-red-400', pulse: false }
+                    : g.status === 'published' ? { label: '운영 중', color: 'text-blue-400', dot: 'bg-blue-400', pulse: true }
                     : g.approvalStatus === 'not_submitted' ? { label: '초안 작성 중', color: 'text-text-muted', dot: 'bg-text-muted', pulse: false }
                     : g.approvalStatus === 'pending' || g.approvalStatus === 'review' ? { label: '심사 중', color: 'text-yellow-400', dot: 'bg-yellow-400', pulse: true }
                     : g.approvalStatus === 'rejected' ? { label: '심사 거부', color: 'text-red-400', dot: 'bg-red-400', pulse: false }
@@ -306,22 +321,6 @@ export default function AdminGamesPage() {
                         )}
                         {g.serviceType === 'live' && <span className="text-sm font-bold px-3 py-1 rounded-full bg-green-500 text-white whitespace-nowrap">라이브</span>}
                       </td>
-                      {/* 게임 상태 */}
-                      <td className="px-2 py-2 border-r border-line/20">
-                        {isSuspended ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-red-400 whitespace-nowrap">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />중지 중
-                          </span>
-                        ) : isOperating ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-400 whitespace-nowrap">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />운영 중
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-text-muted whitespace-nowrap">
-                            <span className="w-1.5 h-1.5 rounded-full bg-text-muted" />출시 전
-                          </span>
-                        )}
-                      </td>
                       {/* 게임 테스트 */}
                       <td className="px-1 py-2 text-center border-r border-line/20">
                         <Link href={`/games/${g._id}`} target="_blank" rel="noopener noreferrer"
@@ -360,21 +359,42 @@ export default function AdminGamesPage() {
                           <span className="text-text-muted text-xs">-</span>
                         )}
                       </td>
-                      {/* 심사 통과 */}
+                      {/* 게임 심사 */}
                       <td className="px-2 py-2 text-center border-r border-line/20">
-                        <button onClick={() => handleAction(g._id, 'approve', '심사 통과')}
-                          disabled={isSuspended || g.approvalStatus === 'not_submitted' || g.approvalStatus === 'approved'}
-                          className="px-2 py-1 rounded-md text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
-                          통과
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button onClick={() => handleAction(g._id, 'approve', '심사 통과')}
+                            disabled={isOperating || isSuspended || g.approvalStatus === 'not_submitted' || g.approvalStatus === 'approved'}
+                            className="px-2 py-1 rounded-md text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
+                            통과
+                          </button>
+                          <button onClick={() => handleAction(g._id, 'reject', '심사 거부')}
+                            disabled={isOperating || isSuspended || g.approvalStatus === 'not_submitted' || g.approvalStatus === 'rejected' || g.approvalStatus === 'approved'}
+                            className="px-2 py-1 rounded-md text-xs font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
+                            거부
+                          </button>
+                        </div>
                       </td>
-                      {/* 심사 거부 */}
+                      {/* 상품 심사 */}
                       <td className="px-2 py-2 text-center border-r border-line/20">
-                        <button onClick={() => handleAction(g._id, 'reject', '심사 거부')}
-                          disabled={isSuspended || g.approvalStatus === 'not_submitted' || g.approvalStatus === 'rejected' || g.approvalStatus === 'approved'}
-                          className="px-2 py-1 rounded-md text-xs font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
-                          거부
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleShopReview(g._id, 'approve')}
+                            disabled={!g.shopReviewingCount}
+                            className="px-2 py-1 rounded-md text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap"
+                          >
+                            통과
+                          </button>
+                          <button
+                            onClick={() => handleShopReview(g._id, 'reject')}
+                            disabled={!g.shopReviewingCount}
+                            className="px-2 py-1 rounded-md text-xs font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap"
+                          >
+                            거부
+                          </button>
+                        </div>
+                        {!!g.shopReviewingCount && (
+                          <p className="text-[10px] text-yellow-400 mt-0.5">{g.shopReviewingCount}개 심사 중</p>
+                        )}
                       </td>
                       {/* 강제 중지 / 중지 취소 */}
                       <td className="px-2 py-2 text-center border-r border-line/20">
@@ -385,7 +405,7 @@ export default function AdminGamesPage() {
                           </button>
                         ) : (
                           <button onClick={() => handleAction(g._id, 'suspend', '강제 중지')}
-                            disabled={!['approved', 'pending', 'review', 'rejected'].includes(g.approvalStatus)}
+                            disabled={g.status !== 'published'}
                             className="px-2 py-1 rounded-md text-xs font-semibold bg-slate-600 text-white hover:bg-slate-500 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
                             중지
                           </button>

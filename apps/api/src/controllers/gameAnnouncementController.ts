@@ -73,10 +73,10 @@ export const getRecentGameAnnouncements = async (req: Request, res: Response) =>
   }
 }
 
-const verifyGameOwner = async (gameId: string, userId: string) => {
+const verifyGameOwner = async (gameId: string, userId: string, role?: string) => {
   const game = await GameModel.findById(gameId)
   if (!game) return null
-  if (game.developerId.toString() !== userId) return null
+  if (role !== 'admin' && game.developerId.toString() !== userId) return null
   return game
 }
 
@@ -111,7 +111,7 @@ export const createGameAnnouncement = async (req: AuthRequest, res: Response) =>
     if (!title?.trim()) return res.status(400).json({ message: '제목을 입력해주세요' })
     if (!content?.trim()) return res.status(400).json({ message: '내용을 입력해주세요' })
 
-    const game = await verifyGameOwner(gameId, req.user.id)
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
     const shouldSendPush = sendPush === true || sendPush === 'true'
@@ -143,7 +143,7 @@ export const deleteGameAnnouncement = async (req: AuthRequest, res: Response) =>
 
     const { gameId, announcementId } = req.params
 
-    const game = await verifyGameOwner(gameId, req.user.id)
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
     const announcement = await GameAnnouncementModel.findOne({ _id: announcementId, gameId })

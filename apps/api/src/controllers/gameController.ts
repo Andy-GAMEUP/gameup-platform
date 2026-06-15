@@ -129,7 +129,7 @@ export const createGame = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: '인증이 필요합니다' })
     }
 
-    const { title, description, genre, price, isPaid, status, monetization, serviceType, gameDomain } = req.body
+    const { title, description, genre, price, isPaid, status, monetization, serviceType, gameDomain, startDate, endDate, maxTesters, testType, requirements } = req.body
     const files = req.files as { [fieldname: string]: Express.Multer.File[] }
 
     if (!title?.trim()) {
@@ -159,6 +159,12 @@ export const createGame = async (req: AuthRequest, res: Response) => {
       monetization: monetization || 'free',
       serviceType: serviceType || 'beta'
     }
+
+    if (startDate) gameData.startDate = startDate
+    if (endDate) gameData.endDate = endDate
+    if (maxTesters) gameData.maxTesters = Number(maxTesters) || 0
+    if (testType) gameData.testType = testType
+    if (requirements) gameData.requirements = requirements
 
     if (files && files.thumbnail) {
       gameData.thumbnail = '/uploads/thumbnails/' + files.thumbnail[0].filename
@@ -193,7 +199,7 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     }
 
-    if (game.developerId.toString() !== req.user.id) {
+    if (game.developerId.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: '자신의 게임만 수정할 수 있습니다' })
     }
 
@@ -292,9 +298,25 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
       game.bannerImage = '/uploads/banners/' + files.bannerImage[0].filename
     }
 
+    // 출시 중인 게임 기본 정보 수정 → 스냅샷도 동기화 (즉시 반영)
+    if (game.status === 'published' && game.approvalStatus === 'approved') {
+      const snap = (game as any).publishedSnapshot as Record<string, unknown> | undefined
+      if (snap) {
+        const syncFields = ['title', 'description', 'genre', 'thumbnail', 'bannerImage', 'trailer', 'website', 'discord', 'notes', 'platform', 'engine', 'startDate', 'endDate', 'maxTesters', 'testType', 'requirements', 'gameDomain', 'monetization']
+        for (const f of syncFields) {
+          const val = (game as any)[f]
+          if (val !== undefined) snap[f] = val
+        }
+        ;(game as any).markModified('publishedSnapshot')
+      }
+    }
+
     await game.save({ validateBeforeSave: false })
 
-    res.json({ success: true, message: '게임이 수정되었습니다. 관리자 재승인 후 반영됩니다.', game })
+    const msg = game.status === 'published' && game.approvalStatus === 'approved'
+      ? '수정 사항이 바로 반영되었습니다.'
+      : '게임이 수정되었습니다. 관리자 재승인 후 반영됩니다.'
+    res.json({ success: true, message: msg, game })
   } catch (error) {
     console.error('Update game error:', error)
     res.status(500).json({ message: (error as Error)?.message || '서버 오류가 발생했습니다' })
@@ -723,7 +745,7 @@ export const requestReview = async (req: AuthRequest, res: Response) => {
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
     const game = await Game.findById(req.params.id)
     if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
-    if (game.developerId.toString() !== req.user.id) return res.status(403).json({ message: '자신의 게임만 심사 요청할 수 있습니다' })
+    if (game.developerId.toString() !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: '자신의 게임만 심사 요청할 수 있습니다' })
     if (game.approvalStatus === 'pending' || game.approvalStatus === 'review') return res.status(400).json({ message: '이미 심사 중입니다' })
     if (!game.gameDomain?.trim()) return res.status(400).json({ message: '게임 URL을 먼저 등록해주세요' })
     game.approvalStatus = 'pending'
@@ -740,7 +762,7 @@ export const cancelReview = async (req: AuthRequest, res: Response) => {
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
     const game = await Game.findById(req.params.id)
     if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
-    if (game.developerId.toString() !== req.user.id) return res.status(403).json({ message: '자신의 게임만 취소할 수 있습니다' })
+    if (game.developerId.toString() !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: '자신의 게임만 취소할 수 있습니다' })
     if (game.approvalStatus !== 'pending' && game.approvalStatus !== 'review') return res.status(400).json({ message: '심사 중인 게임만 취소할 수 있습니다' })
     const snapshot = (game as any).publishedSnapshot
     if (snapshot) {

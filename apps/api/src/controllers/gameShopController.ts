@@ -4,17 +4,17 @@ import { AuthRequest } from '../middleware/auth'
 import fs from 'fs'
 import path from 'path'
 
-const verifyGameOwner = async (gameId: string, userId: string) => {
+const verifyGameOwner = async (gameId: string, userId: string, role?: string) => {
   const game = await GameModel.findById(gameId)
   if (!game) return null
-  if (game.developerId.toString() !== userId) return null
+  if (role !== 'admin' && game.developerId.toString() !== userId) return null
   return game
 }
 
 export const getPublicGameShopItems = async (req: AuthRequest, res: Response) => {
   try {
     const { gameId } = req.params
-    const items = await GameShopItemModel.find({ gameId, active: true }).sort({ sortOrder: 1, createdAt: 1 })
+    const items = await GameShopItemModel.find({ gameId, active: true, saleStatus: 'on_sale' }).sort({ sortOrder: 1, createdAt: 1 })
     res.json({ success: true, items })
   } catch (error) {
     console.error('Get public shop items error:', error)
@@ -67,7 +67,7 @@ export const createGameShopItem = async (req: AuthRequest, res: Response) => {
     if (!name?.trim()) return res.status(400).json({ message: '아이템명을 입력해주세요' })
     if (price === undefined || price === '') return res.status(400).json({ message: '가격을 입력해주세요' })
 
-    const game = await verifyGameOwner(gameId, req.user.id)
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
     const count = await GameShopItemModel.countDocuments({ gameId })
@@ -108,7 +108,7 @@ export const updateGameShopItem = async (req: AuthRequest, res: Response) => {
 
     const { gameId, itemId } = req.params
 
-    const game = await verifyGameOwner(gameId, req.user.id)
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
     const item = await GameShopItemModel.findOne({ _id: itemId, gameId })
@@ -134,6 +134,7 @@ export const updateGameShopItem = async (req: AuthRequest, res: Response) => {
     if (files?.specialItemImage?.[0]) item.specialImageUrl = `/uploads/shop-items/${files.specialItemImage[0].filename}`
 
     await item.save()
+
     res.json({ success: true, item })
   } catch (error) {
     console.error('Update shop item error:', error)
@@ -147,13 +148,14 @@ export const deleteGameShopItem = async (req: AuthRequest, res: Response) => {
 
     const { gameId, itemId } = req.params
 
-    const game = await verifyGameOwner(gameId, req.user.id)
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
     const item = await GameShopItemModel.findOne({ _id: itemId, gameId })
     if (!item) return res.status(404).json({ message: '아이템을 찾을 수 없습니다' })
 
     await item.deleteOne()
+
     res.json({ success: true, message: '삭제되었습니다' })
   } catch (error) {
     console.error('Delete shop item error:', error)
@@ -165,7 +167,7 @@ export const updateShopCurrencyIcon = async (req: AuthRequest, res: Response) =>
   try {
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
     const { gameId } = req.params
-    const game = await verifyGameOwner(gameId, req.user.id)
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
     const file = req.file
@@ -191,7 +193,7 @@ export const updateShopCurrencyName = async (req: AuthRequest, res: Response) =>
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
     const { gameId } = req.params
     const { shopCurrencyName, shopCurrencyNames } = req.body
-    const game = await verifyGameOwner(gameId, req.user.id)
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
     if (shopCurrencyName !== undefined) game.shopCurrencyName = shopCurrencyName?.trim() || ''
     if (shopCurrencyNames && typeof shopCurrencyNames === 'object') {
@@ -214,7 +216,7 @@ export const reorderGameShopItems = async (req: AuthRequest, res: Response) => {
 
     if (!Array.isArray(items)) return res.status(400).json({ message: 'items 배열이 필요합니다' })
 
-    const game = await verifyGameOwner(gameId, req.user.id)
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
     await Promise.all(
@@ -227,5 +229,26 @@ export const reorderGameShopItems = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Reorder shop items error:', error)
     res.status(500).json({ message: '순서 변경에 실패했습니다' })
+  }
+}
+
+export const submitShopReview = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+
+    const { gameId } = req.params
+
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
+    if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
+
+    const result = await GameShopItemModel.updateMany(
+      { gameId, saleStatus: { $in: ['registering', 'rejected'] } },
+      { saleStatus: 'reviewing' }
+    )
+
+    res.json({ success: true, updated: result.modifiedCount })
+  } catch (error) {
+    console.error('Submit shop review error:', error)
+    res.status(500).json({ message: '심사 요청에 실패했습니다' })
   }
 }

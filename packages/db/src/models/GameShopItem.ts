@@ -19,6 +19,7 @@ export interface IGameShopItem extends Document {
   active: boolean
   sales: number
   sortOrder: number
+  saleStatus: 'registering' | 'reviewing' | 'on_sale' | 'rejected'
   createdAt: Date
   updatedAt: Date
 }
@@ -43,6 +44,7 @@ const GameShopItemSchema = new Schema<IGameShopItem>(
     active: { type: Boolean, default: true },
     sales: { type: Number, default: 0 },
     sortOrder: { type: Number, default: 0 },
+    saleStatus: { type: String, enum: ['registering', 'reviewing', 'on_sale', 'rejected'], default: 'registering' },
   },
   { timestamps: true }
 )

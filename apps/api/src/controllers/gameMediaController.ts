@@ -4,10 +4,10 @@ import { AuthRequest } from '../middleware/auth'
 import fs from 'fs'
 import path from 'path'
 
-const verifyGameOwner = async (gameId: string, userId: string) => {
+const verifyGameOwner = async (gameId: string, userId: string, role?: string) => {
   const game = await GameModel.findById(gameId)
   if (!game) return null
-  if (game.developerId.toString() !== userId) return null
+  if (role !== 'admin' && game.developerId.toString() !== userId) return null
   return game
 }
 
@@ -15,6 +15,23 @@ export const getGameMedia = async (req: AuthRequest, res: Response) => {
   try {
     const { gameId } = req.params
     const { type } = req.query
+
+    const game = await GameModel.findById(gameId).lean()
+    if (game) {
+      const approvalStatus = (game as any).approvalStatus as string
+      const developerId = (game as any).developerId?.toString()
+      const isReviewing = req.user?.role === 'admin' && ['pending', 'review'].includes(approvalStatus)
+      const isOwner = req.user && (req.user.id === developerId || isReviewing)
+      if (!isOwner && ['not_submitted', 'pending', 'review'].includes(approvalStatus)) {
+        const snap = (game as any).publishedSnapshot
+        if (snap?._mediaItems) {
+          let items = snap._mediaItems as any[]
+          if (type === 'screenshot' || type === 'video') items = items.filter((m: any) => m.type === type)
+          items = items.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+          return res.json({ success: true, media: items })
+        }
+      }
+    }
 
     const filter: Record<string, unknown> = { gameId }
     if (type === 'screenshot' || type === 'video') filter.type = type
@@ -45,7 +62,7 @@ export const addGameMedia = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: '스크린샷 이미지를 업로드해주세요' })
     }
 
-    const game = await verifyGameOwner(gameId, req.user.id)
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
     const count = await GameMediaModel.countDocuments({ gameId, type })
@@ -81,7 +98,7 @@ export const deleteGameMedia = async (req: AuthRequest, res: Response) => {
 
     const { gameId, mediaId } = req.params
 
-    const game = await verifyGameOwner(gameId, req.user.id)
+    const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
     const media = await GameMediaModel.findOne({ _id: mediaId, gameId })
@@ -93,6 +110,7 @@ export const deleteGameMedia = async (req: AuthRequest, res: Response) => {
     }
 
     await media.deleteOne()
+
     res.json({ success: true, message: '삭제되었습니다' })
   } catch (error) {
     console.error('Delete game media error:', error)

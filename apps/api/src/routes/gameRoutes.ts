@@ -3,7 +3,7 @@ import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGame
 import { getDeveloperOverview, getDeveloperDaily, getGameAnalytics, exportGameAnalytics, exportDeveloperDashboard } from '../controllers/gameAnalyticsController'
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/gameMediaController'
-import { getGameShopItems, getPublicGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem, reorderGameShopItems, updateShopCurrencyIcon, updateShopCurrencyName } from '../controllers/gameShopController'
+import { getGameShopItems, getPublicGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem, reorderGameShopItems, updateShopCurrencyIcon, updateShopCurrencyName, submitShopReview } from '../controllers/gameShopController'
 import { getGameAnnouncements, createGameAnnouncement, deleteGameAnnouncement, getRecentGameAnnouncements, getGameAnnouncementById, getPublicGameAnnouncements } from '../controllers/gameAnnouncementController'
 import { authenticateToken, requireRole, optionalAuth } from '../middleware/auth'
 import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload, mediaUpload } from '../middleware/upload'
@@ -55,7 +55,7 @@ router.get('/:gameId/analytics', authenticateToken, requireRole('developer', 'ad
 router.get('/:gameId/analytics/export', authenticateToken, requireRole('developer', 'admin'), exportGameAnalytics)
 
 // 게임 미디어 (스크린샷 / 동영상)
-router.get('/:gameId/media', getGameMedia)
+router.get('/:gameId/media', optionalAuth, getGameMedia)
 router.post('/:gameId/media', authenticateToken, requireRole('developer', 'admin'), mediaUpload, addGameMedia)
 router.delete('/:gameId/media/:mediaId', authenticateToken, requireRole('developer', 'admin'), deleteGameMedia)
 
@@ -66,6 +66,7 @@ router.post('/:gameId/shop-items', authenticateToken, requireRole('developer', '
 router.put('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer', 'admin'), shopItemUpload, updateGameShopItem)
 router.delete('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer', 'admin'), deleteGameShopItem)
 router.put('/:gameId/shop-items-reorder', authenticateToken, requireRole('developer', 'admin'), reorderGameShopItems)
+router.post('/:gameId/shop-items/submit-review', authenticateToken, requireRole('developer', 'admin'), submitShopReview)
 router.put('/:gameId/shop-currency-icon', authenticateToken, requireRole('developer', 'admin'), shopCurrencyIconUpload, updateShopCurrencyIcon)
 router.put('/:gameId/shop-currency-name', authenticateToken, requireRole('developer', 'admin'), updateShopCurrencyName)
 

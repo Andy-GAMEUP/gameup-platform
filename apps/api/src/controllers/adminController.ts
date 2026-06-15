@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
-import { UserModel as User, GameModel as Game, AnnouncementModel as Announcement, ReviewModel as Review, PlayerActivityModel as PlayerActivity, NotificationModel as Notification } from '@gameup/db'
+import { UserModel as User, GameModel as Game, GameShopItemModel, GameMediaModel, AnnouncementModel as Announcement, ReviewModel as Review, PlayerActivityModel as PlayerActivity, NotificationModel as Notification } from '@gameup/db'
 import { hashPassword } from '../services/authService'
 
 // ── 플랫폼 전체 통계 ──────────────────────────────────────────────
@@ -266,14 +266,43 @@ export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
 
     const allIds = await Game.find({}, '_id').sort({ _id: 1 }).lean()
     const rankMap = new Map(allIds.map((g, i) => [(g._id as any).toString(), i + 1]))
+
+    const gameIds = games.map(g => (g._id as any).toString())
+    const reviewingCounts = await GameShopItemModel.aggregate([
+      { $match: { gameId: { $in: games.map(g => g._id) }, saleStatus: 'reviewing' } },
+      { $group: { _id: '$gameId', count: { $sum: 1 } } },
+    ])
+    const reviewingMap = new Map(reviewingCounts.map((r: any) => [r._id.toString(), r.count]))
+
     const gamesWithNo = games.map(g => ({
       ...(g as any).toObject(),
       gameNo: rankMap.get((g._id as any).toString()) || 0,
+      shopReviewingCount: reviewingMap.get((g._id as any).toString()) || 0,
     }))
 
     res.json({ games: gamesWithNo, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
   } catch {
     res.status(500).json({ message: '게임 목록 조회 실패' })
+  }
+}
+
+export const approveShopReview = async (req: AuthRequest, res: Response) => {
+  try {
+    const { gameId } = req.params
+    const result = await GameShopItemModel.updateMany({ gameId, saleStatus: 'reviewing' }, { saleStatus: 'on_sale' })
+    res.json({ success: true, updated: result.modifiedCount })
+  } catch {
+    res.status(500).json({ message: '상품 심사 통과 처리에 실패했습니다' })
+  }
+}
+
+export const rejectShopReview = async (req: AuthRequest, res: Response) => {
+  try {
+    const { gameId } = req.params
+    const result = await GameShopItemModel.updateMany({ gameId, saleStatus: 'reviewing' }, { saleStatus: 'rejected' })
+    res.json({ success: true, updated: result.modifiedCount })
+  } catch {
+    res.status(500).json({ message: '상품 심사 거부 처리에 실패했습니다' })
   }
 }
 
@@ -293,12 +322,19 @@ export const approveGame = async (req: AuthRequest, res: Response) => {
       update.status = isReApproval ? existing.status : 'beta'
       update.approvedAt = new Date()
       update.approvedBy = req.user!.id
+      const [shopItems, mediaItems] = await Promise.all([
+        GameShopItemModel.find({ gameId: id }).lean(),
+        GameMediaModel.find({ gameId: id }).lean(),
+      ])
       const snap = (existing as any).toObject()
       delete snap._id; delete snap.developerId; delete snap.status; delete snap.approvalStatus
       delete snap.suspendedAt; delete snap.approvedAt; delete snap.approvedBy
       delete snap.publishedSnapshot; delete snap.createdAt; delete snap.updatedAt
       delete snap.playCount; delete snap.reviewCount; delete snap.__v
+      snap._shopItems = shopItems
+      snap._mediaItems = mediaItems
       update.publishedSnapshot = snap
+      update.modifiedTabs = []
     } else if (action === 'reject') {
       update.approvalStatus = 'rejected'
       update.rejectionReason = rejectionReason || '심사 기준 미충족'

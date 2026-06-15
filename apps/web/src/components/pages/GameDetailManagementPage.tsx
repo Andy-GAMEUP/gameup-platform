@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation'
 import { FORM_GENRES } from '@/constants/game'
 
 interface MediaItem { _id: string; type: 'screenshot' | 'video'; title: string; url: string; order: number; createdAt: string }
-interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; currencyType: string; currencyAmount: number; bonusAmount: number; stock: string; sales: number; active: boolean; description: string; imageUrl: string; sortOrder: number; itemId?: string; isSpecial?: boolean; specialImageUrl?: string; country?: string }
+interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; currencyType: string; currencyAmount: number; bonusAmount: number; stock: string; sales: number; active: boolean; description: string; imageUrl: string; sortOrder: number; itemId?: string; isSpecial?: boolean; specialImageUrl?: string; country?: string; saleStatus?: 'registering' | 'reviewing' | 'on_sale' | 'rejected' }
 interface Announcement { _id: string; title: string; createdAt: string; type: string; priority: string; content: string; sendPush: boolean; recipients: number }
 type TabKey = 'main-settings' | 'edit' | 'media' | 'shop' | 'points' | 'dev-settings' | 'announcements'
 
@@ -538,7 +538,7 @@ export default function GameDetailManagementPage() {
   }
 
   const triggerReReview = async () => {
-    if (!gameId || gameData?.approvalStatus !== 'approved') return
+    if (!gameId || gameData?.approvalStatus !== 'approved' || gameData?.status === 'published') return
     try {
       await gameService.requestReview(gameId)
       setGameData(prev => prev ? { ...prev, approvalStatus: 'pending' } : prev)
@@ -607,7 +607,7 @@ export default function GameDetailManagementPage() {
       await gameService.deleteGameMedia(gameId, mediaId)
       loadMedia()
       await triggerReReview()
-    } catch { alert('삭제에 실패했습니다') }
+    } catch (e: any) { alert(e?.response?.data?.message || '삭제에 실패했습니다') }
   }
   const handleVidFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!gameId) return
@@ -630,7 +630,7 @@ export default function GameDetailManagementPage() {
       await gameService.deleteGameMedia(gameId, mediaId)
       loadMedia()
       await triggerReReview()
-    } catch { alert('삭제에 실패했습니다') }
+    } catch (e: any) { alert(e?.response?.data?.message || '삭제에 실패했습니다') }
   }
   const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
   const resetNewItem = () => { setNewItem({ name: '', price: '', currency: 'KRW', type: '패키지', currencyType: '', currencyAmount: '', bonusAmount: '', stock: '무제한', description: '', country: 'KR', itemId: '', imageFile: null, imagePreview: '', isSpecial: false, specialImageFile: null, specialImagePreview: '' }); setPriceMap({}); setNameMap({}); setNewItemErrors({}) }
@@ -704,7 +704,6 @@ export default function GameDetailManagementPage() {
       resetNewItem()
       setItemModal(false)
       loadShopItems(shopSort, shopPeriod)
-      await triggerReReview()
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
       alert(msg)
@@ -738,7 +737,6 @@ export default function GameDetailManagementPage() {
       })
       setEditItemModal(false); setEditingItem(null); setEditImageFile(null); setEditImagePreview('')
       loadShopItems(shopSort, shopPeriod)
-      await triggerReReview()
     } catch (e: any) { alert(e?.response?.data?.message || '수정에 실패했습니다') }
   }
   const deleteItem = async (itemId: string) => {
@@ -746,8 +744,7 @@ export default function GameDetailManagementPage() {
     try {
       await gameService.deleteGameShopItem(gameId, itemId)
       loadShopItems(shopSort, shopPeriod)
-      await triggerReReview()
-    } catch { alert('삭제에 실패했습니다') }
+    } catch (e: any) { alert(e?.response?.data?.message || '삭제에 실패했습니다') }
   }
   const specialItems = shopItems.filter(item => item.isSpecial)
   const regularItems = shopItems.filter(item => !item.isSpecial)
@@ -825,8 +822,11 @@ export default function GameDetailManagementPage() {
     rejected:      { label: '심사 거부',    bg: 'bg-red-500/20',       text: 'text-red-400',      border: 'border-red-500/50' },
   }
 
-  const isUnderReview = gameData.approvalStatus === 'pending' || gameData.approvalStatus === 'review'
-  const isSuspended = !!gameData.suspendedAt
+  const isUnderReview = !adminView && gameData.status !== 'published' && (gameData.approvalStatus === 'pending' || gameData.approvalStatus === 'review')
+  const isWaitingLaunch = !adminView && gameData.status !== 'published' && gameData.approvalStatus === 'approved'
+  const isEditLocked = isUnderReview || isWaitingLaunch
+  const isLiveLocked = !adminView && gameData.status === 'published'
+  const isSuspended = !adminView && !!gameData.suspendedAt
 
   const reviewChecks = {
     basicInfo: !!(gameData.title && gameData.genre && gameData.description),
@@ -834,7 +834,6 @@ export default function GameDetailManagementPage() {
     trailer: videos.length >= 1,
     screenshots: screenshots.length >= 4,
     rating: !!gameData.ratingCertificate?.ratingClass,
-    shopItems: gameData.monetization === 'free' || shopItems.length >= 1,
   }
   const canRequestReview = Object.values(reviewChecks).every(Boolean)
   const reviewBlockReasons = [
@@ -843,7 +842,6 @@ export default function GameDetailManagementPage() {
     !reviewChecks.trailer && '트레일러 (최소 1개)',
     !reviewChecks.screenshots && '게임 스크린샷 (최소 4개)',
     !reviewChecks.rating && '등급 분류',
-    !reviewChecks.shopItems && '상품 등록 (최소 1개)',
   ].filter((v): v is string => !!v)
 
   const isEditPriceCtx = editItemModal && editingItem !== null
@@ -900,8 +898,12 @@ export default function GameDetailManagementPage() {
             </span>
             {gameData.suspendedAt
               ? <span className="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/50">강제 중지</span>
+              : gameData.approvalStatus === 'not_submitted' && gameData.status === 'published'
+              ? null
               : gameData.approvalStatus === 'not_submitted'
               ? <span className="text-xs px-2 py-1 rounded-full bg-bg-tertiary/40 text-text-muted border border-line/50">초안 작성 중</span>
+              : (gameData.approvalStatus === 'pending' || gameData.approvalStatus === 'review') && gameData.status === 'published'
+              ? null
               : (gameData.approvalStatus === 'pending' || gameData.approvalStatus === 'review')
               ? <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/50">심사중</span>
               : gameData.approvalStatus === 'approved' && gameData.status === 'published'
@@ -955,18 +957,20 @@ export default function GameDetailManagementPage() {
               게임 출시
             </button>
           )}
-          <RequestReviewButton
-            gameId={gameId}
-            gameTitle={gameData.title}
-            approvalStatus={gameData.approvalStatus}
-            hasSnapshot={!!gameData.publishedSnapshot}
-            onSuccess={reloadGameData}
-            size="lg"
-            color="violet"
-            extraDisabled={adminView || isSuspended || !canRequestReview}
-            extraDisabledTitle={adminView ? '관리자는 심사 등록할 수 없습니다' : gameData.suspendedAt ? '강제 중지 상태에서는 심사 등록이 불가합니다' : !canRequestReview ? ['등록 필요:', ...reviewBlockReasons.map(r => `• ${r}`)] : undefined}
-            onDisabledClick={!canRequestReview && !adminView && !gameData.suspendedAt ? () => setShowReviewErrors(true) : undefined}
-          />
+          {gameData.status !== 'published' && (
+            <RequestReviewButton
+              gameId={gameId}
+              gameTitle={gameData.title}
+              approvalStatus={gameData.approvalStatus}
+              hasSnapshot={!!gameData.publishedSnapshot}
+              onSuccess={reloadGameData}
+              size="lg"
+              color="violet"
+              extraDisabled={adminView || isSuspended || !canRequestReview}
+              extraDisabledTitle={adminView ? '관리자는 심사 등록할 수 없습니다' : gameData.suspendedAt ? '강제 중지 상태에서는 심사 등록이 불가합니다' : !canRequestReview ? ['등록 필요:', ...reviewBlockReasons.map(r => `• ${r}`)] : undefined}
+              onDisabledClick={!canRequestReview && !adminView && !gameData.suspendedAt ? () => setShowReviewErrors(true) : undefined}
+            />
+          )}
         </div>
       </div>
 
@@ -975,7 +979,7 @@ export default function GameDetailManagementPage() {
 
       {/* ── GCRB 탭 ── */}
       {activeTab === 'main-settings' && (
-        <div className={`flex gap-10 items-start ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}>
+        <div className={`flex gap-10 items-start ${isEditLocked || isLiveLocked ? 'pointer-events-none opacity-50' : ''}`}>
 
           {/* 왼쪽: 헤더 + 폼 */}
           <div className="flex-1 max-w-xl space-y-6">
@@ -1162,7 +1166,7 @@ export default function GameDetailManagementPage() {
 
 
       {activeTab === 'media' && (
-        <div className={`space-y-5 ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}>
+        <div className={`space-y-5 ${isEditLocked ? 'pointer-events-none opacity-50' : ''}`}>
           <input ref={ssFileRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleSsFileChange} />
           <input ref={vidFileRef} type="file" accept="video/mp4,video/quicktime,video/webm,video/avi,.mp4,.mov,.webm,.avi" multiple className="hidden" onChange={handleVidFileChange} />
 
@@ -1348,7 +1352,19 @@ export default function GameDetailManagementPage() {
                     </div>
                   )}
                 </div>
-
+                <button
+                  onClick={async () => {
+                    if (!gameId) return
+                    try {
+                      await gameService.submitShopReview(gameId)
+                      loadShopItems(shopSort, shopPeriod)
+                    } catch { alert('심사 요청에 실패했습니다') }
+                  }}
+                  disabled={!shopItems.some(i => i.saleStatus === 'registering' || i.saleStatus === 'rejected')}
+                  className="flex items-center gap-2 px-4 py-2 bg-violet-500/70 hover:bg-violet-500 border border-violet-400/40 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Send className="w-4 h-4" /> 상품 심사
+                </button>
               </div>
             </div>
 
@@ -1365,13 +1381,14 @@ export default function GameDetailManagementPage() {
                 <table className="w-full text-sm table-fixed">
                   <colgroup>
                     <col className="w-[6.5%]" />
-                    <col className="w-[21%]" />
+                    <col className="w-[19%]" />
                     <col className="w-[8%]" />
                     <col className="w-[7%]" />
                     <col className="w-[12%]" />
                     <col className="w-[12%]" />
                     <col className="w-[8%]" />
                     <col className="w-[9%]" />
+                    <col className="w-[8.75%]" />
                     <col className="w-[3.5%]" />
                   </colgroup>
                   <thead>
@@ -1384,6 +1401,7 @@ export default function GameDetailManagementPage() {
                       <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">구매 가능 수량</th>
                       <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">활성화</th>
                       <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">수정하기</th>
+                      <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">판매 현황</th>
                       <th className="px-2 py-2.5 text-left text-sm font-medium text-text-secondary">순서</th>
                     </tr>
                   </thead>
@@ -1456,6 +1474,25 @@ export default function GameDetailManagementPage() {
                                 <Edit className="w-5 h-5" />
                               </button>
                             </div>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            {item.saleStatus === 'on_sale' ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 whitespace-nowrap">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />판매 중
+                              </span>
+                            ) : item.saleStatus === 'reviewing' ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-yellow-400 whitespace-nowrap">
+                                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />심사 중
+                              </span>
+                            ) : item.saleStatus === 'rejected' ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-red-400 whitespace-nowrap">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />심사 거부
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-text-muted whitespace-nowrap">
+                                <span className="w-1.5 h-1.5 rounded-full bg-text-muted" />등록 중
+                              </span>
+                            )}
                           </td>
                           <td className="px-2 py-2.5 text-center select-none">
                             {item.isSpecial ? (
@@ -1752,11 +1789,11 @@ export default function GameDetailManagementPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">게임정보 편집</h2>
-                <p className="text-sm text-text-secondary mt-1">{isUnderReview ? '심사 중에는 기본 정보를 수정할 수 없습니다.' : '게임 제목, 장르, 설명 등 기본 정보를 수정하세요.'}</p>
+                <p className="text-sm text-text-secondary mt-1">{isUnderReview ? '심사 중에는 기본 정보를 수정할 수 없습니다.' : isWaitingLaunch ? '출시 대기 중에는 기본 정보를 수정할 수 없습니다.' : '게임 제목, 장르, 설명 등 기본 정보를 수정하세요.'}</p>
               </div>
               <button
                 onClick={handleSaveGameInfo}
-                disabled={isUnderReview || editSaving || !(gameData.thumbnail || pendingIconFile) || !editTitle.trim() || !editGenre || !editNotes.trim() || !editDescription.trim() || (gameData.serviceType !== 'live' && (!editStartDate || !editEndDate || !editMaxTesters || !editTestType))}
+                disabled={isEditLocked || editSaving || !(gameData.thumbnail || pendingIconFile) || !editTitle.trim() || !editGenre || !editNotes.trim() || !editDescription.trim() || (gameData.serviceType !== 'live' && (!editStartDate || !editEndDate || !editMaxTesters || !editTestType))}
                 className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4" /> {editSaving ? '저장 중...' : '저장'}
@@ -1764,7 +1801,7 @@ export default function GameDetailManagementPage() {
             </div>
 
             {/* 아이콘(좌) + 게임 제목·장르(우) */}
-            <div className={`flex items-start gap-6 ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}>
+            <div className={`flex items-start gap-6 ${isEditLocked ? 'pointer-events-none opacity-50' : ''}`}>
               <div className="flex-shrink-0 flex flex-col items-center gap-2">
                 <label className={`${labelCls} self-start`}>게임 아이콘</label>
                 <input
@@ -1802,15 +1839,16 @@ export default function GameDetailManagementPage() {
               <div className="flex-1 space-y-4">
                 <div>
                   <label className={labelCls}>게임 제목 *</label>
-                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className={inputCls} />
+                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className={inputCls} disabled={isLiveLocked} />
                 </div>
                 <div>
                   <label className={labelCls}>게임 장르 *</label>
                   <div className="relative" ref={genreRef}>
                     <button
                       type="button"
-                      onClick={() => setGenreOpen(o => !o)}
-                      className={`${inputCls} flex items-center justify-between w-full text-left`}
+                      onClick={() => !isLiveLocked && setGenreOpen(o => !o)}
+                      disabled={isLiveLocked}
+                      className={`${inputCls} flex items-center justify-between w-full text-left disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <span className={editGenre ? 'text-text-primary' : 'text-text-muted'}>{editGenre || '장르 선택'}</span>
                       <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform ${genreOpen ? 'rotate-180' : ''}`} />
@@ -1840,40 +1878,41 @@ export default function GameDetailManagementPage() {
             </div>
 
             {/* 하단 전체폭 필드 */}
-            <div className={isUnderReview ? 'pointer-events-none opacity-50' : ''}>
+            <div className={isEditLocked ? 'pointer-events-none opacity-50' : ''}>
               <label className={labelCls}>게임 설명 *</label>
               <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} className={`${inputCls} min-h-32 resize-y`} />
             </div>
-            <div className={isUnderReview ? 'pointer-events-none opacity-50' : ''}>
+            <div className={isEditLocked ? 'pointer-events-none opacity-50' : ''}>
               <label className={labelCls}>짧은 설명 * <span className="text-text-muted">(최대 100자)</span></label>
               <input value={editDescription} onChange={e => setEditDescription(e.target.value)} maxLength={100} className={inputCls} />
             </div>
           </div>
 
           {/* 베타 테스트 정보 */}
-          {gameData.serviceType !== 'live' && <div className={`bg-bg-secondary border border-line rounded-lg p-6 space-y-4 ${isUnderReview ? 'pointer-events-none opacity-50' : ''}`}>
+          {gameData.serviceType !== 'live' && <div className={`bg-bg-secondary border border-line rounded-lg p-6 space-y-4 ${isEditLocked ? 'pointer-events-none opacity-50' : ''}`}>
             <div>
               <h3 className="font-semibold flex items-center gap-2"><Clock className="w-4 h-4 text-accent" />베타 테스트 정보</h3>
-              <p className="text-sm text-text-secondary mt-1">베타 테스트 기간, 모집 인원, 시스템 요구사항을 설정하세요.</p>
+              <p className="text-sm text-text-secondary mt-1">{gameData.serviceType === 'beta' ? '베타 등록 시 설정한 정보입니다. 수정할 수 없습니다.' : '베타 테스트 기간, 모집 인원, 시스템 요구사항을 설정하세요.'}</p>
             </div>
+            <div className={`space-y-4 ${gameData.serviceType === 'beta' ? 'pointer-events-none opacity-60' : ''}`}>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>시작일</label>
-                <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} className={inputCls} />
+                <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} className={inputCls} disabled={gameData.serviceType === 'beta'} />
               </div>
               <div>
                 <label className={labelCls}>종료일</label>
-                <input type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} className={inputCls} />
+                <input type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} className={inputCls} disabled={gameData.serviceType === 'beta'} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>최대 테스터 수</label>
-                <input type="number" placeholder="1000" value={editMaxTesters} onChange={e => setEditMaxTesters(e.target.value)} className={inputCls} />
+                <input type="number" placeholder="1000" value={editMaxTesters} onChange={e => setEditMaxTesters(e.target.value)} className={inputCls} disabled={gameData.serviceType === 'beta'} />
               </div>
               <div>
                 <label className={labelCls}>테스트 유형</label>
-                <select value={editTestType} onChange={e => setEditTestType(e.target.value)} className={inputCls}>
+                <select value={editTestType} onChange={e => setEditTestType(e.target.value)} className={inputCls} disabled={gameData.serviceType === 'beta'}>
                   <option value="">유형 선택</option>
                   <option value="closed">비공개 베타</option>
                   <option value="open">공개 베타</option>
@@ -1883,7 +1922,8 @@ export default function GameDetailManagementPage() {
             </div>
             <div>
               <label className={labelCls}>시스템 요구사항</label>
-              <textarea value={editRequirements} onChange={e => setEditRequirements(e.target.value)} placeholder="최소 및 권장 시스템 요구사항" className={`${inputCls} min-h-20 resize-y`} />
+              <textarea value={editRequirements} onChange={e => setEditRequirements(e.target.value)} placeholder="최소 및 권장 시스템 요구사항" className={`${inputCls} min-h-20 resize-y`} disabled={gameData.serviceType === 'beta'} />
+            </div>
             </div>
           </div>}
 
@@ -1926,28 +1966,9 @@ export default function GameDetailManagementPage() {
 
       {/* 기본 세팅 모달 */}
       <Modal open={basicSettingModal} onClose={() => setBasicSettingModal(false)} title="기본 세팅" disableBackdropClose showCloseButton>
-        {(() => { const isLive = gameData?.approvalStatus === 'approved' && gameData?.status === 'published'; return (
+        {(() => { const isLive = false; return (
         <div className="space-y-6 py-2">
-          {/* 판매 방식 토글 */}
-          <div className="flex rounded-lg border border-line overflow-hidden text-sm font-medium">
-            <button
-              type="button"
-              onClick={() => { setBasicSettingIsFree(false); setBasicSettingErrors({}) }}
-              className={`flex-1 py-2 transition-colors ${!basicSettingIsFree ? 'bg-accent text-bg-primary' : 'text-text-secondary hover:bg-bg-tertiary'}`}
-            >
-              상품 판매
-            </button>
-            <button
-              type="button"
-              onClick={() => { setBasicSettingIsFree(true); setBasicSettingErrors({}) }}
-              className={`flex-1 py-2 transition-colors ${basicSettingIsFree ? 'bg-accent text-bg-primary' : 'text-text-secondary hover:bg-bg-tertiary'}`}
-            >
-              완전 무료
-            </button>
-          </div>
-
-          <div className="h-px bg-line" />
-          <div className={basicSettingIsFree ? 'pointer-events-none opacity-40' : ''}>
+          <div>
           {/* 재화 아이콘 */}
           <div className="space-y-3">
             <p className="text-sm font-medium">재화 아이콘</p>
@@ -2024,31 +2045,25 @@ export default function GameDetailManagementPage() {
 
           {/* 버튼 */}
           <div className="flex items-center justify-end gap-2 pt-2">
-            <p className="text-xs text-text-muted mr-auto">{isLive ? '출시 중에는 판매 방식만 변경 가능합니다' : '게임 출시 이후에는 기본 세팅을 수정할 수 없습니다'}</p>
+
             <button
               disabled={basicSettingSaving}
               onClick={async () => {
                 if (!gameId) return
                 const finalNamesMap = { ...basicSettingNamesMap, [basicSettingCountry]: basicSettingName }
                 const errors: { icon?: string; name?: string } = {}
-                if (!basicSettingIsFree) {
-                  if (!basicSettingIconFile && !gameData?.shopCurrencyIconUrl) errors.icon = '재화 아이콘을 선택해주세요'
-                  if (!Object.values(finalNamesMap).some(v => v.trim())) errors.name = '재화 이름을 하나 이상 입력해주세요'
-                }
+                if (!basicSettingIconFile && !gameData?.shopCurrencyIconUrl) errors.icon = '재화 아이콘을 선택해주세요'
+                if (!Object.values(finalNamesMap).some(v => v.trim())) errors.name = '재화 이름을 하나 이상 입력해주세요'
                 if (Object.keys(errors).length > 0) { setBasicSettingErrors(errors); return }
                 setBasicSettingSaving(true)
                 try {
-                  await gameService.updateGame(gameId, { monetization: basicSettingIsFree ? 'free' : 'freemium' } as any)
-                  if (!basicSettingIsFree) {
-                    if (basicSettingIconFile) {
-                      const data = await gameService.updateShopCurrencyIcon(gameId, basicSettingIconFile)
-                      setGameData(prev => prev ? { ...prev, shopCurrencyIconUrl: data.shopCurrencyIconUrl } : prev)
-                    }
-                    const krName = finalNamesMap['KR'] || Object.values(finalNamesMap).find(v => v.trim()) || ''
-                    const data = await gameService.updateShopCurrencyName(gameId, krName, finalNamesMap)
-                    setGameData(prev => prev ? { ...prev, shopCurrencyName: data.shopCurrencyName, shopCurrencyNames: data.shopCurrencyNames } : prev)
+                  if (basicSettingIconFile) {
+                    const data = await gameService.updateShopCurrencyIcon(gameId, basicSettingIconFile)
+                    setGameData(prev => prev ? { ...prev, shopCurrencyIconUrl: data.shopCurrencyIconUrl } : prev)
                   }
-                  setGameData(prev => prev ? { ...prev, monetization: basicSettingIsFree ? 'free' : 'freemium' } : prev)
+                  const krName = finalNamesMap['KR'] || Object.values(finalNamesMap).find(v => v.trim()) || ''
+                  const data = await gameService.updateShopCurrencyName(gameId, krName, finalNamesMap)
+                  setGameData(prev => prev ? { ...prev, shopCurrencyName: data.shopCurrencyName, shopCurrencyNames: data.shopCurrencyNames } : prev)
                   await triggerReReview()
                   setBasicSettingModal(false)
                 } catch { alert('저장에 실패했습니다') }

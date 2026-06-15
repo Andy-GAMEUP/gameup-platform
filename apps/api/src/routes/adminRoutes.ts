@@ -3,6 +3,7 @@ import {
   getAdminStats,
   getAllUsers, getUserDetail, updateUserRole, banUser, deleteUser, approveUser, getPendingMemberCounts, createAdminUser,
   getPendingGames, getAllGamesAdmin, approveGame, controlGameStatus, archiveGame,
+  approveShopReview, rejectShopReview,
   getGameMetrics,
   getAllReviews, blockReview, deleteReview,
   getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement,
@@ -52,6 +53,8 @@ router.patch('/users/:id/approve', requireAdminLevel('super'), approveUser)
 router.delete('/users/:id', requireAdminLevel('super'), deleteUser)
 router.post('/users/create-admin', requireAdminLevel('super'), createAdminUser)
 router.patch('/games/:id/approve', requireAdminLevel('super'), approveGame)
+router.post('/games/:gameId/shop-review/approve', requireAdminLevel('super', 'normal'), approveShopReview)
+router.post('/games/:gameId/shop-review/reject', requireAdminLevel('super', 'normal'), rejectShopReview)
 router.delete('/reviews/:id', requireAdminLevel('super'), deleteReview)
 router.delete('/announcements/:id', requireAdminLevel('super'), deleteAnnouncement)
 

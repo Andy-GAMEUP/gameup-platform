@@ -261,6 +261,16 @@ export const adminService = {
     return res.data
   },
 
+  approveShopReview: async (gameId: string) => {
+    const res = await apiClient.post(`/admin/games/${gameId}/shop-review/approve`)
+    return res.data
+  },
+
+  rejectShopReview: async (gameId: string) => {
+    const res = await apiClient.post(`/admin/games/${gameId}/shop-review/reject`)
+    return res.data
+  },
+
   archiveGame: async (id: string, archiveReason?: string) => {
     const res = await apiClient.patch(`/admin/games/${id}/archive`, { archiveReason })
     return res.data

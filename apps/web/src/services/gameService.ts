@@ -59,6 +59,12 @@ export const gameService = {
     return response.data
   },
 
+  revertToSnapshot: async (id: string) => {
+    const response = await apiClient.post(`/games/${id}/revert-to-snapshot`)
+    return response.data
+  },
+
+
   deleteGame: async (id: string, payload?: Record<string, unknown>) => {
     const response = await apiClient.delete(`/games/${id}`, { data: payload })
     return response.data
@@ -269,6 +275,11 @@ export const gameService = {
 
   updateShopCurrencyName: async (gameId: string, shopCurrencyName: string, shopCurrencyNames?: Record<string, string>) => {
     const response = await apiClient.put(`/games/${gameId}/shop-currency-name`, { shopCurrencyName, shopCurrencyNames })
+    return response.data
+  },
+
+  submitShopReview: async (gameId: string) => {
+    const response = await apiClient.post(`/games/${gameId}/shop-items/submit-review`)
     return response.data
   },
 

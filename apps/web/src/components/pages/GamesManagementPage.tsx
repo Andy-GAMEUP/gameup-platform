@@ -67,10 +67,7 @@ const monetizationLabel: Record<string, string> = {
 }
 
 function GameCard({ game }: { game: Game }) {
-  const service  = getServiceDisplay(game)
-  const isLive   = service.label === '라이브'
-  const isBeta   = service.label === '베타'
-  const topBorder = isLive ? 'border-t-accent' : isBeta ? 'border-t-blue-500' : 'border-t-gray-600'
+  const service = getServiceDisplay(game)
   const isSuspended = !!game.suspendedAt
   const thumbSrc = game.thumbnail
     ? (game.thumbnail.startsWith('http') || game.thumbnail.startsWith('/uploads/')
@@ -79,133 +76,121 @@ function GameCard({ game }: { game: Game }) {
     : null
 
   return (
-    <div className={`relative group flex flex-col rounded-2xl border-2 border-gray-400/40 border-t-4 ${isSuspended ? 'border-t-red-500' : topBorder} bg-bg-secondary hover:shadow-xl hover:shadow-black/30 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden`}>
-      {isSuspended && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center">
-          <span className="bg-red-500 text-white text-[20px] font-bold px-4 py-1 rounded">중지 중</span>
-        </div>
-      )}
-      <div className={isSuspended ? 'opacity-40' : ''}>
-      <div className="flex items-start gap-3 pt-5 px-5 pb-2.5">
-        <div className="flex-shrink-0 w-[74px] h-[74px] rounded-xl overflow-hidden border border-line/40 bg-bg-tertiary">
-          {thumbSrc ? (
-            <img src={thumbSrc} alt={game.title} className="w-full h-full object-cover"
-              onError={(e) => { e.currentTarget.style.display = 'none' }} />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-[26px]">🎮</div>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <p className="font-bold text-text-primary truncate leading-tight text-[19px]">{game.title}</p>
-            {game.rating > 0 && (
-              <span className="flex-shrink-0 flex items-center gap-0.5 text-xs text-yellow-400 font-medium ml-auto">
-                <Star className="w-3 h-3 fill-yellow-400" />
-                {game.rating.toFixed(1)}
+    <div className="group flex flex-col rounded-xl bg-bg-secondary border border-line/40 hover:border-line/80 hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
+      {/* 썸네일 */}
+      <div className="relative aspect-video bg-bg-tertiary overflow-hidden">
+        {thumbSrc ? (
+          <img src={thumbSrc} alt={game.title} className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { e.currentTarget.style.display = 'none' }} />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-3xl">🎮</div>
+        )}
+        {isSuspended && (
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+            <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded">중지 중</span>
+          </div>
+        )}
+      </div>
+
+      {/* 정보 */}
+      <div className={`flex flex-col gap-2 p-3 flex-1 ${isSuspended ? 'opacity-50' : ''}`}>
+        <div>
+          <div className="flex items-center justify-between gap-1">
+            <p className="font-semibold text-text-primary text-sm leading-tight truncate">{game.title}</p>
+            <div className="flex-shrink-0 flex items-center gap-1.5">
+              {game.rating > 0 && (
+                <span className="flex items-center gap-0.5 text-xs text-yellow-400 font-medium">
+                  <Star className="w-3 h-3 fill-yellow-400" />
+                  {game.rating.toFixed(1)}
+                </span>
+              )}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${service.className}`}>
+                {service.label}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs text-text-muted">{game.genre}</span>
+            {!isSuspended && game.approvalStatus === 'not_submitted' && game.status !== 'published' && (
+              <span className="inline-flex items-center gap-1 text-xs text-text-muted">
+                <span className="w-1 h-1 rounded-full bg-text-muted" />초안
+              </span>
+            )}
+            {!isSuspended && (game.approvalStatus === 'pending' || game.approvalStatus === 'review') && game.status !== 'published' && (
+              <span className="inline-flex items-center gap-1 text-xs text-yellow-400">
+                <span className="w-1 h-1 rounded-full bg-yellow-400 animate-pulse" />심사중
+              </span>
+            )}
+            {!isSuspended && game.approvalStatus === 'approved' && game.status !== 'published' && (
+              <span className="inline-flex items-center gap-1 text-xs text-accent">
+                <span className="w-1 h-1 rounded-full bg-accent animate-pulse" />출시 대기
+              </span>
+            )}
+            {!isSuspended && game.approvalStatus === 'rejected' && (
+              <span className="inline-flex items-center gap-1 text-xs text-red-400">
+                <span className="w-1 h-1 rounded-full bg-red-400" />심사 거부
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 mt-1">
-            <span className="text-[13px] text-text-muted">{game.genre}</span>
-            {!game.suspendedAt && game.approvalStatus === 'not_submitted' && (
-              <span className="inline-flex items-center gap-1 text-[15px] font-medium text-text-muted">
-                <span className="w-1.5 h-1.5 rounded-full bg-text-muted" />초안 작성 중
-              </span>
-            )}
-            {!game.suspendedAt && (game.approvalStatus === 'pending' || game.approvalStatus === 'review') && (
-              <span className="inline-flex items-center gap-1 text-[15px] font-medium text-yellow-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />심사중
-              </span>
-            )}
-            {!game.suspendedAt && game.approvalStatus === 'approved' && game.status !== 'published' && (
-              <span className="inline-flex items-center gap-1 text-[15px] font-medium text-accent">
-                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />출시 대기
-              </span>
-            )}
-            {!game.suspendedAt && game.approvalStatus === 'rejected' && (
-              <span className="inline-flex items-center gap-1 text-[15px] font-medium text-red-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />심사 거부
-              </span>
-            )}
-          </div>
         </div>
-      </div>
-      <div className="flex items-center px-4">
-        <div className="flex-1 h-[2px] bg-line" />
-        <span className={`mx-2 text-[13px] px-2.5 py-0.5 rounded-full border font-bold ${service.className}`}>
-          {service.label}
-        </span>
-        <div className="flex-1 h-[2px] bg-line" />
-      </div>
-      <div className="flex flex-col gap-1.5 p-2.5">
-        <div className="flex items-center gap-1">
+
+        {/* 버튼 */}
+        <div className="flex gap-1 mt-auto">
           <Link href={`/games/${game._id}`} className="flex-1" target="_blank" rel="noopener noreferrer">
-            <button className="w-full flex items-center justify-center gap-1 py-1 text-text-secondary hover:text-text-primary bg-bg-tertiary border border-line/60 hover:border-line rounded-md transition-colors text-[11px] font-semibold">
-              <Eye className="w-[15px] h-[15px]" />미리보기
+            <button className="w-full flex items-center justify-center gap-1 py-1.5 text-text-secondary hover:text-text-primary bg-bg-tertiary border border-line/50 hover:border-line rounded-lg transition-colors text-[11px] font-medium">
+              <Eye className="w-3.5 h-3.5" />미리보기
             </button>
           </Link>
           <Link href={`/games-management/${game._id}/manage`} className="flex-1">
-            <button className="w-full flex items-center justify-center gap-1 py-1 text-white bg-violet-500/70 hover:bg-violet-500/90 border border-violet-400/60 rounded-md transition-colors text-[11px] font-semibold shadow-sm shadow-violet-500/20">
-              <Settings className="w-[15px] h-[15px]" />관리
+            <button className="w-full flex items-center justify-center gap-1 py-1.5 text-white bg-violet-500/70 hover:bg-violet-500 border border-violet-400/40 rounded-lg transition-colors text-[11px] font-medium">
+              <Settings className="w-3.5 h-3.5" />관리
             </button>
           </Link>
         </div>
-      </div>
       </div>
     </div>
   )
 }
 
 function GameSection({
-  title, games, expanded, onToggleExpand, cardLimit, emptyMessage, addLink,
+  title, games, expanded, onToggleExpand, cardLimit, accent = 'green',
 }: {
   title: string
   games: Game[]
   expanded: boolean
   onToggleExpand: () => void
   cardLimit: number
-  emptyMessage: string
-  addLink?: boolean
+  accent?: 'green' | 'blue'
 }) {
   const visible = expanded ? games : games.slice(0, cardLimit)
   const hasMore = games.length > cardLimit
+  const borderClass = accent === 'green' ? 'border-accent/20' : 'border-blue-400/20'
 
   return (
-    <div className="bg-bg-secondary border border-line rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+    <div className={`rounded-xl border ${borderClass} bg-bg-secondary overflow-hidden`}>
+      {/* 헤더 */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-line/40">
         <span className="text-sm font-bold text-text-primary">{title}</span>
-        <span className="text-xs text-text-muted">{games.length}개</span>
+        <span className="text-sm text-text-muted">{games.length}개</span>
       </div>
-      {games.length === 0 ? (
-        <div className="text-center py-10 text-text-secondary text-sm">
-          {emptyMessage}
-          {addLink && (
-            <div className="mt-4 flex justify-center">
-              <Link href="/upload">
-                <button className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors">
-                  <Plus className="w-4 h-4" /> 첫 게임 등록하기
-                </button>
-              </Link>
-            </div>
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4">
+      {/* 카드 그리드 */}
+      <div className="p-5">
+        {games.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {visible.map(game => <GameCard key={game._id} game={game} />)}
           </div>
-          {hasMore && (
-            <div className="flex justify-center pb-4">
-              <button
-                onClick={onToggleExpand}
-                className="flex items-center px-4 py-1.5 text-text-secondary border border-line rounded-full hover:border-accent hover:text-accent transition-colors"
-              >
-                {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-              </button>
-            </div>
-          )}
-        </>
-      )}
+        )}
+        {hasMore && (
+          <div className="flex justify-center mt-4">
+            <button
+              onClick={onToggleExpand}
+              className="flex items-center px-4 py-1.5 text-text-secondary border border-line rounded-full hover:border-accent hover:text-accent transition-colors"
+            >
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -249,7 +234,7 @@ export default function GamesManagementPage() {
 
   const stats = [
     { label: '전체 게임', value: games.length,                                              color: 'text-text-primary',  sub: null },
-    { label: '초안 작성 중',    value: games.filter(g => g.approvalStatus === 'not_submitted').length, color: 'text-text-muted', sub: null },
+    { label: '초안 작성 중',    value: games.filter(g => g.approvalStatus === 'not_submitted' && g.status !== 'published').length, color: 'text-text-muted', sub: null },
     { label: '라이브',    value: liveGames.length, color: 'text-accent',   sub: liveGames.filter(isPending).length },
     { label: '베타',      value: betaGames.length, color: 'text-blue-400', sub: betaGames.filter(isPending).length },
     { label: '심사 거부',  value: games.filter(g => g.approvalStatus === 'rejected').length, color: 'text-red-400', sub: null },
@@ -286,6 +271,20 @@ export default function GamesManagementPage() {
         <div className="flex items-center justify-center py-20 text-text-secondary">
           <RefreshCw className="w-5 h-5 animate-spin mr-2" /> 불러오는 중...
         </div>
+      ) : operatingGames.length === 0 && preGames.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-32 gap-5">
+          <div className="text-6xl">🎮</div>
+          <div className="text-center">
+            <p className="text-lg font-semibold text-text-primary mb-1">등록된 게임이 없습니다</p>
+            <p className="text-sm text-text-muted">첫 번째 게임을 등록하고 서비스를 시작해보세요</p>
+          </div>
+          <Link href="/upload">
+            <button className="flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent/90 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-accent/30">
+              <Plus className="w-5 h-5" />
+              게임 등록하기
+            </button>
+          </Link>
+        </div>
       ) : (
         <div className="space-y-6">
           {/* 운영 중 섹션 */}
@@ -295,7 +294,7 @@ export default function GamesManagementPage() {
             expanded={expandOperating}
             onToggleExpand={() => setExpandOperating(p => !p)}
             cardLimit={CARD_LIMIT}
-            emptyMessage="운영 중인 게임이 없습니다."
+            accent="green"
           />
 
           {/* 출시 전 섹션 */}
@@ -305,8 +304,7 @@ export default function GamesManagementPage() {
             expanded={expandPre}
             onToggleExpand={() => setExpandPre(p => !p)}
             cardLimit={CARD_LIMIT}
-            emptyMessage={searchQuery ? '검색 결과가 없습니다.' : '등록된 게임이 없습니다.'}
-            addLink={!searchQuery}
+            accent="blue"
           />
 
         </div>
