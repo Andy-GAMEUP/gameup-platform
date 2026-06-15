@@ -58,6 +58,9 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 5000
 
+// ── 프록시 신뢰 설정 (nginx 등 리버스 프록시 환경에서 실제 클라이언트 IP 사용) ─
+app.set('trust proxy', 1)
+
 // ── DB 연결 ───────────────────────────────────────────────────────
 connectDB()
 
