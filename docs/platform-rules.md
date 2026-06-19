@@ -90,14 +90,9 @@ approvalStatus=review
 
 ### 1.3 게임 수정 규칙
 
-#### 출시 중인 게임 (status=published + approvalStatus=approved)
-- 수정 시 **즉시 반영** (publishedSnapshot에 동기화)
+#### 출시 중인 게임 (status=published)
+- serviceType(베타/라이브)에 무관하게 수정 시 **즉시 반영**, 재심사 없음
 - 수정 가능 필드: title, description, genre, thumbnail, bannerImage, trailer, website, discord, notes, platform, engine, startDate, endDate, maxTesters, testType, requirements, gameDomain, monetization
-
-#### 출시 중이지만 재심사 진행 중인 게임
-- 실제 게임 데이터는 수정됨
-- **사용자에게 보이는 화면**은 승인 전까지 `publishedSnapshot`(이전 버전)이 표시됨
-- 심사 취소 시: 스냅샷 데이터로 복원 + `approvalStatus=approved` 복귀
 
 #### serviceType(베타↔라이브) 변경 시
 - `approvalStatus`가 `not_submitted`으로 자동 리셋
@@ -105,7 +100,8 @@ approvalStatus=review
 - **재심사 필요**
 
 #### 편집 잠금 조건
-- `status=published` && `approvalStatus !== 'approved'` (재심사 대기 중): 일부 핵심 필드 잠금 (UI 레벨)
+- `status !== 'published'` && (`approvalStatus === 'pending'` 또는 `'review'`): 심사 진행 중 편집 불가 (UI 레벨)
+- `status !== 'published'` && `approvalStatus === 'approved'`: 출시 대기 중 편집 불가
 
 ---
 
