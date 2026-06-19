@@ -235,13 +235,6 @@ export default function AdminGamesPage() {
                 placeholder="게임명 · 장르로 검색"
                 className="w-full bg-bg-tertiary border border-line rounded-lg pl-3 pr-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-line" />
             </div>
-            <button
-              onClick={() => setPage(1)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-accent hover:bg-accent-hover text-white text-sm font-semibold rounded-lg transition-colors flex-shrink-0"
-            >
-              <Search className="w-4 h-4" />
-              검색
-            </button>
           </div>
         </div>
 

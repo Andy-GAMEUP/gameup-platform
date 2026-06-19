@@ -30,7 +30,7 @@ export const getAllCommunityBanners = async (req: AuthRequest, res: Response) =>
 /** POST /api/admin/community/banners — 배너 추가 (위치별 최대 5개) */
 export const uploadCommunityBanner = async (req: AuthRequest, res: Response) => {
   try {
-    const allowed = ['community', 'main', 'event']
+    const allowed = ['community', 'main', 'event', 'newgame']
     const position = allowed.includes(req.body.position) ? req.body.position : 'community'
     const count = await CommunityBannerModel.countDocuments({ position })
     if (count >= 5) return res.status(400).json({ message: '배너는 최대 5개까지 등록 가능합니다' })
@@ -68,7 +68,16 @@ export const updateCommunityBanner = async (req: AuthRequest, res: Response) => 
     const file = files?.bannerImage?.[0]
     if (file) update.imageUrl = `/uploads/banners/${file.filename}`
 
-    const banner = await CommunityBannerModel.findByIdAndUpdate(id, update, { new: true })
+    const today = new Date().toISOString().slice(0, 10)
+    const editedBanner = await CommunityBannerModel.findOneAndUpdate(
+      { _id: id, 'dailyStats.date': today },
+      { ...update, $inc: { 'dailyStats.$.edits': 1 } },
+      { new: true }
+    )
+    const banner = editedBanner ?? await (async () => {
+      await CommunityBannerModel.findByIdAndUpdate(id, { ...update, $push: { dailyStats: { date: today, impressions: 0, clicks: 0, edits: 1 } } })
+      return CommunityBannerModel.findById(id)
+    })()
     if (!banner) return res.status(404).json({ message: '배너를 찾을 수 없습니다' })
     res.json({ banner })
   } catch {
@@ -85,5 +94,34 @@ export const deleteCommunityBanner = async (req: AuthRequest, res: Response) => 
     res.json({ message: '삭제되었습니다' })
   } catch {
     res.status(500).json({ message: '배너 삭제 실패' })
+  }
+}
+
+/** POST /api/community/banners/:id/track — 노출/클릭 기록 (공개) */
+export const trackBannerEvent = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params
+    const { type } = req.body  // 'impression' | 'click'
+    if (type !== 'impression' && type !== 'click') {
+      return res.status(400).json({ message: 'type must be impression or click' })
+    }
+
+    const today = new Date().toISOString().slice(0, 10)  // YYYY-MM-DD
+    const field = type === 'impression' ? 'dailyStats.$.impressions' : 'dailyStats.$.clicks'
+
+    // 오늘 날짜 항목이 있으면 증가, 없으면 생성
+    const updated = await CommunityBannerModel.findOneAndUpdate(
+      { _id: id, 'dailyStats.date': today },
+      { $inc: { [field]: 1 } }
+    )
+
+    if (!updated) {
+      const newStat = { date: today, impressions: type === 'impression' ? 1 : 0, clicks: type === 'click' ? 1 : 0 }
+      await CommunityBannerModel.findByIdAndUpdate(id, { $push: { dailyStats: newStat } })
+    }
+
+    res.json({ ok: true })
+  } catch {
+    res.status(500).json({ message: '트래킹 실패' })
   }
 }

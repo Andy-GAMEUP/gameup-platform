@@ -178,7 +178,7 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
     const user = await User.findById(id)
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
     if (user.role === 'admin') return res.status(400).json({ message: '관리자 계정은 삭제할 수 없습니다' })
-    await User.findByIdAndUpdate(id, { $set: { isActive: false, deletedAt: new Date() } })
+    await User.findByIdAndDelete(id)
     res.json({ message: '사용자가 삭제되었습니다' })
   } catch {
     res.status(500).json({ message: '사용자 삭제 실패' })
@@ -405,6 +405,20 @@ export const controlGameStatus = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, message: msg, game })
   } catch {
     res.status(500).json({ message: '게임 상태 변경 실패' })
+  }
+}
+
+// ── 신작 게임 등록/해제 ───────────────────────────────────────────
+export const toggleNewFeatured = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const game = await Game.findById(id)
+    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    game.isNewFeatured = !game.isNewFeatured
+    await game.save()
+    res.json({ success: true, isNewFeatured: game.isNewFeatured })
+  } catch (error) {
+    res.status(500).json({ message: '처리 중 오류가 발생했습니다' })
   }
 }
 
@@ -704,8 +718,8 @@ export const approveUser = async (req: AuthRequest, res: Response) => {
     const { id } = req.params
     const { approvalStatus, rejectedReason } = req.body
 
-    if (!approvalStatus || !['approved', 'rejected'].includes(approvalStatus)) {
-      return res.status(400).json({ message: 'approvalStatus는 approved 또는 rejected여야 합니다' })
+    if (!approvalStatus || !['approved', 'rejected', 'pending'].includes(approvalStatus)) {
+      return res.status(400).json({ message: 'approvalStatus는 approved, rejected, pending 중 하나여야 합니다' })
     }
 
     const user = await User.findById(id)
@@ -728,9 +742,10 @@ export const approveUser = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const statusLabel = approvalStatus === 'approved' ? '승인' : approvalStatus === 'rejected' ? '거절' : '대기'
     const updatedUser = await User.findByIdAndUpdate(id, update, { new: true }).select('-password')
     res.json({
-      message: approvalStatus === 'approved' ? '회원이 승인되었습니다' : '회원이 거절되었습니다',
+      message: `회원 상태가 ${statusLabel}로 변경되었습니다`,
       user: updatedUser,
     })
   } catch {
@@ -741,13 +756,15 @@ export const approveUser = async (req: AuthRequest, res: Response) => {
 // ── 승인 대기 회원 수 통계 ──────────────────────────────────────
 export const getPendingMemberCounts = async (req: AuthRequest, res: Response) => {
   try {
-    const [total, admin, corporate, individual] = await Promise.all([
+    const [total, developer, partner, admin, corporate, individual] = await Promise.all([
       User.countDocuments({ approvalStatus: 'pending' }),
+      User.countDocuments({ approvalStatus: 'pending', memberType: 'corporate' }),
+      User.countDocuments({ approvalStatus: 'pending', role: 'partner' }),
       User.countDocuments({ approvalStatus: 'pending', role: 'admin' }),
       User.countDocuments({ approvalStatus: 'pending', memberType: 'corporate' }),
       User.countDocuments({ approvalStatus: 'pending', memberType: 'individual' }),
     ])
-    res.json({ total, admin, corporate, individual })
+    res.json({ total, developer, partner, admin, corporate, individual })
   } catch {
     res.status(500).json({ message: '대기 회원 수 조회 실패' })
   }

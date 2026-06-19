@@ -23,7 +23,7 @@ export default function Navbar() {
   const isCorporateApproved = user?.memberType === 'corporate' && user?.companyInfo?.approvalStatus === 'approved'
   const isCorporateDeveloper = isCorporateApproved && user?.companyInfo?.companyType?.includes('developer')
   const isCorporatePartner = isCorporateApproved && !isCorporateDeveloper
-  const showDeveloperCenter = user?.role === 'developer' || isCorporateDeveloper
+  const showDeveloperCenter = isCorporateDeveloper || (user?.role === 'developer' && user?.memberType !== 'corporate')
   const showPartnerCenter = isCorporatePartner
 
   useEffect(() => {
@@ -108,14 +108,6 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             {isAuthenticated && user ? (
               <>
-                {showDeveloperCenter && (
-                  <Link href="/dashboard">
-                    <Button variant="ghost" className="text-text-secondary hover:text-text-primary gap-2">
-                      <LayoutDashboard className="w-4 h-4" />
-                      개발자 센터
-                    </Button>
-                  </Link>
-                )}
                 <button onClick={toggleTheme}
                   className="text-text-muted hover:text-text-primary transition-colors p-1.5"
                   title={theme === 'light' ? '다크 모드' : '라이트 모드'}>
@@ -171,23 +163,13 @@ export default function Navbar() {
                           관리자 콘솔
                         </Link>
                       )}
-                      {(user.role === 'player' || isCorporatePartner) && (
-                        <Link
-                          href="/my"
-                          onClick={() => setProfileMenuOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
-                        >
-                          <User className="w-4 h-4" />
-                          마이페이지
-                        </Link>
-                      )}
                       <Link
-                        href="/profile"
+                        href="/my"
                         onClick={() => setProfileMenuOpen(false)}
                         className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
                       >
                         <User className="w-4 h-4" />
-                        프로필
+                        마이페이지
                       </Link>
                       <button
                         onClick={handleLogout}
@@ -202,11 +184,6 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link href="/dashboard">
-                  <Button variant="ghost" className="text-text-secondary hover:text-text-primary">
-                    개발자 센터
-                  </Button>
-                </Link>
                 <Link href="/login">
                   <Button variant="ghost" className="text-text-secondary hover:text-text-primary">
                     로그인
@@ -253,12 +230,10 @@ export default function Navbar() {
                       <LayoutDashboard className="w-4 h-4" /> 개발자 센터
                     </Link>
                   )}
-                  {(user?.role === 'player' || isCorporatePartner) && (
-                    <Link href="/my" onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary">
-                      <User className="w-4 h-4" /> 마이페이지
-                    </Link>
-                  )}
+                  <Link href="/my" onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary">
+                    <User className="w-4 h-4" /> 마이페이지
+                  </Link>
                   <button onClick={handleLogout}
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-danger hover:bg-bg-tertiary text-left">
                     <LogOut className="w-4 h-4" /> 로그아웃
@@ -266,10 +241,6 @@ export default function Navbar() {
                 </>
               ) : (
                 <>
-                  <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary">
-                    개발자 센터
-                  </Link>
                   <Link href="/login" onClick={() => setMobileMenuOpen(false)}
                     className="block px-3 py-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-tertiary">
                     로그인

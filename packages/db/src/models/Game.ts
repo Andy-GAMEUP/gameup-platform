@@ -56,6 +56,7 @@ export interface IGame extends Document {
   notes?: string
   approvedAt?: Date
   approvedBy?: mongoose.Types.ObjectId
+  isNewFeatured?: boolean
   ratingCertificate?: {
     ratingClass?: '전체이용가' | '12세이용가' | '15세이용가' | '18세이용가' | '청소년이용불가'
     certNumber?: string
@@ -66,6 +67,8 @@ export interface IGame extends Document {
   shopCurrencyIconUrl?: string
   shopCurrencyName?: string
   shopCurrencyNames?: Record<string, string>
+  shopPaymentType?: 'cash' | 'capcoin'
+  additionalCurrencies?: { _id: string; name: string; names: Record<string, string>; iconUrl: string; paymentType?: 'cash' | 'capcoin' }[]
   publishedSnapshot?: Record<string, unknown>
   createdAt: Date
   updatedAt: Date
@@ -198,9 +201,23 @@ const gameSchema = new Schema<IGame>(
     shopCurrencyIconUrl: { type: String, default: '' },
     shopCurrencyName: { type: String, default: '' },
     shopCurrencyNames: { type: Map, of: String, default: {} },
+    shopPaymentType: { type: String, enum: ['cash', 'capcoin'], default: 'cash' },
+    additionalCurrencies: {
+      type: [{
+        name:        { type: String, default: '' },
+        names:       { type: Map, of: String, default: {} },
+        iconUrl:     { type: String, default: '' },
+        paymentType: { type: String, enum: ['cash', 'capcoin'], default: 'cash' },
+      }],
+      default: []
+    },
     approvedBy: {
       type: Schema.Types.ObjectId,
       ref: 'User'
+    },
+    isNewFeatured: {
+      type: Boolean,
+      default: false
     },
     ratingCertificate: {
       ratingClass: {

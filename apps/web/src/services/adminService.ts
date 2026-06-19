@@ -16,6 +16,13 @@ export interface PublicAnnouncement {
   authorId?: { username: string; role: string }
 }
 
+export interface BannerDailyStat {
+  date: string
+  impressions: number
+  clicks: number
+  edits: number
+}
+
 export interface CommunityBanner {
   _id: string
   imageUrl: string
@@ -24,6 +31,7 @@ export interface CommunityBanner {
   sortOrder: number
   isActive: boolean
   position: 'community' | 'main' | 'event'
+  dailyStats: BannerDailyStat[]
   createdAt: string
   updatedAt: string
 }
@@ -211,7 +219,7 @@ export const adminService = {
     return res.data
   },
 
-  approveUser: async (id: string, data: { approvalStatus: 'approved' | 'rejected'; rejectedReason?: string }) => {
+  approveUser: async (id: string, data: { approvalStatus: 'approved' | 'rejected' | 'pending'; rejectedReason?: string }) => {
     const res = await apiClient.patch(`/admin/users/${id}/approve`, data)
     return res.data
   },
@@ -249,6 +257,28 @@ export const adminService = {
   getAllGames: async (params?: { page?: number; limit?: number; status?: string; approvalStatus?: string; search?: string; serviceType?: string; suspended?: string }) => {
     const res = await apiClient.get('/admin/games', { params })
     return res.data
+  },
+
+  getNewGameBanners: async () => {
+    const res = await apiClient.get('/admin/community/banners?position=newgame')
+    return res.data as { banners: CommunityBanner[] }
+  },
+
+  getAllNewGameBanners: async () => {
+    const res = await apiClient.get('/admin/community/banners/all?position=newgame')
+    return res.data as { banners: CommunityBanner[] }
+  },
+
+  uploadNewGameBanner: async (file: File, extra?: { linkUrl?: string; title?: string }) => {
+    const form = new FormData()
+    form.append('bannerImage', file)
+    if (extra?.linkUrl) form.append('linkUrl', extra.linkUrl)
+    if (extra?.title) form.append('title', extra.title)
+    form.append('position', 'newgame')
+    const res = await apiClient.post('/admin/community/banners', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data as { banner: CommunityBanner }
   },
 
   approveGame: async (id: string, data: { action: 'approve' | 'reject' | 'review'; rejectionReason?: string; adminNote?: string }) => {
@@ -443,6 +473,10 @@ export const adminService = {
   deleteCommunityBanner: async (id: string) => {
     const res = await apiClient.delete(`/admin/community/banners/${id}`)
     return res.data
+  },
+
+  trackBannerEvent: async (id: string, type: 'impression' | 'click') => {
+    await apiClient.post(`/admin/community/banners/${id}/track`, { type }).catch(() => {})
   },
 
   getAnalyticsDashboard: () =>

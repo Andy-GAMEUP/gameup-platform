@@ -2,14 +2,14 @@ import { Router } from 'express'
 import {
   getAdminStats,
   getAllUsers, getUserDetail, updateUserRole, banUser, deleteUser, approveUser, getPendingMemberCounts, createAdminUser,
-  getPendingGames, getAllGamesAdmin, approveGame, controlGameStatus, archiveGame,
+  getPendingGames, getAllGamesAdmin, approveGame, controlGameStatus, archiveGame, toggleNewFeatured,
   approveShopReview, rejectShopReview,
   getGameMetrics,
   getAllReviews, blockReview, deleteReview,
   getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement,
   getPublicAnnouncements, getPublicAnnouncementById
 } from '../controllers/adminController'
-import { getCommunityBanners, getAllCommunityBanners, uploadCommunityBanner, updateCommunityBanner, deleteCommunityBanner } from '../controllers/communityBannerController'
+import { getCommunityBanners, getAllCommunityBanners, uploadCommunityBanner, updateCommunityBanner, deleteCommunityBanner, trackBannerEvent } from '../controllers/communityBannerController'
 import { getReportedPosts, adminUpdatePostStatus, getReportedComments, adminUpdateCommentStatus, getDeletedPosts, getDeletedComments, getReportedUsers } from '../controllers/communityController'
 import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
 import { uploadFields } from '../middleware/upload'
@@ -18,6 +18,7 @@ const router = Router()
 
 // 공개 — 커뮤니티 홈 배너 (인증 불필요)
 router.get('/community/banners', getCommunityBanners)
+router.post('/community/banners/:id/track', trackBannerEvent)
 
 // 공개 공지사항 (인증 불필요)
 router.get('/announcements/public', getPublicAnnouncements)
@@ -46,6 +47,7 @@ router.patch('/users/:id/role', requireAdminLevel('super', 'normal'), updateUser
 router.patch('/users/:id/ban', requireAdminLevel('super', 'normal'), banUser)
 router.patch('/games/:id/control', requireAdminLevel('super', 'normal'), controlGameStatus)
 router.patch('/games/:id/archive', requireAdminLevel('super', 'normal'), archiveGame)
+router.patch('/games/:id/new-featured', requireAdminLevel('super', 'normal'), toggleNewFeatured)
 router.patch('/reviews/:id/block', requireAdminLevel('super', 'normal'), blockReview)
 
 // 승인/삭제 (Super만)

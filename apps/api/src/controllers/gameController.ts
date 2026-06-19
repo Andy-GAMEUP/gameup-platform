@@ -7,10 +7,14 @@ import { grantGameAccessPoint } from '../services/pointService'
 
 export const getAllGames = async (req: AuthRequest, res: Response) => {
   try {
-    const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType } = req.query
+    const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType, featuredNew } = req.query
 
     const filter: Record<string, unknown> = {
       status: 'published',
+    }
+
+    if (featuredNew === 'true') {
+      filter.isNewFeatured = true
     }
 
     if (serviceType && serviceType !== 'all') {

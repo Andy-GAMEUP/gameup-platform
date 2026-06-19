@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/useAuth'
 import { gameService } from '@/services/gameService'
 import playerService, { Review } from '@/services/playerService'
+import apiClient from '@/services/api'
 import LevelBadge from '@/components/LevelBadge'
 import GracRatingBadge from '@/components/GracRatingBadge'
 
@@ -21,6 +22,9 @@ interface GameQA {
   createdAt: string
 }
 import TossPaymentModal from '@/components/TossPaymentModal'
+
+const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
+const toAbsUrl = (raw: string) => raw.startsWith('http') ? raw : `${UPLOADS_URL}${raw}`
 
 const GENRE_IMG: Record<string, string> = {
   RPG: 'https://images.unsplash.com/photo-1646577482825-3fb6ff560de6?w=800&q=80',
@@ -99,8 +103,7 @@ export default function PlayerGameDetailPage() {
 
   const [game, setGame] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'overview' | 'play' | 'reviews' | 'shop' | 'challenge'>('overview')
-  const [scrollToPlay, setScrollToPlay] = useState(false)
+  const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'shop' | 'challenge'>('overview')
   const tabContentRef = useRef<HTMLDivElement>(null)
 
   const [isFavorited, setIsFavorited] = useState(false)
@@ -144,7 +147,7 @@ export default function PlayerGameDetailPage() {
   // 상점
   const [shopItems, setShopItems] = useState<{
     _id: string; name: string; description: string; imageUrl: string
-    price: number; currency: string; currencyType: string
+    price: number; currency: string; currencyType: string; currencyId?: string
     currencyAmount: number; bonusAmount: number; isSpecial?: boolean; specialImageUrl?: string; active: boolean; sortOrder: number
   }[]>([])
   const [shopLoading, setShopLoading] = useState(false)
@@ -161,6 +164,18 @@ export default function PlayerGameDetailPage() {
     itemName: string
     amount: number
   }>({ open: false, itemName: '', amount: 0 })
+
+  type CapcoinModalItem = typeof shopItems[number] & { currencyName?: string; currencyIconUrl?: string }
+  const [capcoinModal, setCapcoinModal] = useState<{
+    open: boolean
+    item: CapcoinModalItem | null
+    qty: number
+    gameUserId: string
+    userPoints: number | null
+    purchasing: boolean
+    purchaseError: string
+    purchaseSuccess: boolean
+  }>({ open: false, item: null, qty: 1, gameUserId: '', userPoints: null, purchasing: false, purchaseError: '', purchaseSuccess: false })
 
 
   const loadGame = useCallback(async () => {
@@ -246,8 +261,13 @@ export default function PlayerGameDetailPage() {
       const data = await gameService.getPublicShopItems(id)
       const activeItems = (data.items || []).filter((i: { active: boolean }) => i.active)
       const special = activeItems.find((i: { isSpecial?: boolean }) => i.isSpecial)
-      setShopItems(activeItems.filter((i: { isSpecial?: boolean }) => !i.isSpecial))
+      const nonSpecial = activeItems.filter((i: { isSpecial?: boolean }) => !i.isSpecial)
+      setShopItems(nonSpecial)
       if (special) { setSpecialPopupItem(special); setSavedSpecialItem(special) }
+      const hasCash = nonSpecial.some((i: { paymentType?: string }) => i.paymentType !== 'capcoin')
+      const hasCapcoin = nonSpecial.some((i: { paymentType?: string }) => i.paymentType === 'capcoin')
+      if (!hasCash && hasCapcoin) setShopSubTab('challenge')
+      else setShopSubTab('currency')
     } catch { /* ignore */ } finally {
       setShopLoading(false)
     }
@@ -257,14 +277,7 @@ export default function PlayerGameDetailPage() {
     if (activeTab === 'shop') loadShopItems()
   }, [activeTab, loadShopItems])
 
-  useEffect(() => {
-    if (scrollToPlay && activeTab === 'play') {
-      tabContentRef.current?.scrollIntoView({ behavior: 'smooth' })
-      setScrollToPlay(false)
-    }
-  }, [scrollToPlay, activeTab])
-
-  const handleFavorite = async () => {
+const handleFavorite = async () => {
     if (!isAuthenticated) { router.push('/login'); return }
     setFavLoading(true)
     try {
@@ -360,20 +373,35 @@ export default function PlayerGameDetailPage() {
     setPaymentModal({ open: true, itemName, amount })
   }
 
+  const handleCapcoinPurchase = async (item: typeof shopItems[number], currencyName: string, currencyIconUrl: string) => {
+    if (!isAuthenticated) { router.push('/login'); return }
+    setCapcoinModal({ open: true, item: { ...item, currencyName, currencyIconUrl }, qty: 1, gameUserId: '', userPoints: null, purchasing: false, purchaseError: '', purchaseSuccess: false })
+    try {
+      const { data } = await apiClient.get('/profile')
+      setCapcoinModal(prev => ({ ...prev, userPoints: data.points ?? 0 }))
+    } catch { /* ignore */ }
+  }
+
+  const submitCapcoinPurchase = async () => {
+    if (!capcoinModal.item || !id) return
+    setCapcoinModal(prev => ({ ...prev, purchasing: true, purchaseError: '' }))
+    try {
+      const result = await gameService.purchaseShopItemWithCapcoin(id, capcoinModal.item._id, capcoinModal.gameUserId, capcoinModal.qty)
+      setCapcoinModal(prev => ({ ...prev, purchasing: false, purchaseSuccess: true, userPoints: result.newBalance }))
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? '구매에 실패했습니다'
+      setCapcoinModal(prev => ({ ...prev, purchasing: false, purchaseError: msg }))
+    }
+  }
+
 const avgRating = game ? (game.rating as number) || 0 : 0
   const totalReviewCount = Object.values(ratingDist).reduce((a, b) => a + b, 0)
   const rawThumb = game?.thumbnail as string | undefined
   const rawBanner = game?.bannerImage as string | undefined
-  const toUploadUrl = (raw: string) =>
-    raw.startsWith('http') ? raw
-    : raw.startsWith('/uploads/') ? raw
-    : `/uploads/thumbnails/${raw.split('/').pop()}`
   const thumbUrl = rawThumb
-    ? toUploadUrl(rawThumb)
+    ? toAbsUrl(rawThumb)
     : GENRE_IMG[(game?.genre as string) || ''] || GENRE_IMG.default
-  const bannerUrl = rawBanner
-    ? (rawBanner.startsWith('http') ? rawBanner : rawBanner.startsWith('/uploads/') ? rawBanner : `/uploads/banners/${rawBanner.split('/').pop()}`)
-    : thumbUrl
+  const bannerUrl = rawBanner ? toAbsUrl(rawBanner) : thumbUrl
   const gameFileUrl = game?.gameFile ? `/${(game.gameFile as string)}` : null
   const rawDomain = (game?.gameDomain as string) || null
   const gameDomainUrl = rawDomain
@@ -384,7 +412,6 @@ const avgRating = game ? (game.rating as number) || 0 : 0
 
   const TABS = [
     { key: 'overview',  label: '게임 소개' },
-    { key: 'play',      label: '게임 플레이' },
     { key: 'shop',      label: '상점' },
     { key: 'challenge', label: '챌린지' },
     { key: 'reviews',   label: `리뷰 (${reviewTotal})` }
@@ -428,7 +455,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             </button>
           )}
           <img
-            src={lightboxShots[lightboxIndex]?.url}
+            src={lightboxShots[lightboxIndex]?.url ? toAbsUrl(lightboxShots[lightboxIndex].url) : ''}
             alt={lightboxShots[lightboxIndex]?.title}
             className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
             onClick={e => e.stopPropagation()}
@@ -463,9 +490,13 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 <span className="text-white/50 text-sm">({reviewTotal}개 리뷰)</span>
               </div>
               <div className="flex-1 flex justify-center pr-[20%]">
-                {game.status !== 'archived' && (
+                {game.status !== 'archived' && (gameDomainUrl || gameFileUrl) && (
                   <button
-                    onClick={() => { setActiveTab('play'); setScrollToPlay(true) }}
+                    onClick={() => {
+                      const url = gameDomainUrl || (gameFileUrl ? `${typeof window !== 'undefined' ? window.location.origin : ''}${gameFileUrl}` : null)
+                      if (url) window.open(url, '_blank', 'noopener,noreferrer')
+                      handlePlay().catch(() => {})
+                    }}
                     className="px-[52px] py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-900/50" style={{ fontSize: '23px' }}
                   >
                     게임 시작
@@ -570,7 +601,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                       />
                     ) : selected?.url ? (
                       <img
-                        src={selected.url}
+                        src={toAbsUrl(selected.url)}
                         alt={selected.title}
                         className="w-full h-full object-cover cursor-zoom-in"
                         onClick={() => {
@@ -611,7 +642,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                             </div>
                           </>
                         ) : item.url ? (
-                          <img src={item.url} alt={item.title} className="w-full h-full object-cover" />
+                          <img src={toAbsUrl(item.url)} alt={item.title} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-bg-tertiary">
                             <span className="text-text-muted text-xs">🖼️</span>
@@ -814,86 +845,6 @@ const avgRating = game ? (game.rating as number) || 0 : 0
           </div>
         )}
 
-        {/* ── 게임 플레이 탭 ── */}
-        {activeTab === 'play' && (
-          <div className="space-y-4">
-            {!isAuthenticated ? (
-              <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center">
-                <p className="text-text-secondary mb-4">게임을 플레이하려면 로그인이 필요합니다</p>
-                <Link href="/login" className="bg-cyan-600 hover:bg-cyan-700 text-text-primary px-6 py-2 rounded-lg font-medium transition-colors">로그인하기</Link>
-              </div>
-            ) : game.status === 'archived' ? (
-              <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center">
-                <p className="text-2xl mb-2">📦</p>
-                <p className="text-text-secondary">이 게임의 베타 서비스가 종료되었습니다</p>
-              </div>
-            ) : gameDomainUrl ? (
-              <div className="space-y-3">
-                <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center space-y-4">
-                  <button
-                    onClick={() => {
-                      const win = window.open(gameDomainUrl, '_blank', 'noopener,noreferrer')
-                      if (!win) {
-                        window.location.href = gameDomainUrl
-                      }
-                      handlePlay().catch(() => {})
-                    }}
-                    className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-text-primary px-8 py-3 rounded-xl font-semibold text-lg transition-all"
-                  >
-                    게임 시작
-                  </button>
-                  {!!game.description && (
-                    <p className="text-text-secondary text-sm">{game.description as string}</p>
-                  )}
-                </div>
-                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-300">
-                  💡 플레이 후 리뷰를 남겨 개발자에게 피드백을 전달하세요
-                </div>
-              </div>
-            ) : gameFileUrl ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-text-primary font-bold">게임 플레이</h2>
-                  {isPlaying && (
-                    <button onClick={handleStopPlay} className="bg-red-600/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded text-sm hover:bg-red-600/40 transition-colors">
-                      플레이 종료
-                    </button>
-                  )}
-                </div>
-                {!isPlaying ? (
-                  <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center space-y-4">
-                    <button
-                      onClick={handlePlay}
-                      className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-text-primary px-8 py-3 rounded-xl font-semibold text-lg transition-all"
-                    >
-                      게임 시작
-                    </button>
-                    {!!game.description && (
-                      <p className="text-text-secondary text-sm">{game.description as string}</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="w-full rounded-xl overflow-hidden border border-line bg-bg-secondary">
-                    <iframe
-                      src={gameFileUrl}
-                      className="w-full"
-                      style={{ height: '600px' }}
-                      title={game.title as string}
-                      sandbox="allow-scripts"
-                    />
-                  </div>
-                )}
-                <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-300">
-                  💡 플레이 후 리뷰를 남겨 개발자에게 피드백을 전달하세요
-                </div>
-              </div>
-            ) : (
-              <div className="bg-bg-secondary border border-line rounded-xl p-10 text-center">
-                <p className="text-text-secondary">게임 파일을 불러올 수 없습니다</p>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ── 리뷰 탭 ── */}
         {activeTab === 'reviews' && (
@@ -1087,7 +1038,12 @@ const avgRating = game ? (game.rating as number) || 0 : 0
         {activeTab === 'shop' && (
           <div className="relative space-y-5">
             {/* 서브탭 */}
+            {(() => {
+              const hasCashTab = shopItems.some(i => (i as { paymentType?: string }).paymentType !== 'capcoin')
+              const hasCapcoinTab = shopItems.some(i => (i as { paymentType?: string }).paymentType === 'capcoin')
+              return (
             <div className="flex items-stretch gap-3">
+              {hasCashTab && (
               <button
                 onClick={() => setShopSubTab('currency')}
                 className={`flex flex-col items-center gap-1.5 px-10 py-4 rounded-xl border-2 text-sm font-bold transition-all ${shopSubTab === 'currency' ? 'bg-gradient-to-b from-cyan-500 to-cyan-700 border-cyan-400 text-white' : 'bg-zinc-800/40 border-zinc-700/40 hover:bg-zinc-800/60 hover:border-zinc-600/60'}`}
@@ -1102,12 +1058,15 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                   보유 50,000
                 </span>
               </button>
+              )}
+              {hasCapcoinTab && (
               <button
                 onClick={() => setShopSubTab('challenge')}
                 className={`flex flex-col items-center justify-center px-10 rounded-xl border-2 text-sm font-bold transition-all ${shopSubTab === 'challenge' ? 'bg-gradient-to-b from-cyan-500 to-cyan-700 border-cyan-400 text-white' : 'bg-zinc-800/40 border-zinc-700/40 hover:bg-zinc-800/60 hover:border-zinc-600/60'}`}
               >
                 <span className="text-lg font-bold text-white drop-shadow-none" style={{ textShadow: '3px 3px 0px rgba(0,0,0,1)', WebkitTextStroke: '0.5px rgba(0,0,0,0.3)' }}>챌린지 보상</span>
               </button>
+              )}
               <div className="ml-auto relative" ref={shopMenuRef}>
                 <button
                   onClick={() => setShopMenuOpen(v => !v)}
@@ -1131,24 +1090,80 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 )}
               </div>
             </div>
+              )
+            })()}
 
             {/* 챌린지 보상 */}
-            {shopSubTab === 'challenge' && (
-              <div className="bg-bg-secondary border border-line rounded-xl p-12 text-center">
-                <p className="text-text-secondary text-sm">챌린지 보상 기능은 준비 중입니다</p>
-              </div>
-            )}
+            {shopSubTab === 'challenge' && (() => {
+              const UPLOADS_BASE = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
+
+              const capcoinItems = shopItems.filter(item => (item as { paymentType?: string }).paymentType === 'capcoin')
+
+              if (capcoinItems.length === 0) {
+                return (
+                  <div className="bg-bg-secondary border border-line rounded-xl p-12 text-center">
+                    <p className="text-text-secondary text-sm">챌린지 보상 기능은 준비 중입니다</p>
+                  </div>
+                )
+              }
+              return (
+                <div className="grid grid-cols-4 gap-4">
+                  {capcoinItems.map(item => {
+                    const rewardIconUrl = (item as { currencyIconUrl?: string }).currencyIconUrl ?? ''
+                    const rewardName = (item as { currencyName?: string }).currencyName ?? ''
+                    const capcoinIconUrl = (item as { capcoinIconUrl?: string }).capcoinIconUrl ?? ''
+                    const capcoinName = (item as { capcoinName?: string }).capcoinName ?? ''
+                    const capcoinPrice = (item as { capcoinPrice?: number }).capcoinPrice ?? 0
+                    const amountLabel = item.bonusAmount > 0
+                      ? `${item.currencyAmount.toLocaleString()}+${item.bonusAmount.toLocaleString()} Bonus`
+                      : item.currencyAmount.toLocaleString()
+                    return (
+                      <div key={item._id} className="bg-bg-secondary border border-line rounded-xl overflow-hidden flex flex-col">
+                        <div className="px-4 pt-4 pb-1 text-center">
+                          <p className="text-sm font-semibold text-text-primary">{item.name}</p>
+                        </div>
+                        <div className="relative flex items-center justify-center pt-4 pb-2 bg-bg-tertiary/30 mx-4 rounded-lg">
+                          {item.imageUrl ? (
+                            <img src={`${UPLOADS_BASE}${item.imageUrl}`} alt={item.name} className="h-24 object-contain" />
+                          ) : (
+                            <div className="h-24 w-24 bg-bg-tertiary rounded-lg flex items-center justify-center text-text-muted text-3xl">💎</div>
+                          )}
+                          {item.isSpecial && (
+                            <span className="absolute bottom-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded">HOT!</span>
+                          )}
+                        </div>
+                        <div className="px-4 pt-2 pb-1 flex items-center justify-center gap-1.5">
+                          {rewardIconUrl && <img src={`${UPLOADS_BASE}${rewardIconUrl}`} className="w-4 h-4 object-contain" alt="" />}
+                          <p className="text-sm font-medium text-text-primary">{amountLabel} {rewardName}</p>
+                        </div>
+                        <div className="p-4 mt-auto">
+                          <button
+                            onClick={() => handleCapcoinPurchase(item, capcoinName, capcoinIconUrl)}
+                            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-lg transition-colors text-sm"
+                          >
+                            {capcoinIconUrl && <img src={`${UPLOADS_BASE}${capcoinIconUrl}`} className="inline w-4 h-4 object-contain mr-1" alt="" />}
+                            {capcoinPrice.toLocaleString()} {capcoinName || '포인트'}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
 
             {/* 상품 목록 */}
-            {shopSubTab === 'currency' && (shopLoading ? (
-              <div className="text-center py-12 text-text-secondary text-sm">불러오는 중...</div>
-            ) : shopItems.length === 0 ? (
-              <div className="bg-bg-secondary border border-line rounded-xl p-12 text-center">
-                <p className="text-text-secondary text-sm">등록된 상품이 없습니다</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-4 gap-4">
-                {shopItems.map((item) => {
+            {shopSubTab === 'currency' && (() => {
+              const cashItems = shopItems.filter(item => (item as { paymentType?: string }).paymentType !== 'capcoin')
+              return shopLoading ? (
+                <div className="text-center py-12 text-text-secondary text-sm">불러오는 중...</div>
+              ) : cashItems.length === 0 ? (
+                <div className="bg-bg-secondary border border-line rounded-xl p-12 text-center">
+                  <p className="text-text-secondary text-sm">등록된 상품이 없습니다</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-4">
+                {cashItems.map((item) => {
                   const currencySymbol = item.currency === 'KRW' ? '₩' : item.currency === 'USD' ? '$' : '€'
                   const amountLabel = item.bonusAmount > 0
                     ? `${item.currencyAmount.toLocaleString()}+${item.bonusAmount.toLocaleString()} Bonus`
@@ -1186,7 +1201,8 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                   )
                 })}
               </div>
-            ))}
+              )
+            })()}
           </div>
         )}
 
@@ -1389,6 +1405,167 @@ const avgRating = game ? (game.rating as number) || 0 : 0
           onClose={() => setPaymentModal({ open: false, itemName: '', amount: 0 })}
         />
       )}
+
+      {/* ── 캡코인 구매 모달 ── */}
+      {capcoinModal.open && capcoinModal.item && (() => {
+        const item = capcoinModal.item!
+        const uploadsBase = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
+        const totalCost = ((item as { capcoinPrice?: number }).capcoinPrice ?? item.currencyAmount) * capcoinModal.qty
+        const remaining = (capcoinModal.userPoints ?? 0) - totalCost
+        const insufficient = capcoinModal.userPoints !== null && remaining < 0
+        const canPurchase = capcoinModal.gameUserId.trim() !== '' && !insufficient && !capcoinModal.purchaseSuccess
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-bg-overlay">
+            <div className="bg-bg-secondary w-full max-w-sm rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              {/* 헤더 */}
+              <div className="flex items-center gap-3 px-4 py-4 border-b border-line flex-shrink-0">
+                <button onClick={() => setCapcoinModal(prev => ({ ...prev, open: false }))} className="p-1 rounded-lg hover:bg-bg-tertiary transition-colors">
+                  <svg className="w-5 h-5 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <h2 className="font-bold text-base text-text-primary">상품 결제</h2>
+              </div>
+
+              <div className="overflow-y-auto flex-1">
+                {/* 상품 정보 */}
+                <div className="flex items-center gap-3 px-4 py-4 border-b border-line">
+                  <div className="w-14 h-14 rounded-lg bg-bg-tertiary flex-shrink-0 overflow-hidden flex items-center justify-center">
+                    {item.imageUrl
+                      ? <img src={`${uploadsBase}${item.imageUrl}`} alt={item.name} className="w-full h-full object-contain" />
+                      : <span className="text-2xl">💎</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                      <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400">겜스토어 전용</span>
+                      {item.isSpecial && <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-red-500 text-white">HOT</span>}
+                    </div>
+                    <p className="text-sm font-semibold text-text-primary truncate">{item.name}</p>
+                  </div>
+                </div>
+
+                {/* 게임 ID */}
+                <div className="px-4 py-4 border-b border-line">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold text-text-primary">게임 ID</p>
+                    <button className="text-xs text-cyan-400 hover:underline">게임 ID는 어디에있나요?</button>
+                  </div>
+                  {capcoinModal.purchaseSuccess ? (
+                    <div className="w-full px-3 py-2.5 rounded-lg bg-bg-tertiary text-sm text-text-secondary">{capcoinModal.gameUserId}</div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={capcoinModal.gameUserId}
+                      onChange={e => setCapcoinModal(prev => ({ ...prev, gameUserId: e.target.value }))}
+                      placeholder="게임 ID를 입력해 주세요."
+                      className="w-full px-3 py-2.5 rounded-lg bg-bg-tertiary border border-line text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-cyan-500"
+                    />
+                  )}
+                </div>
+
+                {/* 구매 수량 */}
+                {!capcoinModal.purchaseSuccess && (
+                  <div className="px-4 py-4 border-b border-line">
+                    <p className="text-sm font-semibold text-text-primary mb-3">구매 수량</p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center flex-1 border border-line rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => setCapcoinModal(prev => ({ ...prev, qty: Math.max(1, prev.qty - 1) }))}
+                          className="px-4 py-2.5 text-text-secondary hover:bg-bg-tertiary transition-colors text-lg"
+                        >−</button>
+                        <span className="flex-1 text-center text-sm font-semibold text-text-primary py-2.5">{capcoinModal.qty}</span>
+                        <button
+                          onClick={() => setCapcoinModal(prev => ({ ...prev, qty: prev.qty + 1 }))}
+                          className="px-4 py-2.5 text-text-secondary hover:bg-bg-tertiary transition-colors text-lg"
+                        >+</button>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (capcoinModal.userPoints !== null && item.currencyAmount > 0) {
+                            setCapcoinModal(prev => ({ ...prev, qty: Math.floor(capcoinModal.userPoints! / item.currencyAmount) || 1 }))
+                          }
+                        }}
+                        className="px-4 py-2.5 border border-line rounded-lg text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
+                      >최대</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 결제 예정 */}
+                <div className="px-4 py-4 border-b border-line">
+                  <p className="text-sm font-semibold text-text-primary mb-3">결제 예정</p>
+                  <div className="bg-bg-tertiary rounded-xl p-4 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-text-secondary">총 결제 {item.currencyName}</span>
+                      <div className="flex items-center gap-1.5">
+                        {item.currencyIconUrl && <img src={`${uploadsBase}${item.currencyIconUrl}`} className="w-4 h-4 object-contain" alt="" />}
+                        <span className="text-sm font-bold text-text-primary">{totalCost.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-text-muted">• 보유</span>
+                      <div className="flex items-center gap-1.5">
+                        {item.currencyIconUrl && <img src={`${uploadsBase}${item.currencyIconUrl}`} className="w-4 h-4 object-contain" alt="" />}
+                        <span className="text-sm text-text-secondary">
+                          {capcoinModal.userPoints === null ? '...' : capcoinModal.userPoints.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-text-muted">• 잔여</span>
+                      <div className="flex items-center gap-1.5">
+                        {item.currencyIconUrl && <img src={`${uploadsBase}${item.currencyIconUrl}`} className="w-4 h-4 object-contain" alt="" />}
+                        <span className={`text-sm font-medium ${insufficient ? 'text-red-400' : 'text-text-secondary'}`}>
+                          {capcoinModal.userPoints === null ? '...' : remaining.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 청약 철회 */}
+                <div className="px-4 py-4 mx-4 my-3 bg-bg-tertiary/50 rounded-xl text-xs text-text-muted space-y-1.5 border border-line">
+                  <p className="font-semibold text-text-secondary flex items-center gap-1">ⓘ 청약 철회</p>
+                  <p>상품 구매 시, 입력한 게임 ID의 우편함으로 상품이 즉시 지급됩니다.</p>
+                  <p>구매 후 청약 철회는 구매일로부터 7일 이내 가능합니다.</p>
+                  <p>단, 사용(게임 내 수령)한 경우 청약 철회가 제한됩니다.</p>
+                </div>
+              </div>
+
+              {/* 하단 버튼 영역 */}
+              <div className="px-4 pb-6 pt-3 flex-shrink-0 border-t border-line space-y-2">
+                {capcoinModal.purchaseError && (
+                  <p className="text-xs text-red-400 text-center">{capcoinModal.purchaseError}</p>
+                )}
+                {insufficient && !capcoinModal.purchaseSuccess && (
+                  <div className="flex justify-center">
+                    <span className="text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/30 rounded-full px-3 py-1">잔액이 부족해요</span>
+                  </div>
+                )}
+                {capcoinModal.purchaseSuccess ? (
+                  <button
+                    onClick={() => setCapcoinModal(prev => ({ ...prev, open: false }))}
+                    className="w-full py-4 rounded-xl font-bold text-sm bg-cyan-500 text-white"
+                  >
+                    구매 완료! 닫기
+                  </button>
+                ) : (
+                  <button
+                    onClick={capcoinModal.gameUserId.trim() === '' ? undefined : submitCapcoinPurchase}
+                    disabled={capcoinModal.gameUserId.trim() === '' || insufficient || capcoinModal.purchasing}
+                    className={`w-full py-4 rounded-xl font-bold text-sm transition-colors ${
+                      capcoinModal.gameUserId.trim() === '' || insufficient
+                        ? 'bg-bg-tertiary text-text-muted cursor-not-allowed'
+                        : 'bg-cyan-500 hover:bg-cyan-400 text-white'
+                    }`}
+                  >
+                    {capcoinModal.purchasing ? '처리 중...' : capcoinModal.gameUserId.trim() === '' ? '게임 ID를 입력해주세요.' : canPurchase ? `구매하기 (${totalCost.toLocaleString()} ${(item as { capcoinName?: string }).capcoinName ?? item.currencyName ?? ''})` : '구매하기'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

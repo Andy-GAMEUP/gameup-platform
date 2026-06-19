@@ -20,11 +20,10 @@ import {
 const CATEGORIES = [
   { value: 'home', label: '홈', icon: Home },
   { value: 'all', label: '전체', icon: Hash },
+  { value: 'new-game-intro', label: '신작게임소개', icon: Sparkles },
   { value: 'beta-game', label: '베타게임', icon: FlaskConical },
   { value: 'live-game', label: '라이브게임', icon: Gamepad2 },
-  { value: 'free', label: '자유게시판', icon: MessageCircle, subTabs: [
-    { value: 'new-game-intro', label: '신작게임소개', icon: Sparkles },
-  ]},
+  { value: 'free', label: '자유게시판', icon: MessageCircle },
   { value: 'bookmarks', label: '즐겨찾기', icon: Bookmark },
 ]
 
@@ -54,6 +53,8 @@ export default function CommunityPage() {
   const [banners, setBanners] = useState<CommunityBanner[]>([])
   const [bannerIdx, setBannerIdx] = useState(0)
   const [notices, setNotices] = useState<{ _id: string; title: string; content: string; type: string; isPinned: boolean; views: number; createdAt: string; authorId?: { username: string; role: string } }[]>([])
+  const [newGamePosts, setNewGamePosts] = useState<any[]>([])
+  const [newGameIdx, setNewGameIdx] = useState(0)
   const selectedGame = gameIdParam && gameTitleParam ? { id: gameIdParam, title: gameTitleParam, serviceType: gameServiceTypeParam } : null
   const [annPage, setAnnPage] = useState(0)
   const [noticePage, setNoticePage] = useState(0)
@@ -61,7 +62,7 @@ export default function CommunityPage() {
   const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({ 'beta-game': true, 'live-game': true })
   const toggleCollapse = (catValue: string) =>
     setCollapsedCats(prev => ({ ...prev, [catValue]: !prev[catValue] }))
-  const NOTICE_PER_PAGE = 3
+  const NOTICE_PER_PAGE = 5
   const noticeTotalPages = Math.ceil(notices.length / NOTICE_PER_PAGE)
   const pagedNotices = notices.slice(noticePage * NOTICE_PER_PAGE, (noticePage + 1) * NOTICE_PER_PAGE)
 
@@ -81,8 +82,12 @@ export default function CommunityPage() {
   }, [])
 
   useEffect(() => {
-    adminService.getCommunityBanners().then(d => setBanners(d.banners)).catch(() => {})
+    adminService.getCommunityBanners().then(d => {
+      setBanners(d.banners)
+      d.banners.forEach((b: { _id: string }) => adminService.trackBannerEvent(b._id, 'impression'))
+    }).catch(() => {})
     adminService.getPublicAnnouncements().then(d => setNotices(d.announcements || [])).catch(() => {})
+    communityService.getPosts({ channel: 'new-game-intro', page: 1, limit: 10, sort: 'latest' }).then(d => setNewGamePosts(d.posts || [])).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -211,10 +216,7 @@ export default function CommunityPage() {
         {/* 모바일 카테고리 탭 (lg 미만에서만 표시) */}
         <div className="flex flex-col lg:hidden mt-2">
           <div className="flex items-center gap-1 overflow-x-auto border-b border-line pb-0">
-            {CATEGORIES.flatMap(cat => [
-              cat,
-              ...('subTabs' in cat && cat.subTabs ? cat.subTabs.map(st => ({ ...st, _sub: true })) : [])
-            ]).map(cat => {
+            {CATEGORIES.map(cat => cat).map(cat => {
               const isHome = cat.value === 'home'
               const isBookmarks = cat.value === 'bookmarks'
               const isActive = isHome
@@ -262,7 +264,7 @@ export default function CommunityPage() {
                 ? (!channel && !search && !selectedGame)
                 : channel === cat.value
               const subGames = cat.value === 'beta-game' ? betaGames : cat.value === 'live-game' ? liveGames : []
-              const subTabs = 'subTabs' in cat && cat.subTabs ? cat.subTabs : []
+              const subTabs: any[] = []
               const hasSubGames = subGames.length > 0
               const isCollapsed = !!collapsedCats[cat.value]
               return (
@@ -365,7 +367,8 @@ export default function CommunityPage() {
                 {banners.map((b, i) => (
                   <a key={b._id} href={b.linkUrl || undefined} target={b.linkUrl ? '_blank' : undefined} rel="noopener noreferrer"
                     className={`absolute inset-0 transition-opacity duration-700 ${i === bannerIdx ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}
-                    style={{ cursor: b.linkUrl ? 'pointer' : 'default' }}>
+                    style={{ cursor: b.linkUrl ? 'pointer' : 'default' }}
+                    onClick={() => { if (b.linkUrl) adminService.trackBannerEvent(b._id, 'click') }}>
                     <img src={`${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${b.imageUrl}`}
                       alt={b.title || '커뮤니티 배너'} className="w-full object-cover" style={{ maxHeight: 200 }} />
                   </a>
@@ -393,14 +396,17 @@ export default function CommunityPage() {
               </div>
             )}
 
-            {/* 홈 탭 공지 박스 */}
-            {isHomePage && notices.length > 0 && (
-              <div className="mb-6 bg-bg-secondary border border-line rounded-xl overflow-hidden">
+            {/* 홈 탭 공지 + 신작게임소개 행 */}
+            {isHomePage && (notices.length > 0 || newGamePosts.length > 0) && (
+              <div className="mb-6 flex gap-4 items-stretch">
+            {/* 공지사항 */}
+            {notices.length > 0 && (
+              <div className="w-[60%] bg-bg-secondary border border-line rounded-xl overflow-hidden flex flex-col">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line bg-bg-tertiary">
                   <Megaphone className="w-4 h-4 text-accent flex-shrink-0" />
                   <span className="text-text-primary text-sm font-semibold">공지사항</span>
                 </div>
-                <ul>
+                <ul className="flex-1">
                   {pagedNotices.map((n, i) => {
                     const d = new Date(n.createdAt)
                     const dateStr = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`
@@ -444,6 +450,33 @@ export default function CommunityPage() {
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* 신작게임소개 대형 카드 */}
+            {newGamePosts.length > 0 && (
+              <div className="w-[42%] bg-bg-secondary border border-line rounded-xl overflow-hidden flex flex-col">
+                <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line bg-bg-tertiary flex-shrink-0">
+                  <Sparkles className="w-4 h-4 text-accent flex-shrink-0" />
+                  <span className="text-text-primary text-sm font-semibold">신작게임소개</span>
+                </div>
+                <div className="flex-1">
+                  <PostCard post={newGamePosts[newGameIdx]} viewMode="large" currentUserId={user?.id} fromLabel="홈" />
+                </div>
+                {newGamePosts.length > 1 && (
+                  <div className="flex items-center justify-center gap-2 py-2 border-t border-line">
+                    <button onClick={() => setNewGameIdx(i => (i - 1 + newGamePosts.length) % newGamePosts.length)} className="w-6 h-6 flex items-center justify-center text-text-muted hover:text-text-primary">
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-xs text-text-muted">{newGameIdx + 1}/{newGamePosts.length}</span>
+                    <button onClick={() => setNewGameIdx(i => (i + 1) % newGamePosts.length)} className="w-6 h-6 flex items-center justify-center text-text-muted hover:text-text-primary">
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
               </div>
             )}
 

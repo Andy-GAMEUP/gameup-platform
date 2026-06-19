@@ -33,7 +33,7 @@ const COMPANY_TYPE_LABELS: Record<string, string> = {
   game_service: '게임서비스', operations: '운영', qa: 'QA', marketing: '마케팅', other: '기타',
 }
 
-const PARTNER_STATUS_MAP: Record<string, { label: string; cls: string }> = {
+export const PARTNER_STATUS_MAP: Record<string, { label: string; cls: string }> = {
   pending:   { label: '심사 중', cls: 'bg-yellow-600/20 text-yellow-300 border border-yellow-500/40' },
   approved:  { label: '승인됨',  cls: 'bg-accent-light text-accent border border-green-500/40' },
   rejected:  { label: '거절됨',  cls: 'bg-accent-light text-accent-text border border-red-500/40' },
@@ -79,7 +79,7 @@ function ConfirmModal({
 }
 
 // ─── Partner Detail Modal (for requests) ────────────────────────────
-function PartnerRequestDetailModal({
+export function PartnerRequestDetailModal({
   partner, onClose, onApprove, onReject, loading,
 }: {
   partner: PartnerApplication; onClose: () => void
@@ -676,7 +676,7 @@ function CorporateTabContent({ activeTab }: { activeTab: 'developers' | 'partner
 }
 
 // ─── Partner Requests Tab ───────────────────────────────────────────
-function PartnerRequestsContent() {
+export function PartnerRequestsContent() {
   const [requests, setRequests] = useState<PartnerApplication[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
@@ -787,7 +787,7 @@ const AVAILABILITY_LABEL: Record<string, { text: string; color: string }> = {
   unavailable: { text: '불가', color: 'text-red-400' },
 }
 
-function PartnerManagementContent() {
+export function PartnerManagementContent() {
   const [partners, setPartners] = useState<PartnerApplication[]>([])
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)

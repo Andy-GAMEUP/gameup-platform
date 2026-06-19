@@ -14,7 +14,7 @@ export interface RecentGameAnnouncement {
 }
 
 export const gameService = {
-  getAllGames: async (params?: { genre?: string; search?: string; sort?: string; page?: number; limit?: number; serviceType?: string }) => {
+  getAllGames: async (params?: { genre?: string; search?: string; sort?: string; page?: number; limit?: number; serviceType?: string; featuredNew?: string }) => {
     const response = await apiClient.get<{ games: Game[]; pagination?: { page: number; limit: number; total: number; pages: number } }>('/games', { params })
     return response.data
   },
@@ -213,8 +213,11 @@ export const gameService = {
 
   createGameShopItem: async (gameId: string, data: {
     name: string; price: number; currency: string; type: string
-    currencyType?: string; currencyAmount?: number; bonusAmount?: number
+    paymentType?: 'cash' | 'capcoin'; currencyName?: string; currencyIconFile?: File
+    currencyType?: string; currencyId?: string; currencyAmount?: number; bonusAmount?: number
     stock: string; description?: string; imageFile?: File; itemId?: string; isSpecial?: boolean; specialImageFile?: File
+    names?: Record<string, string>; currencyNames?: Record<string, string>
+    capcoinPrice?: number; capcoinName?: string; capcoinIconFile?: File
   }) => {
     const form = new FormData()
     form.append('name', data.name)
@@ -222,14 +225,23 @@ export const gameService = {
     form.append('currency', data.currency)
     form.append('type', data.type)
     form.append('stock', data.stock)
+    if (data.paymentType) form.append('paymentType', data.paymentType)
+    if (data.currencyName) form.append('currencyName', data.currencyName)
     if (data.description) form.append('description', data.description)
     if (data.currencyType) form.append('currencyType', data.currencyType)
+    if (data.currencyId) form.append('currencyId', data.currencyId)
     if (data.currencyAmount !== undefined) form.append('currencyAmount', String(data.currencyAmount))
     if (data.bonusAmount !== undefined) form.append('bonusAmount', String(data.bonusAmount))
     if (data.itemId) form.append('itemId', data.itemId)
     form.append('isSpecial', String(data.isSpecial ?? false))
+    if (data.names) form.append('names', JSON.stringify(data.names))
+    if (data.currencyNames) form.append('currencyNames', JSON.stringify(data.currencyNames))
+    if (data.capcoinPrice !== undefined) form.append('capcoinPrice', String(data.capcoinPrice))
+    if (data.capcoinName) form.append('capcoinName', data.capcoinName)
     if (data.imageFile) form.append('shopItemImage', data.imageFile)
     if (data.specialImageFile) form.append('specialItemImage', data.specialImageFile)
+    if (data.currencyIconFile) form.append('currencyIcon', data.currencyIconFile)
+    if (data.capcoinIconFile) form.append('capcoinIcon', data.capcoinIconFile)
     const response = await apiClient.post(`/games/${gameId}/shop-items`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
@@ -238,9 +250,12 @@ export const gameService = {
 
   updateGameShopItem: async (gameId: string, itemId: string, data: Partial<{
     name: string; price: number; currency: string; type: string
-    currencyType: string; currencyAmount: number; bonusAmount: number
+    paymentType: 'cash' | 'capcoin'; currencyName: string; currencyIconFile: File
+    currencyType: string; currencyId: string; currencyAmount: number; bonusAmount: number
     stock: string; description: string; active: boolean; sortOrder: number; imageFile: File
-    isSpecial: boolean; specialImageFile: File
+    isSpecial: boolean; specialImageFile: File; itemId: string
+    names: Record<string, string>; currencyNames: Record<string, string>
+    capcoinPrice: number; capcoinName: string; capcoinIconFile: File
   }>) => {
     const form = new FormData()
     if (data.name !== undefined) form.append('name', data.name)
@@ -248,15 +263,25 @@ export const gameService = {
     if (data.currency !== undefined) form.append('currency', data.currency)
     if (data.type !== undefined) form.append('type', data.type)
     if (data.stock !== undefined) form.append('stock', data.stock)
+    if (data.paymentType !== undefined) form.append('paymentType', data.paymentType)
+    if (data.currencyName !== undefined) form.append('currencyName', data.currencyName)
     if (data.description !== undefined) form.append('description', data.description)
     if (data.currencyType !== undefined) form.append('currencyType', data.currencyType)
+    if (data.currencyId !== undefined) form.append('currencyId', data.currencyId)
     if (data.currencyAmount !== undefined) form.append('currencyAmount', String(data.currencyAmount))
     if (data.bonusAmount !== undefined) form.append('bonusAmount', String(data.bonusAmount))
     if (data.active !== undefined) form.append('active', String(data.active))
     if (data.sortOrder !== undefined) form.append('sortOrder', String(data.sortOrder))
     if (data.isSpecial !== undefined) form.append('isSpecial', String(data.isSpecial))
+    if (data.itemId !== undefined) form.append('itemId', data.itemId)
+    if (data.names !== undefined) form.append('names', JSON.stringify(data.names))
+    if (data.currencyNames !== undefined) form.append('currencyNames', JSON.stringify(data.currencyNames))
+    if (data.capcoinPrice !== undefined) form.append('capcoinPrice', String(data.capcoinPrice))
+    if (data.capcoinName !== undefined) form.append('capcoinName', data.capcoinName)
     if (data.imageFile) form.append('shopItemImage', data.imageFile)
     if (data.specialImageFile) form.append('specialItemImage', data.specialImageFile)
+    if (data.currencyIconFile) form.append('currencyIcon', data.currencyIconFile)
+    if (data.capcoinIconFile) form.append('capcoinIcon', data.capcoinIconFile)
     const response = await apiClient.put(`/games/${gameId}/shop-items/${itemId}`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
@@ -273,8 +298,8 @@ export const gameService = {
     return response.data
   },
 
-  updateShopCurrencyName: async (gameId: string, shopCurrencyName: string, shopCurrencyNames?: Record<string, string>) => {
-    const response = await apiClient.put(`/games/${gameId}/shop-currency-name`, { shopCurrencyName, shopCurrencyNames })
+  updateShopCurrencyName: async (gameId: string, shopCurrencyName: string, shopCurrencyNames?: Record<string, string>, shopPaymentType?: 'cash' | 'capcoin') => {
+    const response = await apiClient.put(`/games/${gameId}/shop-currency-name`, { shopCurrencyName, shopCurrencyNames, shopPaymentType })
     return response.data
   },
 
@@ -290,6 +315,45 @@ export const gameService = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return response.data
+  },
+
+  addAdditionalCurrency: async (gameId: string, file: File, name: string, names: Record<string, string>, paymentType: 'cash' | 'capcoin') => {
+    const form = new FormData()
+    form.append('currencyIcon', file)
+    form.append('name', name)
+    form.append('names', JSON.stringify(names))
+    form.append('paymentType', paymentType)
+    const response = await apiClient.post(`/games/${gameId}/currencies`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
+
+  updateAdditionalCurrency: async (gameId: string, currencyId: string, file: File | null, name: string, names: Record<string, string>, paymentType: 'cash' | 'capcoin') => {
+    const form = new FormData()
+    if (file) form.append('currencyIcon', file)
+    form.append('name', name)
+    form.append('names', JSON.stringify(names))
+    form.append('paymentType', paymentType)
+    const response = await apiClient.patch(`/games/${gameId}/currencies/${currencyId}`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return response.data
+  },
+
+  deleteAdditionalCurrency: async (gameId: string, currencyId: string) => {
+    const response = await apiClient.delete(`/games/${gameId}/currencies/${currencyId}`)
+    return response.data
+  },
+
+  copyGameShopItem: async (gameId: string, itemId: string) => {
+    const response = await apiClient.post(`/games/${gameId}/shop-items/${itemId}/copy`)
+    return response.data as { success: boolean; item: unknown }
+  },
+
+  purchaseShopItemWithCapcoin: async (gameId: string, itemId: string, gameUserId: string, qty: number) => {
+    const response = await apiClient.post(`/games/${gameId}/shop-items/${itemId}/purchase-capcoin`, { gameUserId, qty })
+    return response.data as { success: boolean; newBalance: number }
   },
 
   // ─── 게임 공지&알림 ─────────────────────────────────────────

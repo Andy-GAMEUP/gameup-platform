@@ -2,7 +2,7 @@
 import { ReactNode, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 import {
   LayoutDashboard, Gamepad2, Users, Megaphone,
@@ -29,7 +29,16 @@ const navItems: NavItem[] = [
   { path: '/admin/game-deletion-logs', label: '삭제 게임 관리', icon: Gamepad2 },
   { path: '/admin/payments', label: '결제 / 환불', icon: CreditCard },
   { path: '/admin/settlements', label: '정산', icon: Calculator },
-  { path: '/admin/community', label: '커뮤니티', icon: MessageSquare, exact: true },
+  {
+    path: '/admin/community',
+    label: '콘텐츠 관리',
+    icon: MessageSquare,
+    children: [
+      { path: '/admin/community?tab=banner',        label: '배너 관리',      icon: ImageIcon,      exact: true },
+      { path: '/admin/community?tab=announcements', label: '공지사항',       icon: Megaphone,      exact: true },
+      { path: '/admin/community?tab=reviews',       label: '게임 리뷰 관리', icon: MessageSquare,  exact: true },
+    ],
+  },
   {
     path: '/admin/community/reported',
     label: '신고센터',
@@ -42,13 +51,20 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    path: '/admin/members',
-    label: '계정관리',
+    path: '/admin/users',
+    label: '계정 관리',
     icon: Users,
     children: [
-      { path: '/admin/members/new_account', label: '신규회원승인', icon: UserPlus },
-      { path: '/admin/members/players', label: '게임유저관리', icon: UserCircle },
-      { path: '/admin/members/corporate', label: '기업회원관리', icon: Building2 },
+      { path: '/admin/members/new_account', label: '기업회원', icon: UserPlus },
+      { path: '/admin/members/players', label: '플레이어', icon: UserCircle },
+      { path: '/admin/members/admins', label: '관리자', icon: Shield },
+    ],
+  },
+  {
+    path: '/admin/members',
+    label: '계정관리',
+    icon: Shield,
+    children: [
       { path: '/admin/members/terms', label: '약관관리', icon: FileText },
       { path: '/admin/levels', label: '레벨 관리', icon: Award },
       { path: '/admin/activity-scores', label: '활동점수', icon: Activity },
@@ -91,10 +107,20 @@ const navItems: NavItem[] = [
   },
 ]
 
+function matchPath(path: string, pname: string, sparams: URLSearchParams) {
+  const [pathPart, queryPart] = path.split('?')
+  if (queryPart) {
+    const [key, value] = queryPart.split('=')
+    return pname === pathPart && sparams.get(key) === value
+  }
+  return pname.startsWith(pathPart)
+}
+
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { logout, user, isLoading } = useAuth()
+  const searchParams = useSearchParams()
   const [open, setOpen] = useState(true)
 
   if (!isLoading && (!user || user.role !== 'admin')) {
@@ -106,7 +132,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const init: Record<string, boolean> = {}
     navItems.forEach(item => {
       if (item.children) {
-        const childMatch = item.children.some(c => pathname.startsWith(c.path))
+        const childMatch = item.children.some(c => matchPath(c.path, pathname, new URLSearchParams()))
         if (childMatch) init[item.path] = true
       }
     })
@@ -117,15 +143,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     setOpenMenus(prev => ({ ...prev, [path]: !prev[path] }))
   }
 
-  const isActive = (path: string, exact = false) =>
-    exact ? pathname === path : pathname.startsWith(path)
+  const isActive = (path: string, exact = false) => {
+    const [pathPart, queryPart] = path.split('?')
+    if (queryPart) {
+      const [key, value] = queryPart.split('=')
+      return pathname === pathPart && searchParams.get(key) === value
+    }
+    return exact ? pathname === pathPart : pathname.startsWith(pathPart)
+  }
 
   const renderNavItem = (item: NavItem) => {
     const { path, label, icon: Icon, exact, children: subs } = item
 
     if (subs) {
-      const parentActive = subs.some(c => pathname.startsWith(c.path))
-      const isOpen = openMenus[path] ?? false
+      const parentActive = subs.some(c => matchPath(c.path, pathname, searchParams))
+      const isOpen = openMenus[path] ?? parentActive
 
       return (
         <div key={path}>

@@ -77,10 +77,11 @@ export default function LoginPage() {
     }
   }
 
-  const fillTestAccount = (type: 'admin' | 'developer' | 'player') => {
+  const fillTestAccount = (type: 'admin' | 'developer' | 'partner' | 'player') => {
     const accounts = {
       admin: { email: 'admin@gameup.com', password: 'test123456' },
       developer: { email: 'developer@test.com', password: 'test123456' },
+      partner: { email: 'partner@test.com', password: 'test123456' },
       player: { email: 'player@test.com', password: 'test123456' },
     }
     setFormData(accounts[type])
@@ -197,15 +198,15 @@ export default function LoginPage() {
                 <span className="px-3 bg-bg-secondary text-text-muted">테스트 계정</span>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {(['admin', 'developer', 'player'] as const).map((type) => (
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              {(['admin', 'developer', 'partner', 'player'] as const).map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => fillTestAccount(type)}
                   className="py-2 px-3 rounded-lg border border-line text-text-secondary hover:border-accent-muted hover:text-accent text-xs font-medium transition-colors"
                 >
-                  {type === 'admin' ? '관리자' : type === 'developer' ? '개발자' : '플레이어'}
+                  {type === 'admin' ? '관리자' : type === 'developer' ? '개발자' : type === 'partner' ? '파트너' : '플레이어'}
                 </button>
               ))}
             </div>

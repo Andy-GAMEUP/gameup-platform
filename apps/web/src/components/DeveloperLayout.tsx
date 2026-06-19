@@ -23,7 +23,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
   const pathname     = usePathname()
   const router       = useRouter()
   const searchParams = useSearchParams()
-  const { logout, isAuthenticated } = useAuth()
+  const { logout, isAuthenticated, user } = useAuth()
 
   const currentTab = searchParams.get('tab') || 'analysis'
 
@@ -192,12 +192,14 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
           <div className="p-4 border-t border-line">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-sm font-bold text-text-inverse">개</span>
+                <span className="text-sm font-bold text-text-inverse">
+                  {(user?.companyInfo?.companyName || user?.username || '?').charAt(0).toUpperCase()}
+                </span>
               </div>
               {sidebarOpen && (
                 <div className="flex-1 overflow-hidden">
-                  <p className="text-sm font-semibold truncate">개발사명</p>
-                  <p className="text-xs text-text-muted truncate">developer@game.com</p>
+                  <p className="text-sm font-semibold truncate">{user?.companyInfo?.companyName || user?.username || ''}</p>
+                  <p className="text-xs text-text-muted truncate">{user?.email || ''}</p>
                 </div>
               )}
             </div>

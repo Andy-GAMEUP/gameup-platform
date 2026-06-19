@@ -14,19 +14,18 @@ import {
 } from 'lucide-react'
 
 const CHANNELS = [
+  { value: 'new-game-intro', label: '신작게임소개', icon: Sparkles,       serviceType: null },
   { value: 'beta-game',      label: '베타게임',    icon: FlaskConical,  serviceType: 'beta' },
   { value: 'live-game',      label: '라이브게임',   icon: Gamepad2,       serviceType: 'live' },
-  { value: 'free',           label: '자유게시판',   icon: MessageCircle,  serviceType: null, subTabs: [
-    { value: 'new-game-intro', label: '신작게임소개', icon: Sparkles },
-  ]},
+  { value: 'free',           label: '자유게시판',   icon: MessageCircle,  serviceType: null },
 ]
 
 // 검색용 플랫 목록 (breadcrumb 경로 포함)
 const FLAT_CHANNELS = [
+  { value: 'new-game-intro', label: '신작게임소개', icon: Sparkles,      path: '전체 > 신작게임소개' },
   { value: 'beta-game',      label: '베타게임',    icon: FlaskConical,  path: '전체 > 베타게임' },
   { value: 'live-game',      label: '라이브게임',   icon: Gamepad2,      path: '전체 > 라이브게임' },
   { value: 'free',           label: '자유게시판',   icon: MessageCircle, path: '전체 > 자유게시판' },
-  { value: 'new-game-intro', label: '신작게임소개', icon: Sparkles,      path: '전체 > 자유게시판 > 신작게임소개' },
 ]
 
 function ExpandSection({ label, icon: Icon, count, children }: {
@@ -287,29 +286,6 @@ export default function CommunityWritePage() {
                         </div>
                       )}
 
-                      {/* 정적 하위 탭 (신작게임소개) - 항상 표시 */}
-                      {'subTabs' in ch && ch.subTabs && ch.subTabs.map((sub, idx) => {
-                        const isLast = idx === ch.subTabs!.length - 1
-                        const SubIcon = sub.icon
-                        const isSubActive = channel === sub.value
-                        return (
-                          <div key={sub.value} className="relative flex items-center ml-3" style={{ minHeight: 28 }}>
-                            <div className={`absolute left-0 w-px bg-line ${isLast ? 'h-1/2 top-0' : 'h-full'}`} />
-                            <div className="absolute left-0 top-1/2 w-3 h-px bg-line" />
-                            <button
-                              onClick={() => { setChannel(sub.value); setSelectedGameId(null); setExpandedChan(null) }}
-                              className={`ml-4 flex-1 flex items-center gap-1.5 text-left text-xs px-2 py-1 rounded-lg truncate transition-colors ${
-                                isSubActive
-                                  ? 'bg-accent-light text-accent font-semibold'
-                                  : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
-                              }`}
-                            >
-                              <SubIcon className="w-3 h-3 flex-shrink-0" />
-                              {sub.label}
-                            </button>
-                          </div>
-                        )
-                      })}
                     </div>
                   )
                 })}

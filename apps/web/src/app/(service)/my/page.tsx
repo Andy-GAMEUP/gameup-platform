@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import PlayerMyPage from '@/components/pages/PlayerMyPage'
+import MyPageRouter from '@/components/pages/MyPageRouter'
 
 export const metadata: Metadata = {
   title: '마이페이지',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function Page() {
-  return <PlayerMyPage />
+  return <MyPageRouter />
 }

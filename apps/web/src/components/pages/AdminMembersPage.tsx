@@ -3,7 +3,15 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
 import adminService from '@/services/adminService'
-import { UserPlus, Loader2, Check, XCircle, X, Search, Plus, Shield, Eye, Settings } from 'lucide-react'
+import { UserPlus, Loader2, Check, XCircle, X, Search, Shield, Eye, Settings } from 'lucide-react'
+import { PartnerRequestsContent, PartnerManagementContent } from './AdminCorporateManagementPage'
+
+type PageTab = 'approval' | 'partner-requests' | 'partner-management'
+const PAGE_TABS: { key: PageTab; label: string }[] = [
+  { key: 'approval', label: '기업회원 승인' },
+  { key: 'partner-requests', label: '파트너 신청' },
+  { key: 'partner-management', label: '파트너 정보관리' },
+]
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface PendingUser {
@@ -29,185 +37,135 @@ const COMPANY_TYPE_LABELS: Record<string, string> = {
   game_service: '게임서비스', operations: '운영', qa: 'QA', marketing: '마케팅', other: '기타',
 }
 
-const ROLE_LABELS: Record<string, { label: string; cls: string }> = {
-  admin: { label: '관리자', cls: 'bg-accent-light text-accent-text border-accent-muted' },
-  developer: { label: '개발자', cls: 'bg-purple-600/20 text-purple-300 border-purple-500/30' },
-  player: { label: '플레이어', cls: 'bg-blue-600/20 text-blue-300 border-blue-500/30' },
+const ROLE_LABELS: Record<string, { label: string }> = {
+  admin: { label: '관리자' },
+  developer: { label: '개발자' },
+  player: { label: '플레이어' },
 }
 
-const MEMBER_TYPE_LABELS: Record<string, { label: string; cls: string }> = {
-  individual: { label: '게임회원', cls: 'bg-bg-muted/30 text-text-secondary border-line/30' },
-  corporate: { label: '기업회원', cls: 'bg-amber-600/20 text-amber-300 border-amber-500/30' },
+const MEMBER_TYPE_LABELS: Record<string, { label: string }> = {
+  individual: { label: '게임회원' },
+  corporate: { label: '기업회원' },
 }
 
-const ADMIN_LEVEL_LABELS: Record<string, { label: string; cls: string; icon: typeof Shield; desc: string }> = {
-  super: { label: 'Super', cls: 'bg-accent-light text-accent-text border-accent-muted', icon: Shield, desc: '모든 권한 (수정/삭제/승인)' },
-  normal: { label: 'Normal', cls: 'bg-blue-600/20 text-blue-300 border-blue-500/30', icon: Settings, desc: '승인/삭제 제외 모든 기능' },
-  monitor: { label: 'Monitor', cls: 'bg-bg-muted/30 text-text-secondary border-line/30', icon: Eye, desc: '열람 + 공지/알림 작성만 가능' },
+const ADMIN_LEVEL_LABELS: Record<string, { label: string; icon: typeof Shield; desc: string }> = {
+  super: { label: 'Super', icon: Shield, desc: '모든 권한 (수정/삭제/승인)' },
+  normal: { label: 'Normal', icon: Settings, desc: '승인/삭제 제외 모든 기능' },
+  monitor: { label: 'Monitor', icon: Eye, desc: '열람 + 공지/알림 작성만 가능' },
 }
 
-type TabKey = 'all' | 'admin' | 'corporate' | 'individual'
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'all', label: '전체 대기' },
-  { key: 'admin', label: '관리자' },
-  { key: 'corporate', label: '기업회원' },
-  { key: 'individual', label: '게임회원' },
-]
-
-// ─── Approval Modal ─────────────────────────────────────────────────
-function ApprovalModal({
-  user, action, onClose, onConfirm, loading,
+// ─── Manage Modal ────────────────────────────────────────────────────
+function ManageModal({
+  user, onClose, onApprove, onReject, loading,
 }: {
   user: PendingUser
-  action: 'approved' | 'rejected'
   onClose: () => void
-  onConfirm: (reason?: string) => void
+  onApprove: () => void
+  onReject: () => void
   loading: boolean
 }) {
-  const [reason, setReason] = useState('')
-  const isApprove = action === 'approved'
-
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-text-primary font-bold text-lg">{isApprove ? '회원 승인' : '회원 거절'}</h3>
+          <h3 className="text-text-primary font-bold text-lg">회원 관리</h3>
           <button onClick={onClose} className="text-text-secondary hover:text-text-primary"><X className="w-5 h-5" /></button>
         </div>
-        <div className="bg-bg-tertiary rounded-lg p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-text-primary font-medium">{user.username}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${ROLE_LABELS[user.role]?.cls}`}>{ROLE_LABELS[user.role]?.label}</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${MEMBER_TYPE_LABELS[user.memberType || 'individual']?.cls}`}>{MEMBER_TYPE_LABELS[user.memberType || 'individual']?.label}</span>
-          </div>
-          <p className="text-text-secondary text-sm">{user.email}</p>
-          {user.companyInfo?.companyName && <p className="text-text-secondary text-sm">회사: {user.companyInfo.companyName}</p>}
-          {user.companyInfo?.companyType && user.companyInfo.companyType.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {user.companyInfo.companyType.map(t => (
-                <span key={t} className="text-[10px] bg-bg-tertiary text-text-secondary px-1.5 py-0.5 rounded">{COMPANY_TYPE_LABELS[t] || t}</span>
-              ))}
-            </div>
-          )}
+        <div className="bg-bg-tertiary rounded-lg p-4 space-y-1">
+          <p className="text-text-primary font-medium text-sm">{user.username}</p>
+          <p className="text-text-secondary text-xs">{user.email}</p>
+          {user.companyInfo?.companyName && <p className="text-text-secondary text-xs">{user.companyInfo.companyName}</p>}
         </div>
-        <p className="text-text-secondary text-sm">{isApprove ? '이 회원의 가입을 승인하시겠습니까?' : '이 회원의 가입을 거절하시겠습니까?'}</p>
-        {!isApprove && (
-          <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="거절 사유를 입력해주세요" rows={3}
-            className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none resize-none" />
-        )}
-        <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">취소</button>
-          <button onClick={() => onConfirm(isApprove ? undefined : reason)} disabled={loading}
-            className={`flex-1 px-4 py-2.5 text-text-primary rounded-xl text-sm disabled:opacity-50 flex items-center justify-center gap-2 transition-colors ${isApprove ? 'bg-accent hover:bg-accent-hover' : 'bg-red-600 hover:bg-red-700'}`}>
+        <div className="flex flex-col gap-2 pt-1">
+          <button onClick={onApprove} disabled={loading}
+            className="w-full px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isApprove ? <><Check className="w-4 h-4" /> 승인</> : <><XCircle className="w-4 h-4" /> 거절</>}
+            <Check className="w-4 h-4" /> 가입 승인
           </button>
+          <button onClick={onReject} disabled={loading}
+            className="w-full px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            <XCircle className="w-4 h-4" /> 거절
+          </button>
+          <button onClick={onClose} className="w-full px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">취소</button>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Create Admin Modal ─────────────────────────────────────────────
-function CreateAdminModal({
-  onClose, onCreated, loading, onSubmit,
+// ─── Review Modal (for rejected accounts) ───────────────────────────
+function ReviewModal({
+  user, onClose, onRestore, onDelete, loading,
 }: {
+  user: PendingUser
   onClose: () => void
-  onCreated: () => void
+  onRestore: () => void
+  onDelete: () => void
   loading: boolean
-  onSubmit: (data: { email: string; username: string; password: string; adminLevel: 'super' | 'normal' | 'monitor' }) => void
 }) {
-  const [form, setForm] = useState({ email: '', username: '', password: '', adminLevel: '' as string })
-  const [error, setError] = useState('')
-
-  const handleSubmit = () => {
-    setError('')
-    if (!form.email || !form.username || !form.password) {
-      setError('모든 필드를 입력해주세요')
-      return
-    }
-    if (form.password.length < 6) {
-      setError('비밀번호는 최소 6자 이상이어야 합니다')
-      return
-    }
-    if (!form.adminLevel) {
-      setError('관리자 등급을 선택해주세요')
-      return
-    }
-    onSubmit(form as { email: string; username: string; password: string; adminLevel: 'super' | 'normal' | 'monitor' })
-  }
-
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-lg p-6 space-y-5" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-sm p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-accent-text" />
-            <h3 className="text-text-primary font-bold text-lg">관리자 계정 생성</h3>
-          </div>
+          <h3 className="text-text-primary font-bold text-lg">계정 검토</h3>
           <button onClick={onClose} className="text-text-secondary hover:text-text-primary"><X className="w-5 h-5" /></button>
         </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-text-secondary text-xs mb-1.5">이메일 *</label>
-            <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-              placeholder="admin@example.com"
-              className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary text-sm focus:outline-none focus:border-accent" />
-          </div>
-          <div>
-            <label className="block text-text-secondary text-xs mb-1.5">사용자명 *</label>
-            <input type="text" value={form.username} onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
-              placeholder="admin_username"
-              className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary text-sm focus:outline-none focus:border-accent" />
-          </div>
-          <div>
-            <label className="block text-text-secondary text-xs mb-1.5">비밀번호 * (6자 이상)</label>
-            <input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-              placeholder="••••••••"
-              className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary text-sm focus:outline-none focus:border-accent" />
-          </div>
-
-          <div>
-            <label className="block text-text-secondary text-xs mb-2">관리자 등급 *</label>
-            <div className="space-y-2">
-              {(['super', 'normal', 'monitor'] as const).map(level => {
-                const info = ADMIN_LEVEL_LABELS[level]
-                const Icon = info.icon
-                const selected = form.adminLevel === level
-                return (
-                  <label key={level}
-                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                      selected ? 'border-accent-muted bg-red-600/10' : 'border-line hover:border-line'
-                    }`}>
-                    <input type="radio" name="adminLevel" value={level}
-                      checked={selected} onChange={() => setForm(p => ({ ...p, adminLevel: level }))}
-                      className="accent-red-500" />
-                    <Icon className={`w-4 h-4 ${selected ? 'text-accent-text' : 'text-text-muted'}`} />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-medium ${selected ? 'text-text-inverse' : 'text-text-secondary'}`}>{info.label} 관리자</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${info.cls}`}>{info.label}</span>
-                      </div>
-                      <p className="text-text-muted text-xs mt-0.5">{info.desc}</p>
-                    </div>
-                  </label>
-                )
-              })}
-            </div>
-          </div>
+        <div className="bg-bg-tertiary rounded-lg p-4 space-y-1">
+          <p className="text-text-primary font-medium text-sm">{user.username}</p>
+          <p className="text-text-secondary text-xs">{user.email}</p>
+          {user.companyInfo?.companyName && <p className="text-text-secondary text-xs">{user.companyInfo.companyName}</p>}
         </div>
-
-        {error && <p className="text-accent-text text-sm">{error}</p>}
-
-        <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">취소</button>
-          <button onClick={handleSubmit} disabled={loading}
-            className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm disabled:opacity-50 flex items-center justify-center gap-2 transition-colors">
+        <div className="flex flex-col gap-2 pt-1">
+          <button onClick={onRestore} disabled={loading}
+            className="w-full px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-            <Plus className="w-4 h-4" /> 생성
+            <Check className="w-4 h-4" /> 계정 살리기
           </button>
+          <button onClick={onDelete} disabled={loading}
+            className="w-full px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            <XCircle className="w-4 h-4" /> 완전 삭제
+          </button>
+          <button onClick={onClose} className="w-full px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">취소</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Member Manage Modal (for approved accounts) ────────────────────
+function MemberManageModal({
+  user, onClose, onSuspend, onDelete, loading,
+}: {
+  user: PendingUser
+  onClose: () => void
+  onSuspend: () => void
+  onDelete: () => void
+  loading: boolean
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-sm p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-text-primary font-bold text-lg">회원 관리</h3>
+          <button onClick={onClose} className="text-text-secondary hover:text-text-primary"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="bg-bg-tertiary rounded-lg p-4 space-y-1">
+          <p className="text-text-primary font-medium text-sm">{user.username}</p>
+          <p className="text-text-secondary text-xs">{user.email}</p>
+          {user.companyInfo?.companyName && <p className="text-text-secondary text-xs">{user.companyInfo.companyName}</p>}
+        </div>
+        <div className="flex flex-col gap-2 pt-1">
+          <button onClick={onSuspend} disabled={loading}
+            className="w-full px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            중지
+          </button>
+          <button onClick={onDelete} disabled={loading}
+            className="w-full px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            <XCircle className="w-4 h-4" /> 삭제
+          </button>
+          <button onClick={onClose} className="w-full px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">취소</button>
         </div>
       </div>
     </div>
@@ -216,18 +174,22 @@ function CreateAdminModal({
 
 // ─── Main Component ─────────────────────────────────────────────────
 export default function AdminMembersPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>('all')
+  const [pageTab, setPageTab] = useState<PageTab>('approval')
   const [users, setUsers] = useState<PendingUser[]>([])
+  const [allUsers, setAllUsers] = useState<PendingUser[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [companyNameFilter, setCompanyNameFilter] = useState('')
+  const [companyTypeFilter, setCompanyTypeFilter] = useState('전체')
+  const [statusFilter, setStatusFilter] = useState('전체')
   const [page, setPage] = useState(1)
-  const [counts, setCounts] = useState<{ total: number; admin: number; corporate: number; individual: number }>({ total: 0, admin: 0, corporate: 0, individual: 0 })
-  const [modalUser, setModalUser] = useState<PendingUser | null>(null)
-  const [modalAction, setModalAction] = useState<'approved' | 'rejected'>('approved')
+  const [counts, setCounts] = useState<{ total: number; developer: number; partner: number; admin: number; corporate: number; individual: number }>({ total: 0, developer: 0, partner: 0, admin: 0, corporate: 0, individual: 0 })
+  const [manageUser, setManageUser] = useState<PendingUser | null>(null)
+  const [reviewUser, setReviewUser] = useState<PendingUser | null>(null)
+  const [suspendedUser, setSuspendedUser] = useState<PendingUser | null>(null)
+  const [memberManageUser, setMemberManageUser] = useState<PendingUser | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [showCreateAdmin, setShowCreateAdmin] = useState(false)
-  const [createLoading, setCreateLoading] = useState(false)
   const limit = 15
 
   const loadCounts = useCallback(async () => {
@@ -240,13 +202,35 @@ export default function AdminMembersPage() {
   const loadUsers = useCallback(async () => {
     setLoading(true)
     try {
-      const params: Record<string, unknown> = { page, limit, approvalStatus: 'pending' }
-      if (search) params.search = search
-      if (activeTab === 'admin') params.role = 'admin'
-      if (activeTab === 'corporate') params.memberType = 'corporate'
-      if (activeTab === 'individual') params.memberType = 'individual'
+      const params: Record<string, unknown> = { page, limit, memberType: 'corporate' }
+      if (statusFilter === '대기') params.approvalStatus = 'pending'
+      else if (statusFilter === '회원') { params.approvalStatus = 'approved'; params.isActive = true }
+      else if (statusFilter === '거절') params.approvalStatus = 'rejected'
+      else if (statusFilter === '중지됨') params.isActive = false
       const data = await adminService.getUsers(params as Parameters<typeof adminService.getUsers>[0])
-      setUsers(data.users)
+      let filtered: PendingUser[] = data.users as PendingUser[]
+      setAllUsers(filtered)
+      if (search) {
+        const keyword = search.toLowerCase()
+        filtered = filtered.filter(u =>
+          u.username?.toLowerCase().includes(keyword) ||
+          u.email?.toLowerCase().includes(keyword) ||
+          (u.companyInfo?.companyType ?? []).some(t =>
+            (COMPANY_TYPE_LABELS[t] || t).toLowerCase().includes(keyword)
+          )
+        )
+      }
+      if (companyNameFilter) {
+        filtered = filtered.filter(u => u.companyInfo?.companyName?.includes(companyNameFilter))
+      }
+      if (companyTypeFilter !== '전체') {
+        const isDev = companyTypeFilter === '개발사'
+        filtered = filtered.filter(u => {
+          const hasDev = u.companyInfo?.companyType?.includes('developer')
+          return isDev ? hasDev : !hasDev
+        })
+      }
+      setUsers(filtered)
       setTotal(data.total)
     } catch {
       setUsers([])
@@ -254,20 +238,17 @@ export default function AdminMembersPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, search, activeTab])
+  }, [page, limit, search, companyNameFilter, companyTypeFilter, statusFilter])
 
   useEffect(() => { loadCounts() }, [loadCounts])
   useEffect(() => { loadUsers() }, [loadUsers])
 
-  const handleApproval = async (reason?: string) => {
-    if (!modalUser) return
+  const handleApprove = async () => {
+    if (!manageUser) return
     setSubmitting(true)
     try {
-      await adminService.approveUser(modalUser._id, {
-        approvalStatus: modalAction,
-        rejectedReason: modalAction === 'rejected' ? reason : undefined,
-      })
-      setModalUser(null)
+      await adminService.approveUser(manageUser._id, { approvalStatus: 'approved' })
+      setManageUser(null)
       loadUsers()
       loadCounts()
     } catch {
@@ -277,24 +258,111 @@ export default function AdminMembersPage() {
     }
   }
 
-  const handleCreateAdmin = async (data: { email: string; username: string; password: string; adminLevel: 'super' | 'normal' | 'monitor' }) => {
-    setCreateLoading(true)
+  const handleReject = async () => {
+    if (!manageUser) return
+    setSubmitting(true)
     try {
-      await adminService.createAdminUser(data)
-      setShowCreateAdmin(false)
-      alert('관리자 계정이 생성되었습니다')
+      await adminService.approveUser(manageUser._id, { approvalStatus: 'rejected' })
+      setManageUser(null)
       loadUsers()
       loadCounts()
-    } catch (err: any) {
-      alert(err?.response?.data?.message || '관리자 계정 생성 실패')
+    } catch {
+      alert('처리 실패')
     } finally {
-      setCreateLoading(false)
+      setSubmitting(false)
     }
   }
 
-  const openModal = (user: PendingUser, action: 'approved' | 'rejected') => {
-    setModalUser(user)
-    setModalAction(action)
+  const handleRestore = async () => {
+    if (!reviewUser) return
+    setSubmitting(true)
+    try {
+      await adminService.approveUser(reviewUser._id, { approvalStatus: 'pending' })
+      setReviewUser(null)
+      loadUsers()
+      loadCounts()
+    } catch {
+      alert('처리 실패')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handlePermanentDelete = async () => {
+    if (!reviewUser) return
+    if (!confirm(`"${reviewUser.username}" 계정을 완전 삭제합니다. 이 작업은 되돌릴 수 없습니다.`)) return
+    setSubmitting(true)
+    try {
+      await adminService.deleteUser(reviewUser._id)
+      setReviewUser(null)
+      loadUsers()
+      loadCounts()
+    } catch {
+      alert('삭제 실패')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleUnsuspend = async () => {
+    if (!suspendedUser) return
+    setSubmitting(true)
+    try {
+      await adminService.banUser(suspendedUser._id, { isActive: true })
+      setSuspendedUser(null)
+      loadUsers()
+    } catch {
+      alert('처리 실패')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteSuspended = async () => {
+    if (!suspendedUser) return
+    if (!confirm(`"${suspendedUser.username}" 계정을 완전 삭제합니다. 이 작업은 되돌릴 수 없습니다.`)) return
+    setSubmitting(true)
+    try {
+      await adminService.deleteUser(suspendedUser._id)
+      setSuspendedUser(null)
+      loadUsers()
+      loadCounts()
+    } catch {
+      alert('삭제 실패')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleSuspendMember = async () => {
+    if (!memberManageUser) return
+    if (!confirm(`"${memberManageUser.username}" 계정을 중지합니다. 로그인이 불가능해집니다.`)) return
+    setSubmitting(true)
+    try {
+      await adminService.banUser(memberManageUser._id, { isActive: false })
+      setMemberManageUser(null)
+      loadUsers()
+    } catch {
+      alert('처리 실패')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteMember = async () => {
+    if (!memberManageUser) return
+    if (!confirm(`"${memberManageUser.username}" 계정을 완전 삭제합니다. 이 작업은 되돌릴 수 없습니다.`)) return
+    setSubmitting(true)
+    try {
+      await adminService.deleteUser(memberManageUser._id)
+      setMemberManageUser(null)
+      loadUsers()
+      loadCounts()
+    } catch {
+      alert('삭제 실패')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const totalPages = Math.ceil(total / limit) || 1
@@ -306,42 +374,56 @@ export default function AdminMembersPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <UserPlus className="w-5 h-5 text-accent-text" />
-            <h2 className="text-text-primary text-xl font-bold">신규회원승인</h2>
+            <h2 className="text-text-primary text-xl font-bold">기업회원 승인</h2>
           </div>
           <div className="flex items-center gap-2">
-            <span className="bg-amber-600/20 text-amber-300 border border-amber-500/30 px-3 py-1 rounded-lg text-sm font-medium">
+            <span className="bg-bg-tertiary text-text-secondary border border-line px-3 py-1 rounded-lg text-sm font-medium">
               승인 대기 {counts.total}명
             </span>
-            <button
-              onClick={() => setShowCreateAdmin(true)}
-              className="bg-red-600 hover:bg-red-700 text-text-primary px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors"
-            >
-              <Plus className="w-4 h-4" /> 관리자 추가
-            </button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex gap-1 bg-bg-secondary border border-line rounded-lg p-1">
-            {TABS.map(tab => {
-              const count = tab.key === 'all' ? counts.total : counts[tab.key]
-              return (
-                <button key={tab.key} onClick={() => { setActiveTab(tab.key); setPage(1) }}
-                  className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                    activeTab === tab.key ? 'bg-accent-light text-accent-text border border-accent-muted' : 'text-text-secondary hover:text-text-primary'
-                  }`}>
-                  {tab.label}
-                  {count > 0 && (
-                    <span className="bg-amber-600/30 text-amber-300 text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{count}</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
+        <div className="flex gap-1 border-b border-line">
+          {PAGE_TABS.map(t => (
+            <button key={t.key} onClick={() => setPageTab(t.key)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${pageTab === t.key ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {pageTab === 'partner-requests' && <PartnerRequestsContent />}
+        {pageTab === 'partner-management' && <PartnerManagementContent />}
+
+        {pageTab === 'approval' && <>
+        {/* Search */}
+        <div className="flex items-center gap-2">
+          <select value={companyNameFilter} onChange={e => { setCompanyNameFilter(e.target.value); setPage(1) }}
+            className="bg-bg-tertiary border border-line text-text-primary rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent">
+            <option value="">회사명 전체</option>
+            {[...new Set(allUsers.map(u => u.companyInfo?.companyName).filter(Boolean))].map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+          <select value={companyTypeFilter} onChange={e => { setCompanyTypeFilter(e.target.value); setPage(1) }}
+            className="bg-bg-tertiary border border-line text-text-primary rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent">
+            <option value="전체">기업 유형 전체</option>
+            <option value="개발사">개발사</option>
+            <option value="파트너">파트너</option>
+          </select>
+          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1) }}
+            className="bg-bg-tertiary border border-line text-text-primary rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-accent">
+            <option value="전체">상태 전체</option>
+            <option value="대기">대기</option>
+            <option value="회원">회원</option>
+            <option value="중지됨">중지됨</option>
+            <option value="거절">거절</option>
+          </select>
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
-            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="이름 또는 이메일 검색..."
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
+              placeholder="사용자명 · 이메일 · 사업 형태 검색..."
               className="w-full bg-bg-tertiary border border-line text-text-primary rounded-lg pl-9 pr-3 py-1.5 text-sm placeholder-text-muted focus:outline-none focus:border-accent" />
           </div>
         </div>
@@ -352,70 +434,97 @@ export default function AdminMembersPage() {
             <div className="flex items-center justify-center h-48"><Loader2 className="w-8 h-8 animate-spin text-text-secondary" /></div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-base">
                 <thead>
                   <tr className="border-b border-line text-text-secondary">
-                    <th className="text-left px-4 py-3 font-medium">#</th>
-                    <th className="text-left px-4 py-3 font-medium">사용자명</th>
-                    <th className="text-left px-4 py-3 font-medium">이메일</th>
-                    <th className="text-left px-4 py-3 font-medium">역할</th>
-                    <th className="text-left px-4 py-3 font-medium">회원유형</th>
-                    <th className="text-left px-4 py-3 font-medium">회사/유형</th>
-                    <th className="text-left px-4 py-3 font-medium">가입일</th>
-                    <th className="text-left px-4 py-3 font-medium">승인/거절</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">No.</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">사용자명</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">이메일</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">회사명</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">기업 유형</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">사업 형태</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">대표 연락처</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">가입일</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">유저 정보</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">상태</th>
+                    <th className="text-left px-4 py-3 font-medium">관리</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/50">
                   {users.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center py-12 text-text-muted">승인 대기중인 회원이 없습니다</td></tr>
+                    <tr><td colSpan={11} className="text-center py-12 text-text-muted">데이터가 없습니다</td></tr>
                   ) : users.map((user, idx) => {
-                    const rl = ROLE_LABELS[user.role] || { label: user.role, cls: 'bg-bg-tertiary text-text-secondary' }
-                    const mt = MEMBER_TYPE_LABELS[user.memberType || 'individual']
-                    const al = user.adminLevel ? ADMIN_LEVEL_LABELS[user.adminLevel] : null
+                    const isDeveloper = user.companyInfo?.companyType?.includes('developer')
+                    const partnerTypes = (user.companyInfo?.companyType || []).filter(t => t !== 'developer')
                     return (
                       <tr key={user._id} className="hover:bg-bg-tertiary/30 transition-colors">
-                        <td className="px-4 py-3 text-text-secondary">{(page - 1) * limit + idx + 1}</td>
-                        <td className="px-4 py-3 text-text-primary font-medium">
+                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">{(page - 1) * limit + idx + 1}</td>
+                        <td className="px-4 py-3 text-text-primary font-medium border-r border-line/20">
                           <Link href={`/admin/users-enhanced/${user._id}`} className="hover:text-accent-text transition-colors">{user.username}</Link>
                         </td>
-                        <td className="px-4 py-3 text-text-secondary">{user.email}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <span className={`text-xs px-2 py-0.5 rounded border ${rl.cls}`}>{rl.label}</span>
-                            {al && <span className={`text-[10px] px-1.5 py-0.5 rounded border ${al.cls}`}>{al.label}</span>}
-                          </div>
+                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">{user.email}</td>
+                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">
+                          {user.companyInfo?.companyName || '-'}
                         </td>
-                        <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded border ${mt?.cls}`}>{mt?.label}</span>
+                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">
+                          {isDeveloper ? '개발사' : '파트너'}
                         </td>
-                        <td className="px-4 py-3">
-                          {user.memberType === 'corporate' ? (
-                            <div className="space-y-1">
-                              <span className="text-text-secondary text-xs">{user.companyInfo?.companyName || '-'}</span>
-                              {user.companyInfo?.companyType && user.companyInfo.companyType.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {user.companyInfo.companyType.map(t => (
-                                    <span key={t} className="text-[10px] bg-bg-tertiary text-text-secondary px-1.5 py-0.5 rounded">{COMPANY_TYPE_LABELS[t] || t}</span>
-                                  ))}
-                                </div>
-                              )}
+                        <td className="px-4 py-3 border-r border-line/20">
+                          {isDeveloper ? (
+                            <span className="text-text-muted">-</span>
+                          ) : partnerTypes.length > 0 ? (
+                            <div className="grid grid-cols-3 gap-1">
+                              {partnerTypes.map(t => (
+                                <span key={t} className="text-xs bg-bg-tertiary text-text-secondary px-1.5 py-0.5 rounded text-center">{COMPANY_TYPE_LABELS[t] || t}</span>
+                              ))}
                             </div>
                           ) : (
-                            <span className="text-text-muted text-xs">-</span>
+                            <span className="text-text-muted">-</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-text-secondary text-xs">{new Date(user.createdAt).toLocaleDateString('ko-KR')}</td>
+                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">
+                          {user.contactPerson?.phone || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">{new Date(user.createdAt).toLocaleDateString('ko-KR')}</td>
+                        <td className="px-4 py-3 border-r border-line/20">
+                          <Link href={`/admin/users-enhanced/${user._id}`}
+                            className="px-3 py-1 rounded-md text-xs font-medium bg-bg-tertiary hover:bg-line-light border border-line text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap flex items-center gap-1 w-fit">
+                            보기
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 border-r border-line/20">
+                          {!user.isActive
+                            ? <span className="text-orange-400 font-medium">중지됨</span>
+                            : user.approvalStatus === 'approved' ? <span className="text-text-primary font-medium">회원</span>
+                            : user.approvalStatus === 'pending' ? <span className="text-amber-400 font-medium">대기</span>
+                            : user.approvalStatus === 'rejected' ? <span className="text-rose-400 font-medium">거절</span>
+                            : null}
+                        </td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-1">
-                            <button onClick={() => openModal(user, 'approved')}
-                              className="text-xs bg-accent-light text-accent border border-green-500/30 px-2.5 py-1 rounded hover:bg-accent/40 transition-colors flex items-center gap-1">
-                              <Check className="w-3 h-3" /> 승인
+                          {user.approvalStatus === 'approved' && !user.isActive && (
+                            <button onClick={() => setSuspendedUser(user)}
+                              className="px-3 py-1 rounded-md text-xs font-medium bg-transparent hover:bg-orange-500/10 border border-orange-500 text-orange-400 transition-colors whitespace-nowrap">
+                              계정 검토
                             </button>
-                            <button onClick={() => openModal(user, 'rejected')}
-                              className="text-xs bg-accent-light text-accent-text border border-accent-muted px-2.5 py-1 rounded hover:bg-red-600/40 transition-colors flex items-center gap-1">
-                              <XCircle className="w-3 h-3" /> 거절
+                          )}
+                          {user.approvalStatus === 'approved' && user.isActive && (
+                            <button onClick={() => setMemberManageUser(user)}
+                              className="px-3 py-1 rounded-md text-xs font-medium bg-slate-600 hover:bg-slate-500 border border-slate-500 text-white transition-colors whitespace-nowrap">
+                              회원관리
                             </button>
-                          </div>
+                          )}
+                          {user.approvalStatus === 'pending' && (
+                            <button onClick={() => setManageUser(user)}
+                              className="px-3 py-1 rounded-md text-xs font-medium bg-amber-400 hover:bg-amber-500 border border-amber-500 text-black transition-colors whitespace-nowrap">
+                              승인 검토
+                            </button>
+                          )}
+                          {user.approvalStatus === 'rejected' && (
+                            <button onClick={() => setReviewUser(user)}
+                              className="px-3 py-1 rounded-md text-xs font-medium bg-rose-500 hover:bg-rose-600 text-white border border-rose-600 transition-colors whitespace-nowrap">
+                              계정 검토
+                            </button>
+                          )}
                         </td>
                       </tr>
                     )
@@ -435,29 +544,29 @@ export default function AdminMembersPage() {
               const p = Math.max(1, Math.min(page - 3, totalPages - 6)) + i
               return p <= totalPages ? (
                 <button key={p} onClick={() => setPage(p)}
-                  className={`px-3 py-1.5 text-sm rounded-lg ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>{p}</button>
+                  className={`px-3 py-1.5 text-sm rounded-lg ${page === p ? 'bg-slate-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>{p}</button>
               ) : null
             })}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
               className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
           </div>
         )}
+        </>}
       </div>
 
-      {/* Approval/Rejection Modal */}
-      {modalUser && (
-        <ApprovalModal user={modalUser} action={modalAction} onClose={() => setModalUser(null)} onConfirm={handleApproval} loading={submitting} />
+      {manageUser && (
+        <ManageModal user={manageUser} onClose={() => setManageUser(null)} onApprove={handleApprove} onReject={handleReject} loading={submitting} />
+      )}
+      {reviewUser && (
+        <ReviewModal user={reviewUser} onClose={() => setReviewUser(null)} onRestore={handleRestore} onDelete={handlePermanentDelete} loading={submitting} />
+      )}
+      {suspendedUser && (
+        <ReviewModal user={suspendedUser} onClose={() => setSuspendedUser(null)} onRestore={handleUnsuspend} onDelete={handleDeleteSuspended} loading={submitting} />
+      )}
+      {memberManageUser && (
+        <MemberManageModal user={memberManageUser} onClose={() => setMemberManageUser(null)} onSuspend={handleSuspendMember} onDelete={handleDeleteMember} loading={submitting} />
       )}
 
-      {/* Create Admin Modal */}
-      {showCreateAdmin && (
-        <CreateAdminModal
-          onClose={() => setShowCreateAdmin(false)}
-          onCreated={() => { loadUsers(); loadCounts() }}
-          onSubmit={handleCreateAdmin}
-          loading={createLoading}
-        />
-      )}
     </AdminLayout>
   )
 }

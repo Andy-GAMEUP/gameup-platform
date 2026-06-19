@@ -17,10 +17,7 @@ export const getPosts = async (req: Request, res: Response) => {
     const limitNum = Math.min(Number(limit) || 15, 100)
     const filter: Record<string, unknown> = { status: 'active', isTempSave: { $ne: true } }
     if (channel) {
-      const SUB_CHANNELS: Record<string, string[]> = { free: ['free', 'new-game-intro'] }
-      filter.channel = SUB_CHANNELS[channel as string]
-        ? { $in: SUB_CHANNELS[channel as string] }
-        : channel
+      filter.channel = channel
     }
     if (gameId) filter.gameId = gameId
     if (tag) filter.tags = tag

@@ -3,10 +3,10 @@ import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGame
 import { getDeveloperOverview, getDeveloperDaily, getGameAnalytics, exportGameAnalytics, exportDeveloperDashboard } from '../controllers/gameAnalyticsController'
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/gameMediaController'
-import { getGameShopItems, getPublicGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem, reorderGameShopItems, updateShopCurrencyIcon, updateShopCurrencyName, submitShopReview } from '../controllers/gameShopController'
+import { getGameShopItems, getPublicGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem, reorderGameShopItems, updateShopCurrencyIcon, updateShopCurrencyName, submitShopReview, addAdditionalCurrency, updateAdditionalCurrency, deleteAdditionalCurrency, purchaseWithCapcoin, copyGameShopItem } from '../controllers/gameShopController'
 import { getGameAnnouncements, createGameAnnouncement, deleteGameAnnouncement, getRecentGameAnnouncements, getGameAnnouncementById, getPublicGameAnnouncements } from '../controllers/gameAnnouncementController'
 import { authenticateToken, requireRole, optionalAuth } from '../middleware/auth'
-import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload, mediaUpload } from '../middleware/upload'
+import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload, additionalCurrencyIconUpload, mediaUpload } from '../middleware/upload'
 
 const router = Router()
 
@@ -67,8 +67,13 @@ router.put('/:gameId/shop-items/:itemId', authenticateToken, requireRole('develo
 router.delete('/:gameId/shop-items/:itemId', authenticateToken, requireRole('developer', 'admin'), deleteGameShopItem)
 router.put('/:gameId/shop-items-reorder', authenticateToken, requireRole('developer', 'admin'), reorderGameShopItems)
 router.post('/:gameId/shop-items/submit-review', authenticateToken, requireRole('developer', 'admin'), submitShopReview)
+router.post('/:gameId/shop-items/:itemId/purchase-capcoin', authenticateToken, purchaseWithCapcoin)
+router.post('/:gameId/shop-items/:itemId/copy', authenticateToken, requireRole('developer', 'admin'), copyGameShopItem)
 router.put('/:gameId/shop-currency-icon', authenticateToken, requireRole('developer', 'admin'), shopCurrencyIconUpload, updateShopCurrencyIcon)
 router.put('/:gameId/shop-currency-name', authenticateToken, requireRole('developer', 'admin'), updateShopCurrencyName)
+router.post('/:gameId/currencies', authenticateToken, requireRole('developer', 'admin'), additionalCurrencyIconUpload, addAdditionalCurrency)
+router.patch('/:gameId/currencies/:currencyId', authenticateToken, requireRole('developer', 'admin'), additionalCurrencyIconUpload, updateAdditionalCurrency)
+router.delete('/:gameId/currencies/:currencyId', authenticateToken, requireRole('developer', 'admin'), deleteAdditionalCurrency)
 
 // 게임 공지&알림
 router.get('/:gameId/announcements/public', getPublicGameAnnouncements)

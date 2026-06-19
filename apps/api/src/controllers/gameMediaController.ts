@@ -111,6 +111,12 @@ export const deleteGameMedia = async (req: AuthRequest, res: Response) => {
 
     await media.deleteOne()
 
+    // publishedSnapshot._mediaItems 에서도 제거
+    await GameModel.updateOne(
+      { _id: gameId },
+      { $pull: { 'publishedSnapshot._mediaItems': { _id: media._id } } }
+    )
+
     res.json({ success: true, message: '삭제되었습니다' })
   } catch (error) {
     console.error('Delete game media error:', error)

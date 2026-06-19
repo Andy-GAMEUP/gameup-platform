@@ -27,9 +27,6 @@ export const register = async (req: AuthRequest, res: Response) => {
       if (!companyInfo?.companyType || companyInfo.companyType.length === 0) {
         return res.status(400).json({ message: '기업유형을 선택해주세요' })
       }
-      if (!contactPerson?.name) {
-        return res.status(400).json({ message: '담당자명은 필수입니다' })
-      }
       if (!contactPerson?.phone) {
         return res.status(400).json({ message: '담당자 연락처는 필수입니다' })
       }
@@ -53,6 +50,7 @@ export const register = async (req: AuthRequest, res: Response) => {
       password: hashedPassword,
       role: role || 'player',
       memberType: memberType || 'individual',
+      approvalStatus: memberType === 'corporate' ? 'pending' : 'approved',
     }
 
     // 기업회원 정보 설정
@@ -120,8 +118,14 @@ export const login = async (req: AuthRequest, res: Response) => {
     const isPasswordValid = await comparePassword(password, user.password!)
 
     if (!isPasswordValid) {
-      return res.status(401).json({ 
-        message: '이메일 또는 비밀번호가 올바르지 않습니다' 
+      return res.status(401).json({
+        message: '이메일 또는 비밀번호가 올바르지 않습니다'
+      })
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        message: '계정이 중지된 상태입니다. 관리자에게 문의하세요.'
       })
     }
 

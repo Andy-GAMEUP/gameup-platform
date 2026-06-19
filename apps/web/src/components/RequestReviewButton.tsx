@@ -73,7 +73,7 @@ export default function RequestReviewButton({
       {modalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-bg-secondary border border-line rounded-2xl w-full max-w-sm p-6 shadow-2xl">
-            <h3 className="text-text-primary font-bold text-base mb-2">심사 관리</h3>
+            <h3 className="text-text-primary font-bold text-base mb-2">심사 진행</h3>
             <p className="text-text-secondary text-sm mb-6">{modalDesc}</p>
             <div className="flex gap-3">
               {isUnderReview ? (
@@ -135,7 +135,7 @@ export default function RequestReviewButton({
             ? <Loader2 className={`animate-spin ${size === 'sm' ? 'w-2.5 h-2.5' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4'}`} />
             : <Send className={size === 'sm' ? 'w-2.5 h-2.5' : size === 'lg' ? 'w-5 h-5' : size === 'full' ? 'w-3 h-3' : 'w-4 h-4'} />
           }
-          심사 관리
+          심사 진행
         </button>
         {tooltipLines.length > 0 && (
           <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-50 pointer-events-none">

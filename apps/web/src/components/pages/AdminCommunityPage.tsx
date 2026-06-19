@@ -1,15 +1,18 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
 import adminService, { CommunityBanner, ReportedPost, ReportedComment } from '@/services/adminService'
 import communityService from '@/services/communityService'
 import {
-  Search, ShieldOff, ShieldCheck, Trash2, ChevronLeft, ChevronRight,
+  Search, ShieldOff, ShieldCheck, Trash2, ChevronLeft, ChevronRight, ChevronDown,
   Loader2, AlertCircle, CheckCircle, MessageSquare, PenSquare, X,
   ImagePlus, Link2, Hash, Image as ImageIcon, Megaphone, Upload,
   Plus, Eye, EyeOff, Pin, Bell, BellOff, Edit2, LayoutDashboard, Flag, ExternalLink, ThumbsUp, MessageCircle, ArrowUpDown, ArrowUp, ArrowDown,
+  BarChart2,
 } from 'lucide-react'
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from 'recharts'
 
 // ────────── 타입 ──────────
 
@@ -71,6 +74,87 @@ function ConfirmModal({ msg, onConfirm, onCancel, danger = true }: {
   )
 }
 
+// ────────── 게임 선택기 ──────────
+
+function GameSelectorInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [search, setSearch] = useState('')
+  const [games, setGames] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [selectedName, setSelectedName] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    setLoading(true)
+    adminService.getAllGames({ search: search || undefined, limit: 20 })
+      .then(d => setGames(d.games || []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [search, open])
+
+  const selectedId = value.match(/^\/games\/([^/]+)$/)?.[1]
+
+  const handleSelect = (g: any) => {
+    onChange(`/games/${g._id}`)
+    setSelectedName(g.title)
+    setOpen(false)
+    setSearch('')
+  }
+
+  const handleClear = () => { onChange(''); setSelectedName('') }
+
+  return (
+    <div ref={ref} className="relative">
+      {selectedId ? (
+        <div className="flex items-center gap-2 bg-bg-tertiary border border-accent/40 rounded-lg px-3 py-2">
+          <span className="flex-1 text-sm text-text-primary truncate">{selectedName || value}</span>
+          <button type="button" onClick={handleClear} className="text-text-muted hover:text-text-primary flex-shrink-0">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ) : (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onFocus={() => setOpen(true)}
+            placeholder="게임명 검색..."
+            className="w-full pl-9 pr-8 py-2 bg-bg-tertiary border border-line rounded-lg text-sm text-text-primary focus:outline-none focus:border-accent"
+          />
+          <ChevronDown className={`absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
+        </div>
+      )}
+      {open && !selectedId && (
+        <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-bg-secondary border border-line rounded-xl shadow-xl max-h-48 overflow-y-auto">
+          {loading ? (
+            <div className="flex items-center justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-text-muted" /></div>
+          ) : games.length === 0 ? (
+            <p className="text-center text-text-muted text-xs py-4">게임이 없습니다</p>
+          ) : games.map(g => (
+            <button key={g._id} type="button" onClick={() => handleSelect(g)}
+              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-bg-tertiary transition-colors text-left">
+              <div className="w-8 h-8 rounded-md overflow-hidden border border-line bg-bg-tertiary flex-shrink-0">
+                <img src={g.thumbnail ? `${UPLOADS_URL}${g.thumbnail}` : ''} alt="" className="w-full h-full object-cover" />
+              </div>
+              <span className="text-sm text-text-primary truncate">{g.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ────────── 탭 1: 배너 관리 ──────────
 
 function BannerSection({
@@ -92,6 +176,8 @@ function BannerSection({
   onCancelAdd,
   onToggleActive,
   onDelete,
+  onEdit,
+  gameSelector,
 }: {
   title: string
   subtitle: string
@@ -111,9 +197,228 @@ function BannerSection({
   onCancelAdd: () => void
   onToggleActive: (b: CommunityBanner) => void
   onDelete: (id: string) => void
+  onEdit: (id: string, data: { title: string; linkUrl: string; file?: File }) => void
+  gameSelector?: boolean
 }) {
   const fmt = (d: string) => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  const [statPeriod, setStatPeriod] = useState<1 | 7 | 30 | null>(7)
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
+  const [customOpen, setCustomOpen] = useState(false)
+  const customRef = useRef<HTMLDivElement>(null)
+  const [chartBannerId, setChartBannerId] = useState<string | null>(null)
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  useEffect(() => {
+    if (!customOpen) return
+    const handler = (e: MouseEvent) => {
+      if (customRef.current && !customRef.current.contains(e.target as Node)) {
+        setCustomOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [customOpen])
+
+  const getDateRange = (): { from: string; to: string } => {
+    if (statPeriod !== null) {
+      const from = new Date()
+      from.setDate(from.getDate() - statPeriod + 1)
+      return { from: from.toISOString().slice(0, 10), to: today }
+    }
+    return { from: customFrom || today, to: customTo || today }
+  }
+
+  const getStats = (b: CommunityBanner) => {
+    const { from, to } = getDateRange()
+    const stats = (b.dailyStats || []).filter(s => s.date >= from && s.date <= to)
+    const impressions = stats.reduce((acc, s) => acc + s.impressions, 0)
+    const clicks = stats.reduce((acc, s) => acc + s.clicks, 0)
+    const ctr = impressions > 0 ? ((clicks / impressions) * 100).toFixed(1) : '-'
+    return { impressions, clicks, ctr }
+  }
+
+  const getChartData = (b: CommunityBanner) => {
+    const { from, to } = getDateRange()
+    const days: string[] = []
+    const cur = new Date(from)
+    const end = new Date(to)
+    while (cur <= end) {
+      days.push(cur.toISOString().slice(0, 10))
+      cur.setDate(cur.getDate() + 1)
+    }
+    const statsMap = Object.fromEntries((b.dailyStats || []).map(s => [s.date, s]))
+    return days.map(date => ({
+      date: date.slice(5),
+      노출수: statsMap[date]?.impressions ?? 0,
+      클릭수: statsMap[date]?.clicks ?? 0,
+      수정: statsMap[date]?.edits ?? 0,
+    }))
+  }
+
+  const [gameNamesMap, setGameNamesMap] = useState<Record<string, string>>({})
+  useEffect(() => {
+    if (!gameSelector) return
+    adminService.getAllGames({ limit: 200 })
+      .then(d => {
+        const map: Record<string, string> = {}
+        ;(d.games || []).forEach((g: any) => { map[g._id] = g.title })
+        setGameNamesMap(map)
+      })
+      .catch(() => {})
+  }, [gameSelector, banners])
+
+  const [addPreview, setAddPreview] = useState<string>('')
+  const handleAddFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null
+    onFileChange(f)
+    setAddPreview(f ? URL.createObjectURL(f) : '')
+  }
+  const handleCancelAdd = () => { onCancelAdd(); setAddPreview('') }
+  const [editId, setEditId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editLinkUrl, setEditLinkUrl] = useState('')
+  const [editFile, setEditFile] = useState<File | null>(null)
+  const [editPreview, setEditPreview] = useState<string>('')
+  const editFileRef = useRef<HTMLInputElement>(null)
+
+  const startEdit = (b: CommunityBanner) => {
+    setEditId(b._id)
+    setEditBanner(b)
+    setEditTitle(b.title || '')
+    setEditLinkUrl(b.linkUrl || '')
+    setEditFile(null)
+    setEditPreview('')
+  }
+  const [editBanner, setEditBanner] = useState<CommunityBanner | null>(null)
+  const cancelEdit = () => { setEditId(null); setEditBanner(null); setEditFile(null); setEditPreview('') }
+  const saveEdit = () => {
+    if (!editId) return
+    onEdit(editId, { title: editTitle, linkUrl: editLinkUrl, ...(editFile ? { file: editFile } : {}) })
+    cancelEdit()
+  }
+  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setEditFile(f)
+    setEditPreview(URL.createObjectURL(f))
+  }
   return (
+    <>
+      {editBanner && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+              <h3 className="text-text-primary font-semibold text-sm">배너 수정</h3>
+              <button onClick={cancelEdit} className="p-1 text-text-muted hover:text-text-primary transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <input ref={editFileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleEditFileChange} />
+              <div>
+                <label className="text-xs text-text-muted block mb-1.5">이미지</label>
+                <div
+                  className="relative w-full h-40 rounded-xl overflow-hidden border-2 border-dashed border-line bg-bg-tertiary flex items-center justify-center cursor-pointer hover:border-accent transition-colors group"
+                  onClick={() => editFileRef.current?.click()}
+                >
+                  <img
+                    src={editPreview || `${UPLOADS_URL}${editBanner.imageUrl}`}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+                {editFile && <p className="text-xs text-text-muted mt-1">{editFile.name}</p>}
+              </div>
+              <div>
+                <label className="text-xs text-text-muted block mb-1.5">이름</label>
+                <input
+                  value={editTitle}
+                  onChange={e => setEditTitle(e.target.value)}
+                  placeholder="배너 제목"
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-text-muted block mb-1.5">{gameSelector ? '연결 게임' : '링크 URL'}</label>
+                {gameSelector
+                  ? <GameSelectorInput value={editLinkUrl} onChange={setEditLinkUrl} />
+                  : <input
+                      value={editLinkUrl}
+                      onChange={e => setEditLinkUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                    />
+                }
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-line">
+              <button onClick={cancelEdit} className="px-4 py-1.5 border border-line text-text-secondary hover:bg-bg-tertiary rounded-lg text-sm transition-colors">취소</button>
+              <button onClick={saveEdit} className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors">저장</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {addForm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+              <h3 className="text-text-primary font-semibold text-sm">배너 추가</h3>
+              <button onClick={handleCancelAdd} className="p-1 text-text-muted hover:text-text-primary transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <input type="file" ref={addFileRef} accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleAddFileChange} />
+              <div>
+                <label className="text-xs text-text-muted block mb-1.5">이미지 *</label>
+                <div
+                  className="relative w-full h-40 rounded-xl overflow-hidden border-2 border-dashed border-line bg-bg-tertiary flex items-center justify-center cursor-pointer hover:border-accent transition-colors group"
+                  onClick={() => addFileRef.current?.click()}
+                >
+                  {addPreview
+                    ? <img src={addPreview} alt="" className="w-full h-full object-cover" />
+                    : <div className="flex flex-col items-center gap-2 text-text-muted group-hover:text-text-secondary transition-colors">
+                        <Upload className="w-8 h-8" />
+                        <span className="text-xs">클릭하여 이미지 선택</span>
+                      </div>
+                  }
+                  {addPreview && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Upload className="w-6 h-6 text-white" />
+                    </div>
+                  )}
+                </div>
+                {formFile && <p className="text-xs text-text-muted mt-1">{formFile.name}</p>}
+              </div>
+              <div>
+                <label className="text-xs text-text-muted block mb-1.5">이름 (선택)</label>
+                <input value={formTitle} onChange={e => onTitleChange(e.target.value)} placeholder="배너 제목"
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
+              </div>
+              <div>
+                <label className="text-xs text-text-muted block mb-1.5">{gameSelector ? '연결 게임 *' : '링크 URL (선택)'}</label>
+                {gameSelector
+                  ? <GameSelectorInput value={formLinkUrl} onChange={onLinkChange} />
+                  : <input value={formLinkUrl} onChange={e => onLinkChange(e.target.value)} placeholder="https://..."
+                      className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
+                }
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-line">
+              <button onClick={handleCancelAdd} className="px-4 py-1.5 border border-line text-text-secondary hover:bg-bg-tertiary rounded-lg text-sm transition-colors">취소</button>
+              <button onClick={onAdd} disabled={uploading || !formFile || (!!gameSelector && !formLinkUrl)}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} 등록
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     <div className="bg-bg-secondary border border-line rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -128,38 +433,6 @@ function BannerSection({
         )}
       </div>
 
-      {addForm && (
-        <div className="mb-4 p-4 bg-bg-tertiary border border-line rounded-xl space-y-3">
-          <input type="file" ref={addFileRef} accept="image/jpeg,image/png,image/gif,image/webp" className="hidden"
-            onChange={e => onFileChange(e.target.files?.[0] || null)} />
-          <div>
-            <label className="text-xs text-text-muted mb-1 block">이미지 *</label>
-            <button onClick={() => addFileRef.current?.click()}
-              className="flex items-center gap-2 px-3 py-2 border border-dashed border-line rounded-lg text-sm text-text-muted hover:text-text-secondary transition-colors">
-              <ImageIcon className="w-4 h-4" />
-              {formFile ? formFile.name : '이미지 선택 (JPG, PNG, GIF, WebP)'}
-            </button>
-          </div>
-          <div>
-            <label className="text-xs text-text-muted mb-1 block">제목 (선택)</label>
-            <input value={formTitle} onChange={e => onTitleChange(e.target.value)} placeholder="배너 제목"
-              className="w-full bg-bg-secondary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent" />
-          </div>
-          <div>
-            <label className="text-xs text-text-muted mb-1 block">링크 URL (선택)</label>
-            <input value={formLinkUrl} onChange={e => onLinkChange(e.target.value)} placeholder="https://..."
-              className="w-full bg-bg-secondary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none focus:border-accent" />
-          </div>
-          <div className="flex gap-2 justify-end">
-            <button onClick={onCancelAdd}
-              className="px-3 py-1.5 border border-line rounded-lg text-sm text-text-secondary hover:bg-bg-secondary">취소</button>
-            <button onClick={onAdd} disabled={uploading || !formFile}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm disabled:opacity-50">
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} 등록
-            </button>
-          </div>
-        </div>
-      )}
 
       {loading ? (
         <div className="flex items-center justify-center h-32"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
@@ -167,21 +440,65 @@ function BannerSection({
         <div className="text-center py-12 text-text-muted text-sm">등록된 배너가 없습니다</div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <div className="flex items-center gap-1.5 mb-3 px-1 flex-wrap">
+            <span className="text-xs text-text-muted mr-1">운영 기간</span>
+            {([1, 7, 30] as const).map(p => (
+              <button key={p} onClick={() => setStatPeriod(p)}
+                className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${statPeriod === p ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-muted hover:text-text-primary'}`}>
+                {p === 1 ? '오늘' : `${p}일`}
+              </button>
+            ))}
+            <div className="relative ml-1" ref={customRef}>
+              <button onClick={() => setCustomOpen(o => !o)}
+                className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${statPeriod === null ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-muted hover:text-text-primary'}`}>
+                {statPeriod === null && customFrom && customTo ? `${customFrom.slice(5)} ~ ${customTo.slice(5)}` : '직접 설정'}
+              </button>
+              {customOpen && (
+                <div className="absolute top-7 left-0 z-20 bg-bg-secondary border border-line rounded-xl shadow-xl p-3 flex flex-col gap-2 min-w-[200px]">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-text-muted">시작일</span>
+                    <input type="date" value={customFrom} max={customTo || today}
+                      onChange={e => setCustomFrom(e.target.value)}
+                      className="text-xs px-2 py-1 rounded-lg border border-line bg-bg-tertiary text-text-primary [color-scheme:dark]" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-text-muted">종료일</span>
+                    <input type="date" value={customTo} min={customFrom} max={today}
+                      onChange={e => setCustomTo(e.target.value)}
+                      className="text-xs px-2 py-1 rounded-lg border border-line bg-bg-tertiary text-text-primary [color-scheme:dark]" />
+                  </div>
+                  <button
+                    onClick={() => { if (customFrom && customTo) { setStatPeriod(null); setCustomOpen(false) } }}
+                    disabled={!customFrom || !customTo}
+                    className="mt-1 px-3 py-1 rounded-lg text-xs font-medium bg-accent text-white disabled:opacity-40 disabled:cursor-not-allowed">
+                    적용
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          <table className="w-full text-base">
             <thead>
-              <tr className="border-b border-line text-text-muted text-xs">
-                <th className="text-left py-2 px-3 font-medium w-12">순서</th>
+              <tr className="border-b border-line text-text-muted text-sm divide-x divide-white/[0.06]">
+                <th className="text-left py-2 px-3 font-medium w-16">순서</th>
                 <th className="text-left py-2 px-3 font-medium w-24">미리보기</th>
-                <th className="text-left py-2 px-3 font-medium">제목</th>
-                <th className="text-left py-2 px-3 font-medium">링크</th>
+                <th className="text-left py-2 px-3 font-medium">이름</th>
+                <th className="text-left py-2 px-3 font-medium w-80">{gameSelector ? '게임명' : '링크'}</th>
                 <th className="text-left py-2 px-3 font-medium w-28">등록일</th>
-                <th className="text-left py-2 px-3 font-medium w-16">상태</th>
-                <th className="py-2 px-3 w-16" />
+                <th className="text-left py-2 px-3 font-medium w-28">최근 수정일</th>
+                <th className="text-right py-2 px-3 font-medium w-20">노출수</th>
+                <th className="text-right py-2 px-3 font-medium w-20">클릭수</th>
+                <th className="text-right py-2 px-3 font-medium w-16">CTR</th>
+                <th className="text-left py-2 px-3 font-medium w-32">상태</th>
+                <th className="text-left py-2 px-3 font-medium w-16">그래프</th>
+                <th className="text-left py-2 px-3 font-medium w-16">수정</th>
+                <th className="text-left py-2 px-3 font-medium w-16">삭제</th>
               </tr>
             </thead>
             <tbody>
               {banners.map((b, i) => (
-                <tr key={b._id} className="border-b border-line last:border-0 hover:bg-bg-tertiary transition-colors">
+                <Fragment key={b._id}>
+                <tr className="border-b border-line last:border-0 hover:bg-bg-tertiary transition-colors divide-x divide-white/[0.06]">
                   <td className="py-3 px-3 text-text-muted">{i + 1}</td>
                   <td className="py-3 px-3">
                     <div className="w-20 h-12 rounded-lg overflow-hidden border border-line bg-bg-tertiary">
@@ -190,15 +507,43 @@ function BannerSection({
                   </td>
                   <td className="py-3 px-3 text-text-primary">{b.title || <span className="text-text-muted">-</span>}</td>
                   <td className="py-3 px-3">
-                    {b.linkUrl
-                      ? <span className="text-accent text-xs truncate max-w-[160px] block">{b.linkUrl}</span>
-                      : <span className="text-text-muted">-</span>}
+                    {gameSelector
+                      ? (() => {
+                          const id = b.linkUrl?.match(/^\/games\/([^/]+)$/)?.[1]
+                          return id
+                            ? <a href={`/games/${id}`} target="_blank" rel="noopener noreferrer" className="text-accent text-xs hover:underline">{gameNamesMap[id] || id}</a>
+                            : <span className="text-text-muted">-</span>
+                        })()
+                      : b.linkUrl
+                        ? <a href={b.linkUrl} target="_blank" rel="noopener noreferrer" className="text-accent text-xs truncate max-w-[80px] block hover:underline">{b.linkUrl}</a>
+                        : <span className="text-text-muted">-</span>
+                    }
                   </td>
                   <td className="py-3 px-3 text-text-muted text-xs">{fmt(b.createdAt)}</td>
+                  <td className="py-3 px-3 text-text-muted text-xs">{fmt(b.updatedAt)}</td>
+                  {(() => { const s = getStats(b); return (<>
+                    <td className="py-3 px-3 text-right text-xs text-text-secondary">{s.impressions.toLocaleString()}</td>
+                    <td className="py-3 px-3 text-right text-xs text-text-secondary">{s.clicks.toLocaleString()}</td>
+                    <td className="py-3 px-3 text-right text-xs text-text-muted">{s.ctr === '-' ? '-' : `${s.ctr}%`}</td>
+                  </>) })()}
                   <td className="py-3 px-3">
-                    <button onClick={() => onToggleActive(b)}
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${b.isActive ? 'bg-green-500/10 text-green-400' : 'bg-bg-tertiary text-text-muted'}`}>
-                      {b.isActive ? '활성' : '비활성'}
+                    <button onClick={() => onToggleActive(b)} className="flex items-center gap-2 group">
+                      <div className={`relative w-9 h-5 rounded-full transition-colors ${b.isActive ? 'bg-green-500' : 'bg-bg-muted'}`}>
+                        <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${b.isActive ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </div>
+                      <span className={`text-xs ${b.isActive ? 'text-green-400' : 'text-text-muted'}`}>{b.isActive ? '활성' : '비활성'}</span>
+                    </button>
+                  </td>
+                  <td className="py-3 px-3">
+                    <button onClick={() => setChartBannerId(chartBannerId === b._id ? null : b._id)}
+                      className={`p-1.5 rounded-lg transition-colors ${chartBannerId === b._id ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-accent hover:bg-accent/10'}`}>
+                      <BarChart2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                  <td className="py-3 px-3">
+                    <button onClick={() => startEdit(b)}
+                      className="p-1.5 text-text-muted hover:text-accent hover:bg-accent/10 rounded-lg transition-colors">
+                      <Edit2 className="w-4 h-4" />
                     </button>
                   </td>
                   <td className="py-3 px-3">
@@ -208,12 +553,55 @@ function BannerSection({
                     </button>
                   </td>
                 </tr>
+                {chartBannerId === b._id && (
+                  <tr className="border-b border-line bg-bg-tertiary/50">
+                    <td colSpan={12} className="px-4 py-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <BarChart2 className="w-4 h-4 text-accent" />
+                        <span className="text-sm font-medium text-text-primary">{b.title || '배너'} — {statPeriod === 1 ? '오늘' : statPeriod !== null ? `최근 ${statPeriod}일` : `${customFrom} ~ ${customTo}`}</span>
+                      </div>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <LineChart data={getChartData(b)} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#888' }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 11, fill: '#888' }} axisLine={false} tickLine={false} width={36} />
+                          <Tooltip content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null
+                            const d = payload[0]?.payload as { 노출수: number; 클릭수: number; 수정: number }
+                            return (
+                              <div style={{ background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
+                                <p style={{ color: '#ccc', marginBottom: 6 }}>{label}</p>
+                                <p style={{ color: '#6366f1', margin: '2px 0' }}>노출수 : {d.노출수.toLocaleString()}</p>
+                                <p style={{ color: '#22d3ee', margin: '2px 0' }}>클릭수 : {d.클릭수.toLocaleString()}</p>
+                                {d.수정 > 0 && <p style={{ color: '#f59e0b', margin: '4px 0 0' }}>수정 횟수 : {d.수정}회</p>}
+                              </div>
+                            )
+                          }} />
+                          <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
+                          <Line type="monotone" dataKey="노출수" stroke="#6366f1" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                          <Line type="monotone" dataKey="클릭수" stroke="#22d3ee" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                          <Line dataKey="수정" stroke="transparent" dot={false} activeDot={false} legendType="none" />
+                          {(() => {
+                            const updatedMD = b.updatedAt.slice(5, 10)
+                            const chartDates = getChartData(b).map(d => d.date)
+                            if (!chartDates.includes(updatedMD)) return null
+                            return (
+                              <ReferenceLine x={updatedMD} stroke="#f59e0b" strokeDasharray="3 3" strokeWidth={1} />
+                            )
+                          })()}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
         </div>
       )}
     </div>
+    </>
   )
 }
 
@@ -250,6 +638,17 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
   const [eventFormFile, setEventFormFile] = useState<File | null>(null)
   const eventAddFileRef = useRef<HTMLInputElement>(null)
 
+  // 신작 배너 상태
+  const [newGameBanners, setNewGameBanners] = useState<CommunityBanner[]>([])
+  const [newGameLoading, setNewGameLoading] = useState(true)
+  const [newGameUploading, setNewGameUploading] = useState(false)
+  const [newGameConfirm, setNewGameConfirm] = useState<{ id: string } | null>(null)
+  const [newGameAddForm, setNewGameAddForm] = useState(false)
+  const [newGameFormLinkUrl, setNewGameFormLinkUrl] = useState('')
+  const [newGameFormTitle, setNewGameFormTitle] = useState('')
+  const [newGameFormFile, setNewGameFormFile] = useState<File | null>(null)
+  const newGameAddFileRef = useRef<HTMLInputElement>(null)
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -277,7 +676,16 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
     finally { setEventLoading(false) }
   }, [])
 
-  useEffect(() => { load(); loadMain(); loadEvent() }, [load, loadMain, loadEvent])
+  const loadNewGame = useCallback(async () => {
+    setNewGameLoading(true)
+    try {
+      const data = await adminService.getAllNewGameBanners()
+      setNewGameBanners(data.banners)
+    } catch { /* silent */ }
+    finally { setNewGameLoading(false) }
+  }, [])
+
+  useEffect(() => { load(); loadMain(); loadEvent(); loadNewGame() }, [load, loadMain, loadEvent, loadNewGame])
 
   const handleAdd = async () => {
     if (!formFile) { showToast('이미지를 선택해주세요', false); return }
@@ -366,77 +774,174 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
     } catch { showToast('삭제 실패', false) }
   }
 
+  const handleEdit = async (id: string, data: { title: string; linkUrl: string; file?: File }) => {
+    try { await adminService.updateCommunityBanner(id, data); showToast('수정되었습니다'); load() }
+    catch { showToast('수정 실패', false) }
+  }
+  const handleMainEdit = async (id: string, data: { title: string; linkUrl: string; file?: File }) => {
+    try { await adminService.updateCommunityBanner(id, data); showToast('수정되었습니다'); loadMain() }
+    catch { showToast('수정 실패', false) }
+  }
+  const handleEventEdit = async (id: string, data: { title: string; linkUrl: string; file?: File }) => {
+    try { await adminService.updateCommunityBanner(id, data); showToast('수정되었습니다'); loadEvent() }
+    catch { showToast('수정 실패', false) }
+  }
+
+  const handleNewGameAdd = async () => {
+    if (!newGameFormFile) { showToast('이미지를 선택해주세요', false); return }
+    setNewGameUploading(true)
+    try {
+      await adminService.uploadNewGameBanner(newGameFormFile, { linkUrl: newGameFormLinkUrl, title: newGameFormTitle })
+      showToast('배너가 등록되었습니다')
+      setNewGameAddForm(false); setNewGameFormFile(null); setNewGameFormLinkUrl(''); setNewGameFormTitle('')
+      loadNewGame()
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || '업로드 실패', false)
+    } finally { setNewGameUploading(false) }
+  }
+  const handleNewGameToggleActive = async (b: CommunityBanner) => {
+    try { await adminService.updateCommunityBanner(b._id, { isActive: !b.isActive }); loadNewGame() }
+    catch { showToast('변경 실패', false) }
+  }
+  const handleNewGameDelete = async () => {
+    if (!newGameConfirm) return
+    try {
+      await adminService.deleteCommunityBanner(newGameConfirm.id)
+      showToast('삭제되었습니다')
+      setNewGameConfirm(null); loadNewGame()
+    } catch { showToast('삭제 실패', false) }
+  }
+  const handleNewGameEdit = async (id: string, data: { title: string; linkUrl: string; file?: File }) => {
+    try { await adminService.updateCommunityBanner(id, data); showToast('수정되었습니다'); loadNewGame() }
+    catch { showToast('수정 실패', false) }
+  }
+
+  const [bannerTab, setBannerTab] = useState<'main' | 'community' | 'event' | 'newgame'>('main')
+
+  const BANNER_TABS = [
+    { key: 'main'      as const, label: '메인_배너' },
+    { key: 'community' as const, label: '커뮤니티_배너' },
+    { key: 'event'     as const, label: '메인_이벤트' },
+    { key: 'newgame'   as const, label: '메인_신작' },
+  ]
+
   return (
     <div className="space-y-5">
       {confirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleDelete} onCancel={() => setConfirm(null)} />}
       {mainConfirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleMainDelete} onCancel={() => setMainConfirm(null)} />}
       {eventConfirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleEventDelete} onCancel={() => setEventConfirm(null)} />}
+      {newGameConfirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleNewGameDelete} onCancel={() => setNewGameConfirm(null)} />}
 
-      {/* 메인 탭 배너 */}
-      <BannerSection
-        title="메인 탭 배너"
-        subtitle="메인 페이지 상단에 표시됩니다 · 최대 5개 · 자동 롤링"
-        banners={mainBanners}
-        loading={mainLoading}
-        uploading={mainUploading}
-        addForm={mainAddForm}
-        formFile={mainFormFile}
-        formTitle={mainFormTitle}
-        formLinkUrl={mainFormLinkUrl}
-        addFileRef={mainAddFileRef}
-        onToggleAddForm={() => setMainAddForm(v => !v)}
-        onFileChange={setMainFormFile}
-        onTitleChange={setMainFormTitle}
-        onLinkChange={setMainFormLinkUrl}
-        onAdd={handleMainAdd}
-        onCancelAdd={() => { setMainAddForm(false); setMainFormFile(null); setMainFormLinkUrl(''); setMainFormTitle('') }}
-        onToggleActive={handleMainToggleActive}
-        onDelete={id => setMainConfirm({ id })}
-      />
+      {/* 배너 종류 탭 */}
+      <div className="flex gap-1 border-b border-line">
+        {BANNER_TABS.map(t => (
+          <button key={t.key} onClick={() => setBannerTab(t.key)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              bannerTab === t.key
+                ? 'border-accent text-accent'
+                : 'border-transparent text-text-muted hover:text-text-primary'
+            }`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      {/* 커뮤니티 홈 배너 */}
-      <BannerSection
-        title="커뮤니티 홈 배너"
-        subtitle="커뮤니티 홈 상단에 표시됩니다 · 최대 5개 · 자동 롤링"
-        banners={banners}
-        loading={loading}
-        uploading={uploading}
-        addForm={addForm}
-        formFile={formFile}
-        formTitle={formTitle}
-        formLinkUrl={formLinkUrl}
-        addFileRef={addFileRef}
-        onToggleAddForm={() => setAddForm(v => !v)}
-        onFileChange={setFormFile}
-        onTitleChange={setFormTitle}
-        onLinkChange={setFormLinkUrl}
-        onAdd={handleAdd}
-        onCancelAdd={() => { setAddForm(false); setFormFile(null); setFormLinkUrl(''); setFormTitle('') }}
-        onToggleActive={handleToggleActive}
-        onDelete={id => setConfirm({ id })}
-      />
+      {bannerTab === 'main' && (
+        <BannerSection
+          title="메인 탭 배너"
+          subtitle="메인 페이지 상단에 표시됩니다 · 최대 5개 · 자동 롤링"
+          banners={mainBanners}
+          loading={mainLoading}
+          uploading={mainUploading}
+          addForm={mainAddForm}
+          formFile={mainFormFile}
+          formTitle={mainFormTitle}
+          formLinkUrl={mainFormLinkUrl}
+          addFileRef={mainAddFileRef}
+          onToggleAddForm={() => setMainAddForm(v => !v)}
+          onFileChange={setMainFormFile}
+          onTitleChange={setMainFormTitle}
+          onLinkChange={setMainFormLinkUrl}
+          onAdd={handleMainAdd}
+          onCancelAdd={() => { setMainAddForm(false); setMainFormFile(null); setMainFormLinkUrl(''); setMainFormTitle('') }}
+          onToggleActive={handleMainToggleActive}
+          onDelete={id => setMainConfirm({ id })}
+          onEdit={handleMainEdit}
+        />
+      )}
 
-      {/* 이벤트 박스 배너 */}
-      <BannerSection
-        title="이벤트 박스 배너"
-        subtitle="메인 페이지 이벤트 박스에 표시됩니다 · 최대 5개 · 자동 롤링"
-        banners={eventBanners}
-        loading={eventLoading}
-        uploading={eventUploading}
-        addForm={eventAddForm}
-        formFile={eventFormFile}
-        formTitle={eventFormTitle}
-        formLinkUrl={eventFormLinkUrl}
-        addFileRef={eventAddFileRef}
-        onToggleAddForm={() => setEventAddForm(v => !v)}
-        onFileChange={setEventFormFile}
-        onTitleChange={setEventFormTitle}
-        onLinkChange={setEventFormLinkUrl}
-        onAdd={handleEventAdd}
-        onCancelAdd={() => { setEventAddForm(false); setEventFormFile(null); setEventFormLinkUrl(''); setEventFormTitle('') }}
-        onToggleActive={handleEventToggleActive}
-        onDelete={id => setEventConfirm({ id })}
-      />
+      {bannerTab === 'newgame' && (
+        <BannerSection
+          title="메인_신작 배너"
+          subtitle="메인 페이지 신작 게임 섹션에 표시됩니다 · 최대 5개 · 자동 롤링"
+          banners={newGameBanners}
+          loading={newGameLoading}
+          uploading={newGameUploading}
+          addForm={newGameAddForm}
+          formFile={newGameFormFile}
+          formTitle={newGameFormTitle}
+          formLinkUrl={newGameFormLinkUrl}
+          addFileRef={newGameAddFileRef}
+          onToggleAddForm={() => setNewGameAddForm(v => !v)}
+          onFileChange={setNewGameFormFile}
+          onTitleChange={setNewGameFormTitle}
+          onLinkChange={setNewGameFormLinkUrl}
+          onAdd={handleNewGameAdd}
+          onCancelAdd={() => { setNewGameAddForm(false); setNewGameFormFile(null); setNewGameFormLinkUrl(''); setNewGameFormTitle('') }}
+          onToggleActive={handleNewGameToggleActive}
+          onDelete={id => setNewGameConfirm({ id })}
+          onEdit={handleNewGameEdit}
+          gameSelector
+        />
+      )}
+
+      {bannerTab === 'community' && (
+        <BannerSection
+          title="커뮤니티 홈 배너"
+          subtitle="커뮤니티 홈 상단에 표시됩니다 · 최대 5개 · 자동 롤링"
+          banners={banners}
+          loading={loading}
+          uploading={uploading}
+          addForm={addForm}
+          formFile={formFile}
+          formTitle={formTitle}
+          formLinkUrl={formLinkUrl}
+          addFileRef={addFileRef}
+          onToggleAddForm={() => setAddForm(v => !v)}
+          onFileChange={setFormFile}
+          onTitleChange={setFormTitle}
+          onLinkChange={setFormLinkUrl}
+          onAdd={handleAdd}
+          onCancelAdd={() => { setAddForm(false); setFormFile(null); setFormLinkUrl(''); setFormTitle('') }}
+          onToggleActive={handleToggleActive}
+          onDelete={id => setConfirm({ id })}
+          onEdit={handleEdit}
+        />
+      )}
+
+      {bannerTab === 'event' && (
+        <BannerSection
+          title="이벤트 박스 배너"
+          subtitle="메인 페이지 이벤트 박스에 표시됩니다 · 최대 5개 · 자동 롤링"
+          banners={eventBanners}
+          loading={eventLoading}
+          uploading={eventUploading}
+          addForm={eventAddForm}
+          formFile={eventFormFile}
+          formTitle={eventFormTitle}
+          formLinkUrl={eventFormLinkUrl}
+          addFileRef={eventAddFileRef}
+          onToggleAddForm={() => setEventAddForm(v => !v)}
+          onFileChange={setEventFormFile}
+          onTitleChange={setEventFormTitle}
+          onLinkChange={setEventFormLinkUrl}
+          onAdd={handleEventAdd}
+          onCancelAdd={() => { setEventAddForm(false); setEventFormFile(null); setEventFormLinkUrl(''); setEventFormTitle('') }}
+          onToggleActive={handleEventToggleActive}
+          onDelete={id => setEventConfirm({ id })}
+          onEdit={handleEventEdit}
+        />
+      )}
     </div>
   )
 }
@@ -1778,14 +2283,9 @@ export function DeletedArchiveTab({ showToast }: { showToast: (msg: string, ok?:
 
 // ────────── 메인 페이지 ──────────
 
-const TABS = [
-  { key: 'banner', label: '배너 관리', icon: ImageIcon },
-  { key: 'announcements', label: '공지사항', icon: Megaphone },
-  { key: 'reviews', label: '게임 리뷰 관리', icon: MessageSquare },
-]
-
 export default function AdminCommunityPage() {
-  const [activeTab, setActiveTab] = useState('banner')
+  const searchParams = useSearchParams()
+  const activeTab = searchParams.get('tab') || 'banner'
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
   const showToast = useCallback((msg: string, ok = true) => {
@@ -1799,26 +2299,11 @@ export default function AdminCommunityPage() {
 
       <div className="space-y-5">
         <h2 className="text-text-primary text-xl font-bold flex items-center gap-2">
-          <LayoutDashboard className="w-5 h-5 text-purple-400" /> 커뮤니티 관리
+          {activeTab === 'banner' && <ImageIcon className="w-5 h-5 text-purple-400" />}
+          {activeTab === 'announcements' && <Megaphone className="w-5 h-5 text-purple-400" />}
+          {activeTab === 'reviews' && <MessageSquare className="w-5 h-5 text-purple-400" />}
+          {activeTab === 'banner' ? '배너 관리' : activeTab === 'announcements' ? '공지사항' : '게임 리뷰 관리'}
         </h2>
-
-        {/* 탭 */}
-        <div className="flex gap-1 border-b border-line">
-          {TABS.map(tab => {
-            const Icon = tab.icon
-            return (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab.key
-                    ? 'border-accent text-accent'
-                    : 'border-transparent text-text-muted hover:text-text-primary'
-                }`}>
-                <Icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
 
         {/* 탭 콘텐츠 */}
         {activeTab === 'banner' && <BannerTab showToast={showToast} />}

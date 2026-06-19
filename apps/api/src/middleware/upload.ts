@@ -37,7 +37,7 @@ const storage = multer.diskStorage({
       cb(null, path.join(UPLOAD_BASE, 'screenshots'))
     } else if (file.fieldname === 'videoFile') {
       cb(null, path.join(UPLOAD_BASE, 'videos'))
-    } else if (file.fieldname === 'shopItemImage' || file.fieldname === 'shopCurrencyIcon' || file.fieldname === 'specialItemImage') {
+    } else if (file.fieldname === 'shopItemImage' || file.fieldname === 'shopCurrencyIcon' || file.fieldname === 'specialItemImage' || file.fieldname === 'currencyIcon' || file.fieldname === 'capcoinIcon') {
       cb(null, path.join(UPLOAD_BASE, 'shop-items'))
     } else {
       cb(null, UPLOAD_BASE)
@@ -106,8 +106,8 @@ const shopImageFilter = (req: Request, file: Express.Multer.File, cb: multer.Fil
 export const shopItemUpload = multer({
   storage,
   fileFilter: shopImageFilter,
-  limits: { fileSize: 5 * 1024 * 1024, files: 2 }
-}).fields([{ name: 'shopItemImage', maxCount: 1 }, { name: 'specialItemImage', maxCount: 1 }])
+  limits: { fileSize: 5 * 1024 * 1024, files: 4 }
+}).fields([{ name: 'shopItemImage', maxCount: 1 }, { name: 'specialItemImage', maxCount: 1 }, { name: 'currencyIcon', maxCount: 1 }, { name: 'capcoinIcon', maxCount: 1 }])
 
 const pngOnlyFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   const ext = path.extname(file.originalname).toLowerCase()
@@ -123,6 +123,12 @@ export const shopCurrencyIconUpload = multer({
   fileFilter: pngOnlyFilter,
   limits: { fileSize: 2 * 1024 * 1024, files: 1 }
 }).single('shopCurrencyIcon')
+
+export const additionalCurrencyIconUpload = multer({
+  storage,
+  fileFilter: pngOnlyFilter,
+  limits: { fileSize: 2 * 1024 * 1024, files: 1 }
+}).single('currencyIcon')
 
 // 스크린샷 업로드 (1장, 5MB)
 export const screenshotUpload = multer({

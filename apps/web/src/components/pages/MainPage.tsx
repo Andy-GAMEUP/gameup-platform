@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -44,18 +44,14 @@ function MainBannerCarousel({ banners }: { banners: { _id: string; imageUrl: str
         priority
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-      {banner.title && (
-        <div className="absolute bottom-5 left-6 right-16">
-          <p className="text-white font-bold text-lg drop-shadow">{banner.title}</p>
-        </div>
-      )}
     </div>
   )
 
   return (
     <div className="relative w-full overflow-hidden rounded-2xl group">
       {banner.linkUrl ? (
-        <Link href={banner.linkUrl} target="_blank" rel="noopener noreferrer">{inner}</Link>
+        <Link href={banner.linkUrl} target="_blank" rel="noopener noreferrer"
+          onClick={() => adminService.trackBannerEvent(banner._id, 'click')}>{inner}</Link>
       ) : inner}
 
       {banners.length > 1 && (
@@ -91,7 +87,6 @@ function RecommendedGames({ games }: { games: Game[] }) {
   const router = useRouter()
   const scrollRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number | null>(null)
-  // 전체 콘텐츠가 항상 넓은 화면보다 넓도록 복제 수 동적 계산
   const copyWidth = games.length * ITEM_STRIDE
   const copies = copyWidth > 0 ? Math.max(3, Math.ceil(3200 / copyWidth) + 2) : 3
   const items = Array.from({ length: copies }, () => games).flat()
@@ -265,7 +260,7 @@ function HorizontalGameSection({ title, games }: { title: string; games: Game[] 
         >
           <ChevronLeft className="w-3 h-3 text-text-primary" />
         </button>
-        <div ref={scrollRef} className="flex overflow-x-hidden gap-2">
+        <div ref={scrollRef} className="flex overflow-x-hidden gap-2 justify-end">
           {games.length === 0 && <p className="text-xs text-text-muted py-4">게임이 없습니다</p>}
           {games.map(game => {
             const id = (game as any)._id || game.id
@@ -274,7 +269,7 @@ function HorizontalGameSection({ title, games }: { title: string; games: Game[] 
                 key={id}
                 onClick={() => router.push(`/games/${id}`)}
                 className="flex-shrink-0 cursor-pointer group"
-                style={{ width: 'calc(30% - 6px)' }}
+                style={{ width: 'calc((100% - 16px) / 3 * 0.8)' }}
               >
                 <div className="aspect-[16/9] rounded-lg overflow-hidden border border-line bg-bg-tertiary group-hover:border-accent transition-colors mb-1.5">
                   <img
@@ -296,6 +291,48 @@ function HorizontalGameSection({ title, games }: { title: string; games: Game[] 
           <ChevronRight className="w-3 h-3 text-text-primary" />
         </button>
       </div>
+    </div>
+  )
+}
+
+function HorizontalBannerSection({ title, banners }: { title: string; banners: any[] }) {
+  const initIdx = useMemo(() => banners.length === 0 ? 0 : Math.floor(Math.random() * banners.length), [banners])
+  const [idx, setIdx] = useState(initIdx)
+  const picked = banners.length > 0 ? banners[idx % banners.length] : null
+
+  const prev = () => setIdx(i => (i - 1 + banners.length) % banners.length)
+  const next = () => setIdx(i => (i + 1) % banners.length)
+
+  return (
+    <div className="w-full">
+      <div className="flex items-center gap-2 mb-3 px-1">
+        <span className="text-text-primary font-semibold text-[22px]">{title}</span>
+        <div className="flex-1 h-px bg-line" />
+      </div>
+      {!picked
+        ? <p className="text-xs text-text-muted py-4">등록된 신작 게임이 없습니다</p>
+        : <div className="relative group/banner">
+            <div
+              onClick={() => picked.linkUrl && window.open(picked.linkUrl, '_blank')}
+              className={`${picked.linkUrl ? 'cursor-pointer' : ''} group`}
+            >
+              <div className="aspect-[16/7.56] rounded-lg overflow-hidden border border-line bg-bg-tertiary group-hover:border-accent transition-colors flex items-center justify-center mb-1.5">
+                <img src={`${UPLOADS_URL}${picked.imageUrl}`} alt={picked.title || ''} className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-300" />
+              </div>
+              {picked.title && <p className="text-xs text-text-primary group-hover:text-accent transition-colors truncate font-medium">{picked.title}</p>}
+            </div>
+            {banners.length > 1 && <>
+              <button onClick={prev}
+                className="absolute left-2 top-[45%] -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/60 rounded-full transition-colors opacity-0 group-hover/banner:opacity-100">
+                <ChevronLeft className="w-4 h-4 text-white" />
+              </button>
+              <button onClick={next}
+                className="absolute right-2 top-[45%] -translate-y-1/2 z-10 w-7 h-7 flex items-center justify-center bg-black/40 hover:bg-black/60 rounded-full transition-colors opacity-0 group-hover/banner:opacity-100">
+                <ChevronRight className="w-4 h-4 text-white" />
+              </button>
+            </>}
+          </div>
+      }
     </div>
   )
 }
@@ -356,23 +393,19 @@ function BannerCell({ banner, className = '' }: { banner: EventBannerItem; class
         className="absolute inset-0 w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-      {banner.title && (
-        <div className="absolute bottom-3 left-3 right-3">
-          <p className="text-white font-bold text-sm drop-shadow truncate">{banner.title}</p>
-        </div>
-      )}
     </>
   )
   return banner.linkUrl
-    ? <Link href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className={cls}>{content}</Link>
+    ? <Link href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className={cls}
+        onClick={() => adminService.trackBannerEvent(banner._id, 'click')}>{content}</Link>
     : <div className={cls}>{content}</div>
 }
 
 function EventBannerBox({ banners }: { banners: EventBannerItem[] }) {
   const [page, setPage] = useState(0)
-  const totalPages = Math.ceil(Math.max(banners.length, 1) / 4)
-  const slots = Array.from({ length: 4 }, (_, i) => banners[page * 4 + i] ?? null)
-  const hasMore = banners.length > 4
+  const totalPages = Math.ceil(Math.max(banners.length, 1) / 2)
+  const slots = Array.from({ length: 2 }, (_, i) => banners[page * 2 + i] ?? null)
+  const hasMore = banners.length > 2
 
   return (
     <div className="relative">
@@ -385,12 +418,12 @@ function EventBannerBox({ banners }: { banners: EventBannerItem[] }) {
         </button>
       )}
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         {slots.map((b, i) =>
           b ? (
-            <BannerCell key={b._id} banner={b} className="aspect-[5/4] rounded-xl" />
+            <BannerCell key={b._id} banner={b} className="aspect-[3/2] rounded-xl" />
           ) : (
-            <div key={i} className="aspect-[5/4] rounded-xl bg-bg-tertiary border border-line flex items-center justify-center">
+            <div key={i} className="aspect-[3/2] rounded-xl bg-bg-tertiary border border-line flex items-center justify-center">
               {i === 0 && banners.length === 0 && (
                 <p className="text-xs text-text-muted text-center px-2">등록된 이벤트가 없습니다</p>
               )}
@@ -418,13 +451,16 @@ export default function MainPage() {
   const [recGames, setRecGames] = useState<Game[]>([])
   const [eventBanners, setEventBanners] = useState<any[]>([])
   const [notices, setNotices] = useState<PublicAnnouncement[]>([])
-  const [newGames, setNewGames] = useState<Game[]>([])
+  const [newGameBanners, setNewGameBanners] = useState<any[]>([])
   const [betaRanking, setBetaRanking] = useState<Game[]>([])
   const [liveRanking, setLiveRanking] = useState<Game[]>([])
 
   useEffect(() => {
     adminService.getMainBanners()
-      .then(data => setBanners(data.banners))
+      .then(data => {
+        setBanners(data.banners)
+        data.banners.forEach((b: { _id: string }) => adminService.trackBannerEvent(b._id, 'impression'))
+      })
       .catch(() => {})
   }, [])
 
@@ -436,13 +472,16 @@ export default function MainPage() {
 
   useEffect(() => {
     adminService.getEventBanners()
-      .then(data => setEventBanners(data.banners || []))
+      .then(data => {
+        setEventBanners(data.banners || [])
+        ;(data.banners || []).forEach((b: { _id: string }) => adminService.trackBannerEvent(b._id, 'impression'))
+      })
       .catch(() => {})
     adminService.getPublicAnnouncements()
-      .then(data => setNotices((data.announcements || []).slice(0, 6)))
+      .then(data => setNotices((data.announcements || []).slice(0, 8)))
       .catch(() => {})
-    gameService.getAllGames({ sort: 'newest', serviceType: 'live', limit: 10 })
-      .then(data => setNewGames(data.games || []))
+    adminService.getNewGameBanners()
+      .then(data => setNewGameBanners(data.banners || []))
       .catch(() => {})
     gameService.getAllGames({ serviceType: 'beta', limit: 5 })
       .then(data => setBetaRanking(data.games || []))
@@ -456,21 +495,27 @@ export default function MainPage() {
     <div className="min-h-screen bg-bg-primary text-text-primary">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 py-6 space-y-[52px]">
         {banners.length > 0 && <MainBannerCarousel banners={banners} />}
-        <RecommendedGames games={recGames} />
 
-        {/* 이벤트 + 신작게임 + 공지 */}
-        <div className="flex gap-4 items-start mt-8">
-          <div className="flex-1 flex flex-col gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-text-primary font-semibold text-[22px]">이벤트</span>
-                <div className="flex-1 h-px bg-line" />
-              </div>
-              <EventBannerBox banners={eventBanners} />
+        {/* 신작게임 + 이벤트 */}
+        <div className="flex justify-between items-start">
+          <div className="w-[44%]">
+            <HorizontalBannerSection title="신작 게임" banners={newGameBanners} />
+          </div>
+          <div className="w-[50%]">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-text-primary font-semibold text-[22px]">이벤트</span>
+              <div className="flex-1 h-px bg-line" />
             </div>
-            <HorizontalGameSection title="신작 게임" games={newGames} />
+            <EventBannerBox banners={eventBanners} />
+          </div>
+        </div>
+
+        {/* 추천게임 + 순위 + 공지 */}
+        <div className="flex justify-between items-start">
+          <div className="w-[79%] flex flex-col gap-6">
+            <RecommendedGames games={recGames} />
             <div className="grid grid-cols-2 gap-6">
               <GameColumn title="베타존" games={betaRanking} serviceType="beta" badge="(순위 책정 더미)" />
               <GameColumn title="라이브게임" games={liveRanking} serviceType="live" badge="(순위 책정 더미)" />

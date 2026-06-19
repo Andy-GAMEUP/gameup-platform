@@ -7,7 +7,7 @@ import {
   Globe, Upload, Image as ImageIcon, Film,
   Trash2, Save, AlertCircle, Plus, Edit, Bell, ShoppingBag,
   DollarSign, Package, Megaphone, Play, Clock, Send, Check,
-  Gift, Shield, Zap, Trophy, CreditCard, UserPlus, LogIn, Timer, Settings, BarChart2,
+  Gift, Shield, Zap, Trophy, CreditCard, UserPlus, LogIn, Timer, Settings, BarChart2, X,
 } from 'lucide-react'
 
 import { gameService } from '../../services/gameService'
@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation'
 import { FORM_GENRES } from '@/constants/game'
 
 interface MediaItem { _id: string; type: 'screenshot' | 'video'; title: string; url: string; order: number; createdAt: string }
-interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; currencyType: string; currencyAmount: number; bonusAmount: number; stock: string; sales: number; active: boolean; description: string; imageUrl: string; sortOrder: number; itemId?: string; isSpecial?: boolean; specialImageUrl?: string; country?: string; saleStatus?: 'registering' | 'reviewing' | 'on_sale' | 'rejected' }
+interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; paymentType?: 'cash' | 'capcoin'; currencyName?: string; currencyIconUrl?: string; currencyType: string; currencyId?: string; currencyAmount: number; bonusAmount: number; stock: string; sales: number; active: boolean; description: string; imageUrl: string; sortOrder: number; itemId?: string; names?: Record<string, string>; currencyNames?: Record<string, string>; isSpecial?: boolean; specialImageUrl?: string; country?: string; saleStatus?: 'registering' | 'reviewing' | 'on_sale' | 'rejected'; capcoinPrice?: number; capcoinName?: string; capcoinIconUrl?: string }
 interface Announcement { _id: string; title: string; createdAt: string; type: string; priority: string; content: string; sendPush: boolean; recipients: number }
 type TabKey = 'main-settings' | 'edit' | 'media' | 'shop' | 'points' | 'dev-settings' | 'announcements'
 
@@ -147,6 +147,8 @@ interface GameData {
   shopCurrencyIconUrl?: string
   shopCurrencyName?: string
   shopCurrencyNames?: Record<string, string>
+  shopPaymentType?: 'cash' | 'capcoin'
+  additionalCurrencies?: { _id: string; name: string; names?: Record<string, string>; iconUrl: string; paymentType?: 'cash' | 'capcoin' }[]
   monetization?: string
   publishedSnapshot?: Record<string, unknown>
   ratingCertificate?: {
@@ -209,26 +211,27 @@ export default function GameDetailManagementPage() {
   const countrySwitching = useRef(false)
   const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(DEFAULT_KRW_TO)
   const [rateDate, setRateDate] = useState<string>('')
-  const [basicSettingModal, setBasicSettingModal] = useState(false)
-  const [basicSettingIsFree, setBasicSettingIsFree] = useState(false)
-  const [basicSettingName, setBasicSettingName] = useState('')
-  const [basicSettingNamesMap, setBasicSettingNamesMap] = useState<Record<string, string>>({})
-  const [basicSettingCountry, setBasicSettingCountry] = useState('KR')
-  const [basicSettingIconFile, setBasicSettingIconFile] = useState<File | null>(null)
-  const [basicSettingIconPreview, setBasicSettingIconPreview] = useState('')
-  const [basicSettingSaving, setBasicSettingSaving] = useState(false)
-  const [basicSettingErrors, setBasicSettingErrors] = useState<{ icon?: string; name?: string }>({})
-  const [newItemErrors, setNewItemErrors] = useState<{ image?: string; name?: string; price?: string; currencyAmount?: string; stock?: string; specialImage?: string; itemId?: string }>({})
+  const [newItemErrors, setNewItemErrors] = useState<{ image?: string; name?: string; price?: string; currencyAmount?: string; currencyName?: string; stock?: string; specialImage?: string; itemId?: string }>({})
   const [editingItem, setEditingItem] = useState<ShopItem | null>(null)
+  const [editCurrencyIconFile, setEditCurrencyIconFile] = useState<File | null>(null)
+  const [editCurrencyIconPreview, setEditCurrencyIconPreview] = useState('')
+  const [editCapcoinIconFile, setEditCapcoinIconFile] = useState<File | null>(null)
+  const [editCapcoinIconPreview, setEditCapcoinIconPreview] = useState('')
   const [notiModal, setNotiModal] = useState(false)
   const ssFileRef = useRef<HTMLInputElement>(null)
   const vidFileRef = useRef<HTMLInputElement>(null)
-  const [newItem, setNewItem] = useState({ name: '', price: '', currency: 'KRW', type: '패키지', currencyType: '', currencyAmount: '', bonusAmount: '', stock: '무제한', description: '', country: 'KR', itemId: '', imageFile: null as File | null, imagePreview: '', isSpecial: false, specialImageFile: null as File | null, specialImagePreview: '' })
+  const [newItem, setNewItem] = useState({ name: '', price: '', currency: 'KRW', type: '패키지', paymentType: 'cash' as 'cash' | 'capcoin', currencyName: '', currencyIconFile: null as File | null, currencyIconPreview: '', currencyType: '', currencyAmount: '', bonusAmount: '', stock: '무제한', description: '', country: 'KR', itemId: '', imageFile: null as File | null, imagePreview: '', isSpecial: false, specialImageFile: null as File | null, specialImagePreview: '', capcoinPrice: '', capcoinName: '', capcoinIconFile: null as File | null, capcoinIconPreview: '' })
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [editImagePreview, setEditImagePreview] = useState('')
   const [editSpecialImageFile, setEditSpecialImageFile] = useState<File | null>(null)
   const [editSpecialImagePreview, setEditSpecialImagePreview] = useState('')
   const [editItemErrors, setEditItemErrors] = useState<{ stock?: string; specialImage?: string }>({})
+  const [newItemIdLocked, setNewItemIdLocked] = useState(false)
+  const [editItemIdLocked, setEditItemIdLocked] = useState(false)
+  const [newCurrencyNameMap, setNewCurrencyNameMap] = useState<Record<string, string>>({})
+  const [editCountry, setEditCountry] = useState('KR')
+  const [editNameMap, setEditNameMap] = useState<Record<string, string>>({})
+  const [editCurrencyNameMap, setEditCurrencyNameMap] = useState<Record<string, string>>({})
   const [newNoti, setNewNoti] = useState({ title: '', content: '', type: 'notice', priority: 'normal', sendPush: false })
   const [shopSort, setShopSort] = useState<'default' | 'price_high' | 'price_low' | 'sales_high' | 'sales_low'>('default')
   const [shopPeriod, setShopPeriod] = useState<'all' | 'month' | 'last_month' | '3months'>('all')
@@ -633,7 +636,7 @@ export default function GameDetailManagementPage() {
     } catch (e: any) { alert(e?.response?.data?.message || '삭제에 실패했습니다') }
   }
   const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
-  const resetNewItem = () => { setNewItem({ name: '', price: '', currency: 'KRW', type: '패키지', currencyType: '', currencyAmount: '', bonusAmount: '', stock: '무제한', description: '', country: 'KR', itemId: '', imageFile: null, imagePreview: '', isSpecial: false, specialImageFile: null, specialImagePreview: '' }); setPriceMap({}); setNameMap({}); setNewItemErrors({}) }
+  const resetNewItem = () => { setNewItem({ name: '', price: '', currency: 'KRW', type: '패키지', paymentType: 'cash', currencyName: '', currencyIconFile: null, currencyIconPreview: '', currencyType: '', currencyAmount: '', bonusAmount: '', stock: '무제한', description: '', country: 'KR', itemId: '', imageFile: null, imagePreview: '', isSpecial: false, specialImageFile: null, specialImagePreview: '', capcoinPrice: '', capcoinName: '', capcoinIconFile: null, capcoinIconPreview: '' }); setPriceMap({}); setNameMap({}); setNewCurrencyNameMap({}); setNewItemErrors({}); setNewItemIdLocked(false) }
 
   useEffect(() => {
     const cached = localStorage.getItem(EXCHANGE_CACHE_KEY)
@@ -683,8 +686,9 @@ export default function GameDetailManagementPage() {
     const errors: typeof newItemErrors = {}
     if (!newItem.imageFile) errors.image = '상품 이미지를 등록해주세요'
     if (!newItem.name.trim()) errors.name = '상품명을 입력해주세요'
-    if (!newItem.price) errors.price = '판매가를 입력해주세요'
+    if (newItem.paymentType === 'cash' && !newItem.price) errors.price = '판매가를 입력해주세요'
     if (!newItem.currencyAmount) errors.currencyAmount = '지급 수량을 입력해주세요'
+    if (!newItem.currencyName.trim()) errors.currencyName = '재화 이름을 입력해주세요'
     if (newItem.stock !== '무제한' && !newItem.stock.trim()) errors.stock = '수량을 입력해주세요'
     if (newItem.isSpecial && !newItem.specialImageFile) errors.specialImage = '특별 상품 이미지를 등록해주세요'
     if (!newItem.itemId.trim()) errors.itemId = '상품 ID를 입력해주세요'
@@ -692,14 +696,28 @@ export default function GameDetailManagementPage() {
     if (!gameId) return
     setNewItemErrors({})
     try {
+      const finalNameMap = { ...nameMap, [newItem.country]: newItem.name }
+      const finalCurrencyNameMap = { ...newCurrencyNameMap, [newItem.country]: newItem.currencyName }
       await gameService.createGameShopItem(gameId, {
-        name: newItem.name, price: parseInt(newItem.price),
+        name: finalNameMap['KR'] || newItem.name,
+        price: newItem.paymentType === 'cash' ? parseInt(newItem.price) : 0,
         currency: newItem.currency, type: newItem.type,
-        currencyType: newItem.currencyType, currencyAmount: Number(newItem.currencyAmount) || 0,
+        paymentType: newItem.paymentType,
+        currencyName: finalCurrencyNameMap['KR'] || newItem.currencyName,
+        currencyIconFile: newItem.currencyIconFile ?? undefined,
+        currencyType: newItem.currencyType,
+        currencyAmount: Number(newItem.currencyAmount) || 0,
         bonusAmount: Number(newItem.bonusAmount) || 0,
         stock: newItem.stock, description: newItem.description,
         itemId: newItem.itemId,
         imageFile: newItem.imageFile ?? undefined,
+        isSpecial: newItem.isSpecial,
+        specialImageFile: newItem.specialImageFile ?? undefined,
+        names: finalNameMap,
+        currencyNames: finalCurrencyNameMap,
+        capcoinPrice: newItem.paymentType === 'capcoin' ? Number(newItem.capcoinPrice) || 0 : 0,
+        capcoinName: newItem.paymentType === 'capcoin' ? newItem.capcoinName : '',
+        capcoinIconFile: newItem.paymentType === 'capcoin' ? (newItem.capcoinIconFile ?? undefined) : undefined,
       })
       resetNewItem()
       setItemModal(false)
@@ -715,29 +733,58 @@ export default function GameDetailManagementPage() {
     setEditImagePreview('')
     setEditSpecialImageFile(null)
     setEditSpecialImagePreview('')
+    setEditCurrencyIconFile(null)
+    setEditCurrencyIconPreview('')
+    setEditCapcoinIconFile(null)
+    setEditCapcoinIconPreview('')
+    setEditItemIdLocked(!!(item.itemId))
+    setEditCountry('KR')
+    setEditNameMap({ KR: item.name, ...(item.names || {}) })
+    setEditCurrencyNameMap({ KR: item.currencyName || '', ...(item.currencyNames || {}) })
     setEditItemModal(true)
   }
   const saveEditItem = async () => {
-    if (!editingItem || !editingItem.name || !editingItem.price || !gameId) return
+    if (!editingItem || !editingItem.name || !gameId) return
     const editErrors: typeof editItemErrors = {}
     if (editingItem.stock !== '무제한' && !editingItem.stock.trim()) editErrors.stock = '수량을 입력해주세요'
     if (editingItem.isSpecial && !editSpecialImageFile && !editingItem.specialImageUrl) editErrors.specialImage = '특별 상품 이미지를 등록해주세요'
     if (Object.keys(editErrors).length > 0) { setEditItemErrors(editErrors); return }
     try {
+      const finalEditNameMap = { ...editNameMap, [editCountry]: editingItem.name }
+      const finalEditCurrencyNameMap = { ...editCurrencyNameMap, [editCountry]: editingItem.currencyName || '' }
       await gameService.updateGameShopItem(gameId, editingItem._id, {
-        name: editingItem.name, price: editingItem.price,
+        name: finalEditNameMap['KR'] || editingItem.name, price: editingItem.price,
         currency: editingItem.currency, type: editingItem.type,
-        currencyType: editingItem.currencyType, currencyAmount: editingItem.currencyAmount,
+        paymentType: editingItem.paymentType,
+        currencyName: finalEditCurrencyNameMap['KR'] || editingItem.currencyName,
+        currencyIconFile: editCurrencyIconFile ?? undefined,
+        currencyType: editingItem.currencyType,
+        currencyAmount: editingItem.currencyAmount,
         bonusAmount: editingItem.bonusAmount,
         stock: editingItem.stock, description: editingItem.description,
         active: editingItem.active,
         isSpecial: editingItem.isSpecial,
         imageFile: editImageFile ?? undefined,
         specialImageFile: editSpecialImageFile ?? undefined,
+        itemId: editingItem.itemId,
+        names: finalEditNameMap,
+        currencyNames: finalEditCurrencyNameMap,
+        capcoinPrice: editingItem.paymentType === 'capcoin' ? (editingItem.capcoinPrice ?? 0) : 0,
+        capcoinName: editingItem.paymentType === 'capcoin' ? (editingItem.capcoinName ?? '') : '',
+        capcoinIconFile: editingItem.paymentType === 'capcoin' ? (editCapcoinIconFile ?? undefined) : undefined,
       })
       setEditItemModal(false); setEditingItem(null); setEditImageFile(null); setEditImagePreview('')
+      setEditCurrencyIconFile(null); setEditCurrencyIconPreview('')
+      setEditCapcoinIconFile(null); setEditCapcoinIconPreview('')
       loadShopItems(shopSort, shopPeriod)
-    } catch (e: any) { alert(e?.response?.data?.message || '수정에 실패했습니다') }
+    } catch (e: unknown) { alert((e as { response?: { data?: { message?: string } } })?.response?.data?.message || '수정에 실패했습니다') }
+  }
+  const copyItem = async (item: ShopItem) => {
+    if (!gameId) return
+    try {
+      await gameService.copyGameShopItem(gameId, item._id)
+      loadShopItems(shopSort, shopPeriod)
+    } catch { alert('복사에 실패했습니다') }
   }
   const deleteItem = async (itemId: string) => {
     if (!gameId || !confirm('이 아이템을 삭제하시겠습니까?')) return
@@ -1336,18 +1383,13 @@ export default function GameDetailManagementPage() {
                 <p className="text-xs text-text-secondary mt-0.5">상점에 표시될 상품을 등록하고 관리하세요</p>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => { const names = gameData?.shopCurrencyNames ?? {}; setBasicSettingNamesMap(names); setBasicSettingCountry('KR'); setBasicSettingName(names['KR'] ?? gameData?.shopCurrencyName ?? ''); setBasicSettingIconFile(null); setBasicSettingIconPreview(''); setBasicSettingErrors({}); setBasicSettingIsFree(gameData?.monetization === 'free'); setBasicSettingModal(true) }} className="flex items-center gap-2 px-4 py-2 bg-bg-secondary border border-line hover:bg-bg-tertiary rounded-lg text-sm font-medium transition-colors">
-                  <Settings className="w-4 h-4" /> 기본 세팅
-                </button>
                 <div className="relative group">
-                  <button onClick={() => { const currencyName = gameData?.shopCurrencyNames?.['KR'] ?? gameData?.shopCurrencyName ?? ''; setNewItem(p => ({ ...p, currencyType: currencyName })); setItemModal(true) }} disabled={gameData?.monetization === 'free' || !gameData?.shopCurrencyName || !gameData?.shopCurrencyIconUrl} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  <button onClick={() => setItemModal(true)} disabled={gameData?.monetization === 'free'} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                     <Plus className="w-4 h-4" /> 상품 추가
                   </button>
-                  {(gameData?.monetization === 'free' || !gameData?.shopCurrencyName || !gameData?.shopCurrencyIconUrl) && (
+                  {gameData?.monetization === 'free' && (
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 whitespace-nowrap">
-                      <div className="bg-bg-primary border border-line rounded-lg px-3 py-1.5 text-xs text-text-secondary shadow-lg">
-                        {gameData?.monetization === 'free' ? '완전 무료 게임은 상품을 등록할 수 없습니다' : '기본 세팅을 먼저 완료해주세요'}
-                      </div>
+                      <div className="bg-bg-primary border border-line rounded-lg px-3 py-1.5 text-xs text-text-secondary shadow-lg">완전 무료 게임은 상품을 등록할 수 없습니다</div>
                       <div className="w-2 h-2 bg-bg-primary border-r border-b border-line rotate-45 mx-auto -mt-1" />
                     </div>
                   )}
@@ -1381,14 +1423,16 @@ export default function GameDetailManagementPage() {
                 <table className="w-full text-sm table-fixed">
                   <colgroup>
                     <col className="w-[6.5%]" />
-                    <col className="w-[19%]" />
+                    <col className="w-[17%]" />
                     <col className="w-[8%]" />
+                    <col className="w-[6%]" />
                     <col className="w-[7%]" />
-                    <col className="w-[12%]" />
-                    <col className="w-[12%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[10%]" />
                     <col className="w-[8%]" />
-                    <col className="w-[9%]" />
                     <col className="w-[8.75%]" />
+                    <col className="w-[5%]" />
+                    <col className="w-[5%]" />
                     <col className="w-[3.5%]" />
                   </colgroup>
                   <thead>
@@ -1397,11 +1441,13 @@ export default function GameDetailManagementPage() {
                       <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">상품명</th>
                       <th className="pl-3 pr-0 py-2.5 text-left text-sm font-medium text-text-secondary">지급 재화</th>
                       <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">재화 수량</th>
+                      <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">판매 종류</th>
                       <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">판매가</th>
                       <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">구매 가능 수량</th>
                       <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">활성화</th>
-                      <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">수정하기</th>
                       <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">판매 현황</th>
+                      <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">수정</th>
+                      <th className="px-3 py-2.5 text-left text-sm font-medium text-text-secondary">복사</th>
                       <th className="px-2 py-2.5 text-left text-sm font-medium text-text-secondary">순서</th>
                     </tr>
                   </thead>
@@ -1442,14 +1488,24 @@ export default function GameDetailManagementPage() {
                             {item.itemId && <p className="text-[6px] text-text-muted mt-0.5">{item.itemId}</p>}
                           </td>
                           <td className="pl-3 pr-0 py-2.5">
-                            <span className="text-[17px] text-text-primary">{(item.country ? gameData?.shopCurrencyNames?.[item.country] : undefined) ?? gameData?.shopCurrencyName ?? item.currencyType ?? '-'}</span>
+                            <div className="flex items-center gap-1.5">
+                              {item.currencyIconUrl && <div className="w-4 h-4 rounded flex-shrink-0 overflow-hidden"><img src={`${UPLOADS_URL}${item.currencyIconUrl}`} alt="" className="w-full h-full object-contain" /></div>}
+                              <span className="text-[13px] text-text-primary">{item.currencyName || item.currencyType || '-'}</span>
+                            </div>
                           </td>
                           <td className="px-3 py-2.5 text-left">
                             <span className="text-[17px] text-text-primary">{item.currencyAmount ? item.currencyAmount.toLocaleString() : '-'}</span>
                           </td>
                           <td className="px-3 py-2.5">
+                            {item.paymentType === 'capcoin'
+                              ? <span className="text-xs font-semibold text-violet-400">포인트 결제</span>
+                              : <span className="text-xs font-semibold text-amber-400">현금 결제</span>}
+                          </td>
+                          <td className="px-3 py-2.5">
                             <span className="text-[17px] text-text-primary">
-                              {item.currency === 'KRW' ? '₩' : item.currency === 'USD' ? '$' : '€'}{item.price.toLocaleString()}
+                              {item.paymentType === 'capcoin'
+                                ? (item.capcoinPrice ?? 0).toLocaleString()
+                                : `${item.currency === 'KRW' ? '₩' : item.currency === 'USD' ? '$' : '€'}${item.price.toLocaleString()}`}
                             </span>
                           </td>
                           <td className="px-3 py-2.5">
@@ -1469,13 +1525,6 @@ export default function GameDetailManagementPage() {
                             </button>
                           </td>
                           <td className="px-3 py-2.5">
-                            <div className="flex items-center">
-                              <button onClick={() => openEditItem(item)} className="p-2.5 border border-line rounded-lg hover:bg-bg-tertiary transition-colors" title="편집">
-                                <Edit className="w-5 h-5" />
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2.5">
                             {item.saleStatus === 'on_sale' ? (
                               <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400 whitespace-nowrap">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />판매 중
@@ -1493,6 +1542,16 @@ export default function GameDetailManagementPage() {
                                 <span className="w-1.5 h-1.5 rounded-full bg-text-muted" />등록 중
                               </span>
                             )}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <button onClick={() => openEditItem(item)} disabled={item.saleStatus === 'on_sale' && !adminView} className="p-2.5 border border-line rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed hover:enabled:bg-bg-tertiary" title={item.saleStatus === 'on_sale' && !adminView ? '판매 중에는 수정할 수 없습니다' : '편집'}>
+                              <Edit className="w-5 h-5" />
+                            </button>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <button onClick={() => copyItem(item)} className="p-2.5 border border-line rounded-lg hover:bg-bg-tertiary transition-colors text-text-muted hover:text-text-primary" title="복사">
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                            </button>
                           </td>
                           <td className="px-2 py-2.5 text-center select-none">
                             {item.isSpecial ? (
@@ -1964,119 +2023,6 @@ export default function GameDetailManagementPage() {
         />
       )}
 
-      {/* 기본 세팅 모달 */}
-      <Modal open={basicSettingModal} onClose={() => setBasicSettingModal(false)} title="기본 세팅" disableBackdropClose showCloseButton>
-        {(() => { const isLive = false; return (
-        <div className="space-y-6 py-2">
-          <div>
-          {/* 재화 아이콘 */}
-          <div className="space-y-3">
-            <p className="text-sm font-medium">재화 아이콘</p>
-            <div className="flex items-center gap-4">
-              <div
-                onClick={() => !isLive && document.getElementById('currency-icon-input')?.click()}
-                className={`w-16 h-16 rounded-xl border-2 border-dashed transition-colors overflow-hidden flex items-center justify-center bg-bg-tertiary/50 flex-shrink-0 ${isLive ? 'cursor-not-allowed opacity-60' : 'hover:border-accent/60 cursor-pointer'} ${basicSettingErrors.icon ? 'border-red-500' : 'border-line'}`}
-              >
-                {basicSettingIconPreview ? (
-                  <img src={basicSettingIconPreview} alt="미리보기" className="w-full h-full object-cover" />
-                ) : gameData?.shopCurrencyIconUrl ? (
-                  <img src={`${UPLOADS_URL}${gameData.shopCurrencyIconUrl}`} alt="재화 아이콘" className="w-full h-full object-cover" />
-                ) : (
-                  <ImageIcon className="w-6 h-6 text-text-muted" />
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-text-secondary">PNG 파일만 업로드 가능합니다</p>
-                {!isLive && (
-                  <button onClick={() => document.getElementById('currency-icon-input')?.click()} className="mt-2 text-xs text-accent hover:underline">
-                    파일 선택
-                  </button>
-                )}
-              </div>
-              <input id="currency-icon-input" type="file" accept=".png,image/png" disabled={isLive} className="hidden" onChange={e => {
-                const file = e.target.files?.[0]
-                if (!file) return
-                setBasicSettingIconFile(file)
-                setBasicSettingIconPreview(URL.createObjectURL(file))
-                setBasicSettingErrors(prev => ({ ...prev, icon: undefined }))
-              }} />
-            </div>
-            {basicSettingErrors.icon && <p className="text-xs text-red-400">{basicSettingErrors.icon}</p>}
-          </div>
-
-          <div className="h-px bg-line my-6" />
-
-          {/* 재화 이름 */}
-          <div className="space-y-2">
-            <p className="text-sm font-medium">재화 이름</p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="예: 다이아, 골드, 코인"
-                value={basicSettingName}
-                disabled={isLive}
-                onChange={e => {
-                  const v = e.target.value
-                  setBasicSettingName(v)
-                  setBasicSettingNamesMap(prev => ({ ...prev, [basicSettingCountry]: v }))
-                  setBasicSettingErrors(prev => ({ ...prev, name: undefined }))
-                }}
-                className={`flex-1 px-3 py-2 bg-bg-tertiary border rounded-lg text-sm focus:outline-none focus:border-accent disabled:opacity-60 disabled:cursor-not-allowed ${basicSettingErrors.name ? 'border-red-500' : 'border-line'}`}
-              />
-              <select
-                value={basicSettingCountry}
-                disabled={isLive}
-                onChange={e => {
-                  const c = e.target.value
-                  setBasicSettingNamesMap(prev => ({ ...prev, [basicSettingCountry]: basicSettingName }))
-                  setBasicSettingCountry(c)
-                  setBasicSettingName(basicSettingNamesMap[c] ?? '')
-                }}
-                className="px-3 py-2 bg-bg-tertiary border border-line rounded-lg text-sm focus:outline-none focus:border-accent disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {[{code:'KR',label:'한국'},{code:'US',label:'미국'},{code:'JP',label:'일본'},{code:'CN',label:'중국'},{code:'EU',label:'유럽'}].map(c => (
-                  <option key={c.code} value={c.code}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-            {basicSettingErrors.name ? <p className="text-xs text-red-400">{basicSettingErrors.name}</p> : <p className="text-xs text-text-muted">상품 목록에서 재화 단위로 표시됩니다</p>}
-          </div>
-          </div>
-
-          {/* 버튼 */}
-          <div className="flex items-center justify-end gap-2 pt-2">
-
-            <button
-              disabled={basicSettingSaving}
-              onClick={async () => {
-                if (!gameId) return
-                const finalNamesMap = { ...basicSettingNamesMap, [basicSettingCountry]: basicSettingName }
-                const errors: { icon?: string; name?: string } = {}
-                if (!basicSettingIconFile && !gameData?.shopCurrencyIconUrl) errors.icon = '재화 아이콘을 선택해주세요'
-                if (!Object.values(finalNamesMap).some(v => v.trim())) errors.name = '재화 이름을 하나 이상 입력해주세요'
-                if (Object.keys(errors).length > 0) { setBasicSettingErrors(errors); return }
-                setBasicSettingSaving(true)
-                try {
-                  if (basicSettingIconFile) {
-                    const data = await gameService.updateShopCurrencyIcon(gameId, basicSettingIconFile)
-                    setGameData(prev => prev ? { ...prev, shopCurrencyIconUrl: data.shopCurrencyIconUrl } : prev)
-                  }
-                  const krName = finalNamesMap['KR'] || Object.values(finalNamesMap).find(v => v.trim()) || ''
-                  const data = await gameService.updateShopCurrencyName(gameId, krName, finalNamesMap)
-                  setGameData(prev => prev ? { ...prev, shopCurrencyName: data.shopCurrencyName, shopCurrencyNames: data.shopCurrencyNames } : prev)
-                  await triggerReReview()
-                  setBasicSettingModal(false)
-                } catch { alert('저장에 실패했습니다') }
-                finally { setBasicSettingSaving(false) }
-              }}
-              className="px-4 py-2 text-sm rounded-lg bg-accent hover:bg-accent-hover font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {basicSettingSaving ? '저장 중...' : '저장'}
-            </button>
-          </div>
-        </div>
-        )})()}
-      </Modal>
 
       <Modal open={itemModal} onClose={() => { setItemModal(false); resetNewItem() }} title="상품 추가" size="xl" disableBackdropClose showCloseButton>
         <div className="max-h-[75vh] overflow-y-auto pr-1">
@@ -2107,66 +2053,91 @@ export default function GameDetailManagementPage() {
 
             {/* 오른쪽: 기본 정보 */}
             <div className="flex-1 space-y-3">
-              <div className="grid grid-cols-[30fr_11fr] gap-3">
-                <div>
-                  <label className={labelCls}>상품명 *</label>
-                  <div className="relative">
-                    <input placeholder="예: 다이아 100개" value={newItem.name} onChange={e => { const v = e.target.value; setNewItem(p => ({ ...p, name: v })); setNameMap(prev => ({ ...prev, [newItem.country]: v })); setNewItemErrors(p => ({ ...p, name: undefined })) }} className={`${inputCls} w-full ${newItemErrors.name ? 'border-red-500' : ''}`} />
+              <div>
+                <label className={labelCls}>상품명 *</label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input placeholder="예: 다이아 100개" value={newItem.name} onChange={e => { const v = e.target.value; setNewItem(p => ({ ...p, name: v })); setNewItemErrors(p => ({ ...p, name: undefined })) }} className={`${inputCls} w-full ${newItemErrors.name ? 'border-red-500' : ''}`} />
                     {newItemErrors.name && <div className="absolute left-2 top-full mt-1 z-10"><div className="w-2 h-2 bg-red-500 rotate-45 ml-2 -mb-1" /><div className="bg-red-500 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap">{newItemErrors.name}</div></div>}
                   </div>
-                </div>
-                <div>
-                  <label className={labelCls}>판매 국가</label>
-                  <select value={newItem.country ?? 'KR'} onChange={e => {
-                    const c = e.target.value
-                    const savedName = nameMap[c] ?? ''
-                    const currencyName = gameData?.shopCurrencyNames?.[c] ?? gameData?.shopCurrencyName ?? ''
-                    countrySwitching.current = true
-                    setNameMap(prev => ({ ...prev, [newItem.country]: newItem.name }))
-                    setNewItem(p => ({ ...p, country: c, currency: COUNTRY_CURRENCY[c] ?? 'KRW', price: priceMap[c] ?? p.price, name: savedName, currencyType: currencyName }))
-                  }} className={inputCls}>
-                    <option value="KR">한국</option>
-                    <option value="US">미국</option>
-                    <option value="JP">일본</option>
-                    <option value="CN">중국</option>
-                    <option value="EU">유럽</option>
+                  <select
+                    value={newItem.country}
+                    onChange={e => {
+                      const c = COUNTRY_INFO.find(x => x.code === e.target.value)
+                      if (!c) return
+                      const updatedNameMap = { ...nameMap, [newItem.country]: newItem.name }
+                      const updatedCurrencyNameMap = { ...newCurrencyNameMap, [newItem.country]: newItem.currencyName }
+                      setNameMap(updatedNameMap)
+                      setNewCurrencyNameMap(updatedCurrencyNameMap)
+                      countrySwitching.current = true
+                      const newPrice = priceMap[c.code] ?? (newItem.price ? String(calcPriceList(newItem.price, newItem.currency, exchangeRates).find(x => x.code === c.code)?.price ?? newItem.price) : '')
+                      setNewItem(p => ({ ...p, country: c.code, currency: c.currency, price: newPrice, name: updatedNameMap[c.code] || '', currencyName: updatedCurrencyNameMap[c.code] || '' }))
+                    }}
+                    className="px-2 py-2 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent flex-shrink-0"
+                  >
+                    {COUNTRY_INFO.map(c => (
+                      <option key={c.code} value={c.code}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-[30fr_11fr] gap-3 items-end">
-                <div>
-                  <label className={labelCls}>판매가 *</label>
-                  <div className="relative">
-                    <div className={`flex items-center bg-bg-tertiary border rounded-md overflow-hidden focus-within:border-accent ${newItemErrors.price ? 'border-red-500' : 'border-line'}`}>
-                      <input type="number" placeholder="9900" value={newItem.price} onChange={e => { setNewItem(p => ({ ...p, price: e.target.value })); setNewItemErrors(p => ({ ...p, price: undefined })) }} className="flex-1 px-3 py-2 bg-transparent text-sm focus:outline-none" />
-                      <span className="px-3 py-2 text-xs text-text-secondary border-l border-line bg-bg-secondary whitespace-nowrap">{newItem.currency}</span>
-                    </div>
-                    {newItemErrors.price && <div className="absolute left-2 top-full mt-1 z-10"><div className="w-2 h-2 bg-red-500 rotate-45 ml-2 -mb-1" /><div className="bg-red-500 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap">{newItemErrors.price}</div></div>}
+              <div>
+                <label className={labelCls}>상품 ID</label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      placeholder="예: item_diamond_100"
+                      value={newItem.itemId ?? ''}
+                      readOnly={newItemIdLocked}
+                      onChange={e => { if (!newItemIdLocked) { const v = e.target.value.replace(/[^a-zA-Z0-9\-_]/g, '').slice(0, 32); setNewItem(p => ({ ...p, itemId: v })); setNewItemErrors(p => ({ ...p, itemId: undefined })) } }}
+                      className={`${inputCls} w-full ${newItemErrors.itemId ? 'border-red-500' : ''} ${newItemIdLocked ? 'cursor-not-allowed' : ''}`}
+                    />
+                    {newItemErrors.itemId && <div className="absolute left-2 bottom-full mb-1.5 z-10"><div className="bg-red-500 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap">{newItemErrors.itemId}</div><div className="w-2 h-2 bg-red-500 rotate-45 ml-2 -mt-1" /></div>}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => { if (newItem.itemId.trim()) setNewItemIdLocked(true) }}
+                    disabled={newItemIdLocked || !newItem.itemId.trim()}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors flex-shrink-0 ${newItemIdLocked ? 'bg-green-500/20 text-green-400 border-green-500/40 cursor-not-allowed' : 'bg-bg-tertiary hover:bg-bg-secondary border-line text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed'}`}
+                  >
+                    {newItemIdLocked ? '등록됨' : '등록'}
+                  </button>
                 </div>
-                <button type="button" onClick={() => setPriceSettingModal(true)} className="w-full px-2 py-2 bg-accent border border-accent rounded-md text-xs text-white font-medium hover:bg-accent/80 transition-colors">환율 확인</button>
+                <p style={{ fontSize: '9px' }} className="mt-1 text-text-tertiary">*영문·숫자·하이픈·언더바, 32자 이하, 중복 불가</p>
               </div>
             </div>
           </div>
 
-          {/* 재화 정보 + 구매 가능 수량 */}
+          {/* 지급 재화 + 수량 */}
           <div className="mt-4 grid grid-cols-[1fr_auto] gap-x-3 gap-y-3">
-            {/* Row 1 Col 1: 지급 재화 */}
-            <div className="flex flex-col gap-1 min-w-0 w-[95%]">
+            <div className="flex flex-col gap-1 min-w-0">
               <p className="text-xs font-medium text-text-secondary">지급 재화</p>
-              <div className="flex items-center gap-2 p-3 bg-bg-tertiary border border-line rounded-xl h-11">
-                <div className="w-6 h-6 rounded-md bg-bg-secondary border border-line flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {gameData?.shopCurrencyIconUrl
-                    ? <img src={`${UPLOADS_URL}${gameData.shopCurrencyIconUrl}`} alt="재화" className="w-full h-full object-contain" />
-                    : <div className="w-3 h-3 rounded-full bg-amber-500/30" />
-                  }
+              <div className="flex items-center gap-2">
+                <div
+                  onClick={() => document.getElementById('new-currency-icon')?.click()}
+                  className="w-10 h-10 rounded-lg border-2 border-dashed border-line flex items-center justify-center cursor-pointer hover:border-accent/50 transition-colors bg-bg-tertiary flex-shrink-0 overflow-hidden"
+                  title="재화 아이콘 (PNG)"
+                >
+                  {newItem.currencyIconPreview
+                    ? <img src={newItem.currencyIconPreview} alt="" className="w-full h-full object-contain" />
+                    : <ImageIcon className="w-4 h-4 text-text-muted" />}
                 </div>
-                <p className="text-sm font-medium truncate">
-                  {(gameData?.shopCurrencyNames?.[newItem.country] ?? gameData?.shopCurrencyName) || <span className="text-text-muted">미설정</span>}
-                </p>
+                <input id="new-currency-icon" type="file" accept=".png,image/png" className="hidden" onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setNewItem(p => ({ ...p, currencyIconFile: file, currencyIconPreview: URL.createObjectURL(file) }))
+                }} />
+                <div className="relative flex-1">
+                  <input
+                    type="text" placeholder="예: 다이아, 골드"
+                    value={newItem.currencyName}
+                    onChange={e => { setNewItem(p => ({ ...p, currencyName: e.target.value })); setNewItemErrors(p => ({ ...p, currencyName: undefined })) }}
+                    className={`${inputCls} w-full ${newItemErrors.currencyName ? 'border-red-500' : ''}`}
+                  />
+                  {newItemErrors.currencyName && <div className="absolute left-2 top-full mt-1 z-10"><div className="bg-red-500 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap">{newItemErrors.currencyName}</div><div className="w-2 h-2 bg-red-500 rotate-45 ml-2 -mt-1" /></div>}
+                </div>
               </div>
             </div>
-            {/* Row 1 Col 2: 수량 */}
             <div className="flex flex-col gap-1">
               <p className="text-xs font-medium text-text-secondary">지급 수량</p>
               <div className="relative">
@@ -2177,6 +2148,73 @@ export default function GameDetailManagementPage() {
               </div>
             </div>
           </div>
+
+          {/* 판매 가격 종류 */}
+          <div className="mt-4">
+            <p className="text-xs font-medium text-text-secondary mb-1.5">판매 가격 종류</p>
+            <div className="flex p-1 bg-bg-tertiary rounded-lg w-fit">
+              {([{ value: 'cash', label: '현금 결제' }, { value: 'capcoin', label: '포인트 결제' }] as const).map(opt => (
+                <button key={opt.value} type="button" onClick={() => setNewItem(p => ({ ...p, paymentType: opt.value, price: opt.value === 'capcoin' ? '0' : p.price }))}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${newItem.paymentType === opt.value ? 'bg-bg-primary text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 챌린지 보상 결제 설정 (capcoin 전용) */}
+          {newItem.paymentType === 'capcoin' && (
+            <div className="mt-3 grid grid-cols-[1fr_auto] gap-x-3 gap-y-3">
+              <div className="flex flex-col gap-1 min-w-0">
+                <p className="text-xs font-medium text-text-secondary">챌린지 보상 아이콘 · 이름</p>
+                <div className="flex items-center gap-2">
+                  <div
+                    onClick={() => document.getElementById('new-capcoin-icon')?.click()}
+                    className="w-10 h-10 rounded-lg border-2 border-dashed border-line flex items-center justify-center cursor-pointer hover:border-accent/50 transition-colors bg-bg-tertiary flex-shrink-0 overflow-hidden"
+                    title="챌린지 보상 아이콘 (PNG)"
+                  >
+                    {newItem.capcoinIconPreview
+                      ? <img src={newItem.capcoinIconPreview} alt="" className="w-full h-full object-contain" />
+                      : <ImageIcon className="w-4 h-4 text-text-muted" />}
+                  </div>
+                  <input id="new-capcoin-icon" type="file" accept=".png,image/png" className="hidden" onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setNewItem(p => ({ ...p, capcoinIconFile: file, capcoinIconPreview: URL.createObjectURL(file) }))
+                  }} />
+                  <input
+                    type="text" placeholder="예: 캡포인트, 도전 코인"
+                    value={newItem.capcoinName}
+                    onChange={e => setNewItem(p => ({ ...p, capcoinName: e.target.value }))}
+                    className={`${inputCls} flex-1`}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <p className="text-xs font-medium text-text-secondary">판매 가격</p>
+                <div className="flex items-center p-3 bg-bg-tertiary border border-line rounded-xl h-11">
+                  <input type="number" placeholder="500" value={newItem.capcoinPrice} onChange={e => setNewItem(p => ({ ...p, capcoinPrice: e.target.value.replace(/^0+(?=\d)/, '') }))} className="w-48 bg-transparent text-sm focus:outline-none" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 현금 판매가 (cash만 표시) */}
+          {newItem.paymentType === 'cash' && (
+            <div className="mt-3 grid grid-cols-[30fr_11fr] gap-3 items-end">
+              <div>
+                <label className={labelCls}>판매가 (현금) *</label>
+                <div className="relative">
+                  <div className={`flex items-center bg-bg-tertiary border rounded-md overflow-hidden focus-within:border-accent ${newItemErrors.price ? 'border-red-500' : 'border-line'}`}>
+                    <input type="number" placeholder="9900" value={newItem.price} onChange={e => { setNewItem(p => ({ ...p, price: e.target.value })); setNewItemErrors(p => ({ ...p, price: undefined })) }} className="flex-1 px-3 py-2 bg-transparent text-sm focus:outline-none" />
+                    <span className="px-3 py-2 text-xs text-text-secondary border-l border-line bg-bg-secondary whitespace-nowrap">{newItem.currency}</span>
+                  </div>
+                  {newItemErrors.price && <div className="absolute left-2 top-full mt-1 z-10"><div className="w-2 h-2 bg-red-500 rotate-45 ml-2 -mb-1" /><div className="bg-red-500 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap">{newItemErrors.price}</div></div>}
+                </div>
+              </div>
+              <button type="button" onClick={() => setPriceSettingModal(true)} className="w-full px-2 py-2 bg-accent border border-accent rounded-md text-xs text-white font-medium hover:bg-accent/80 transition-colors">환율 확인</button>
+            </div>
+          )}
 
           {/* 구매 가능 수량 */}
           <div className="mt-3 flex flex-col gap-1 w-[71%]">
@@ -2244,23 +2282,13 @@ export default function GameDetailManagementPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-3 pt-4">
-            <div className="flex-1 max-w-[640px]">
-              <label className={labelCls}>상품 ID</label>
-              <div className="relative">
-                <input placeholder="예: item_diamond_100" value={newItem.itemId ?? ''} onChange={e => { const v = e.target.value.replace(/[^a-zA-Z0-9\-_]/g, '').slice(0, 32); setNewItem(p => ({ ...p, itemId: v })); setNewItemErrors(p => ({ ...p, itemId: undefined })) }} className={`${inputCls} w-full ${newItemErrors.itemId ? 'border-red-500' : ''}`} />
-                {newItemErrors.itemId && <div className="absolute left-2 bottom-full mb-1.5 z-10"><div className="bg-red-500 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap">{newItemErrors.itemId}</div><div className="w-2 h-2 bg-red-500 rotate-45 ml-2 -mt-1" /></div>}
-              </div>
-              <p style={{ fontSize: '9px' }} className="mt-1 text-text-tertiary">*영문, 숫자, 하이픈(-), 언더바(_)만 사용 가능하며, 32자 이하로 입력, 동일한 값은 사용할 수 없습니다</p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={addItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium">등록</button>
-            </div>
+          <div className="flex justify-end pt-4">
+            <button onClick={addItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium">등록</button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={editItemModal} onClose={() => { setEditItemModal(false); setEditingItem(null); setEditImageFile(null); setEditImagePreview(''); setEditSpecialImageFile(null); setEditSpecialImagePreview(''); setEditItemErrors({}) }} title="상품 편집" size="xl" disableBackdropClose showCloseButton>
+      <Modal open={editItemModal} onClose={() => { setEditItemModal(false); setEditingItem(null); setEditImageFile(null); setEditImagePreview(''); setEditSpecialImageFile(null); setEditSpecialImagePreview(''); setEditCurrencyIconFile(null); setEditCurrencyIconPreview(''); setEditItemErrors({}) }} title="상품 편집" size="xl" disableBackdropClose showCloseButton>
         {editingItem && (
           <div className="max-h-[75vh] overflow-y-auto pr-1">
             <div className="flex gap-5">
@@ -2290,49 +2318,88 @@ export default function GameDetailManagementPage() {
 
               {/* 오른쪽: 기본 정보 */}
               <div className="flex-1 space-y-3">
-                <div className="grid grid-cols-[30fr_11fr] gap-3">
-                  <div>
-                    <label className={labelCls}>상품명 *</label>
-                    <input value={editingItem.name} onChange={e => setEditingItem(p => p ? { ...p, name: e.target.value } : null)} className={`${inputCls} w-full`} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>판매 국가</label>
-                    <select value={editingItem.currency === 'KRW' ? 'KR' : editingItem.currency === 'USD' ? 'US' : editingItem.currency === 'EUR' ? 'EU' : 'KR'} onChange={e => { const c = e.target.value; setEditingItem(p => p ? { ...p, currency: COUNTRY_CURRENCY[c] ?? 'KRW' } : null) }} className={inputCls}>
-                      <option value="KR">한국</option>
-                      <option value="US">미국</option>
-                      <option value="JP">일본</option>
-                      <option value="CN">중국</option>
-                      <option value="EU">유럽</option>
+                <div>
+                  <label className={labelCls}>상품명 *</label>
+                  <div className="flex gap-2">
+                    <input value={editingItem.name} onChange={e => setEditingItem(p => p ? { ...p, name: e.target.value } : null)} className={`${inputCls} flex-1`} />
+                    <select
+                      value={editCountry}
+                      onChange={e => {
+                        const c = COUNTRY_INFO.find(x => x.code === e.target.value)
+                        if (!c) return
+                        const updatedNameMap = { ...editNameMap, [editCountry]: editingItem.name }
+                        const updatedCurrencyNameMap = { ...editCurrencyNameMap, [editCountry]: editingItem.currencyName || '' }
+                        setEditNameMap(updatedNameMap)
+                        setEditCurrencyNameMap(updatedCurrencyNameMap)
+                        setEditCountry(c.code)
+                        const converted = calcPriceList(String(editingItem.price), editingItem.currency, exchangeRates).find(x => x.code === c.code)
+                        setEditingItem(p => p ? { ...p, currency: c.currency, price: converted ? converted.price : p.price, name: updatedNameMap[c.code] || '', currencyName: updatedCurrencyNameMap[c.code] || '' } : p)
+                      }}
+                      className="px-2 py-2 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent flex-shrink-0"
+                    >
+                      {COUNTRY_INFO.map(c => (
+                        <option key={c.code} value={c.code}>{c.name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
-                <div className="grid grid-cols-[30fr_11fr] gap-3 items-end">
-                  <div>
-                    <label className={labelCls}>판매가 *</label>
-                    <div className="flex items-center bg-bg-tertiary border border-line rounded-md overflow-hidden focus-within:border-accent">
-                      <input type="number" value={editingItem.price} onChange={e => setEditingItem(p => p ? { ...p, price: Number(e.target.value) } : null)} className="flex-1 px-3 py-2 bg-transparent text-sm focus:outline-none" />
-                      <span className="px-3 py-2 text-xs text-text-secondary border-l border-line bg-bg-secondary whitespace-nowrap">{editingItem.currency}</span>
-                    </div>
+                <div>
+                  <label className={labelCls}>상품 ID</label>
+                  <div className="relative flex gap-2">
+                    <input
+                      value={editingItem.itemId ?? ''}
+                      readOnly={editItemIdLocked}
+                      onChange={e => {
+                        if (!editItemIdLocked) {
+                          const v = e.target.value.replace(/[^a-zA-Z0-9\-_]/g, '').slice(0, 32)
+                          setEditingItem(p => p ? { ...p, itemId: v } : p)
+                        }
+                      }}
+                      placeholder={!editItemIdLocked ? '예: item_diamond_100' : ''}
+                      className={`${inputCls} flex-1 ${editItemIdLocked ? 'cursor-not-allowed' : ''}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { if (editingItem.itemId?.trim()) setEditItemIdLocked(true) }}
+                      disabled={editItemIdLocked || !editingItem.itemId?.trim()}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors flex-shrink-0 ${editItemIdLocked ? 'bg-green-500/20 text-green-400 border-green-500/40 cursor-not-allowed' : 'bg-bg-tertiary hover:bg-bg-secondary border-line text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed'}`}
+                    >
+                      {editItemIdLocked ? '등록됨' : '등록'}
+                    </button>
                   </div>
-                  <button type="button" onClick={() => setPriceSettingModal(true)} className="w-full px-2 py-2 bg-accent border border-accent rounded-md text-xs text-white font-medium hover:bg-accent/80 transition-colors">환율 확인</button>
+                  <p style={{ fontSize: '9px' }} className="mt-1 text-text-tertiary">*영문·숫자·하이픈·언더바, 32자 이하, 중복 불가</p>
                 </div>
               </div>
             </div>
 
             {/* 지급 재화 + 수량 */}
             <div className="mt-4 grid grid-cols-[1fr_auto] gap-x-3 gap-y-3">
-              <div className="flex flex-col gap-1 min-w-0 w-[95%]">
+              <div className="flex flex-col gap-1 min-w-0">
                 <p className="text-xs font-medium text-text-secondary">지급 재화</p>
-                <div className="flex items-center gap-2 p-3 bg-bg-tertiary border border-line rounded-xl h-11">
-                  <div className="w-6 h-6 rounded-md bg-bg-secondary border border-line flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {gameData?.shopCurrencyIconUrl
-                      ? <img src={`${UPLOADS_URL}${gameData.shopCurrencyIconUrl}`} alt="재화" className="w-full h-full object-contain" />
-                      : <div className="w-3 h-3 rounded-full bg-amber-500/30" />
-                    }
+                <div className="flex items-center gap-2">
+                  <div
+                    onClick={() => document.getElementById('edit-currency-icon')?.click()}
+                    className="w-10 h-10 rounded-lg border-2 border-dashed border-line flex items-center justify-center cursor-pointer hover:border-accent/50 transition-colors bg-bg-tertiary flex-shrink-0 overflow-hidden"
+                    title="재화 아이콘 (PNG)"
+                  >
+                    {editCurrencyIconPreview
+                      ? <img src={editCurrencyIconPreview} alt="" className="w-full h-full object-contain" />
+                      : editingItem.currencyIconUrl
+                        ? <img src={`${UPLOADS_URL}${editingItem.currencyIconUrl}`} alt="" className="w-full h-full object-contain" />
+                        : <ImageIcon className="w-4 h-4 text-text-muted" />}
                   </div>
-                  <p className="text-sm font-medium truncate">
-                    {gameData?.shopCurrencyName || <span className="text-text-muted">미설정</span>}
-                  </p>
+                  <input id="edit-currency-icon" type="file" accept=".png,image/png" className="hidden" onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setEditCurrencyIconFile(file)
+                    setEditCurrencyIconPreview(URL.createObjectURL(file))
+                  }} />
+                  <input
+                    type="text" placeholder="예: 다이아, 골드"
+                    value={editingItem.currencyName ?? ''}
+                    onChange={e => setEditingItem(p => p ? { ...p, currencyName: e.target.value } : null)}
+                    className={`${inputCls} flex-1`}
+                  />
                 </div>
               </div>
               <div className="flex flex-col gap-1">
@@ -2342,6 +2409,73 @@ export default function GameDetailManagementPage() {
                 </div>
               </div>
             </div>
+
+            {/* 판매 가격 종류 */}
+            <div className="mt-4">
+              <p className="text-xs font-medium text-text-secondary mb-1.5">판매 가격 종류</p>
+              <div className="flex p-1 bg-bg-tertiary rounded-lg w-fit">
+                {([{ value: 'cash', label: '현금 결제' }, { value: 'capcoin', label: '포인트 결제' }] as const).map(opt => (
+                  <button key={opt.value} type="button" onClick={() => setEditingItem(p => p ? { ...p, paymentType: opt.value } : null)}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${editingItem.paymentType === opt.value ? 'bg-bg-primary text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 챌린지 보상 결제 설정 (capcoin 전용) */}
+            {editingItem.paymentType === 'capcoin' && (
+              <div className="mt-3 grid grid-cols-[1fr_auto] gap-x-3 gap-y-3">
+                <div className="flex flex-col gap-1 min-w-0">
+                  <p className="text-xs font-medium text-text-secondary">챌린지 보상 아이콘 · 이름</p>
+                  <div className="flex items-center gap-2">
+                    <div
+                      onClick={() => document.getElementById('edit-capcoin-icon')?.click()}
+                      className="w-10 h-10 rounded-lg border-2 border-dashed border-line flex items-center justify-center cursor-pointer hover:border-accent/50 transition-colors bg-bg-tertiary flex-shrink-0 overflow-hidden"
+                      title="챌린지 보상 아이콘 (PNG)"
+                    >
+                      {editCapcoinIconPreview
+                        ? <img src={editCapcoinIconPreview} alt="" className="w-full h-full object-contain" />
+                        : editingItem.capcoinIconUrl
+                          ? <img src={`${UPLOADS_URL}${editingItem.capcoinIconUrl}`} alt="" className="w-full h-full object-contain" />
+                          : <ImageIcon className="w-4 h-4 text-text-muted" />}
+                    </div>
+                    <input id="edit-capcoin-icon" type="file" accept=".png,image/png" className="hidden" onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      setEditCapcoinIconFile(file)
+                      setEditCapcoinIconPreview(URL.createObjectURL(file))
+                    }} />
+                    <input
+                      type="text" placeholder="예: 캡포인트, 도전 코인"
+                      value={editingItem.capcoinName ?? ''}
+                      onChange={e => setEditingItem(p => p ? { ...p, capcoinName: e.target.value } : null)}
+                      className={`${inputCls} flex-1`}
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs font-medium text-text-secondary">판매 가격</p>
+                  <div className="flex items-center p-3 bg-bg-tertiary border border-line rounded-xl h-11">
+                    <input type="number" placeholder="500" value={editingItem.capcoinPrice || ''} onChange={e => setEditingItem(p => p ? { ...p, capcoinPrice: Number(e.target.value) } : null)} className="w-48 bg-transparent text-sm focus:outline-none" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 현금 판매가 */}
+            {editingItem.paymentType !== 'capcoin' && (
+              <div className="mt-3 grid grid-cols-[30fr_11fr] gap-3 items-end">
+                <div>
+                  <label className={labelCls}>판매가 (현금) *</label>
+                  <div className="flex items-center bg-bg-tertiary border border-line rounded-md overflow-hidden focus-within:border-accent">
+                    <input type="number" value={editingItem.price} onChange={e => setEditingItem(p => p ? { ...p, price: Number(e.target.value) } : null)} className="flex-1 px-3 py-2 bg-transparent text-sm focus:outline-none" />
+                    <span className="px-3 py-2 text-xs text-text-secondary border-l border-line bg-bg-secondary whitespace-nowrap">{editingItem.currency}</span>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setPriceSettingModal(true)} className="w-full px-2 py-2 bg-accent border border-accent rounded-md text-xs text-white font-medium hover:bg-accent/80 transition-colors">환율 확인</button>
+              </div>
+            )}
 
             {/* 구매 가능 수량 */}
             <div className="mt-3 flex flex-col gap-1 w-[71%]">
@@ -2413,18 +2547,9 @@ export default function GameDetailManagementPage() {
 
 
 
-            <div className="flex items-center justify-between gap-3 pt-4">
-              <div className="flex-1 max-w-[640px]">
-                <label className={labelCls}>상품 ID</label>
-                <div className="relative">
-                  <input value={editingItem.itemId ?? ''} readOnly className={`${inputCls} w-full cursor-not-allowed`} />
-                </div>
-                <p style={{ fontSize: '9px' }} className="mt-1 text-text-tertiary">*영문, 숫자, 하이픈(-), 언더바(_)만 사용 가능하며, 32자 이하로 입력, 동일한 값은 사용할 수 없습니다</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => { if (editingItem) { deleteItem(editingItem._id); setEditItemModal(false); setEditingItem(null) } }} className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium text-white">삭제</button>
-                <button onClick={saveEditItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium">저장</button>
-              </div>
+            <div className="flex items-center justify-end gap-2 pt-4">
+              <button onClick={() => { if (editingItem) { deleteItem(editingItem._id); setEditItemModal(false); setEditingItem(null) } }} className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium text-white">삭제</button>
+              <button onClick={saveEditItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium">저장</button>
             </div>
           </div>
         )}

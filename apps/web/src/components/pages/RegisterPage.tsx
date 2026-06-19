@@ -13,7 +13,6 @@ type MemberType = 'individual' | 'corporate'
 type CompanyType = 'developer' | 'publisher' | 'game_solution' | 'game_service' | 'operations' | 'qa' | 'marketing' | 'other'
 
 const COMPANY_TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
-  { value: 'developer', label: '개발사' },
   { value: 'publisher', label: '퍼블리셔' },
   { value: 'game_solution', label: '게임솔루션' },
   { value: 'game_service', label: '게임서비스' },
@@ -25,7 +24,7 @@ const COMPANY_TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { register } = useAuth()
+  const { register, loginWithKakao, loginWithNaver } = useAuth()
   const [step, setStep] = useState(1)
   const [memberType, setMemberType] = useState<MemberType>('individual')
   const [formData, setFormData] = useState({
@@ -52,6 +51,7 @@ export default function RegisterPage() {
   const [privacyTerms, setPrivacyTerms] = useState('')
   const [agreedService, setAgreedService] = useState(false)
   const [agreedPrivacy, setAgreedPrivacy] = useState(false)
+
 
   // Steps: 1=회원유형, 2=약관동의, 3=기본정보, 4=기업정보(기업회원만)
   const totalSteps = memberType === 'corporate' ? 4 : 3
@@ -85,6 +85,7 @@ export default function RegisterPage() {
     const { name, value } = e.target
     setCompanyData(prev => ({ ...prev, [name]: value }))
     setErrors(prev => ({ ...prev, [name]: '' }))
+    setServerError('')
   }
 
   const toggleCompanyType = (type: CompanyType) => {
@@ -112,9 +113,15 @@ export default function RegisterPage() {
 
   const validateStep4 = () => {
     const newErrors: { [key: string]: string } = {}
+    if (!formData.email) newErrors.email = '이메일을 입력해주세요'
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = '올바른 이메일 형식이 아닙니다'
+    if (!formData.username) newErrors.username = '사용자명을 입력해주세요'
+    else if (formData.username.length < 2) newErrors.username = '최소 2자 이상 입력해주세요'
+    if (!formData.password) newErrors.password = '비밀번호를 입력해주세요'
+    else if (formData.password.length < 6) newErrors.password = '최소 6자 이상 입력해주세요'
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = '비밀번호가 일치하지 않습니다'
     if (!companyData.companyName) newErrors.companyName = '회사명을 입력해주세요'
-    if (companyData.companyType.length === 0) newErrors.companyType = '기업유형을 선택해주세요'
-    if (!companyData.contactName) newErrors.contactName = '담당자명을 입력해주세요'
+    if (!companyData.companyType.includes('developer') && companyData.companyType.length === 0) newErrors.companyType = '기업유형을 선택해주세요'
     if (!companyData.contactPhone) newErrors.contactPhone = '연락처를 입력해주세요'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -131,14 +138,16 @@ export default function RegisterPage() {
       setErrors({})
       setStep(3)
     } else if (step === 3) {
-      if (!validateStep3()) return
       if (memberType === 'corporate') {
         setStep(4)
       } else {
+        if (!validateStep3()) return
+        setServerError('')
         handleSubmit()
       }
     } else if (step === 4) {
       if (!validateStep4()) return
+      setServerError('')
       handleSubmit()
     }
   }
@@ -160,7 +169,7 @@ export default function RegisterPage() {
           companyType: companyData.companyType,
         }
         registerData.contactPerson = {
-          name: companyData.contactName,
+          name: formData.username,
           phone: companyData.contactPhone,
           email: companyData.contactEmail || undefined,
         }
@@ -184,7 +193,7 @@ export default function RegisterPage() {
     }
   }
 
-  return (
+  return (<>
     <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         {/* Logo */}
@@ -192,7 +201,11 @@ export default function RegisterPage() {
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <Image src="/logo_gameup_v2_2.png" alt="" width={212} height={80} className="h-[60px] w-auto object-contain" />
           </Link>
-          <h1 className="text-3xl font-bold text-text-primary mb-2">회원가입</h1>
+          <h1 className="text-3xl font-bold text-text-primary mb-2">
+            {step === 4 && memberType === 'corporate'
+              ? <>{companyData.companyType.includes('developer') ? '개발사' : '파트너'} <span className="text-text-secondary font-normal">·</span> 회원가입</>
+              : '회원가입'}
+          </h1>
           <p className="text-text-secondary">
             이미 계정이 있으신가요?{' '}
             <Link href="/login" className="text-accent hover:text-accent font-medium">
@@ -205,11 +218,14 @@ export default function RegisterPage() {
         <div className="flex items-center justify-center gap-2 mb-6">
           {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
             <div key={s} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                s < step ? 'bg-accent text-text-primary' :
-                s === step ? 'bg-accent text-text-primary' :
-                'bg-bg-tertiary text-text-secondary'
-              }`}>
+              <div
+                onClick={() => s < step && setStep(s)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                  s < step ? 'bg-accent text-text-primary cursor-pointer hover:opacity-80' :
+                  s === step ? 'bg-accent text-text-primary' :
+                  'bg-bg-tertiary text-text-secondary'
+                }`}
+              >
                 {s < step ? <Check className="w-4 h-4" /> : s}
               </div>
               {s < totalSteps && (
@@ -266,6 +282,40 @@ export default function RegisterPage() {
                   </button>
                 </div>
               </div>
+
+              {memberType === 'individual' && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-line" />
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-bg-secondary text-text-secondary">또는 소셜 계정으로 가입</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={loginWithKakao}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#FEE500] text-[#191919] font-medium hover:bg-[#FDD835] transition-colors"
+                  >
+                    카카오로 시작하기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={loginWithNaver}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#03C75A] text-white font-medium hover:bg-[#02b351] transition-colors"
+                  >
+                    네이버로 시작하기
+                  </button>
+                  <p className="text-xs text-text-muted text-center leading-relaxed">
+                    소셜 계정으로 가입 시 GameUp의{' '}
+                    <a href="/terms/service" target="_blank" className="underline hover:text-text-secondary">서비스 이용약관</a>
+                    {' '}및{' '}
+                    <a href="/terms/privacy" target="_blank" className="underline hover:text-text-secondary">개인정보처리방침</a>
+                    에 동의하는 것으로 간주됩니다.
+                  </p>
+                </div>
+              )}
 
               {memberType === 'corporate' && (
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
@@ -347,35 +397,10 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Step 3: Basic Info */}
+          {/* Step 3: 기업유형(기업회원) or 기본정보(게임회원) */}
           {step === 3 && (
             <div className="space-y-5">
-              {/* Role Selector - Individual: 플레이어/개발자, Corporate: 개발사/파트너 */}
-              {memberType === 'individual' ? (
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-3">계정 유형</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, role: 'player' }))}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${formData.role === 'player' ? 'border-accent bg-accent-light text-accent' : 'border-line text-text-secondary hover:border-line'}`}
-                    >
-                      <Gamepad className="w-6 h-6" />
-                      <span className="font-medium text-sm">플레이어</span>
-                      <span className="text-xs text-center opacity-70">게임 플레이 & 피드백</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, role: 'developer' }))}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${formData.role === 'developer' ? 'border-accent bg-accent-light text-accent' : 'border-line text-text-secondary hover:border-line'}`}
-                    >
-                      <Code2 className="w-6 h-6" />
-                      <span className="font-medium text-sm">개발자</span>
-                      <span className="text-xs text-center opacity-70">게임 업로드 & 수익화</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
+              {memberType === 'corporate' ? (
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-3">기업 유형</label>
                   <div className="grid grid-cols-2 gap-3">
@@ -422,81 +447,97 @@ export default function RegisterPage() {
                   </div>
                   <p className="text-xs text-text-muted mt-2">* 다음 단계에서 세부 기업유형을 선택할 수 있습니다</p>
                 </div>
+              ) : (
+                <>
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">이메일</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                      <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="example@email.com"
+                        className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.email ? 'border-red-500' : 'border-line'}`} />
+                    </div>
+                    {errors.email && <p className="mt-1 text-xs text-danger">{errors.email}</p>}
+                  </div>
+                  {/* Username */}
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">사용자명</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                      <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="닉네임"
+                        className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.username ? 'border-red-500' : 'border-line'}`} />
+                    </div>
+                    {errors.username && <p className="mt-1 text-xs text-danger">{errors.username}</p>}
+                  </div>
+                  {/* Password */}
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">비밀번호</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                      <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="최소 6자 이상"
+                        className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.password ? 'border-red-500' : 'border-line'}`} />
+                    </div>
+                    {errors.password && <p className="mt-1 text-xs text-danger">{errors.password}</p>}
+                  </div>
+                  {/* Confirm Password */}
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">비밀번호 확인</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                      <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="••••••••"
+                        className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.confirmPassword ? 'border-red-500' : 'border-line'}`} />
+                    </div>
+                    {errors.confirmPassword && <p className="mt-1 text-xs text-danger">{errors.confirmPassword}</p>}
+                  </div>
+                </>
               )}
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">이메일</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="example@email.com"
-                    className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.email ? 'border-red-500' : 'border-line'}`}
-                  />
-                </div>
-                {errors.email && <p className="mt-1 text-xs text-danger">{errors.email}</p>}
-              </div>
-
-              {/* Username */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">사용자명</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-                  <input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    placeholder="닉네임"
-                    className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.username ? 'border-red-500' : 'border-line'}`}
-                  />
-                </div>
-                {errors.username && <p className="mt-1 text-xs text-danger">{errors.username}</p>}
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">비밀번호</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="최소 6자 이상"
-                    className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.password ? 'border-red-500' : 'border-line'}`}
-                  />
-                </div>
-                {errors.password && <p className="mt-1 text-xs text-danger">{errors.password}</p>}
-              </div>
-
-              {/* Confirm Password */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">비밀번호 확인</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.confirmPassword ? 'border-red-500' : 'border-line'}`}
-                  />
-                </div>
-                {errors.confirmPassword && <p className="mt-1 text-xs text-danger">{errors.confirmPassword}</p>}
-              </div>
             </div>
           )}
 
-          {/* Step 4: Company Info */}
+          {/* Step 4: Account + Company Info */}
           {step === 4 && (
             <div className="space-y-5">
+              {/* Account Info */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">이메일 <span className="text-danger">*</span></label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                  <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="example@email.com"
+                    className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.email ? 'border-red-500' : 'border-line'}`} />
+                </div>
+                {errors.email && <p className="mt-1 text-xs text-danger">{errors.email}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">사용자명 <span className="text-danger">*</span></label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                  <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="닉네임"
+                    className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.username ? 'border-red-500' : 'border-line'}`} />
+                </div>
+                {errors.username && <p className="mt-1 text-xs text-danger">{errors.username}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">비밀번호 <span className="text-danger">*</span></label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                  <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="최소 6자 이상"
+                    className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.password ? 'border-red-500' : 'border-line'}`} />
+                </div>
+                {errors.password && <p className="mt-1 text-xs text-danger">{errors.password}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">비밀번호 확인 <span className="text-danger">*</span></label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                  <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="••••••••"
+                    className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.confirmPassword ? 'border-red-500' : 'border-line'}`} />
+                </div>
+                {errors.confirmPassword && <p className="mt-1 text-xs text-danger">{errors.confirmPassword}</p>}
+              </div>
+
+              <div className="border-t border-line/50 pt-1" />
+
+              {/* Company Info */}
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-2">회사명 <span className="text-danger">*</span></label>
                 <div className="relative">
@@ -513,48 +554,9 @@ export default function RegisterPage() {
                 {errors.companyName && <p className="mt-1 text-xs text-danger">{errors.companyName}</p>}
               </div>
 
-              {/* Company Type */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-3">기업유형 <span className="text-danger">*</span> <span className="text-xs text-text-muted">(복수 선택 가능)</span></label>
-                <div className="grid grid-cols-4 gap-2">
-                  {COMPANY_TYPE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => toggleCompanyType(option.value)}
-                      className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
-                        companyData.companyType.includes(option.value)
-                          ? 'border-accent bg-accent-light text-accent'
-                          : 'border-line text-text-secondary hover:border-line'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                {errors.companyType && <p className="mt-1 text-xs text-danger">{errors.companyType}</p>}
-              </div>
-
-              {/* Contact Name */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">담당자명 <span className="text-danger">*</span></label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-                  <input
-                    type="text"
-                    name="contactName"
-                    value={companyData.contactName}
-                    onChange={handleCompanyChange}
-                    placeholder="담당자 이름"
-                    className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.contactName ? 'border-red-500' : 'border-line'}`}
-                  />
-                </div>
-                {errors.contactName && <p className="mt-1 text-xs text-danger">{errors.contactName}</p>}
-              </div>
-
               {/* Contact Phone */}
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">연락처 <span className="text-danger">*</span></label>
+                <label className="block text-sm font-medium text-text-secondary mb-2">대표 연락처 <span className="text-danger">*</span></label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
                   <input
@@ -569,21 +571,29 @@ export default function RegisterPage() {
                 {errors.contactPhone && <p className="mt-1 text-xs text-danger">{errors.contactPhone}</p>}
               </div>
 
-              {/* Contact Email */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">담당자 이메일 <span className="text-xs text-text-muted">(선택)</span></label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-                  <input
-                    type="email"
-                    name="contactEmail"
-                    value={companyData.contactEmail}
-                    onChange={handleCompanyChange}
-                    placeholder="contact@company.com"
-                    className="w-full bg-bg-tertiary border border-line rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
-                  />
+              {/* Company Type - 파트너만 */}
+              {!companyData.companyType.includes('developer') && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-3">사업 형태 <span className="text-danger">*</span> <span className="text-xs text-text-muted">(복수 선택 가능)</span></label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {COMPANY_TYPE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => toggleCompanyType(option.value)}
+                        className={`px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
+                          companyData.companyType.includes(option.value)
+                            ? 'border-accent bg-accent-light text-accent'
+                            : 'border-line text-text-secondary hover:border-line'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  {errors.companyType && <p className="mt-1 text-xs text-danger">{errors.companyType}</p>}
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -617,5 +627,6 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
-  )
+
+  </>)
 }

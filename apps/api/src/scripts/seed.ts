@@ -66,7 +66,8 @@ async function seed() {
         companyEmail: 'contact@indiegame.co.kr',
         employeeCount: 5,
         businessNumber: '123-45-67890',
-        companyType: ['개발사'],
+        companyType: ['developer'],
+        approvalStatus: 'approved',
         homepageUrl: 'https://indiegame.co.kr',
         isApproved: true,
         description: '인디 게임을 개발하는 작은 스튜디오입니다.',
@@ -93,8 +94,39 @@ async function seed() {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   )
 
+  await User.findOneAndUpdate(
+    { email: 'partner@test.com' },
+    {
+      email: 'partner@test.com',
+      username: 'testpartner',
+      password: hashedPw,
+      role: 'developer',
+      isActive: true,
+      memberType: 'corporate',
+      approvalStatus: 'approved',
+      level: 3,
+      activityScore: 100,
+      points: 2000,
+      companyInfo: {
+        companyName: '게임서비스 파트너사',
+        phone: '02-9876-5432',
+        companyEmail: 'contact@partner.co.kr',
+        employeeCount: 20,
+        businessNumber: '987-65-43210',
+        companyType: ['게임서비스'],
+        approvalStatus: 'approved',
+        homepageUrl: 'https://partner.co.kr',
+        isApproved: true,
+        description: '게임 관련 서비스를 제공하는 파트너사입니다.',
+      },
+      contactPerson: { name: '이파트너', email: 'lee@partner.co.kr' },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  )
+
   console.log('  ✅ admin@gameup.com / test123456 (관리자)')
   console.log('  ✅ developer@test.com / test123456 (개발자)')
+  console.log('  ✅ partner@test.com / test123456 (파트너)')
   console.log('  ✅ player@test.com / test123456 (플레이어)')
 
   // ─── 2. Levels ─────────────────────────────────────────────

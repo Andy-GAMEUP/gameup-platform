@@ -11,14 +11,20 @@ function ConsoleLayoutInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams()
   const adminView = searchParams.get('adminView') === '1'
 
+  const isPartner = user?.role === 'developer'
+    && user?.memberType === 'corporate'
+    && !(user?.companyInfo?.companyType ?? []).includes('developer')
+
   useEffect(() => {
     if (isLoading) return
     if (!isAuthenticated) { router.replace('/login'); return }
     if (user?.role === 'admin' && !adminView) { router.replace('/admin/games'); return }
-  }, [isAuthenticated, isLoading, user, router, adminView])
+    if (isPartner) { router.replace('/'); return }
+  }, [isAuthenticated, isLoading, user, router, adminView, isPartner])
 
   if (isLoading || !isAuthenticated) return null
   if (user?.role === 'admin' && !adminView) return null
+  if (isPartner) return null
   if (user?.role === 'admin' && adminView) return <>{children}</>
   return <DeveloperLayout>{children}</DeveloperLayout>
 }

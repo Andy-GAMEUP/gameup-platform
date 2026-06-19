@@ -9,11 +9,20 @@ export interface IGameShopItem extends Document {
   price: number
   currency: 'KRW' | 'USD' | 'EUR'
   type: string
+  paymentType: 'cash' | 'capcoin'
+  currencyName: string
+  currencyIconUrl: string
   currencyType: string
+  currencyId: string
   currencyAmount: number
   bonusAmount: number
   stock: string
   itemId?: string
+  names?: Record<string, string>
+  currencyNames?: Record<string, string>
+  capcoinPrice?: number
+  capcoinName?: string
+  capcoinIconUrl?: string
   isSpecial?: boolean
   specialImageUrl?: string
   active: boolean
@@ -34,11 +43,20 @@ const GameShopItemSchema = new Schema<IGameShopItem>(
     price: { type: Number, required: true, min: 0 },
     currency: { type: String, enum: ['KRW', 'USD', 'EUR'], default: 'KRW' },
     type: { type: String, default: '패키지' },
+    paymentType: { type: String, enum: ['cash', 'capcoin'], default: 'cash' },
+    currencyName: { type: String, default: '' },
+    currencyIconUrl: { type: String, default: '' },
     currencyType: { type: String, default: '' },
+    currencyId: { type: String, default: 'main' },
     currencyAmount: { type: Number, default: 0, min: 0 },
     bonusAmount: { type: Number, default: 0, min: 0 },
     stock: { type: String, default: '무제한' },
     itemId: { type: String, default: '' },
+    names: { type: Schema.Types.Mixed, default: {} },
+    currencyNames: { type: Schema.Types.Mixed, default: {} },
+    capcoinPrice: { type: Number, default: 0, min: 0 },
+    capcoinName: { type: String, default: '' },
+    capcoinIconUrl: { type: String, default: '' },
     isSpecial: { type: Boolean, default: false },
     specialImageUrl: { type: String, default: '' },
     active: { type: Boolean, default: true },
