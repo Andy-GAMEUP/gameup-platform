@@ -4,13 +4,12 @@ import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
 import adminService from '@/services/adminService'
 import { UserPlus, Loader2, Check, XCircle, X, Search, Shield, Eye, Settings } from 'lucide-react'
-import { PartnerRequestsContent, PartnerManagementContent } from './AdminCorporateManagementPage'
+import { PartnerRequestsContent } from './AdminCorporateManagementPage'
 
-type PageTab = 'approval' | 'partner-requests' | 'partner-management'
+type PageTab = 'approval' | 'partner-requests'
 const PAGE_TABS: { key: PageTab; label: string }[] = [
   { key: 'approval', label: '기업회원 승인' },
   { key: 'partner-requests', label: '파트너 신청' },
-  { key: 'partner-management', label: '파트너 정보관리' },
 ]
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -394,7 +393,6 @@ export default function AdminMembersPage() {
         </div>
 
         {pageTab === 'partner-requests' && <PartnerRequestsContent />}
-        {pageTab === 'partner-management' && <PartnerManagementContent />}
 
         {pageTab === 'approval' && <>
         {/* Search */}

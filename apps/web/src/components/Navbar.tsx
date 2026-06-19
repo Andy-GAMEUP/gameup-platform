@@ -23,7 +23,7 @@ export default function Navbar() {
   const isCorporateApproved = user?.memberType === 'corporate' && user?.companyInfo?.approvalStatus === 'approved'
   const isCorporateDeveloper = isCorporateApproved && user?.companyInfo?.companyType?.includes('developer')
   const isCorporatePartner = isCorporateApproved && !isCorporateDeveloper
-  const showDeveloperCenter = isCorporateDeveloper || (user?.role === 'developer' && user?.memberType !== 'corporate')
+  const showDeveloperCenter = user?.role === 'developer' || isCorporateDeveloper
   const showPartnerCenter = isCorporatePartner
 
   useEffect(() => {

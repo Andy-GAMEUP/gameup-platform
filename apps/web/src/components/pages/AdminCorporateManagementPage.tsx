@@ -40,13 +40,12 @@ export const PARTNER_STATUS_MAP: Record<string, { label: string; cls: string }> 
   suspended: { label: '정지됨',  cls: 'bg-bg-muted/40 text-text-secondary border border-line' },
 }
 
-type TabKey = 'developers' | 'partners' | 'partner-requests' | 'partner-management'
+type TabKey = 'developers' | 'partners' | 'partner-requests'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'developers', label: '개발사' },
   { key: 'partners', label: '파트너' },
   { key: 'partner-requests', label: '파트너 신청' },
-  { key: 'partner-management', label: '파트너 정보관리' },
 ]
 
 // ─── Confirm Modal ──────────────────────────────────────────────────
@@ -457,7 +456,6 @@ export default function AdminCorporateManagementPage() {
           <CorporateTabContent activeTab={activeTab} />
         )}
         {activeTab === 'partner-requests' && <PartnerRequestsContent />}
-        {activeTab === 'partner-management' && <PartnerManagementContent />}
       </div>
     </AdminLayout>
   )

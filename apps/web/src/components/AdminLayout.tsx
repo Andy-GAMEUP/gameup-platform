@@ -1,5 +1,5 @@
 'use client'
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/useAuth'
 import {
   LayoutDashboard, Gamepad2, Users, Megaphone,
   MessageSquare, ChevronLeft, ChevronRight, ChevronDown,
-  Home, LogOut, Shield, UserPlus, Handshake, Tags,
+  Shield, UserPlus, Handshake, Tags,
   Smartphone, Globe, Calendar, FileCheck, ImageIcon, Bell, Package,
   BarChart3, PieChart, UserCircle, Building2, Award, Activity, FileText, Gift, Flag,
   MessageCircle, ShieldBan, Trash2, CreditCard, Calculator,
@@ -114,10 +114,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(true)
 
-  if (!isLoading && (!user || user.role !== 'admin')) {
-    router.replace('/login')
-    return null
-  }
+  useEffect(() => {
+    if (!isLoading && (!user || user.role !== 'admin')) {
+      router.replace('/login')
+    }
+  }, [isLoading, user, router])
+
+  if (!isLoading && (!user || user.role !== 'admin')) return null
 
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {}
@@ -210,9 +213,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="accent-red min-h-screen bg-bg-primary flex">
+    <div className="accent-red h-screen bg-bg-primary flex overflow-hidden">
       {/* Sidebar */}
-      <aside className={`${open ? 'w-56' : 'w-14'} bg-bg-secondary border-r border-line flex flex-col transition-all duration-200 flex-shrink-0`}>
+      <aside className={`${open ? 'w-56' : 'w-14'} bg-bg-secondary border-r border-line flex flex-col transition-all duration-200 flex-shrink-0 h-full`}>
         {/* Logo */}
         <div className="h-14 flex items-center justify-between px-3 border-b border-line">
           {open ? (
@@ -238,27 +241,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {navItems.map(renderNavItem)}
         </nav>
 
-        {/* Footer */}
-        <div className="p-2 border-t border-line space-y-0.5">
-          <Link href="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-tertiary text-sm transition-colors"
-            title={!open ? '메인으로' : undefined}
-          >
-            <Home className="w-4 h-4 flex-shrink-0" />
-            {open && <span>메인으로</span>}
-          </Link>
-          <button onClick={() => { logout(); router.push('/') }}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-text-muted hover:text-danger hover:bg-danger/10 text-sm transition-colors"
-            title={!open ? '로그아웃' : undefined}
-          >
-            <LogOut className="w-4 h-4 flex-shrink-0" />
-            {open && <span>로그아웃</span>}
-          </button>
-        </div>
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         <header className="h-14 bg-bg-secondary border-b border-line flex items-center justify-between px-6 flex-shrink-0">
           <h1 className="text-text-primary font-semibold text-base">GAMEUP 관리시스템</h1>
           <div className="flex items-center gap-3">

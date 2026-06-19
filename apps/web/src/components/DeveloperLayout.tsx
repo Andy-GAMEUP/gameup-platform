@@ -249,24 +249,18 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                 {profileOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-bg-card border border-line rounded-lg shadow-xl">
                     <div className="p-2">
-                      <Link
-                        href="/settings"
-                        className="block px-4 py-2 text-sm text-text-secondary hover:bg-bg-tertiary rounded"
-                        onClick={() => setProfileOpen(false)}
+                      <button
+                        onClick={() => { setProfileOpen(false); router.push('/settings') }}
+                        className="w-full text-left px-4 py-2 text-text-secondary hover:bg-bg-tertiary rounded flex items-center gap-2"
+                        style={{ fontSize: '0.875rem' }}
                       >
+                        <Settings className="w-4 h-4" />
                         설정
-                      </Link>
-                      <Link
-                        href="/"
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:bg-bg-tertiary rounded"
-                        onClick={() => setProfileOpen(false)}
-                      >
-                        <Home className="w-4 h-4" />
-                        사용자 사이트
-                      </Link>
+                      </button>
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-bg-tertiary rounded flex items-center gap-2"
+                        className="w-full text-left px-4 py-2 text-danger hover:bg-bg-tertiary rounded flex items-center gap-2"
+                        style={{ fontSize: '0.875rem' }}
                       >
                         <LogOut className="w-4 h-4" />
                         로그아웃
