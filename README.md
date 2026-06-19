@@ -13,7 +13,7 @@ gameup-platform/
 │   ├── web/          # Next.js 16 frontend (React 19, Tailwind CSS 4)
 │   └── api/          # Express.js 4 backend (MongoDB, Socket.io)
 ├── packages/
-│   ├── db/           # Mongoose 스키마 (36개)
+│   ├── db/           # Mongoose 스키마 (59개)
 │   ├── types/        # 공유 TypeScript 타입
 │   ├── ui/           # 공유 React 컴포넌트
 │   └── utils/        # 공유 유틸리티
@@ -78,12 +78,31 @@ gh workflow run "Deploy to gameup.co.kr" --ref main
 
 ### 운영 문서
 
+- 📋 [플랫폼 운영 규칙](./docs/platform-rules.md) – 게임 심사·회원·배너·포인트 등 전체 규칙 정의
 - 📘 [개발자 인수인계 매뉴얼](./docs/developer-handover.md) – 로컬 개발부터 자동 배포까지 전체 흐름
 - 🚀 [CI/CD 셋업 가이드](./docs/cicd-setup.md) – Self-hosted runner 설치/관리
 - 💾 [백업 전략](./docs/backup-strategy.md) – MongoDB 백업 및 복원 절차
-- 🏗️ [플랫폼 아키텍처](./docs/platform-architecture.md) – 시스템 설계 문서
-- 📋 [배포 계획](./docs/deployment-plan.md) – 초기 배포 진행 기록
+- 🏗️ [플랫폼 아키텍처](./docs/platform-architecture.md) – 기능구조 및 API 정의서
+- 📋 [배포 계획](./docs/deployment-plan.md) – 초기 배포 진행 기록 (deprecated)
 - 🧪 [테스트 플랜](./docs/TEST_PLAN.md) – QA 체크리스트
+
+### 배포 / 변경 이력
+
+- ☁️ [베타테스트 배포 계획](./docs/deployment-betatest-plan.md) – 베타테스트 클라우드 환경 구축 기록
+- 📝 [커뮤니티 변경 이력](./docs/community-changelog-2026-03-18.md) – v2.5.1 커뮤니티 기능 추가 및 점검 보고
+- 🗑️ [파트너 콘솔 제거](./docs/partner-console-removal-2026-03-20.md) – 파트너 콘솔 기능 제거 작업 기록
+
+### 기능 설계
+
+- 👤 [파트너 계정 재설계](./docs/partner-account-redesign.md) – 개발자 / 파트너 계정 구분 설계
+- 🛒 [게임샵 & 결제 시스템](./docs/feature-specs/gameshop-payment-plan.md) – 게임샵 및 결제 개발 계획
+- 🎮 [게임 활동포인트 시스템 v2](./docs/feature-specs/game-activity-point-system-v2.md) – 개발사 활동포인트 지급 설계
+- 🏆 [플레이어 리워드 시스템](./docs/feature-specs/player-reward-system.md) – 플레이어 보상 기능 정의서
+- 🎖️ [회원 등급/레벨 시스템](./docs/feature-specs/user-level-display-system.md) – 등급 표시 및 활동포인트 개선 설계
+
+### API 문서
+
+- 🔌 [게임-플랫폼 포인트 연동 API](./docs/api/game-point-integration-api.md) – 게임과 플랫폼 간 포인트 연동 API 명세
 
 ## 테스트 계정
 

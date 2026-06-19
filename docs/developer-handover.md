@@ -14,7 +14,7 @@
                                                                               │
                                                                               ▼
                                                     ┌──────────────────────────────────────┐
-                                                    │ Job 1: Lint & Type Check             │
+                                                    │ Job 1: Type Check                    │
                                                     │   - ubuntu-latest (GitHub-hosted)    │
                                                     │   - pnpm install + pnpm type-check   │
                                                     └──────────────────────────────────────┘
@@ -69,8 +69,8 @@ cd gameup-platform
 pnpm install
 
 # 환경변수 파일 준비
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env.local
+cp apps/api/.env.example apps/api/.env   # API 환경변수 (example 파일 있음)
+# apps/web/.env.local 은 아래 5.2절을 참고해 직접 생성
 # 각 파일 편집 후 로컬 값 입력
 ```
 
@@ -188,17 +188,40 @@ ssh -i ~/.ssh/gameup_deploy root@101.79.9.143 "tail -f /opt/gameup/deploy.log"
 | 파일 | 용도 | 관리 방법 |
 |------|------|----------|
 | `apps/api/.env` | 로컬 API 환경변수 | gitignore (개발자 각자 보유) |
-| `apps/web/.env.local` | 로컬 Web 환경변수 | gitignore |
+| `apps/web/.env.local` | 로컬 Web 환경변수 | gitignore (직접 생성 필요, example 없음) |
 | `/opt/gameup/.env.api` | 프로덕션 API | **서버에서만 수정** |
 | `/opt/gameup/.env.web` | 프로덕션 Web | **서버에서만 수정** |
 
-### 5.2 주의사항
+### 5.2 Web 환경변수 목록 (`apps/web/.env.local`)
+
+```env
+# API 연결
+NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_UPLOADS_URL=http://localhost:5000
+
+# 결제 (Toss Payments)
+NEXT_PUBLIC_TOSS_CLIENT_KEY=test_ck_YOUR_TOSS_CLIENT_KEY
+
+# NextAuth
+AUTH_SECRET=your-auth-secret
+AUTH_URL=http://localhost:3000
+
+# OAuth - Kakao
+KAKAO_CLIENT_ID=your-kakao-client-id
+KAKAO_CLIENT_SECRET=your-kakao-client-secret
+
+# OAuth - Naver
+NAVER_CLIENT_ID=your-naver-client-id
+NAVER_CLIENT_SECRET=your-naver-client-secret
+```
+
+### 5.3 주의사항
 
 - **환경변수는 git에 커밋 금지**. 프로덕션 환경변수 변경이 필요하면 서버에 직접 SSH 접속 후 수정.
 - `NEXT_PUBLIC_*` 로 시작하는 변수는 **빌드 타임에 바인딩**됨. 변경 시 web 컨테이너 재빌드 필수.
 - `AUTH_SECRET`, `JWT_SECRET`, DB 비밀번호 등은 절대 공유 채널(Slack, 이메일, PR)에 붙여넣기 금지.
 
-### 5.3 프로덕션 환경변수 변경 절차
+### 5.4 프로덕션 환경변수 변경 절차
 
 ```bash
 # 서버 접속
@@ -400,7 +423,7 @@ cd /opt/actions-runner && ./svc.sh status
 
 - [ ] GitHub `Andy-GAMEUP/gameup-platform` repo 접근 권한 부여
 - [ ] 로컬 개발환경 셋업 완료 (`pnpm dev` 구동 확인)
-- [ ] `.env.example` 기반으로 로컬 `.env` 생성
+- [ ] 로컬 `.env` 생성 (`apps/api/.env` 은 `.env.example` 복사, `apps/web/.env.local` 은 5.2절 참고 직접 생성)
 - [ ] 테스트 계정 로그인 확인 (admin/developer/player)
 - [ ] 서버 SSH 접속 키 전달 (`gameup_deploy` 또는 개인 키 등록)
 - [ ] `gh` CLI 설치 및 인증 (`gh auth login`)

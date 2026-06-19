@@ -10,7 +10,7 @@ gameup-platform/
 │   ├── web/          # Next.js 16 frontend (React 19, Tailwind CSS 4)
 │   └── api/          # Express.js 4 backend (MongoDB, Socket.io)
 ├── packages/
-│   ├── db/           # Mongoose models (36 schemas)
+│   ├── db/           # Mongoose models (59 schemas)
 │   ├── types/        # Shared TypeScript types
 │   ├── ui/           # Shared React components (11)
 │   └── utils/        # Shared utilities (date, currency, validation)

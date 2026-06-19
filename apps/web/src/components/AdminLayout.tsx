@@ -29,6 +29,7 @@ const navItems: NavItem[] = [
   { path: '/admin/game-deletion-logs', label: '삭제 게임 관리', icon: Gamepad2 },
   { path: '/admin/payments', label: '결제 / 환불', icon: CreditCard },
   { path: '/admin/settlements', label: '정산', icon: Calculator },
+  { path: '/admin/notifications', label: '알림', icon: Bell },
   {
     path: '/admin/community',
     label: '콘텐츠 관리',
@@ -62,7 +63,7 @@ const navItems: NavItem[] = [
   },
   {
     path: '/admin/members',
-    label: '계정관리',
+    label: '운영 관리',
     icon: Shield,
     children: [
       { path: '/admin/members/terms', label: '약관관리', icon: FileText },
@@ -71,16 +72,6 @@ const navItems: NavItem[] = [
       { path: '/admin/game-point-policies', label: '게임포인트정책', icon: Gift },
       { path: '/admin/developer-balances', label: '개발사잔액', icon: Activity },
       { path: '/admin/point-packages', label: '포인트상품', icon: Award },
-    ],
-  },
-  {
-    path: '/admin/notice',
-    label: '공지알림',
-    icon: Megaphone,
-    children: [
-      { path: '/admin/announcements', label: '공지관리', icon: Megaphone },
-      { path: '/admin/notifications', label: '알림관리', icon: Bell },
-      { path: '/admin/support-banners', label: '배너관리', icon: ImageIcon },
     ],
   },
   { path: '/admin/partner-topics', label: '프로젝트관리', icon: Tags },
