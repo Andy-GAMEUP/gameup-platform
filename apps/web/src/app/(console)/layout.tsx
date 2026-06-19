@@ -11,8 +11,8 @@ function ConsoleLayoutInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams()
   const adminView = searchParams.get('adminView') === '1'
 
-  const isPartner = user?.role === 'developer'
-    && user?.memberType === 'corporate'
+  const isPartner = user?.memberType === 'corporate'
+    && user?.role !== 'developer'
     && !(user?.companyInfo?.companyType ?? []).includes('developer')
 
   useEffect(() => {
