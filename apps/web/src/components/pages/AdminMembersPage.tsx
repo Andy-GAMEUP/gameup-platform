@@ -3,14 +3,8 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
 import adminService from '@/services/adminService'
-import { UserPlus, Loader2, Check, XCircle, X, Search, Shield, Eye, Settings } from 'lucide-react'
-import { PartnerRequestsContent } from './AdminCorporateManagementPage'
+import { Building2, Loader2, Check, XCircle, X, Search, Shield, Eye, Settings } from 'lucide-react'
 
-type PageTab = 'approval' | 'partner-requests'
-const PAGE_TABS: { key: PageTab; label: string }[] = [
-  { key: 'approval', label: '기업회원 승인' },
-  { key: 'partner-requests', label: '파트너 신청' },
-]
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface PendingUser {
@@ -84,7 +78,7 @@ function ManageModal({
           </button>
           <button onClick={onReject} disabled={loading}
             className="w-full px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-            <XCircle className="w-4 h-4" /> 거절
+            <XCircle className="w-4 h-4" /> 승인 거절
           </button>
           <button onClick={onClose} className="w-full px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">취소</button>
         </div>
@@ -173,7 +167,7 @@ function MemberManageModal({
 
 // ─── Main Component ─────────────────────────────────────────────────
 export default function AdminMembersPage() {
-  const [pageTab, setPageTab] = useState<PageTab>('approval')
+  const [pageTab] = useState('approval')
   const [users, setUsers] = useState<PendingUser[]>([])
   const [allUsers, setAllUsers] = useState<PendingUser[]>([])
   const [total, setTotal] = useState(0)
@@ -204,10 +198,10 @@ export default function AdminMembersPage() {
       const params: Record<string, unknown> = { page, limit, memberType: 'corporate' }
       if (statusFilter === '대기') params.approvalStatus = 'pending'
       else if (statusFilter === '회원') { params.approvalStatus = 'approved'; params.isActive = true }
-      else if (statusFilter === '거절') params.approvalStatus = 'rejected'
+      else if (statusFilter === '승인 거절') params.approvalStatus = 'rejected'
       else if (statusFilter === '중지됨') params.isActive = false
       const data = await adminService.getUsers(params as Parameters<typeof adminService.getUsers>[0])
-      let filtered: PendingUser[] = data.users as PendingUser[]
+      let filtered: PendingUser[] = (data.users as PendingUser[]).filter(u => u.role !== 'admin')
       setAllUsers(filtered)
       if (search) {
         const keyword = search.toLowerCase()
@@ -372,8 +366,8 @@ export default function AdminMembersPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <UserPlus className="w-5 h-5 text-accent-text" />
-            <h2 className="text-text-primary text-xl font-bold">기업회원 승인</h2>
+            <Building2 className="w-5 h-5 text-accent-text" />
+            <h2 className="text-text-primary text-xl font-bold">기업회원</h2>
           </div>
           <div className="flex items-center gap-2">
             <span className="bg-bg-tertiary text-text-secondary border border-line px-3 py-1 rounded-lg text-sm font-medium">
@@ -381,18 +375,6 @@ export default function AdminMembersPage() {
             </span>
           </div>
         </div>
-
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-line">
-          {PAGE_TABS.map(t => (
-            <button key={t.key} onClick={() => setPageTab(t.key)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${pageTab === t.key ? 'border-accent text-accent' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {pageTab === 'partner-requests' && <PartnerRequestsContent />}
 
         {pageTab === 'approval' && <>
         {/* Search */}
@@ -416,7 +398,7 @@ export default function AdminMembersPage() {
             <option value="대기">대기</option>
             <option value="회원">회원</option>
             <option value="중지됨">중지됨</option>
-            <option value="거절">거절</option>
+            <option value="승인 거절">승인 거절</option>
           </select>
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
@@ -495,7 +477,7 @@ export default function AdminMembersPage() {
                             ? <span className="text-orange-400 font-medium">중지됨</span>
                             : user.approvalStatus === 'approved' ? <span className="text-text-primary font-medium">회원</span>
                             : user.approvalStatus === 'pending' ? <span className="text-amber-400 font-medium">대기</span>
-                            : user.approvalStatus === 'rejected' ? <span className="text-rose-400 font-medium">거절</span>
+                            : user.approvalStatus === 'rejected' ? <span className="text-rose-400 font-medium">승인 거절</span>
                             : null}
                         </td>
                         <td className="px-4 py-3">

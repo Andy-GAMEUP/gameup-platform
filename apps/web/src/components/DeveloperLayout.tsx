@@ -3,7 +3,7 @@ import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Button from './Button'
 import { useAuth } from '@/lib/useAuth'
 import NotificationPanel from './NotificationPanel'
@@ -18,6 +18,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
   const [sidebarOpen,   setSidebarOpen]   = useState(true)
   const [profileOpen,   setProfileOpen]   = useState(false)
   const [notifOpen,     setNotifOpen]     = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
   const [unreadCount,   setUnreadCount]   = useState(0)
   const [analyticsOpen, setAnalyticsOpen] = useState(false)
   const pathname     = usePathname()
@@ -28,8 +29,27 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
   const currentTab = searchParams.get('tab') || 'analysis'
 
   useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileOpen(false)
+      }
+    }
+    if (profileOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [profileOpen])
+
+  useEffect(() => {
     if (pathname.startsWith('/analytics')) setAnalyticsOpen(true)
   }, [pathname])
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) return
+    const companyType: string[] = user.companyInfo?.companyType ?? []
+    const isDeveloper = companyType.includes('developer')
+    if (!isDeveloper) router.replace('/')
+  }, [isAuthenticated, user, router])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -68,7 +88,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
     { path: '/payments', label: '결제 / 환불', icon: <CreditCard className="w-5 h-5" /> },
     { path: '/minihome-manage', label: '미니홈 관리', icon: <Home      className="w-5 h-5" /> },
     { path: '/proposals',       label: '제안 관리',   icon: <Handshake className="w-5 h-5" /> },
-    { path: '/settings',        label: '설정',       icon: <Settings  className="w-5 h-5" /> },
+    { path: '/settings',        label: '회사 정보',   icon: <Settings  className="w-5 h-5" /> },
   ]
 
   const isActive = (path: string) => {
@@ -235,7 +255,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                 )}
               </button>
 
-              <div className="relative">
+              <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setProfileOpen(!profileOpen)}
                   className="flex items-center gap-2 text-text-muted hover:text-text-primary"
@@ -250,12 +270,12 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                   <div className="absolute right-0 mt-2 w-48 bg-bg-card border border-line rounded-lg shadow-xl">
                     <div className="p-2">
                       <button
-                        onClick={() => { setProfileOpen(false); router.push('/settings') }}
+                        onClick={() => { setProfileOpen(false); router.push('/') }}
                         className="w-full text-left px-4 py-2 text-text-secondary hover:bg-bg-tertiary rounded flex items-center gap-2"
                         style={{ fontSize: '0.875rem' }}
                       >
-                        <Settings className="w-4 h-4" />
-                        설정
+                        <LayoutDashboard className="w-4 h-4" />
+                        플레이 화면
                       </button>
                       <button
                         onClick={handleLogout}

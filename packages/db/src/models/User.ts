@@ -34,6 +34,7 @@ export interface IUser extends Document {
   password?: string
   role: 'developer' | 'player' | 'admin'
   adminLevel?: 'super' | 'normal' | 'monitor'
+  adminGrantedAt?: Date
   bio?: string
   favoriteGenres?: string[]
   isActive: boolean
@@ -86,6 +87,9 @@ const userSchema = new Schema<IUser>(
     adminLevel: {
       type: String,
       enum: ['super', 'normal', 'monitor'],
+    },
+    adminGrantedAt: {
+      type: Date,
     },
     bio: {
       type: String,

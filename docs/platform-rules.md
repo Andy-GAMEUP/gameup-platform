@@ -493,36 +493,52 @@ approvalStatus=pending
 
 ---
 
-## 9. 파트너 채널
+## 9. 파트너 라운지
 
-### 9.1 파트너 신청 흐름
+> 최종 업데이트: 2026-06-24
+
+### 9.1 파트너 라운지 등록 흐름 (현행)
 
 ```
-파트너 신청 (자기소개 + 활동계획 필수)
+기업회원 가입
   ↓
-1인 1건 제한 (중복 신청 불가)
+관리자(super) 승인 → companyInfo.approvalStatus=approved
   ↓
-status=pending
+파트너 라운지(/partner) 접속
   ↓
-관리자(normal+) 검토
+"파트너 프로필 등록" 버튼 클릭 (로그인된 승인 기업회원에게만 노출)
   ↓
-[승인] status=approved, approvedAt 기록
-[거부] status=rejected, rejectedReason 기록
+자기소개 + 활동계획 입력 (필수), 슬로건/URL (선택)
+  ↓
+1인 1건 제한 (중복 등록 불가)
+  ↓
+status=approved, approvedAt 자동 기록 (관리자 승인 불필요)
+  ↓
+/partner/projects 화면으로 자동 이동
 ```
 
-### 9.2 파트너 활동 제한
+**등록 조건:**
+- `memberType=corporate` + `companyInfo.approvalStatus=approved`인 사용자만 등록 가능
+- `introduction`, `activityPlan` 필수 입력
+- 이미 등록된 경우 중복 등록 불가 (409 반환)
+
+### 9.2 관리자 확인
+
+- 등록된 파트너 프로필은 `/admin/partner-requests` ("라운지 등록 기업") 페이지에서 확인
+- 관리자 승인 절차 없음 — 조회 및 상태(정지/활성) 변경만 가능
+
+### 9.3 파트너 활동 제한
 
 - 슬로건, 게시글 등은 `status=approved`인 파트너만 가능
 - 파트너 게시글 작성/수정/삭제: 본인만
 
-### 9.3 파트너 관리 권한
+### 9.4 파트너 관리 권한
 
 | 액션 | 필요 등급 |
 |------|---------|
-| 파트너 신청 승인/거부 | normal+ |
 | 파트너 상태/공개 변경 | normal+ |
 | 파트너 프로필 수정 | normal+ |
-| 파트너 신청 삭제 | super |
+| 파트너 등록 삭제 | super |
 | 토픽 그룹 삭제 | super |
 | 파트너 게시글 삭제 | super |
 

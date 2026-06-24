@@ -2,9 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import partnerMatchingService, { PartnerMatchingProfile } from '@/services/partnerMatchingService'
+import MiniHomeCreateModal from '@/components/MiniHomeCreateModal'
+import { useAuth } from '@/lib/useAuth'
 
 const expertiseOptions = [
   { value: 'all', label: '전체 전문 분야' },
@@ -29,6 +32,11 @@ export default function PartnerMatchingDirectoryPage() {
   const [expertiseFilter, setExpertiseFilter] = useState('all')
   const [activeTab, setActiveTab] = useState('all')
   const [page, setPage] = useState(1)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+
+  const queryClient = useQueryClient()
+  const { isAuthenticated, user } = useAuth()
+  const isCorporate = isAuthenticated && user?.memberType === 'corporate'
 
   const { data, isLoading } = useQuery({
     queryKey: ['partnerMatchingProfiles', page, searchQuery, expertiseFilter, activeTab],
@@ -59,14 +67,26 @@ export default function PartnerMatchingDirectoryPage() {
   ]
 
   return (
+    <>
     <div className="min-h-screen bg-bg-primary">
       <Navbar />
       {/* Header */}
       <div className="border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-8">
-            <h1 className="text-3xl font-bold text-text-primary mb-2">파트너라운지</h1>
-            <p className="text-text-secondary">검증된 전문가와 개발사를 찾아보세요</p>
+          <div className="py-8 flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-text-primary mb-2">파트너라운지</h1>
+              <p className="text-text-secondary">검증된 전문가와 개발사를 찾아보세요</p>
+            </div>
+            {isCorporate && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-text-primary px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                프로필 등록
+              </button>
+            )}
           </div>
           <div className="flex gap-6 -mb-px">
             <Link
@@ -259,5 +279,16 @@ export default function PartnerMatchingDirectoryPage() {
         )}
       </div>
     </div>
+
+    <MiniHomeCreateModal
+      isOpen={showCreateModal}
+      onClose={() => setShowCreateModal(false)}
+      onSuccess={() => {
+        setShowCreateModal(false)
+        queryClient.invalidateQueries({ queryKey: ['partnerMatchingProfiles'] })
+        queryClient.invalidateQueries({ queryKey: ['partnerMatchingStats'] })
+      }}
+    />
+    </>
   )
 }

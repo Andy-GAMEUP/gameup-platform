@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Navbar from '@/components/Navbar'
 import partnerMatchingService, { PartnerProjectItem } from '@/services/partnerMatchingService'
+import { useAuth } from '@/lib/useAuth'
+import { X, Plus, Loader2 } from 'lucide-react'
 
 const categoryOptions = [
   { value: 'all', label: '전체' },
@@ -25,11 +27,55 @@ const statusLabel: Record<string, { text: string; color: string }> = {
   completed: { text: '완료', color: 'bg-bg-muted/20 text-text-secondary' },
 }
 
+const SKILL_SUGGESTIONS = ['Unity', 'Unreal', 'React', 'Node.js', 'Python', 'Figma', 'iOS', 'Android', 'QA', '마케팅', '번역', '기획']
+
 export default function PartnerMatchingProjectsPage() {
+  const { user, isAuthenticated } = useAuth()
+  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [activeTab, setActiveTab] = useState('all')
   const [page, setPage] = useState(1)
+
+  // 등록 모달
+  const [showModal, setShowModal] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [skillInput, setSkillInput] = useState('')
+  const [form, setForm] = useState({
+    title: '', description: '', category: '웹 개발',
+    budget: '', duration: '', location: '원격',
+    applicationDeadline: '', requiredSkills: [] as string[],
+  })
+
+  const isCorporate = isAuthenticated && user?.memberType === 'corporate'
+
+  const handleField = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const addSkill = (skill: string) => {
+    const s = skill.trim()
+    if (s && !form.requiredSkills.includes(s))
+      setForm(f => ({ ...f, requiredSkills: [...f.requiredSkills, s] }))
+    setSkillInput('')
+  }
+
+  const removeSkill = (skill: string) =>
+    setForm(f => ({ ...f, requiredSkills: f.requiredSkills.filter(s => s !== skill) }))
+
+  const handleSubmit = async () => {
+    if (!form.title || !form.description || !form.category) return alert('제목, 설명, 카테고리는 필수입니다.')
+    setSubmitting(true)
+    try {
+      await partnerMatchingService.createProject(form)
+      queryClient.invalidateQueries({ queryKey: ['partnerProjects'] })
+      queryClient.invalidateQueries({ queryKey: ['partnerProjectStats'] })
+      setShowModal(false)
+      setForm({ title: '', description: '', category: '웹 개발', budget: '', duration: '', location: '원격', applicationDeadline: '', requiredSkills: [] })
+    } catch {
+      alert('등록에 실패했습니다.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['partnerProjects', page, searchQuery, categoryFilter, activeTab],
@@ -59,14 +105,23 @@ export default function PartnerMatchingProjectsPage() {
   ]
 
   return (
+    <>
     <div className="min-h-screen bg-bg-primary">
       <Navbar />
       {/* Header */}
       <div className="border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-8">
-            <h1 className="text-3xl font-bold text-text-primary mb-2">파트너라운지</h1>
-            <p className="text-text-secondary">다양한 프로젝트를 탐색하고 지원하세요</p>
+          <div className="py-8 flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-text-primary mb-2">파트너라운지</h1>
+              <p className="text-text-secondary">다양한 프로젝트를 탐색하고 지원하세요</p>
+            </div>
+            {isCorporate && (
+              <button onClick={() => setShowModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-text-primary rounded-lg text-sm font-medium transition-colors">
+                <Plus className="w-4 h-4" /> 프로젝트 등록
+              </button>
+            )}
           </div>
           <div className="flex gap-6 -mb-px">
             <Link
@@ -236,5 +291,102 @@ export default function PartnerMatchingProjectsPage() {
         )}
       </div>
     </div>
+    {showModal && (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div className="bg-bg-secondary border border-line rounded-2xl w-full max-w-xl my-8 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-text-primary font-bold text-lg">프로젝트 등록</h3>
+            <button onClick={() => setShowModal(false)} className="text-text-secondary hover:text-text-primary"><X className="w-5 h-5" /></button>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-text-secondary text-xs mb-1">제목 *</label>
+              <input value={form.title} onChange={e => handleField('title', e.target.value)}
+                placeholder="프로젝트 제목을 입력하세요"
+                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
+            </div>
+            <div>
+              <label className="block text-text-secondary text-xs mb-1">설명 *</label>
+              <textarea value={form.description} onChange={e => handleField('description', e.target.value)}
+                placeholder="프로젝트 내용을 설명해주세요" rows={4}
+                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent resize-none" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-text-secondary text-xs mb-1">카테고리 *</label>
+                <select value={form.category} onChange={e => handleField('category', e.target.value)}
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent">
+                  {categoryOptions.filter(o => o.value !== 'all').map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-text-secondary text-xs mb-1">예산</label>
+                <input value={form.budget} onChange={e => handleField('budget', e.target.value)}
+                  placeholder="예: 500만원 ~ 1000만원"
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
+              </div>
+              <div>
+                <label className="block text-text-secondary text-xs mb-1">기간</label>
+                <input value={form.duration} onChange={e => handleField('duration', e.target.value)}
+                  placeholder="예: 3개월"
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
+              </div>
+              <div>
+                <label className="block text-text-secondary text-xs mb-1">위치</label>
+                <input value={form.location} onChange={e => handleField('location', e.target.value)}
+                  placeholder="예: 원격, 서울"
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-text-secondary text-xs mb-1">마감일</label>
+              <input type="date" value={form.applicationDeadline} onChange={e => handleField('applicationDeadline', e.target.value)}
+                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
+            </div>
+            <div>
+              <label className="block text-text-secondary text-xs mb-1">필요 스킬</label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {form.requiredSkills.map(s => (
+                  <span key={s} className="flex items-center gap-1 bg-accent-light text-accent px-2 py-0.5 rounded text-xs">
+                    {s}
+                    <button onClick={() => removeSkill(s)} className="hover:text-accent-text"><X className="w-3 h-3" /></button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input value={skillInput} onChange={e => setSkillInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill(skillInput) } }}
+                  placeholder="스킬 입력 후 Enter"
+                  className="flex-1 bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
+              </div>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {SKILL_SUGGESTIONS.filter(s => !form.requiredSkills.includes(s)).map(s => (
+                  <button key={s} onClick={() => addSkill(s)}
+                    className="px-2 py-0.5 bg-bg-tertiary border border-line text-text-secondary hover:border-accent hover:text-accent rounded text-xs transition-colors">
+                    + {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button onClick={() => setShowModal(false)}
+              className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">
+              취소
+            </button>
+            <button onClick={handleSubmit} disabled={submitting}
+              className="flex-1 px-4 py-2.5 bg-accent hover:bg-accent-hover text-text-primary rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              등록
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

@@ -94,7 +94,10 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
     const { role } = req.body
     if (!['developer', 'player', 'admin'].includes(role))
       return res.status(400).json({ message: '유효하지 않은 역할입니다' })
-    const user = await User.findByIdAndUpdate(id, { role }, { new: true }).select('-password')
+    const update = role === 'admin'
+      ? { $set: { role, adminGrantedAt: new Date() } }
+      : { $set: { role }, $unset: { adminGrantedAt: '' } }
+    const user = await User.findByIdAndUpdate(id, update, { new: true }).select('-password')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
     res.json({ message: '역할이 변경되었습니다', user })
   } catch {
@@ -757,12 +760,12 @@ export const approveUser = async (req: AuthRequest, res: Response) => {
 export const getPendingMemberCounts = async (req: AuthRequest, res: Response) => {
   try {
     const [total, developer, partner, admin, corporate, individual] = await Promise.all([
-      User.countDocuments({ approvalStatus: 'pending' }),
-      User.countDocuments({ approvalStatus: 'pending', memberType: 'corporate' }),
+      User.countDocuments({ approvalStatus: 'pending', role: { $ne: 'admin' } }),
+      User.countDocuments({ approvalStatus: 'pending', memberType: 'corporate', role: { $ne: 'admin' } }),
       User.countDocuments({ approvalStatus: 'pending', role: 'partner' }),
       User.countDocuments({ approvalStatus: 'pending', role: 'admin' }),
-      User.countDocuments({ approvalStatus: 'pending', memberType: 'corporate' }),
-      User.countDocuments({ approvalStatus: 'pending', memberType: 'individual' }),
+      User.countDocuments({ approvalStatus: 'pending', memberType: 'corporate', role: { $ne: 'admin' } }),
+      User.countDocuments({ approvalStatus: 'pending', memberType: 'individual', role: { $ne: 'admin' } }),
     ])
     res.json({ total, developer, partner, admin, corporate, individual })
   } catch {

@@ -1,38 +1,29 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import partnerService, { PartnerApplication } from '@/services/partnerService'
-import { ChevronLeft, ChevronRight, Loader2, X, Check, XCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react'
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
-  pending:  { label: '심사 중',  cls: 'bg-yellow-600/20 text-yellow-300 border border-yellow-500/40' },
-  approved: { label: '선정됨',  cls: 'bg-accent-light text-accent border border-green-500/40' },
-  rejected: { label: '거절됨',  cls: 'bg-accent-light text-accent-text border border-red-500/40' },
-  suspended:{ label: '정지됨',  cls: 'bg-bg-muted/40 text-text-secondary border border-line' },
+  pending:  { label: '등록 중',  cls: 'bg-yellow-600/20 text-yellow-300 border border-yellow-500/40' },
+  approved: { label: '등록됨',   cls: 'bg-accent-light text-accent border border-green-500/40' },
+  rejected: { label: '비활성',   cls: 'bg-accent-light text-accent-text border border-red-500/40' },
+  suspended:{ label: '정지됨',   cls: 'bg-bg-muted/40 text-text-secondary border border-line' },
 }
 
 const TABS = [
-  { value: 'all',      label: '전체' },
-  { value: 'pending',  label: '심사 중' },
-  { value: 'approved', label: '선정됨' },
-  { value: 'rejected', label: '거절됨' },
+  { value: 'all',       label: '전체' },
+  { value: 'approved',  label: '등록 기업' },
+  { value: 'suspended', label: '정지됨' },
 ]
 
 function DetailModal({
   partner,
   onClose,
-  onApprove,
-  onReject,
-  loading,
 }: {
   partner: PartnerApplication
   onClose: () => void
-  onApprove: () => void
-  onReject: (reason: string) => void
-  loading: boolean
 }) {
-  const [rejectReason, setRejectReason] = useState('')
-  const [showRejectInput, setShowRejectInput] = useState(false)
 
   return (
     <div className="fixed inset-0 bg-bg-overlay z-50 flex items-center justify-center p-4">
@@ -103,52 +94,7 @@ function DetailModal({
             <p className="text-text-primary text-sm">{new Date(partner.createdAt).toLocaleDateString('ko-KR')}</p>
           </div>
 
-          {partner.status === 'rejected' && partner.rejectedReason && (
-            <div>
-              <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">거절 사유</p>
-              <p className="text-accent-text text-sm bg-accent-light rounded-lg p-3">{partner.rejectedReason}</p>
-            </div>
-          )}
         </div>
-
-        {partner.status === 'pending' && (
-          <div className="p-6 border-t border-line space-y-3">
-            {showRejectInput ? (
-              <div className="space-y-2">
-                <textarea
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="거절 사유를 입력하세요"
-                  rows={3}
-                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-line resize-none"
-                />
-                <div className="flex gap-2">
-                  <button onClick={() => setShowRejectInput(false)}
-                    className="flex-1 py-2 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">
-                    취소
-                  </button>
-                  <button onClick={() => onReject(rejectReason)} disabled={loading}
-                    className="flex-1 py-2 text-sm text-text-primary bg-red-700 hover:bg-red-800 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
-                    거절 확인
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex gap-3">
-                <button onClick={() => setShowRejectInput(true)} disabled={loading}
-                  className="flex-1 py-2 text-sm text-accent-text border border-red-500/40 rounded-lg hover:bg-accent-light transition-colors flex items-center justify-center gap-2">
-                  <XCircle className="w-4 h-4" /> 거절
-                </button>
-                <button onClick={onApprove} disabled={loading}
-                  className="flex-1 py-2 text-sm text-text-primary bg-green-700 hover:bg-green-800 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  승인
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )
@@ -161,7 +107,6 @@ export default function AdminPartnerRequestsPage() {
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('all')
   const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState(false)
   const [selected, setSelected] = useState<PartnerApplication | null>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
@@ -188,42 +133,12 @@ export default function AdminPartnerRequestsPage() {
 
   useEffect(() => { load() }, [load])
 
-  const handleApprove = async () => {
-    if (!selected) return
-    setActionLoading(true)
-    try {
-      await partnerService.admin.updateRequest(selected._id, { status: 'approved' })
-      showToast('승인되었습니다')
-      setSelected(null)
-      load()
-    } catch {
-      showToast('처리 실패', false)
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  const handleReject = async (reason: string) => {
-    if (!selected) return
-    setActionLoading(true)
-    try {
-      await partnerService.admin.updateRequest(selected._id, { status: 'rejected', rejectedReason: reason })
-      showToast('거절되었습니다')
-      setSelected(null)
-      load()
-    } catch {
-      showToast('처리 실패', false)
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-text-primary font-bold text-xl">파트너 신청 관리</h1>
+            <h1 className="text-text-primary font-bold text-xl">라운지 등록 기업</h1>
             <p className="text-text-secondary text-sm mt-1">총 {total}건</p>
           </div>
         </div>
@@ -245,9 +160,9 @@ export default function AdminPartnerRequestsPage() {
         </div>
 
         <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
-          <table className="w-full">
+          <table className="w-full divide-y divide-line">
             <thead>
-              <tr className="border-b border-line">
+              <tr className="border-b border-line divide-x divide-line/40">
                 <th className="px-4 py-3 text-left text-text-secondary text-xs font-medium">#</th>
                 <th className="px-4 py-3 text-left text-text-secondary text-xs font-medium">사용자명</th>
                 <th className="px-4 py-3 text-left text-text-secondary text-xs font-medium">이메일</th>
@@ -265,7 +180,7 @@ export default function AdminPartnerRequestsPage() {
                 <tr><td colSpan={6} className="py-12 text-center text-text-secondary text-sm">신청 내역이 없습니다</td></tr>
               ) : (
                 requests.map((r, idx) => (
-                  <tr key={r._id} className="border-b border-line/50 hover:bg-bg-tertiary/30 transition-colors">
+                  <tr key={r._id} className="border-b border-line/50 hover:bg-bg-tertiary/30 transition-colors divide-x divide-line/30">
                     <td className="px-4 py-3 text-text-secondary text-sm">{(page - 1) * 20 + idx + 1}</td>
                     <td className="px-4 py-3 text-text-primary text-sm font-medium">{r.userId?.username ?? '-'}</td>
                     <td className="px-4 py-3 text-text-secondary text-sm">{r.userId?.email ?? '-'}</td>
@@ -307,9 +222,6 @@ export default function AdminPartnerRequestsPage() {
         <DetailModal
           partner={selected}
           onClose={() => setSelected(null)}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          loading={actionLoading}
         />
       )}
 

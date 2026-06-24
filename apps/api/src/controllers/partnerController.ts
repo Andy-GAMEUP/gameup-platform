@@ -26,10 +26,12 @@ export const applyPartner = async (req: AuthRequest, res: Response) => {
       externalUrl: externalUrl || '',
       selectedTopics: selectedTopics || [],
       profileImage: profileImage || '',
+      status: 'approved',
+      approvedAt: new Date(),
     })
     await partner.save()
 
-    res.status(201).json({ message: '파트너 신청이 완료되었습니다', partner })
+    res.status(201).json({ message: '파트너 프로필이 등록되었습니다', partner })
   } catch {
     res.status(500).json({ message: '파트너 신청 실패' })
   }

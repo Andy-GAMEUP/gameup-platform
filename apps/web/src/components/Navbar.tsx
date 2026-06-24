@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare, Building2, Sun, Moon } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Button from './Button'
 import { useAuth } from '@/lib/useAuth'
 import { useTheme } from '@/lib/useTheme'
@@ -14,6 +14,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
@@ -23,8 +24,20 @@ export default function Navbar() {
   const isCorporateApproved = user?.memberType === 'corporate' && user?.companyInfo?.approvalStatus === 'approved'
   const isCorporateDeveloper = isCorporateApproved && user?.companyInfo?.companyType?.includes('developer')
   const isCorporatePartner = isCorporateApproved && !isCorporateDeveloper
-  const showDeveloperCenter = user?.role === 'developer' || isCorporateDeveloper
+  const showDeveloperCenter = isCorporateDeveloper
   const showPartnerCenter = isCorporatePartner
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false)
+      }
+    }
+    if (profileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [profileMenuOpen])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -127,7 +140,7 @@ export default function Navbar() {
                     </span>
                   )}
                 </button>
-                <div className="relative">
+                <div className="relative" ref={profileMenuRef}>
                   <button
                     onClick={() => setProfileMenuOpen((v) => !v)}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-tertiary hover:bg-line-light transition-colors"

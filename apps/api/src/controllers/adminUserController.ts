@@ -10,15 +10,15 @@ export const getIndividualMembers = async (req: AuthRequest, res: Response) => {
       limit = 20,
       search,
       status,
-      minLevel,
-      maxLevel,
+      minLevel, maxLevel,
+      levelMin, levelMax,
       startDate,
       endDate,
-      sort = 'createdAt',
-      order = 'desc',
+      sort, sortBy,
+      order, sortOrder,
     } = req.query
 
-    const filter: Record<string, unknown> = { memberType: 'individual' }
+    const filter: Record<string, unknown> = { memberType: 'individual', role: { $ne: 'admin' } }
 
     if (search) {
       filter.$or = [
@@ -26,12 +26,15 @@ export const getIndividualMembers = async (req: AuthRequest, res: Response) => {
         { email: { $regex: search, $options: 'i' } },
       ]
     }
-    if (status === 'active') filter.isActive = true
-    if (status === 'inactive') filter.isActive = false
-    if (minLevel || maxLevel) {
+    const resolvedStatus = String(status ?? '')
+    if (resolvedStatus === 'active' || resolvedStatus === '정상') filter.isActive = true
+    if (resolvedStatus === 'inactive' || resolvedStatus === '정지') filter.isActive = false
+    const lvMin = levelMin ?? minLevel
+    const lvMax = levelMax ?? maxLevel
+    if (lvMin || lvMax) {
       const levelFilter: Record<string, number> = {}
-      if (minLevel) levelFilter.$gte = Number(minLevel)
-      if (maxLevel) levelFilter.$lte = Number(maxLevel)
+      if (lvMin) levelFilter.$gte = Number(lvMin)
+      if (lvMax) levelFilter.$lte = Number(lvMax)
       filter.level = levelFilter
     }
     if (startDate || endDate) {
@@ -45,13 +48,14 @@ export const getIndividualMembers = async (req: AuthRequest, res: Response) => {
       filter.createdAt = dateFilter
     }
 
-    const sortOrder = order === 'asc' ? 1 : -1
-    const sortKey = String(sort)
+    const resolvedOrder = String(sortOrder ?? order ?? 'desc')
+    const resolvedSort = String(sortBy ?? sort ?? 'createdAt')
+    const sortOrderNum = resolvedOrder === 'asc' ? 1 : -1
 
     const total = await UserModel.countDocuments(filter)
     const users = await UserModel.find(filter)
       .select('-password')
-      .sort({ [sortKey]: sortOrder })
+      .sort({ [resolvedSort]: sortOrderNum })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
 
@@ -74,7 +78,7 @@ export const getCorporateMembers = async (req: AuthRequest, res: Response) => {
       order = 'desc',
     } = req.query
 
-    const filter: Record<string, unknown> = { memberType: 'corporate' }
+    const filter: Record<string, unknown> = { memberType: 'corporate', role: { $ne: 'admin' } }
 
     if (search) {
       filter.$or = [
