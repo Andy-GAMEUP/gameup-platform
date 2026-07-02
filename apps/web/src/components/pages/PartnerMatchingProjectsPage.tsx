@@ -1,15 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import Navbar from '@/components/Navbar'
 import partnerMatchingService, { PartnerProjectItem } from '@/services/partnerMatchingService'
 import { useAuth } from '@/lib/useAuth'
-import { X, Plus, Loader2 } from 'lucide-react'
+import { Plus, Loader2, Search, Clock, Wallet, Users } from 'lucide-react'
 
 const categoryOptions = [
-  { value: 'all', label: '전체' },
+  { value: 'all', label: '협업 파트' },
   { value: '웹 개발', label: '웹 개발' },
   { value: '앱 개발', label: '앱 개발' },
   { value: '디자인', label: '디자인' },
@@ -21,71 +21,62 @@ const categoryOptions = [
   { value: '컨설팅', label: '컨설팅' },
 ]
 
-const statusLabel: Record<string, { text: string; color: string }> = {
-  recruiting: { text: '모집중', color: 'bg-green-500/20 text-green-400' },
-  ongoing: { text: '진행중', color: 'bg-accent-light text-accent' },
-  completed: { text: '완료', color: 'bg-bg-muted/20 text-text-secondary' },
+const statusLabel: Record<string, { text: string; badge: string; border: string }> = {
+  recruiting: { text: '모집중', badge: 'bg-emerald-100 text-emerald-700 font-semibold',   border: 'border-l-emerald-400' },
+  ongoing:    { text: '진행중', badge: 'bg-violet-100 text-violet-700 font-semibold',     border: 'border-l-violet-500' },
+  completed:  { text: '완료',   badge: 'bg-zinc-100 text-zinc-600 font-semibold',         border: 'border-l-zinc-400' },
 }
 
 const SKILL_SUGGESTIONS = ['Unity', 'Unreal', 'React', 'Node.js', 'Python', 'Figma', 'iOS', 'Android', 'QA', '마케팅', '번역', '기획']
 
 export default function PartnerMatchingProjectsPage() {
   const { user, isAuthenticated } = useAuth()
-  const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState('all')
-  const [activeTab, setActiveTab] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([])
+  const [ownerTypeFilter, setOwnerTypeFilter] = useState('all')
+  const [showCategoryDrop, setShowCategoryDrop] = useState(false)
+  const [skillFilter, setSkillFilter] = useState<string[]>([])
+  const [showSkillDrop, setShowSkillDrop] = useState(false)
+  const [sortOrder, setSortOrder] = useState('latest')
   const [page, setPage] = useState(1)
+  const categoryDropRef = useRef<HTMLDivElement>(null)
+  const skillDropRef = useRef<HTMLDivElement>(null)
 
-  // 등록 모달
-  const [showModal, setShowModal] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [skillInput, setSkillInput] = useState('')
-  const [form, setForm] = useState({
-    title: '', description: '', category: '웹 개발',
-    budget: '', duration: '', location: '원격',
-    applicationDeadline: '', requiredSkills: [] as string[],
-  })
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (categoryDropRef.current && !categoryDropRef.current.contains(e.target as Node))
+        setShowCategoryDrop(false)
+      if (skillDropRef.current && !skillDropRef.current.contains(e.target as Node))
+        setShowSkillDrop(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const isCorporate = isAuthenticated && user?.memberType === 'corporate'
 
-  const handleField = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
-
-  const addSkill = (skill: string) => {
-    const s = skill.trim()
-    if (s && !form.requiredSkills.includes(s))
-      setForm(f => ({ ...f, requiredSkills: [...f.requiredSkills, s] }))
-    setSkillInput('')
+  const toggleCategory = (val: string) => {
+    setCategoryFilter(prev =>
+      prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
+    )
+    setPage(1)
   }
 
-  const removeSkill = (skill: string) =>
-    setForm(f => ({ ...f, requiredSkills: f.requiredSkills.filter(s => s !== skill) }))
-
-  const handleSubmit = async () => {
-    if (!form.title || !form.description || !form.category) return alert('제목, 설명, 카테고리는 필수입니다.')
-    setSubmitting(true)
-    try {
-      await partnerMatchingService.createProject(form)
-      queryClient.invalidateQueries({ queryKey: ['partnerProjects'] })
-      queryClient.invalidateQueries({ queryKey: ['partnerProjectStats'] })
-      setShowModal(false)
-      setForm({ title: '', description: '', category: '웹 개발', budget: '', duration: '', location: '원격', applicationDeadline: '', requiredSkills: [] })
-    } catch {
-      alert('등록에 실패했습니다.')
-    } finally {
-      setSubmitting(false)
-    }
+  const toggleSkill = (val: string) => {
+    setSkillFilter(prev =>
+      prev.includes(val) ? prev.filter(v => v !== val) : [...prev, val]
+    )
+    setPage(1)
   }
 
   const { data, isLoading } = useQuery({
-    queryKey: ['partnerProjects', page, searchQuery, categoryFilter, activeTab],
+    queryKey: ['partnerProjects', page, searchQuery, categoryFilter, skillFilter, ownerTypeFilter],
     queryFn: () =>
       partnerMatchingService.getProjects({
-        page,
-        limit: 12,
+        page, limit: 12,
         search: searchQuery || undefined,
-        category: categoryFilter !== 'all' ? categoryFilter : undefined,
-        tab: activeTab !== 'all' ? activeTab : undefined,
+        category: categoryFilter.length === 1 ? categoryFilter[0] : undefined,
+        ownerType: ownerTypeFilter !== 'all' ? ownerTypeFilter : undefined,
       }),
   })
 
@@ -98,176 +89,267 @@ export default function PartnerMatchingProjectsPage() {
   const pagination = data?.pagination
   const stats = statsData?.stats
 
-  const tabs = [
-    { key: 'all', label: '전체' },
-    { key: 'recruiting', label: '모집중' },
-    { key: 'ongoing', label: '진행중' },
-  ]
-
   return (
-    <>
     <div className="min-h-screen bg-bg-primary">
       <Navbar />
+
       {/* Header */}
-      <div className="border-b border-line">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-8 flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-text-primary mb-2">파트너라운지</h1>
-              <p className="text-text-secondary">다양한 프로젝트를 탐색하고 지원하세요</p>
-            </div>
+      <div className="max-w-5xl mx-auto px-6 pt-10 pb-6">
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary tracking-tight">프로젝트</h1>
+            <p className="text-text-muted text-sm mt-1">파트너와 함께할 프로젝트를 찾아보세요</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {stats && (
+              <span className="text-sm text-text-muted whitespace-nowrap">
+                <span className="font-medium text-text-secondary">{stats.total}개</span> 프로젝트
+              </span>
+            )}
             {isCorporate && (
-              <button onClick={() => setShowModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent-hover text-text-primary rounded-lg text-sm font-medium transition-colors">
-                <Plus className="w-4 h-4" /> 프로젝트 등록
-              </button>
+              <Link href="/partner/projects/new"
+                className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary rounded-lg text-sm font-medium transition-colors">
+                <Plus className="w-4 h-4" /> 등록
+              </Link>
             )}
           </div>
-          <div className="flex gap-6 -mb-px">
-            <Link
-              href="/partner/projects"
-              className="pb-3 px-1 text-sm font-medium border-b-2 border-accent text-accent transition-colors"
-            >
-              프로젝트
-            </Link>
-            <Link
-              href="/partner/directory"
-              className="pb-3 px-1 text-sm font-medium border-b-2 border-transparent text-text-secondary hover:text-text-primary transition-colors"
-            >
-              파트너 디렉토리
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search and Filter */}
-        <div className="bg-bg-tertiary/50 border border-line-light rounded-xl p-6 mb-8">
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="md:col-span-2 relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="프로젝트 또는 회사명으로 검색..."
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
-                className="w-full bg-bg-secondary border border-line text-text-primary rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-accent"
-              />
-            </div>
-            <select
-              value={categoryFilter}
-              onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}
-              className="bg-bg-secondary border border-line text-text-primary rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent"
-            >
-              {categoryOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
         </div>
 
-        {/* Stats */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            {[
-              { value: stats.total, label: '전체 프로젝트', color: 'text-accent' },
-              { value: stats.recruiting, label: '모집중', color: 'text-green-400' },
-              { value: stats.totalApplicants, label: '총 지원자', color: 'text-purple-400' },
-              { value: stats.newThisWeek, label: '신규 (주간)', color: 'text-orange-400' },
-            ].map((stat, i) => (
-              <div key={i} className="bg-bg-tertiary/50 border border-line-light rounded-xl p-6 text-center">
-                <div className={`text-3xl font-bold ${stat.color} mb-1`}>{stat.value}</div>
-                <div className="text-sm text-text-muted">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        )}
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-line pb-3">
-          {tabs.map((tab) => (
+        {/* Filter + Search bar */}
+        <div className="flex items-center gap-2 mb-6 border-b border-line pb-4">
+          <select
+            value={ownerTypeFilter}
+            onChange={(e) => { setOwnerTypeFilter(e.target.value); setPage(1) }}
+            className="bg-bg-secondary border border-line text-text-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent whitespace-nowrap"
+          >
+            <option value="all">기업 형태</option>
+            <option value="developer">개발자</option>
+            <option value="partner">파트너</option>
+          </select>
+          {/* 협업 파트 멀티셀렉 */}
+          <div ref={categoryDropRef} className="relative">
             <button
-              key={tab.key}
-              onClick={() => { setActiveTab(tab.key); setPage(1) }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === tab.key ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
+              onClick={() => setShowCategoryDrop(v => !v)}
+              className={`flex items-center gap-2 bg-bg-secondary border rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors ${
+                categoryFilter.length > 0
+                  ? 'border-accent text-accent'
+                  : 'border-line text-text-secondary hover:border-accent/50'
               }`}
             >
-              {tab.label}
+              {categoryFilter.length === 0
+                ? '협업 파트'
+                : categoryFilter.length === 1
+                  ? categoryFilter[0]
+                  : `협업 파트 ${categoryFilter.length}개`}
+              <svg className={`w-3.5 h-3.5 transition-transform ${showCategoryDrop ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
-          ))}
+
+            {showCategoryDrop && (
+              <div className="absolute top-full left-0 mt-1 bg-bg-card border border-line rounded-xl shadow-xl z-50 py-1 min-w-[140px]">
+                {categoryOptions.filter(o => o.value !== 'all').map((opt) => {
+                  const checked = categoryFilter.includes(opt.value)
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => toggleCategory(opt.value)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-bg-tertiary transition-colors text-left"
+                    >
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                        checked ? 'bg-accent border-accent' : 'border-line'
+                      }`}>
+                        {checked && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className={checked ? 'text-text-primary font-medium' : 'text-text-secondary'}>
+                        {opt.label}
+                      </span>
+                    </button>
+                  )
+                })}
+                {categoryFilter.length > 0 && (
+                  <div className="border-t border-line/50 mt-1 pt-1">
+                    <button
+                      onClick={() => { setCategoryFilter([]); setPage(1) }}
+                      className="w-full px-3 py-1.5 text-xs text-text-muted hover:text-danger transition-colors text-left"
+                    >
+                      초기화
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          {/* 필요 스킬 멀티셀렉 */}
+          <div ref={skillDropRef} className="relative">
+            <button
+              onClick={() => setShowSkillDrop(v => !v)}
+              className={`flex items-center gap-2 bg-bg-secondary border rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors ${
+                skillFilter.length > 0
+                  ? 'border-accent text-accent'
+                  : 'border-line text-text-secondary hover:border-accent/50'
+              }`}
+            >
+              {skillFilter.length === 0
+                ? '필요 스킬'
+                : skillFilter.length === 1
+                  ? skillFilter[0]
+                  : `필요 스킬 ${skillFilter.length}개`}
+              <svg className={`w-3.5 h-3.5 transition-transform ${showSkillDrop ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showSkillDrop && (
+              <div className="absolute top-full left-0 mt-1 bg-bg-card border border-line rounded-xl shadow-xl z-50 py-1 min-w-[140px]">
+                {SKILL_SUGGESTIONS.map((skill) => {
+                  const checked = skillFilter.includes(skill)
+                  return (
+                    <button
+                      key={skill}
+                      onClick={() => toggleSkill(skill)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-bg-tertiary transition-colors text-left"
+                    >
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                        checked ? 'bg-accent border-accent' : 'border-line'
+                      }`}>
+                        {checked && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </span>
+                      <span className={checked ? 'text-text-primary font-medium' : 'text-text-secondary'}>
+                        {skill}
+                      </span>
+                    </button>
+                  )
+                })}
+                {skillFilter.length > 0 && (
+                  <div className="border-t border-line/50 mt-1 pt-1">
+                    <button
+                      onClick={() => { setSkillFilter([]); setPage(1) }}
+                      className="w-full px-3 py-1.5 text-xs text-text-muted hover:text-danger transition-colors text-left"
+                    >
+                      초기화
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <input
+              type="text"
+              placeholder="프로젝트 또는 회사명 검색..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
+              className="w-full bg-bg-secondary border border-line text-text-primary rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-accent"
+            />
+          </div>
+          <select
+            value={sortOrder}
+            onChange={(e) => { setSortOrder(e.target.value); setPage(1) }}
+            className="bg-bg-secondary border border-line text-text-secondary rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-accent whitespace-nowrap"
+          >
+            <option value="latest">최신 순</option>
+            <option value="budget">금액 높은 순</option>
+            <option value="deadline">마감 임박 순</option>
+          </select>
         </div>
 
-        {/* Project Cards */}
+        {/* Project List */}
         {isLoading ? (
-          <div className="text-center py-12 text-text-secondary">불러오는 중...</div>
+          <div className="flex items-center justify-center py-20 text-text-muted text-sm">
+            <Loader2 className="w-4 h-4 animate-spin mr-2" /> 불러오는 중...
+          </div>
         ) : projects.length === 0 ? (
-          <div className="text-center py-12 text-text-muted">검색 결과가 없습니다.</div>
+          <div className="text-center py-20 text-text-muted text-sm">검색 결과가 없습니다.</div>
         ) : (
-          <div className="grid gap-6">
+          <div className="flex flex-col gap-3">
             {projects.map((project) => {
               const status = statusLabel[project.status] || statusLabel.recruiting
+              const deadline = project.applicationDeadline
+                ? new Date(project.applicationDeadline).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
+                : null
+              const companyName = project.ownerId?.companyInfo?.companyName || project.ownerId?.username
+
               return (
-                <div key={project._id} className="bg-bg-tertiary/50 border border-line-light rounded-xl p-6 hover:border-accent-muted transition-colors">
-                  {/* Header */}
-                  <div className="flex flex-wrap justify-between items-start gap-4 mb-3">
-                    <div className="flex flex-wrap gap-2">
-                      <span className={`px-2.5 py-0.5 rounded text-xs font-medium ${status.color}`}>{status.text}</span>
-                      <span className="bg-bg-tertiary/50 text-text-secondary px-2.5 py-0.5 rounded text-xs">{project.category}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-text-secondary">
-                      <span>지원자 {project.applicantCount}명</span>
-                    </div>
+                <Link key={project._id} href={`/partner/projects/${project._id}`}
+                  className="group bg-bg-secondary border border-line rounded-2xl p-5 hover:border-accent/40 hover:shadow-lg transition-all flex flex-col gap-3">
+
+                  {/* Row 1: 프로젝트명 + 모집중 배지 */}
+                  <div className="flex items-start justify-between gap-4">
+                    <h2 className="text-text-primary font-semibold text-sm leading-snug line-clamp-2 group-hover:text-accent transition-colors">
+                      {project.title}
+                    </h2>
+                    <span className={`flex-shrink-0 text-sm font-semibold px-4 py-2 rounded-xl ${status.badge}`}>
+                      {status.text}
+                    </span>
                   </div>
 
-                  <h2 className="text-2xl font-semibold text-text-primary mb-2">{project.title}</h2>
-                  <p className="text-text-secondary flex items-center gap-2 text-base mb-4">
-                    🏢 {project.ownerId?.companyInfo?.companyName || project.ownerId?.username}
-                  </p>
-                  <p className="text-text-secondary mb-6">{project.description}</p>
-
-                  {/* Meta */}
-                  <div className="grid sm:grid-cols-4 gap-4 mb-6 pb-6 border-b border-line-light">
-                    {[
-                      { icon: '💰', label: '예산', value: project.budget || `${project.budgetMin} ~ ${project.budgetMax}` },
-                      { icon: '📅', label: '기간', value: project.duration },
-                      { icon: '📍', label: '위치', value: project.location },
-                      { icon: '⏰', label: '마감일', value: project.applicationDeadline ? new Date(project.applicationDeadline).toLocaleDateString('ko-KR') : '-' },
-                    ].map((meta, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span>{meta.icon}</span>
-                        <div>
-                          <div className="text-xs text-text-muted">{meta.label}</div>
-                          <div className="font-medium text-text-primary text-sm">{meta.value || '-'}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Skills */}
-                  {project.requiredSkills?.length > 0 && (
-                    <div className="mb-6">
-                      <div className="text-sm font-medium text-text-secondary mb-3">필요 스킬</div>
-                      <div className="flex flex-wrap gap-2">
-                        {project.requiredSkills.map((skill, i) => (
-                          <span key={i} className="bg-accent-light text-accent px-2.5 py-1 rounded text-xs font-medium">{skill}</span>
-                        ))}
-                      </div>
+                  {/* Row 2: 로고 + 회사명 */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-gradient-to-br from-accent/30 to-accent/10 border border-accent/20 flex items-center justify-center text-accent font-bold text-xs flex-shrink-0">
+                      {companyName?.[0]?.toUpperCase() || '?'}
                     </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex flex-wrap gap-3">
-                    <Link href={`/partner/projects/${project._id}`} className="flex-1 min-w-[200px] bg-accent hover:bg-accent-hover text-text-primary py-2.5 rounded-lg text-sm font-medium text-center transition-colors">
-                      지원하기
-                    </Link>
-                    <Link href={`/partner/projects/${project._id}`} className="flex-1 min-w-[200px] border border-line hover:border-line text-text-secondary py-2.5 rounded-lg text-sm font-medium text-center transition-colors">
-                      상세보기
-                    </Link>
+                    <p className="text-text-muted text-xs truncate">{companyName}</p>
                   </div>
-                </div>
+
+                  {/* Row 3: 금액 + 마감일 */}
+                  <div className="flex items-center gap-3 flex-wrap text-xs text-text-muted pl-8">
+                    {(project.budget || project.budgetMin) && (
+                      <span className="flex items-center gap-1">
+                        <Wallet className="w-3 h-3" />
+                        {project.budget || `${project.budgetMin}~${project.budgetMax}`}
+                      </span>
+                    )}
+                    {deadline && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {deadline} 마감
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Row 4: 지원자 */}
+                  <div className="pl-8">
+                    <span className="flex items-center gap-1 text-xs text-text-muted">
+                      <Users className="w-3 h-3" />
+                      {project.applicantCount}명 지원
+                    </span>
+                  </div>
+
+                  {/* Row 5: 카테고리 + 스킬 + 지원자 + 지원하기 */}
+                  <div className="mt-auto pt-3 border-t border-line/40 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                      <span className="bg-bg-tertiary border border-line text-text-muted px-2 py-0.5 rounded-full text-xs flex-shrink-0">
+                        {project.category}
+                      </span>
+                      {project.requiredSkills?.slice(0, 3).map((skill, i) => (
+                        <span key={i} className="bg-accent/10 text-accent border border-accent/20 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0">
+                          {skill}
+                        </span>
+                      ))}
+                      {(project.requiredSkills?.length || 0) > 3 && (
+                        <span className="text-text-muted text-xs">+{project.requiredSkills.length - 3}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="flex items-center gap-1.5 text-sm font-semibold text-accent border-2 border-accent/40 px-4 py-2.5 rounded-xl group-hover:bg-accent group-hover:text-text-primary group-hover:border-accent transition-all whitespace-nowrap">
+                        지원하기
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </span>
+                    </div>
+                  </div>
+                </Link>
               )
             })}
           </div>
@@ -275,12 +357,12 @@ export default function PartnerMatchingProjectsPage() {
 
         {/* Pagination */}
         {pagination && pagination.pages > 1 && (
-          <div className="flex justify-center gap-2 mt-8">
+          <div className="flex justify-center gap-1.5 mt-8">
             {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((p) => (
               <button
                 key={p}
                 onClick={() => setPage(p)}
-                className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
                   p === page ? 'bg-accent text-text-primary' : 'text-text-secondary hover:bg-bg-tertiary'
                 }`}
               >
@@ -291,102 +373,5 @@ export default function PartnerMatchingProjectsPage() {
         )}
       </div>
     </div>
-    {showModal && (
-      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
-        <div className="bg-bg-secondary border border-line rounded-2xl w-full max-w-xl my-8 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-text-primary font-bold text-lg">프로젝트 등록</h3>
-            <button onClick={() => setShowModal(false)} className="text-text-secondary hover:text-text-primary"><X className="w-5 h-5" /></button>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <label className="block text-text-secondary text-xs mb-1">제목 *</label>
-              <input value={form.title} onChange={e => handleField('title', e.target.value)}
-                placeholder="프로젝트 제목을 입력하세요"
-                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
-            </div>
-            <div>
-              <label className="block text-text-secondary text-xs mb-1">설명 *</label>
-              <textarea value={form.description} onChange={e => handleField('description', e.target.value)}
-                placeholder="프로젝트 내용을 설명해주세요" rows={4}
-                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent resize-none" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-text-secondary text-xs mb-1">카테고리 *</label>
-                <select value={form.category} onChange={e => handleField('category', e.target.value)}
-                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent">
-                  {categoryOptions.filter(o => o.value !== 'all').map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-text-secondary text-xs mb-1">예산</label>
-                <input value={form.budget} onChange={e => handleField('budget', e.target.value)}
-                  placeholder="예: 500만원 ~ 1000만원"
-                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
-              </div>
-              <div>
-                <label className="block text-text-secondary text-xs mb-1">기간</label>
-                <input value={form.duration} onChange={e => handleField('duration', e.target.value)}
-                  placeholder="예: 3개월"
-                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
-              </div>
-              <div>
-                <label className="block text-text-secondary text-xs mb-1">위치</label>
-                <input value={form.location} onChange={e => handleField('location', e.target.value)}
-                  placeholder="예: 원격, 서울"
-                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-text-secondary text-xs mb-1">마감일</label>
-              <input type="date" value={form.applicationDeadline} onChange={e => handleField('applicationDeadline', e.target.value)}
-                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
-            </div>
-            <div>
-              <label className="block text-text-secondary text-xs mb-1">필요 스킬</label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {form.requiredSkills.map(s => (
-                  <span key={s} className="flex items-center gap-1 bg-accent-light text-accent px-2 py-0.5 rounded text-xs">
-                    {s}
-                    <button onClick={() => removeSkill(s)} className="hover:text-accent-text"><X className="w-3 h-3" /></button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input value={skillInput} onChange={e => setSkillInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill(skillInput) } }}
-                  placeholder="스킬 입력 후 Enter"
-                  className="flex-1 bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent" />
-              </div>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {SKILL_SUGGESTIONS.filter(s => !form.requiredSkills.includes(s)).map(s => (
-                  <button key={s} onClick={() => addSkill(s)}
-                    className="px-2 py-0.5 bg-bg-tertiary border border-line text-text-secondary hover:border-accent hover:text-accent rounded text-xs transition-colors">
-                    + {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button onClick={() => setShowModal(false)}
-              className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">
-              취소
-            </button>
-            <button onClick={handleSubmit} disabled={submitting}
-              className="flex-1 px-4 py-2.5 bg-accent hover:bg-accent-hover text-text-primary rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              등록
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-    </>
   )
 }
