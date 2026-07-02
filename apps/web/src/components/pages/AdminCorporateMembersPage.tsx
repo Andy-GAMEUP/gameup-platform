@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
 import adminService from '@/services/adminService'
-import { Loader2, Search, Building2, X } from 'lucide-react'
+import { Check, Loader2, Search, Building2, X, XCircle } from 'lucide-react'
 
 interface CorporateMember {
   _id: string
@@ -387,42 +387,48 @@ export default function AdminCorporateMembersPage() {
       )}
       {approvalModal.open && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-bg-secondary border border-line rounded-2xl w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-text-primary font-bold">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+              <h3 className="text-gray-900 font-bold text-base">
                 {approvalModal.action === 'approved' ? '기업회원 승인' : '기업회원 거절'}
               </h3>
               <button onClick={() => setApprovalModal({ open: false, userId: '', action: 'approved', reason: '' })}
-                className="text-text-secondary hover:text-text-primary">
-                <X className="w-5 h-5" />
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-900 transition-all shadow-sm">
+                <X className="w-4 h-4 stroke-[2.5]" />
               </button>
             </div>
-            <p className="text-text-secondary text-sm">
-              {approvalModal.action === 'approved'
-                ? '이 기업회원을 승인하시겠습니까?'
-                : '이 기업회원의 가입을 거절하시겠습니까?'}
-            </p>
-            {approvalModal.action === 'rejected' && (
-              <textarea
-                value={approvalModal.reason}
-                onChange={e => setApprovalModal(prev => ({ ...prev, reason: e.target.value }))}
-                placeholder="거절 사유를 입력해주세요"
-                rows={3}
-                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent resize-none"
-              />
-            )}
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => setApprovalModal({ open: false, userId: '', action: 'approved', reason: '' })}
-                className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">
-                취소
-              </button>
-              <button onClick={handleApproval} disabled={submitting}
-                className={`flex-1 px-4 py-2.5 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${
-                  approvalModal.action === 'approved' ? 'bg-accent hover:bg-accent-hover' : 'bg-red-600 hover:bg-red-700'
-                }`}>
-                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {approvalModal.action === 'approved' ? '승인' : '거절'}
-              </button>
+            <div className="px-6 py-5 space-y-3">
+              <p className="text-gray-500 text-sm">
+                {approvalModal.action === 'approved'
+                  ? '이 기업회원을 승인하시겠습니까?'
+                  : '이 기업회원의 가입을 거절하시겠습니까?'}
+              </p>
+              {approvalModal.action === 'rejected' && (
+                <textarea
+                  value={approvalModal.reason}
+                  onChange={e => setApprovalModal(prev => ({ ...prev, reason: e.target.value }))}
+                  placeholder="거절 사유를 입력해주세요"
+                  rows={3}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-800 text-sm focus:outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-100 transition-all resize-none"
+                />
+              )}
+              {approvalModal.action === 'approved' ? (
+                <button onClick={handleApproval} disabled={submitting}
+                  className="group w-full px-4 py-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 shadow-sm hover:shadow transition-all flex items-center gap-3 disabled:opacity-50">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center flex-shrink-0 transition-all">
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Check className="w-4 h-4 text-emerald-600" />}
+                  </div>
+                  <p className="text-emerald-700 font-semibold text-sm">승인</p>
+                </button>
+              ) : (
+                <button onClick={handleApproval} disabled={submitting}
+                  className="group w-full px-4 py-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 shadow-sm hover:shadow transition-all flex items-center gap-3 disabled:opacity-50">
+                  <div className="w-8 h-8 rounded-lg bg-rose-100 group-hover:bg-rose-200 flex items-center justify-center flex-shrink-0 transition-all">
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin text-rose-600" /> : <XCircle className="w-4 h-4 text-rose-600" />}
+                  </div>
+                  <p className="text-rose-700 font-semibold text-sm">거절</p>
+                </button>
+              )}
             </div>
           </div>
         </div>

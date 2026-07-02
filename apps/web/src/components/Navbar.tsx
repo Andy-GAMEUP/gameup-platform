@@ -2,18 +2,22 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare, Building2, Sun, Moon } from 'lucide-react'
+import { Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare, Sun, Moon, ChevronDown } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Button from './Button'
 import { useAuth } from '@/lib/useAuth'
 import { useTheme } from '@/lib/useTheme'
 import NotificationPanel from './NotificationPanel'
 import notificationService from '@/services/notificationService'
+import { partnerService } from '@/services/partnerService'
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [partnerDropdownOpen, setPartnerDropdownOpen] = useState(false)
+  const partnerCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const pathname = usePathname()
@@ -22,7 +26,25 @@ export default function Navbar() {
   const { theme, toggleTheme } = useTheme()
 
   const isCorporateApproved = user?.memberType === 'corporate' && user?.companyInfo?.approvalStatus === 'approved'
-  const isCorporateDeveloper = isCorporateApproved && user?.companyInfo?.companyType?.includes('developer')
+  const isCorporatePending = user?.memberType === 'corporate' && !isCorporateApproved && user?.role !== 'admin'
+
+  useEffect(() => {
+    if (!isCorporatePending) return
+    const allowed = ['/register', '/login', '/terms']
+    if (!allowed.some(p => pathname.startsWith(p))) {
+      router.replace('/register/pending')
+    }
+  }, [isCorporatePending, pathname, router])
+
+  const { data: myPartnerData } = useQuery({
+    queryKey: ['myPartnerStatus'],
+    queryFn: () => partnerService.getMyStatus(),
+    enabled: isAuthenticated,
+    retry: false,
+  })
+  const myPartnerId = myPartnerData?.partner?._id
+  const isTeamMember = myPartnerData?.isTeamMember === true
+  const isCorporateDeveloper = isCorporateApproved && (user?.companyInfo?.companyCategory === 'developer' || (!user?.companyInfo?.companyCategory && user?.companyInfo?.companyType?.includes('developer')))
   const isCorporatePartner = isCorporateApproved && !isCorporateDeveloper
   const showDeveloperCenter = isCorporateDeveloper
   const showPartnerCenter = isCorporatePartner
@@ -71,8 +93,8 @@ export default function Navbar() {
       // 비로그인: 메인, 베타존, 라이브게임, 플랫폼 소개, 커뮤니티
       links.push({ path: '/gameup_platform', label: '플랫폼 소개' })
       links.push({ path: '/community', label: '커뮤니티' })
-    } else if (isAdmin || isCorporateApproved || showDeveloperCenter) {
-      // 관리자 / 기업회원(승인) / 개발자(개인·기업): 메인, 베타존, 라이브게임, 커뮤니티, 파트너라운지
+    } else if (isAdmin || isCorporateApproved || showDeveloperCenter || isTeamMember) {
+      // 관리자 / 기업회원(승인) / 개발자(개인·기업) / 기업 소속 게임회원: 메인, 베타존, 라이브게임, 커뮤니티, 파트너라운지
       links.push({ path: '/community', label: '커뮤니티' })
       links.push({ path: '/partner', label: '파트너라운지' })
     } else {
@@ -106,15 +128,60 @@ export default function Navbar() {
 
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                href={link.path}
-                className={`transition-colors text-sm font-medium ${isActive(link.path) ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              if (link.path === '/partner' && (isCorporateApproved || isTeamMember || isAdmin)) {
+                return (
+                  <div key={link.path} className="relative"
+                    onMouseEnter={() => {
+                      if (partnerCloseTimer.current) clearTimeout(partnerCloseTimer.current)
+                      setPartnerDropdownOpen(true)
+                    }}
+                    onMouseLeave={() => {
+                      partnerCloseTimer.current = setTimeout(() => setPartnerDropdownOpen(false), 200)
+                    }}
+                  >
+                    <Link href="/partner"
+                      className={`flex items-center gap-1 transition-colors text-sm font-medium ${isActive(link.path) ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
+                    >
+                      {link.label}
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${partnerDropdownOpen ? 'rotate-180' : ''}`} />
+                    </Link>
+                    {partnerDropdownOpen && (
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full pt-1 w-36 z-50">
+                        <div className="bg-bg-card border border-line rounded-xl shadow-xl py-1">
+                          {myPartnerId && (
+                            <Link href={`/partner/${myPartnerId}`}
+                              onClick={() => setPartnerDropdownOpen(false)}
+                              className="block px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors">
+                              내채널
+                            </Link>
+                          )}
+                          <Link href="/partner/projects"
+                            onClick={() => setPartnerDropdownOpen(false)}
+                            className="block px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors">
+                            등록 프로젝트
+                          </Link>
+                          <Link href="/partner/directory"
+                            onClick={() => setPartnerDropdownOpen(false)}
+                            className="block px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors">
+                            파트너 찾기
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+              return (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  className={`transition-colors text-sm font-medium ${isActive(link.path) ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
           </div>
 
           {/* Desktop Right Area */}
@@ -223,16 +290,48 @@ export default function Navbar() {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <div className="md:hidden pb-4 space-y-1 border-t border-line pt-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                href={link.path}
-                className={`block px-3 py-2 rounded-lg transition-colors ${isActive(link.path) ? 'text-accent bg-accent-light' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              if (link.path === '/partner' && (isCorporateApproved || isTeamMember || isAdmin)) {
+                return (
+                  <div key={link.path}>
+                    <Link href="/partner"
+                      className={`block px-3 py-2 rounded-lg transition-colors ${isActive(link.path) ? 'text-accent bg-accent-light' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}
+                      onClick={() => setMobileMenuOpen(false)}>
+                      파트너라운지
+                    </Link>
+                    <div className="pl-5 space-y-0.5">
+                      {myPartnerId && (
+                        <Link href={`/partner/${myPartnerId}`}
+                          className="block px-3 py-1.5 rounded-lg text-sm text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                          onClick={() => setMobileMenuOpen(false)}>
+                          내채널
+                        </Link>
+                      )}
+                      <Link href="/partner/projects"
+                        className="block px-3 py-1.5 rounded-lg text-sm text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}>
+                        프로젝트
+                      </Link>
+                      <Link href="/partner/directory"
+                        className="block px-3 py-1.5 rounded-lg text-sm text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}>
+                        파트너 찾기
+                      </Link>
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  className={`block px-3 py-2 rounded-lg transition-colors ${isActive(link.path) ? 'text-accent bg-accent-light' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
             <div className="pt-2 border-t border-line space-y-1">
               {isAuthenticated && user ? (
                 <>

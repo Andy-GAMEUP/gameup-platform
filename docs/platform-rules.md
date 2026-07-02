@@ -1,6 +1,6 @@
 # GameUp 플랫폼 운영 규칙
 
-> 작성일: 2026-06-19  
+> 작성일: 2026-06-19 / 최종 수정: 2026-06-26  
 > 이 문서는 코드에서 실제 동작하는 규칙을 정리한 것입니다. 플랫폼에 참여하는 개발자·관리자·파트너 모두를 위한 기준입니다.
 
 ---
@@ -164,27 +164,75 @@ approvalStatus=review
 
 ---
 
-### 2.3 기업 회원 승인 절차
+### 2.3 기업 회원 규칙
+
+#### 기업 분류 체계
+
+기업 회원은 **두 단계**로 분류됩니다.
 
 ```
-기업회원 가입
+기업 회원 (memberType=corporate)
+├── 개발사 (companyCategory=developer)   ← 게임 개발 주체, 개발자 센터 접근 가능
+└── 파트너 (companyCategory=partner)    ← 게임 서비스 관련사, 파트너 라운지 전용
+    └── 사업 형태 (companyType, 복수 선택)
+        퍼블리셔 / 게임솔루션 / 게임서비스 / 운영 / QA / 마케팅 / 개발 / 원화 / 기타
+```
+
+- `companyCategory` = **상위 개념** (개발사 vs 파트너 구분)
+- `companyType` = **하위 개념** (사업 형태, 복수 선택 가능)
+- 가입 시 `companyCategory`와 `companyType` 모두 **필수**
+- 개발사는 게임 등록/관리 가능 (개발자 센터), 파트너는 파트너 라운지 전용
+
+> **하위 호환**: `companyCategory` 필드가 없는 기존 계정은 `companyType.includes('developer')`로 개발사 여부를 판단합니다.
+
+#### 가입 및 승인
+
+```
+기업회원 가입 (회사명, 기업 구분(개발사/파트너), 사업 형태, 연락처 입력)
   ↓
-companyInfo 입력 (회사명, 사업자번호, 업종 등)
-  ↓
-approvalStatus=pending (대기)
+approvalStatus=pending (가입 대기) → /register/pending 화면으로 이동
   ↓
 관리자(super) 검토
   ↓
-[승인] approvalStatus=approved, companyInfo.isApproved=true
-[거부] approvalStatus=rejected, companyInfo.rejectedReason 기록
+[승인] approvalStatus=approved → 파트너 라운지 채널 자동 생성
+[삭제] 계정 완전 삭제 (DB에서 제거)
 ```
 
 - 기업 승인은 **super 관리자만** 가능
-- `companyType`: developer, publisher, game_solution, game_service, operations, qa, marketing, other
+- **거절(rejected) 기능 없음**: 관리자는 승인 또는 계정 삭제만 가능
+- 승인된 회원(`approvalStatus=approved`)은 관리자가 삭제 불가 (버튼 비활성화)
+
+#### 미승인 기업회원 접근 제한
+
+- `approvalStatus=pending` 상태의 기업회원은 `/register/pending`, `/login`, `/terms` 외 모든 페이지 접근 불가
+- 접근 시도 시 `/register/pending`으로 자동 리다이렉트
+- `/register/pending` 페이지에서 "홈으로 돌아가기" 클릭 시 **로그아웃** 후 홈으로 이동
+
+#### 회사 단일 계정 원칙
+
+- **하나의 회사에 하나의 대표 기업회원 계정만** 허용
+- 가입 시 동일 회사명(대기/승인 상태)이 이미 존재하면 가입 불가
+- 이 계정만 파트너 라운지 채널을 소유함
+
+#### 역할 제한
+
+- 기업회원 계정(`memberType=corporate`)은 **관리자(`role=admin`)로 변경 불가**
+- 관리자가 역할 변경 시도 시 403 오류 반환
 
 ---
 
-### 2.4 계정 정지 (ban)
+### 2.4 파트너 채널 팀원
+
+- 기업회원 대표 계정은 **내채널 > 팀원 관리**에서 게임회원을 팀원으로 추가할 수 있다
+- 팀원으로 추가된 게임회원은 **파트너 라운지 접근 가능** + **채널 수정 권한** (게시글 작성, 채널 프로필 업데이트)
+- 팀원 추가/제거는 **채널 소유자(기업 대표 계정)만** 가능 (게임회원 팀원은 팀원 관리 불가)
+- 기업회원 계정은 팀원으로 추가 불가
+- 채널 소유자 본인도 팀원으로 추가 불가
+- `GET /partner/status` 호출 시 팀원 여부(`isTeamMember: true`)와 소속 파트너 정보가 함께 반환됨
+
+---
+
+### 2.5 계정 정지 (ban)
 
 - 정지 처리: `isActive=false`, `bannedAt` 기록
 - 정지 범위(`banScope`): `posts`(게시글), `comments`(댓글), 또는 둘 다
@@ -192,13 +240,14 @@ approvalStatus=pending (대기)
 - **만료일 지나면 자동 해제** (커뮤니티 접근 시 자동 체크)
 - 정지/해제 시 `history` 배열에 이력 기록
 - 정지/해제 시 해당 사용자에게 **시스템 알림** 자동 발송
+- **즉시 차단**: 정지된 계정은 로그인 중이어도 다음 API 요청 시 즉시 차단 (`isActive=false` DB 실시간 확인, `401 ACCOUNT_SUSPENDED` 반환 후 로그아웃)
 
 **정지 불가 계정:**
-- `role=admin`인 계정은 삭제 불가 (정지는 가능)
+- `role=admin`인 계정은 정지 체크 제외 (관리자는 항상 접근 가능)
 
 ---
 
-### 2.5 OAuth 연동
+### 2.6 OAuth 연동
 
 - 지원 제공자: `kakao`, `naver`
 - 계정 연동/해제 가능
@@ -219,13 +268,16 @@ super는 모든 권한을 가집니다. normal에 추가로:
 | 기능 | 설명 |
 |------|------|
 | 게임 승인/거부 | approveGame (approve/reject/review) |
-| 회원 승인/삭제 | 기업회원 승인, 회원 완전 삭제 |
+| 기업회원 승인 | companyInfo.approvalStatus 변경 |
+| 기업회원 계정 삭제 | 미승인(pending) 계정만 삭제 가능 |
 | 관리자 계정 생성 | createAdminUser |
 | 리뷰 삭제 | 영구 삭제 |
 | 공지사항 삭제 | 영구 삭제 |
 | 파트너 신청 삭제 | deletePartnerRequest |
 | 파트너 토픽 삭제 | deleteTopicGroup |
 | 지원 시즌/신청서/배너/탭 삭제 | 영구 삭제 |
+
+> **참고**: 기업회원 미승인(pending) 계정은 super 관리자가 삭제 가능. 승인된 일반 회원 계정은 삭제 불가, 정지(ban)만 가능.
 
 ---
 
@@ -243,6 +295,7 @@ super는 모든 권한을 가집니다. normal에 추가로:
 | 공지사항 작성/수정 | |
 | 파트너 신청 승인/거부 | |
 | 파트너 상태/공개 변경 | 프로필 수정 포함 |
+| 파트너 채널 팀원 직접 관리 | 소속 추가/제거 (관리 패널에서) |
 | 퍼블리싱 배너/탭 관리 | 생성/수정 (삭제는 super) |
 | 지원 시즌/신청서/배너 관리 | 생성/수정 (삭제는 super) |
 | 솔루션 생성/수정 | |
@@ -495,37 +548,50 @@ approvalStatus=pending
 
 ## 9. 파트너 라운지
 
-> 최종 업데이트: 2026-06-24
+> 최종 업데이트: 2026-06-25
 
-### 9.1 파트너 라운지 등록 흐름 (현행)
+### 9.1 파트너 라운지 채널 등록 흐름 (현행)
 
 ```
 기업회원 가입
   ↓
 관리자(super) 승인 → companyInfo.approvalStatus=approved
   ↓
-파트너 라운지(/partner) 접속
+파트너 라운지 채널 자동 생성 (status=approved)
+  (이미 승인된 기업회원은 /partner 첫 접속 시 자동 생성)
   ↓
-"파트너 프로필 등록" 버튼 클릭 (로그인된 승인 기업회원에게만 노출)
-  ↓
-자기소개 + 활동계획 입력 (필수), 슬로건/URL (선택)
-  ↓
-1인 1건 제한 (중복 등록 불가)
-  ↓
-status=approved, approvedAt 자동 기록 (관리자 승인 불필요)
-  ↓
-/partner/projects 화면으로 자동 이동
+내채널(/partner/:id)에서 프로필 업데이트 가능
 ```
 
-**등록 조건:**
-- `memberType=corporate` + `companyInfo.approvalStatus=approved`인 사용자만 등록 가능
-- `introduction`, `activityPlan` 필수 입력
-- 이미 등록된 경우 중복 등록 불가 (409 반환)
+**채널 소유 조건:**
+- `memberType=corporate` + `companyInfo.approvalStatus=approved`인 계정만 채널 보유
+- 기업당 채널 1개 (userId unique 제약)
 
-### 9.2 관리자 확인
+### 9.1-1 기업회원 정보 관리 구분
 
-- 등록된 파트너 프로필은 `/admin/partner-requests` ("라운지 등록 기업") 페이지에서 확인
-- 관리자 승인 절차 없음 — 조회 및 상태(정지/활성) 변경만 가능
+기업회원의 정보는 **기업 정보**와 **개인 정보** 두 곳으로 구분하여 관리합니다.
+
+| 구분 | 관리 경로 | 내용 |
+|------|-----------|------|
+| 기업 정보 | `/partner/:id` (내채널) | 회사명, 기업 유형, 슬로건, 채널 프로필, 팀원 관리, 게시글 등 기업 채널 전반 |
+| 개인 정보 | `/my` (마이페이지) | 개인 닉네임, 프로필 이미지, 비밀번호, 연락처 등 계정 개인 정보 |
+
+### 9.2 팀원 시스템
+
+- 채널 소유자는 **내채널 > 팀원 관리** 탭에서 게임회원을 팀원으로 추가 가능
+- 팀원이 된 게임회원 권한: **파트너 라운지 접근 + 채널 게시글 작성 + 채널 프로필 업데이트**
+- 팀원 관리 탭(팀원 추가/제거)은 **채널 소유자(기업 대표 계정)만** 노출
+- 팀원 추가/제거: 채널 소유자 전용 (관리자는 관리 패널에서 직접 처리 가능 — 아래 참고)
+- 추가 가능 대상: `memberType=individual` 게임회원만 (기업회원 불가)
+
+#### 관리자의 팀원 직접 관리 (normal+)
+
+| 액션 | 엔드포인트 | 설명 |
+|------|-----------|------|
+| 팀원 추가 | `POST /admin/partner/:partnerId/team` | `{ userId }` — 소유자 확인 없이 추가 |
+| 팀원 제거 | `DELETE /admin/partner/team-member/:userId` | userId만으로 소속 파트너 자동 탐색 후 제거 |
+
+- 관리자 패널 게임회원 탭 **관리** 버튼 → "기업 소속 시키기" / "소속된 기업에서 제외" 액션으로 처리
 
 ### 9.3 파트너 활동 제한
 
@@ -538,6 +604,7 @@ status=approved, approvedAt 자동 기록 (관리자 승인 불필요)
 |------|---------|
 | 파트너 상태/공개 변경 | normal+ |
 | 파트너 프로필 수정 | normal+ |
+| 파트너 채널 팀원 추가/제거 | normal+ |
 | 파트너 등록 삭제 | super |
 | 토픽 그룹 삭제 | super |
 | 파트너 게시글 삭제 | super |

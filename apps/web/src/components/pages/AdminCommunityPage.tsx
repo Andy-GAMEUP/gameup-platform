@@ -2298,12 +2298,19 @@ export default function AdminCommunityPage() {
       {toast && <Toast {...toast} />}
 
       <div className="space-y-5">
-        <h2 className="text-text-primary text-xl font-bold flex items-center gap-2">
-          {activeTab === 'banner' && <ImageIcon className="w-5 h-5 text-purple-400" />}
-          {activeTab === 'announcements' && <Megaphone className="w-5 h-5 text-purple-400" />}
-          {activeTab === 'reviews' && <MessageSquare className="w-5 h-5 text-purple-400" />}
-          {activeTab === 'banner' ? '배너 관리' : activeTab === 'announcements' ? '공지사항' : '게임 리뷰 관리'}
-        </h2>
+        <div>
+          <h2 className="text-text-primary text-xl font-bold flex items-center gap-2">
+            {activeTab === 'banner' && <ImageIcon className="w-5 h-5 text-purple-400" />}
+            {activeTab === 'announcements' && <Megaphone className="w-5 h-5 text-purple-400" />}
+            {activeTab === 'reviews' && <MessageSquare className="w-5 h-5 text-purple-400" />}
+            {activeTab === 'banner' ? '배너 관리' : activeTab === 'announcements' ? '공지사항' : '게임 리뷰 관리'}
+          </h2>
+          <p className="text-text-muted text-sm mt-1">
+            {activeTab === 'banner' && '커뮤니티에서 메인 화면에 노출되는 배너 이미지를 등록하고 관리합니다'}
+            {activeTab === 'announcements' && '커뮤니티에서 플랫폼 전체 공지사항을 작성하고 관리합니다'}
+            {activeTab === 'reviews' && '커뮤니티에서 사용자가 작성한 게임 리뷰를 검토하고 관리합니다'}
+          </p>
+        </div>
 
         {/* 탭 콘텐츠 */}
         {activeTab === 'banner' && <BannerTab showToast={showToast} />}

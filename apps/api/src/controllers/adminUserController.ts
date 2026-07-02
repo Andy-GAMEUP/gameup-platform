@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
-import { UserModel, ActivityScoreModel, PointHistoryModel, LevelModel, NotificationModel, PostModel } from '@gameup/db'
+import { UserModel, ActivityScoreModel, PointHistoryModel, LevelModel, NotificationModel, PostModel, PartnerModel } from '@gameup/db'
 import { emitToUser } from '../socket'
 
 export const getIndividualMembers = async (req: AuthRequest, res: Response) => {
@@ -59,7 +59,26 @@ export const getIndividualMembers = async (req: AuthRequest, res: Response) => {
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
 
-    res.json({ users, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
+    // 기업 소속 정보 (팀원으로 등록된 경우)
+    const userIds = users.map(u => u._id)
+    const partnerTeamRecords = await PartnerModel.find({ 'teamMembers.userId': { $in: userIds } })
+      .populate('userId', 'companyInfo')
+      .lean()
+    const affiliationMap = new Map<string, string>()
+    for (const p of partnerTeamRecords) {
+      const companyName = (p.userId as any)?.companyInfo?.companyName
+      if (companyName) {
+        for (const tm of p.teamMembers) {
+          affiliationMap.set(tm.userId.toString(), companyName)
+        }
+      }
+    }
+    const usersWithAffiliation = users.map(u => ({
+      ...u.toObject(),
+      companyName: affiliationMap.get(u._id.toString()) || null,
+    }))
+
+    res.json({ users: usersWithAffiliation, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
   } catch {
     res.status(500).json({ message: '개인 회원 목록 조회 실패' })
   }

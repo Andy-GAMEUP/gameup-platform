@@ -10,6 +10,7 @@ export interface PartnerProfile {
   selectedTopics: string[]
   profileImage: string
   postCount: number
+  isProfilePublic: boolean
   approvedAt?: string
   createdAt: string
 }
@@ -56,7 +57,7 @@ export interface PartnerMinihomeInfo {
 export interface PartnerApplication {
   _id: string
   userId: {
-    _id: string; username: string; email: string; level?: number; profileImage?: string; createdAt: string
+    _id: string; username: string; email: string; level?: number; profileImage?: string; createdAt: string; memberType?: string
     companyInfo?: { companyName?: string; companyType?: string[]; employeeCount?: number; businessNumber?: string; description?: string }
     contactPerson?: { name?: string; email?: string; phone?: string }
   }
@@ -98,6 +99,18 @@ export const partnerService = {
     externalUrl?: string
     selectedTopics?: string[]
     profileImage?: string
+    techStack?: string[]
+    portfolioUrls?: string[]
+    availability?: string
+    careerYears?: number
+    completedProjectCount?: number
+    teamSize?: string
+    genres?: string[]
+    preferredProjectSize?: string
+    contractTypes?: string[]
+    budgetRange?: string
+    availableDuration?: string
+    workStyle?: string
   }) => {
     const res = await apiClient.post('/partner/apply', data)
     return res.data
@@ -133,6 +146,11 @@ export const partnerService = {
     return res.data as { partner: PartnerProfile }
   },
 
+  toggleProfileVisibility: async (partnerId: string) => {
+    const res = await apiClient.patch(`/partner/${partnerId}/visibility`)
+    return res.data as { success: boolean; isProfilePublic: boolean }
+  },
+
   getPartnerPosts: async (partnerId: string, params?: { page?: number; limit?: number; topic?: string; sort?: string }) => {
     const res = await apiClient.get(`/partner/${partnerId}/posts`, { params })
     return res.data as { posts: PartnerPostItem[]; total: number; page: number; totalPages: number }
@@ -163,24 +181,34 @@ export const partnerService = {
     return res.data as { liked: boolean; likeCount: number }
   },
 
-  admin: {
-    getRequests: async (params?: { page?: number; limit?: number; status?: string; from?: string; to?: string }) => {
-      const res = await apiClient.get('/admin/partner/requests', { params })
-      return res.data
-    },
+  searchUsers: async (q: string) => {
+    const res = await apiClient.get('/partner/users/search', { params: { q } })
+    return res.data as { users: { _id: string; username: string; email: string; profileImage?: string }[] }
+  },
 
-    getRequestDetail: async (id: string) => {
-      const res = await apiClient.get(`/admin/partner/requests/${id}`)
+  getTeamMembers: async (partnerId: string) => {
+    const res = await apiClient.get(`/partner/${partnerId}/team`)
+    return res.data as { teamMembers: { userId: { _id: string; username: string; role: string; profileImage?: string }; addedAt: string }[] }
+  },
+
+  addTeamMember: async (partnerId: string, username: string) => {
+    const res = await apiClient.post(`/partner/${partnerId}/team`, { username })
+    return res.data
+  },
+
+  removeTeamMember: async (partnerId: string, memberId: string) => {
+    const res = await apiClient.delete(`/partner/${partnerId}/team/${memberId}`)
+    return res.data
+  },
+
+  admin: {
+    getRequests: async (params?: { page?: number; limit?: number; status?: string; from?: string; to?: string; search?: string; companyType?: string }) => {
+      const res = await apiClient.get('/admin/partner/requests', { params })
       return res.data
     },
 
     updateRequest: async (id: string, data: { status: string; rejectedReason?: string }) => {
       const res = await apiClient.patch(`/admin/partner/requests/${id}`, data)
-      return res.data
-    },
-
-    deleteRequest: async (id: string) => {
-      const res = await apiClient.delete(`/admin/partner/requests/${id}`)
       return res.data
     },
 
@@ -273,6 +301,21 @@ export const partnerService = {
 
     getProjectApplicants: async (id: string) => {
       const res = await apiClient.get(`/admin/partner/projects/${id}/applicants`)
+      return res.data
+    },
+
+    getApprovedPartners: async () => {
+      const res = await apiClient.get('/admin/partner/list', { params: { status: 'approved', limit: 100 } })
+      return res.data as { partners: any[]; total: number }
+    },
+
+    addTeamMember: async (partnerId: string, userId: string) => {
+      const res = await apiClient.post(`/admin/partner/${partnerId}/team`, { userId })
+      return res.data
+    },
+
+    removeTeamMemberByUser: async (userId: string) => {
+      const res = await apiClient.delete(`/admin/partner/team-member/${userId}`)
       return res.data
     },
   },

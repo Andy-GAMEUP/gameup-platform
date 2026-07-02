@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { authenticateToken } from '../middleware/auth'
+import { authenticateToken, optionalAuth } from '../middleware/auth'
 import {
   getProjects,
   getProjectStats,
@@ -9,10 +9,16 @@ import {
   deleteProject,
   applyToProject,
   getProjectApplicants,
+  getMyProjectApplicants,
   updateApplicationStatus,
   getMyApplications,
   getMyProjects,
+  getProjectsByUser,
   getPartnerActivity,
+  getProjectInquiries,
+  createProjectInquiry,
+  deleteProjectInquiry,
+  hideProjectInquiry,
 } from '../controllers/partnerProjectController'
 
 const router = Router()
@@ -24,6 +30,8 @@ router.get('/partner/activity', authenticateToken, getPartnerActivity)
 router.get('/partner/projects', getProjects)
 router.get('/partner/projects/stats', getProjectStats)
 router.get('/partner/projects/me', authenticateToken, getMyProjects)
+router.get('/partner/projects/user/:userId', getProjectsByUser)
+router.get('/partner/projects/applicants/me', authenticateToken, getMyProjectApplicants)
 
 // 지원 관련
 router.get('/partner/applications/me', authenticateToken, getMyApplications)
@@ -38,5 +46,11 @@ router.delete('/partner/projects/:id', authenticateToken, deleteProject)
 router.post('/partner/projects/:id/apply', authenticateToken, applyToProject)
 router.get('/partner/projects/:id/applicants', authenticateToken, getProjectApplicants)
 router.patch('/partner/projects/:id/applicants/:appId', authenticateToken, updateApplicationStatus)
+
+// 문의하기
+router.get('/partner/projects/:id/inquiries', optionalAuth, getProjectInquiries)
+router.post('/partner/projects/:id/inquiries', authenticateToken, createProjectInquiry)
+router.delete('/partner/projects/:id/inquiries/:inquiryId', authenticateToken, deleteProjectInquiry)
+router.patch('/partner/projects/:id/inquiries/:inquiryId/hide', authenticateToken, hideProjectInquiry)
 
 export default router

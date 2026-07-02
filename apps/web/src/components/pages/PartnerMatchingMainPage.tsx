@@ -1,51 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/useAuth'
 import partnerMatchingService from '@/services/partnerMatchingService'
-import partnerService from '@/services/partnerService'
-import { X } from 'lucide-react'
 
 export default function PartnerMatchingMainPage() {
-  const router = useRouter()
   const { isAuthenticated, user } = useAuth()
 
   const isCorporateApproved = user?.memberType === 'corporate' && user?.companyInfo?.approvalStatus === 'approved'
 
-  const { data: activityData, isLoading: activityLoading } = useQuery({
-    queryKey: ['partnerActivity'],
-    queryFn: () => partnerMatchingService.getPartnerActivity(),
-    enabled: isAuthenticated && isCorporateApproved,
-  })
-
-  useEffect(() => {
-    if (activityData?.hasActivity) {
-      router.replace('/partner/projects')
-    }
-  }, [activityData, router])
-
   const { data: projectsData } = useQuery({
     queryKey: ['partnerMatchingRecentProjects'],
     queryFn: () => partnerMatchingService.getProjects({ limit: 3 }),
-    enabled: !activityData?.hasActivity,
   })
-
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState({ slogan: '', introduction: '', activityPlan: '', externalUrl: '' })
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
-
-  if (isAuthenticated && isCorporateApproved && (activityLoading || activityData?.hasActivity)) {
-    return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-        <div className="text-text-secondary">Loading...</div>
-      </div>
-    )
-  }
 
   const features = [
     { icon: '🏢', title: '개발사 매칭', description: '검증된 게임개발사를 직접 매칭하여 프로젝트를 성공적으로 완성하세요' },
@@ -63,28 +32,7 @@ export default function PartnerMatchingMainPage() {
 
   const recentProjects = projectsData?.projects || []
 
-  const handleProfileSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setSubmitting(true)
-    try {
-      await partnerService.apply({
-        slogan: form.slogan,
-        introduction: form.introduction,
-        activityPlan: form.activityPlan,
-        externalUrl: form.externalUrl,
-      })
-      setModalOpen(false)
-      router.push('/partner/projects')
-    } catch (err: any) {
-      setError(err?.response?.data?.message || '등록에 실패했습니다.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   return (
-    <>
     <div className="min-h-screen bg-bg-secondary">
       <Navbar />
 
@@ -104,14 +52,6 @@ export default function PartnerMatchingMainPage() {
                 개발, 디자인, 마케팅, QA까지 프로젝트에 필요한 모든 전문가를 한곳에서 만나보세요.
               </p>
               <div className="flex flex-col items-center gap-3 pt-2">
-                {isAuthenticated && isCorporateApproved && (
-                  <button
-                    onClick={() => setModalOpen(true)}
-                    className="bg-bg-card border-2 border-accent text-accent hover:bg-accent hover:text-text-primary px-8 py-3 rounded-lg font-semibold transition-colors w-64"
-                  >
-                    ✏️ 파트너 프로필 등록
-                  </button>
-                )}
                 <div className="flex flex-wrap gap-4 justify-center">
                   <Link href="/partner/projects" className="bg-accent hover:bg-accent-hover text-text-primary px-8 py-3 rounded-lg font-medium transition-colors">
                     프로젝트 둘러보기 →
@@ -223,81 +163,5 @@ export default function PartnerMatchingMainPage() {
 
       </div>
     </div>
-
-    {/* 프로필 등록 모달 */}
-    {modalOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-        <div className="bg-bg-card border border-line rounded-2xl w-full max-w-lg shadow-2xl">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-line">
-            <h2 className="text-lg font-bold text-text-primary">파트너 프로필 등록</h2>
-            <button onClick={() => setModalOpen(false)} className="text-text-muted hover:text-text-primary transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <form onSubmit={handleProfileSubmit} className="px-6 py-5 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">한줄 소개 <span className="text-text-muted text-xs">(선택)</span></label>
-              <input
-                type="text"
-                value={form.slogan}
-                onChange={e => setForm(f => ({ ...f, slogan: e.target.value }))}
-                placeholder="ex) 게임 UI/UX 전문 디자이너"
-                className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">자기소개 <span className="text-danger text-xs">*</span></label>
-              <textarea
-                value={form.introduction}
-                onChange={e => setForm(f => ({ ...f, introduction: e.target.value }))}
-                rows={3}
-                placeholder="보유 역량, 경력, 전문 분야를 소개해 주세요"
-                className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent resize-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">활동 계획 <span className="text-danger text-xs">*</span></label>
-              <textarea
-                value={form.activityPlan}
-                onChange={e => setForm(f => ({ ...f, activityPlan: e.target.value }))}
-                rows={3}
-                placeholder="파트너로서 어떤 활동을 계획하고 있는지 알려주세요"
-                className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent resize-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1">홈페이지 / 포트폴리오 URL <span className="text-text-muted text-xs">(선택)</span></label>
-              <input
-                type="url"
-                value={form.externalUrl}
-                onChange={e => setForm(f => ({ ...f, externalUrl: e.target.value }))}
-                placeholder="https://..."
-                className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
-              />
-            </div>
-            {error && <p className="text-sm text-danger">{error}</p>}
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="flex-1 px-4 py-2.5 border border-line rounded-lg text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
-              >
-                취소
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex-1 px-4 py-2.5 bg-accent hover:bg-accent-hover text-text-primary rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
-              >
-                {submitting ? '등록 중...' : '프로필 등록'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )}
-    </>
   )
 }

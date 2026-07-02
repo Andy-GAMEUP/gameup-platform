@@ -114,8 +114,11 @@ export default function AdminDashboardPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-text-primary text-xl font-bold">플랫폼 대시보드</h2>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-text-primary text-xl font-bold">플랫폼 대시보드</h2>
+            <p className="text-text-muted text-sm mt-1">플랫폼 전체 현황과 주요 지표를 한눈에 확인합니다</p>
+          </div>
           <span className="text-text-muted text-xs">{new Date().toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' })}</span>
         </div>
 

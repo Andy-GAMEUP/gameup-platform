@@ -220,9 +220,12 @@ export default function AdminActivityScorePage() {
   return (
     <AdminLayout>
       <div className="space-y-5">
-        <div className="flex items-center gap-3">
-          <Activity className="w-5 h-5 text-accent-text" />
-          <h2 className="text-text-primary text-xl font-bold">활동점수 관리</h2>
+        <div>
+          <div className="flex items-center gap-3">
+            <Activity className="w-5 h-5 text-accent-text" />
+            <h2 className="text-text-primary text-xl font-bold">활동점수 관리</h2>
+          </div>
+          <p className="text-text-muted text-sm mt-1">회원 활동점수 정책과 획득 내역을 관리합니다</p>
         </div>
 
         {/* 탭 */}

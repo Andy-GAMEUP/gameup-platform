@@ -182,9 +182,12 @@ export default function AdminAnalyticsPage() {
     <AdminLayout>
       <div className="space-y-6">
         {/* 헤더 */}
-        <div className="flex items-center gap-3">
-          <BarChart3 className="w-5 h-5 text-accent-text" />
-          <h2 className="text-text-primary text-xl font-bold">방문 통계</h2>
+        <div>
+          <div className="flex items-center gap-3">
+            <BarChart3 className="w-5 h-5 text-accent-text" />
+            <h2 className="text-text-primary text-xl font-bold">방문 통계</h2>
+          </div>
+          <p className="text-text-muted text-sm mt-1">플랫폼 방문자 현황과 유입 추이를 확인합니다</p>
         </div>
 
         {/* ── KPI 카드 ──────────────────────────────────────── */}

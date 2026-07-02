@@ -1,6 +1,6 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
-import { ShieldBan, ShieldCheck, Search, Loader2, AlertCircle, CheckCircle, History, Flag, MessageCircle } from 'lucide-react'
+import { Search, Loader2, AlertCircle, CheckCircle, History } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import adminService, { ReportedUser } from '@/services/adminService'
 
@@ -84,94 +84,6 @@ function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   )
 }
 
-function BanModal({ user, onClose, onDone }: {
-  user: ReportedUser
-  onClose: () => void
-  onDone: () => void
-}) {
-  const isBanned = !user.isActive
-  const [duration, setDuration] = useState<number | null>(7)
-  const [scopePosts, setScopePosts] = useState(true)
-  const [scopeComments, setScopeComments] = useState(true)
-  const [loading, setLoading] = useState(false)
-
-  const DURATIONS = [
-    { label: '1주일',  days: 7 },
-    { label: '3주',    days: 21 },
-    { label: '한 달', days: 30 },
-    { label: '3달',   days: 90 },
-    { label: '영구',  days: null },
-  ]
-
-  const submit = async () => {
-    if (!isBanned && !scopePosts && !scopeComments) return
-    setLoading(true)
-    try {
-      if (isBanned) {
-        await adminService.banUser(user._id, { isActive: true })
-      } else {
-        const banScope = [...(scopePosts ? ['posts'] : []), ...(scopeComments ? ['comments'] : [])]
-        await adminService.banUser(user._id, {
-          isActive: false,
-          banScope,
-          ...(duration !== null ? { banDuration: duration } : {}),
-        })
-      }
-      onDone()
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-sm p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-        <h3 className="text-text-primary font-semibold mb-4">
-          {isBanned ? `"${user.username}" 차단 해제` : `"${user.username}" 커뮤니티 차단`}
-        </h3>
-        {!isBanned && (
-          <div className="space-y-3 mb-4">
-            <div>
-              <label className="block text-xs text-text-secondary mb-2">차단 범위</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-text-primary">
-                  <input type="checkbox" checked={scopePosts} onChange={e => setScopePosts(e.target.checked)}
-                    className="w-4 h-4 accent-accent" />
-                  게시글 작성
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-text-primary">
-                  <input type="checkbox" checked={scopeComments} onChange={e => setScopeComments(e.target.checked)}
-                    className="w-4 h-4 accent-accent" />
-                  댓글 작성
-                </label>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-text-secondary mb-1">차단 기간</label>
-              <select value={duration ?? 'permanent'} onChange={e => setDuration(e.target.value === 'permanent' ? null : Number(e.target.value))}
-                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
-                {DURATIONS.map(d => (
-                  <option key={d.label} value={d.days ?? 'permanent'}>{d.label}</option>
-                ))}
-              </select>
-            </div>
-            <p className="text-xs text-text-muted">차단 시 해당 유저에게 자동으로 알림이 전송됩니다.</p>
-          </div>
-        )}
-        {isBanned && (
-          <p className="text-text-secondary text-sm mb-4">이 유저의 커뮤니티 차단을 해제하시겠습니까?</p>
-        )}
-        <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">취소</button>
-          <button onClick={submit} disabled={loading}
-            className={`px-3 py-1.5 text-sm text-white rounded-lg ${isBanned ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} disabled:opacity-50`}>
-            {loading ? '처리 중...' : isBanned ? '차단 해제' : '차단'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 function formatDate(date?: string) {
   if (!date) return '-'
@@ -190,13 +102,12 @@ function formatRemaining(bannedUntil?: string) {
   return `${hours}시간 ${mins}분`
 }
 
-export default function Page() {
+export function ReportedUsersTab() {
   const [users, setUsers] = useState<ReportedUser[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'banned' | 'active'>('all')
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
-  const [banTarget, setBanTarget] = useState<ReportedUser | null>(null)
   const [appealTarget, setAppealTarget] = useState<ReportedUser | null>(null)
   const [historyTarget, setHistoryTarget] = useState<ReportedUser | null>(null)
 
@@ -230,7 +141,7 @@ export default function Page() {
   })
 
   return (
-    <AdminLayout>
+    <>
       {toast && <Toast {...toast} />}
       {historyTarget && <HistoryModal user={historyTarget} onClose={() => setHistoryTarget(null)} />}
       {appealTarget?.appeal && (
@@ -240,20 +151,7 @@ export default function Page() {
           onClose={() => setAppealTarget(null)}
         />
       )}
-      {banTarget && (
-        <BanModal
-          user={banTarget}
-          onClose={() => setBanTarget(null)}
-          onDone={() => {
-            setBanTarget(null)
-            showToast(banTarget.isActive ? '차단되었습니다' : '차단이 해제되었습니다')
-            load()
-          }}
-        />
-      )}
-
       <div className="space-y-4">
-        {/* 필터 */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-48">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
@@ -282,66 +180,48 @@ export default function Page() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide">
-                  <th className="px-4 py-3 text-left">유저</th>
-                  <th className="px-4 py-3 text-center whitespace-nowrap">게시글 신고</th>
-                  <th className="px-4 py-3 text-center whitespace-nowrap">댓글 신고</th>
-                  <th className="px-4 py-3 text-center whitespace-nowrap">총 신고수</th>
-                  <th className="px-4 py-3 text-center whitespace-nowrap">상태</th>
-                  <th className="px-4 py-3 text-center whitespace-nowrap">차단 일자</th>
-                  <th className="px-4 py-3 text-center whitespace-nowrap">남은 기간</th>
-                  <th className="px-4 py-3 text-center whitespace-nowrap">이의 신청</th>
-                  <th className="px-4 py-3 text-center whitespace-nowrap">관리</th>
+                  <th className="px-4 py-3 text-left border-r border-line/30">유저</th>
+                  <th className="px-4 py-3 text-center whitespace-nowrap border-r border-line/30">총 신고수</th>
+                  <th className="px-4 py-3 text-center whitespace-nowrap border-r border-line/30">게시글 신고</th>
+                  <th className="px-4 py-3 text-center whitespace-nowrap border-r border-line/30">댓글 신고</th>
+                  <th className="px-4 py-3 text-center whitespace-nowrap border-r border-line/30">상태</th>
+                  <th className="px-4 py-3 text-center whitespace-nowrap border-r border-line/30">차단 일자</th>
+                  <th className="px-4 py-3 text-center whitespace-nowrap border-r border-line/30">남은 기간</th>
+                  <th className="px-4 py-3 text-center whitespace-nowrap border-r border-line/30">이의 신청</th>
                   <th className="px-4 py-3 text-center whitespace-nowrap">히스토리</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(u => (
                   <tr key={u._id} className="border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 border-r border-line/20">
                       <div className="font-medium text-text-primary">{u.username}</div>
                       <div className="text-xs text-text-muted">{u.email}</div>
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-orange-400 font-semibold">{u.postReportCount}</span>
-                      <span className="text-text-muted text-xs ml-1">({u.reportedPostCount}건)</span>
+                    <td className="px-4 py-3 text-center text-text-primary border-r border-line/20">
+                      {u.totalReportCount}
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-orange-400 font-semibold">{u.commentReportCount}</span>
-                      <span className="text-text-muted text-xs ml-1">({u.reportedCommentCount}건)</span>
+                    <td className="px-4 py-3 text-center text-text-primary border-r border-line/20">
+                      {u.postReportCount}
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`font-bold text-base ${u.totalReportCount >= 10 ? 'text-red-400' : u.totalReportCount >= 5 ? 'text-orange-400' : 'text-text-secondary'}`}>
-                        {u.totalReportCount}
-                      </span>
+                    <td className="px-4 py-3 text-center text-text-primary border-r border-line/20">
+                      {u.commentReportCount}
                     </td>
-                    <td className="px-4 py-3 text-center">
-                      {u.isActive ? (
-                        <span className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/30 font-semibold">활동 중</span>
-                      ) : (() => {
+                    <td className="px-4 py-3 text-center text-text-primary border-r border-line/20">
+                      {u.isActive ? '활동 중' : (() => {
                         const s = u.banScope ?? []
-                        const label = s.includes('posts') && s.includes('comments') ? '전체 차단'
+                        return s.includes('posts') && s.includes('comments') ? '전체 차단'
                           : s.includes('posts') ? '게시글 차단'
                           : s.includes('comments') ? '댓글 차단' : '차단'
-                        return <span className="text-xs px-2 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 font-semibold">{label}</span>
                       })()}
                     </td>
-                    <td className="px-4 py-3 text-center text-xs whitespace-nowrap text-text-secondary">
+                    <td className="px-4 py-3 text-center text-xs whitespace-nowrap text-text-primary border-r border-line/20">
                       {u.isActive ? '-' : formatDate(u.bannedAt)}
                     </td>
-                    <td className="px-4 py-3 text-center text-xs whitespace-nowrap">
-                      {u.isActive ? (
-                        <span className="text-text-muted">-</span>
-                      ) : (
-                        <span className={
-                          !u.bannedUntil ? 'text-red-400 font-semibold'
-                          : formatRemaining(u.bannedUntil) === '만료' ? 'text-text-muted'
-                          : 'text-orange-400 font-semibold'
-                        }>
-                          {formatRemaining(u.bannedUntil)}
-                        </span>
-                      )}
+                    <td className="px-4 py-3 text-center text-xs whitespace-nowrap text-text-primary border-r border-line/20">
+                      {u.isActive ? '-' : formatRemaining(u.bannedUntil)}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center border-r border-line/20">
                       {u.appeal ? (
                         <button onClick={() => setAppealTarget(u)}
                           className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-blue-700/20 text-blue-400 border-blue-600/40 hover:bg-blue-700/40 transition-colors whitespace-nowrap">
@@ -349,19 +229,6 @@ export default function Page() {
                         </button>
                       ) : (
                         <span className="text-xs text-text-muted">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {u.isActive ? (
-                        <button onClick={() => setBanTarget(u)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
-                          <ShieldBan className="w-3 h-3" /> 차단
-                        </button>
-                      ) : (
-                        <button onClick={() => setBanTarget(u)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
-                          <ShieldCheck className="w-3 h-3" /> 해제
-                        </button>
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -378,6 +245,18 @@ export default function Page() {
           </div>
         )}
       </div>
+    </>
+  )
+}
+
+export default function Page() {
+  return (
+    <AdminLayout>
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-text-primary">신고된 사용자</h2>
+        <p className="text-text-muted text-sm mt-1">커뮤니티에서 신고 이력이 있는 사용자 목록을 조회하고 차단 여부를 관리합니다</p>
+      </div>
+      <ReportedUsersTab />
     </AdminLayout>
   )
 }

@@ -5,7 +5,7 @@ import AdminLayout from '@/components/AdminLayout'
 import adminService from '@/services/adminService'
 import partnerService, { PartnerApplication } from '@/services/partnerService'
 import Image from 'next/image'
-import { Loader2, Search, Building2, X, Check, XCircle, ExternalLink, Ban, Trash2, Edit3, Eye, EyeOff, FileText, ArrowUpDown, Save, Star, MapPin, Mail, Phone, Globe, ChevronLeft, ChevronRight, Users } from 'lucide-react'
+import { Loader2, Search, Building2, X, Check, XCircle, ExternalLink, Ban, Edit3, Eye, EyeOff, FileText, ArrowUpDown, Save, Star, MapPin, Mail, Phone, Globe, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface CorporateMember {
@@ -475,8 +475,6 @@ function CorporateTabContent({ activeTab }: { activeTab: 'developers' | 'partner
   const [banModal, setBanModal] = useState<{ open: boolean; user: CorporateMember | null; reason: string; duration: string }>({
     open: false, user: null, reason: '', duration: '',
   })
-  const [deleteModal, setDeleteModal] = useState<{ open: boolean; user: CorporateMember | null }>({ open: false, user: null })
-
   const fetchData = useCallback(() => {
     setLoading(true)
     const params: Record<string, unknown> = { page, limit, search: search || undefined, approvalStatus: 'approved' }
@@ -515,17 +513,6 @@ function CorporateTabContent({ activeTab }: { activeTab: 'developers' | 'partner
       await adminService.banUser(userId, { isActive: true })
       fetchData()
     } catch { alert('해제 실패') }
-    finally { setSubmitting(false) }
-  }
-
-  const handleDelete = async () => {
-    if (!deleteModal.user) return
-    setSubmitting(true)
-    try {
-      await adminService.deleteUser(deleteModal.user._id)
-      setDeleteModal({ open: false, user: null })
-      fetchData()
-    } catch { alert('삭제 실패') }
     finally { setSubmitting(false) }
   }
 
@@ -601,10 +588,6 @@ function CorporateTabContent({ activeTab }: { activeTab: 'developers' | 'partner
                             <Check className="w-3 h-3" /> 해제
                           </button>
                         )}
-                        <button onClick={() => setDeleteModal({ open: true, user: m })}
-                          className="text-xs text-accent-text hover:text-accent-text border border-accent-muted px-2 py-1 rounded flex items-center gap-1">
-                          <Trash2 className="w-3 h-3" /> 삭제
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -657,18 +640,6 @@ function CorporateTabContent({ activeTab }: { activeTab: 'developers' | 'partner
         </ConfirmModal>
       )}
 
-      {/* Delete Modal */}
-      {deleteModal.open && deleteModal.user && (
-        <ConfirmModal
-          title="기업회원 삭제"
-          message={`${deleteModal.user.nickname || deleteModal.user.username} (${deleteModal.user.companyInfo?.companyName || ''})을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
-          confirmLabel="삭제"
-          confirmColor="bg-red-600 hover:bg-red-700"
-          onClose={() => setDeleteModal({ open: false, user: null })}
-          onConfirm={handleDelete}
-          loading={submitting}
-        />
-      )}
     </>
   )
 }

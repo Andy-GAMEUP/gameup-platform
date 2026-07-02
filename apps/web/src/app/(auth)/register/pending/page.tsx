@@ -1,8 +1,11 @@
 'use client'
 import Link from 'next/link'
 import { Gamepad2, Clock, CheckCircle2, Home } from 'lucide-react'
+import { useAuth } from '@/lib/useAuth'
 
 export default function RegisterPendingPage() {
+  const { logout } = useAuth()
+
   return (
     <div className="min-h-screen bg-bg-primary flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md text-center">
@@ -61,13 +64,13 @@ export default function RegisterPendingPage() {
             </div>
           </div>
 
-          <Link
-            href="/"
+          <button
+            onClick={() => logout()}
             className="inline-flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-700 text-text-primary font-semibold py-3 rounded-lg transition-colors"
           >
             <Home className="w-4 h-4" />
             홈으로 돌아가기
-          </Link>
+          </button>
         </div>
       </div>
     </div>

@@ -184,7 +184,10 @@ export default function AdminPartnerTopicsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-text-primary font-bold text-xl">프로젝트 관리</h1>
+        <div>
+          <h1 className="text-text-primary font-bold text-xl">프로젝트 관리</h1>
+          <p className="text-text-muted text-sm mt-1">파트너사가 등록한 프로젝트와 지원 현황을 관리합니다</p>
+        </div>
 
         {/* 통계 카드 */}
         {projectStats && (

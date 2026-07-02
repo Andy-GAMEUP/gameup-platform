@@ -25,8 +25,15 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: '/admin',            label: '대시보드',    icon: LayoutDashboard, exact: true },
-  { path: '/admin/games',      label: '게임 관리',   icon: Gamepad2 },
-  { path: '/admin/game-deletion-logs', label: '삭제 게임 관리', icon: Gamepad2 },
+  {
+    path: '/admin/games',
+    label: '게임 관리',
+    icon: Gamepad2,
+    children: [
+      { path: '/admin/games', label: '게임 관리', icon: Gamepad2, exact: true },
+      { path: '/admin/game-deletion-logs', label: '삭제 게임 관리', icon: Trash2 },
+    ],
+  },
   { path: '/admin/payments', label: '결제 / 환불', icon: CreditCard },
   { path: '/admin/settlements', label: '정산', icon: Calculator },
   { path: '/admin/notifications', label: '알림', icon: Bell },
@@ -36,19 +43,17 @@ const navItems: NavItem[] = [
     icon: MessageSquare,
     children: [
       { path: '/admin/community?tab=banner',        label: '배너 관리',      icon: ImageIcon,      exact: true },
-      { path: '/admin/community?tab=announcements', label: '공지사항',       icon: Megaphone,      exact: true },
       { path: '/admin/community?tab=reviews',       label: '게임 리뷰 관리', icon: MessageSquare,  exact: true },
     ],
   },
   {
-    path: '/admin/community/reported',
-    label: '신고센터',
-    icon: Flag,
+    path: '/admin/community-board',
+    label: '커뮤니티 관리',
+    icon: MessageCircle,
     children: [
-      { path: '/admin/community/reported',           label: '게시글',     icon: Flag,        exact: true },
-      { path: '/admin/community/reported/comments',  label: '댓글',       icon: MessageCircle },
-      { path: '/admin/community/reported/blacklist', label: '블랙리스트', icon: ShieldBan },
-      { path: '/admin/community/reported/deleted',   label: '삭제 보관함', icon: Trash2 },
+      { path: '/admin/community?tab=announcements',  label: '공지사항',        icon: Megaphone, exact: true },
+      { path: '/admin/community/reported',           label: '신고 게시물 관리', icon: Flag,      exact: true },
+      { path: '/admin/community/reported/deleted',   label: '삭제 게시물 관리', icon: Trash2 },
     ],
   },
   {
@@ -70,7 +75,6 @@ const navItems: NavItem[] = [
     icon: Tags,
     children: [
       { path: '/admin/partner-topics', label: '프로젝트 관리', icon: Tags, exact: true },
-      { path: '/admin/partner-requests', label: '라운지 등록 기업', icon: Handshake },
     ],
   },
   {
@@ -102,6 +106,7 @@ const navItems: NavItem[] = [
       { path: '/admin/members/new_account', label: '기업회원', icon: Building2 },
       { path: '/admin/members/players', label: '게임회원', icon: UserCircle },
       { path: '/admin/members/admins', label: '관리자', icon: Shield },
+      { path: '/admin/members/deleted', label: '탈퇴 회원', icon: Trash2 },
     ],
   },
 ]

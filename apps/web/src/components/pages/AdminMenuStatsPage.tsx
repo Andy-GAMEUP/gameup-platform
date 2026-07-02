@@ -114,9 +114,12 @@ export default function AdminMenuStatsPage() {
     <AdminLayout>
       <div className="space-y-6">
         {/* 헤더 */}
-        <div className="flex items-center gap-3">
-          <PieChartIcon className="w-5 h-5 text-accent-text" />
-          <h2 className="text-text-primary text-xl font-bold">메뉴별 통계</h2>
+        <div>
+          <div className="flex items-center gap-3">
+            <PieChartIcon className="w-5 h-5 text-accent-text" />
+            <h2 className="text-text-primary text-xl font-bold">메뉴별 통계</h2>
+          </div>
+          <p className="text-text-muted text-sm mt-1">플랫폼 각 메뉴별 방문 및 체류 통계를 확인합니다</p>
         </div>
 
         {/* 탭 */}

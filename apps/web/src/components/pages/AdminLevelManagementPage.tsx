@@ -69,17 +69,20 @@ export default function AdminLevelManagementPage() {
   return (
     <AdminLayout>
       <div className="space-y-5">
-        <div className="flex items-center gap-3">
-          <Award className="w-5 h-5 text-accent-text" />
-          <h2 className="text-text-primary text-xl font-bold">레벨 관리</h2>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="ml-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            저장
-          </button>
+        <div>
+          <div className="flex items-center gap-3">
+            <Award className="w-5 h-5 text-accent-text" />
+            <h2 className="text-text-primary text-xl font-bold">레벨 관리</h2>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="ml-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              저장
+            </button>
+          </div>
+          <p className="text-text-muted text-sm mt-1">회원 레벨 기준과 혜택을 설정합니다</p>
         </div>
 
         <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">

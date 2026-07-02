@@ -26,8 +26,10 @@ export default function MyPageRouter() {
   if (user.role === 'admin') return <AdminMyPage />
 
   if (user.role === 'developer' && user.memberType === 'corporate') {
+    const companyCategory: string = (user as any)?.companyInfo?.companyCategory || ''
     const companyType: string[] = (user as any)?.companyInfo?.companyType || []
-    if (companyType.includes('developer')) return <DeveloperMyPage />
+    const isDeveloperCompany = companyCategory === 'developer' || (!companyCategory && companyType.includes('developer'))
+    if (isDeveloperCompany) return <DeveloperMyPage />
     return <PartnerMyPage />
   }
 

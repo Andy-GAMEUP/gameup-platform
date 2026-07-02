@@ -208,7 +208,10 @@ export default function AdminNotificationsPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <h1 className="text-text-primary text-2xl font-bold">알림 관리</h1>
+        <div>
+          <h1 className="text-text-primary text-2xl font-bold">알림 관리</h1>
+          <p className="text-text-muted text-sm mt-1">플랫폼 전체 알림 내역을 관리합니다</p>
+        </div>
 
         <div className="flex gap-6 border-b border-line">
           {TABS.map((t) => (

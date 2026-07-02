@@ -58,5 +58,15 @@ export const authService = {
   deleteAccount: async (data: { password: string }) => {
     const response = await apiClient.delete('/users/account', { data })
     return response.data
-  }
+  },
+
+  reapplyCorporate: async (data: {
+    companyName: string
+    companyCategory: string
+    companyType: string[]
+    contactPhone: string
+  }) => {
+    const response = await apiClient.patch('/users/reapply', data)
+    return response.data
+  },
 }

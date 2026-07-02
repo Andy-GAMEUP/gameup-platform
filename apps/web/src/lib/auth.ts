@@ -78,7 +78,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return true
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id as string
         token.role = (user as any).role || 'player'
@@ -90,6 +90,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.level = (user as any).level || 1
         token.activityScore = (user as any).activityScore || 0
         token.accessToken = (user as any).accessToken || ''
+      }
+      if (trigger === 'update' && token.accessToken) {
+        try {
+          const res = await fetch(`${process.env.API_URL || 'http://localhost:5000'}/api/users/profile`, {
+            headers: { Authorization: `Bearer ${token.accessToken}` },
+          })
+          if (res.ok) {
+            const data = await res.json()
+            const u = data.user ?? data
+            token.approvalStatus = u.approvalStatus ?? token.approvalStatus
+            token.companyInfo = u.companyInfo ?? token.companyInfo
+            token.memberType = u.memberType ?? token.memberType
+            token.role = u.role ?? token.role
+            token.username = u.username ?? token.username
+          }
+        } catch { /* 실패해도 기존 토큰 유지 */ }
       }
       return token
     },

@@ -814,7 +814,7 @@ export default function PlayerMyPage() {
                 <h2 className="text-lg font-semibold text-red-300">계정 삭제</h2>
               </div>
               <p className="text-text-secondary text-sm mb-4">
-                계정을 삭제하면 즐겨찾기, 리뷰, 활동 내역 등 모든 데이터가 영구적으로 삭제됩니다. 이 작업은 되돌릴 수 없습니다.
+                계정을 삭제하면 즐겨찾기, 리뷰, 활동 내역이 영구적으로 삭제되며, 작성한 게시글과 댓글은 '탈퇴한 회원'으로 표시됩니다. 이 작업은 되돌릴 수 없습니다.
               </p>
               <button
                 onClick={() => setDeleteModal(true)}

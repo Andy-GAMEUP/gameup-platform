@@ -44,7 +44,7 @@ export default function PartnerDirectoryPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {partners.map((partner) => (
                 <PartnerCard key={partner._id} partner={partner} onClick={() => router.push(`/partner/${partner._id}`)} />
               ))}
@@ -84,39 +84,49 @@ function PartnerCard({ partner, onClick }: { partner: PartnerProfile; onClick: (
   const avatarBg = role === 'admin' ? 'bg-purple-600' : role === 'developer' ? 'bg-cyan-600' : 'bg-bg-muted'
 
   return (
-    <button onClick={onClick}
-      className="block w-full text-left bg-bg-secondary border border-line hover:border-cyan-500/40 rounded-xl p-5 transition-all group">
-      <div className="flex items-start gap-4 mb-3">
+    <div className="w-full bg-bg-secondary border border-line hover:border-cyan-500/40 rounded-xl p-5 transition-all group flex items-center gap-6">
+      {/* 아바타 */}
+      <div className="flex-shrink-0">
         {partner.profileImage ? (
-          <Image src={partner.profileImage} alt={username} width={56} height={56} className="w-14 h-14 rounded-full object-cover border border-line flex-shrink-0" unoptimized />
+          <Image src={partner.profileImage} alt={username} width={64} height={64} className="w-16 h-16 rounded-full object-cover border border-line" unoptimized />
         ) : (
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-text-primary font-bold text-xl flex-shrink-0 ${avatarBg}`}>
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center text-text-primary font-bold text-2xl ${avatarBg}`}>
             {username[0].toUpperCase()}
           </div>
         )}
-        <div className="flex-1 min-w-0">
-          <p className="text-text-primary font-semibold text-sm group-hover:text-cyan-300 transition-colors truncate">{username}</p>
-          <p className="text-text-secondary text-xs mt-0.5 line-clamp-2 leading-relaxed">
-            {partner.slogan || '파트너 채널'}
-          </p>
-        </div>
       </div>
 
-      {partner.selectedTopics.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {partner.selectedTopics.slice(0, 3).map(topic => (
-            <span key={topic} className="bg-cyan-600/20 text-cyan-400 text-xs px-1.5 py-0.5 rounded">{topic}</span>
-          ))}
-          {partner.selectedTopics.length > 3 && (
-            <span className="text-text-muted text-xs">+{partner.selectedTopics.length - 3}</span>
-          )}
-        </div>
-      )}
+      {/* 이름 + 슬로건 + 태그 */}
+      <div className="flex-1 min-w-0">
+        <p className="text-text-primary font-semibold text-base group-hover:text-cyan-300 transition-colors truncate">{username}</p>
+        <p className="text-text-secondary text-sm mt-0.5 truncate">{partner.slogan || '파트너 채널'}</p>
+        {partner.selectedTopics.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {partner.selectedTopics.slice(0, 4).map(topic => (
+              <span key={topic} className="bg-cyan-600/20 text-cyan-400 text-xs px-1.5 py-0.5 rounded">{topic}</span>
+            ))}
+            {partner.selectedTopics.length > 4 && (
+              <span className="text-text-muted text-xs self-center">+{partner.selectedTopics.length - 4}</span>
+            )}
+          </div>
+        )}
+      </div>
 
-      <div className="flex items-center gap-1 text-text-muted text-xs">
-        <FileText className="w-3 h-3" />
+      {/* 게시글 수 */}
+      <div className="flex-shrink-0 flex items-center gap-1 text-text-muted text-sm">
+        <FileText className="w-4 h-4" />
         <span>{partner.postCount}개 게시글</span>
       </div>
-    </button>
+
+      {/* 버튼 */}
+      <div className="flex-shrink-0">
+        <button
+          onClick={onClick}
+          className="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+        >
+          프로필 보기
+        </button>
+      </div>
+    </div>
   )
 }

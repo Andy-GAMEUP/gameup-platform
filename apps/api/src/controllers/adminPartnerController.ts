@@ -12,7 +12,7 @@ import {
 
 export const getPartnerRequests = async (req: AuthRequest, res: Response) => {
   try {
-    const { page = 1, limit = 20, status, from, to } = req.query
+    const { page = 1, limit = 20, status, from, to, search, companyType } = req.query
     const filter: Record<string, unknown> = {}
     if (status && status !== 'all') filter.status = status
     if (from || to) {
@@ -20,26 +20,40 @@ export const getPartnerRequests = async (req: AuthRequest, res: Response) => {
       if (from) (filter.createdAt as Record<string, unknown>).$gte = new Date(from as string)
       if (to) (filter.createdAt as Record<string, unknown>).$lte = new Date(to as string)
     }
+    if (search || companyType) {
+      const userFilter: Record<string, unknown> = {}
+      if (search) {
+        userFilter.$or = [
+          { username: { $regex: search, $options: 'i' } },
+          { 'companyInfo.companyName': { $regex: search, $options: 'i' } },
+        ]
+      }
+      if (companyType === 'developer') {
+        userFilter.$or = [
+          { 'companyInfo.companyCategory': 'developer' },
+          { 'companyInfo.companyCategory': { $exists: false }, 'companyInfo.companyType': 'developer' },
+        ]
+      } else if (companyType === 'partner') {
+        userFilter.$and = [
+          { memberType: 'corporate' },
+          { $or: [
+            { 'companyInfo.companyCategory': 'partner' },
+            { 'companyInfo.companyCategory': { $exists: false }, 'companyInfo.companyType': { $nin: ['developer'] } },
+          ]},
+        ]
+      }
+      const matchedUsers = await User.find(userFilter).select('_id')
+      filter.userId = { $in: matchedUsers.map((u) => u._id) }
+    }
     const total = await Partner.countDocuments(filter)
     const requests = await Partner.find(filter)
-      .populate('userId', 'username email level profileImage')
+      .populate('userId', 'username email level profileImage companyInfo memberType')
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
     res.json({ requests, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
   } catch {
     res.status(500).json({ message: '파트너 신청 목록 조회 실패' })
-  }
-}
-
-export const getPartnerRequestDetail = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params
-    const partner = await Partner.findById(id).populate('userId', 'username email level profileImage createdAt')
-    if (!partner) return res.status(404).json({ message: '신청 내역을 찾을 수 없습니다' })
-    res.json({ partner })
-  } catch {
-    res.status(500).json({ message: '파트너 신청 상세 조회 실패' })
   }
 }
 
@@ -55,17 +69,6 @@ export const updatePartnerRequest = async (req: AuthRequest, res: Response) => {
     res.json({ message: '파트너 신청이 업데이트되었습니다', partner })
   } catch {
     res.status(500).json({ message: '파트너 신청 업데이트 실패' })
-  }
-}
-
-export const deletePartnerRequest = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params
-    const partner = await Partner.findByIdAndDelete(id)
-    if (!partner) return res.status(404).json({ message: '신청 내역을 찾을 수 없습니다' })
-    res.json({ message: '파트너 신청이 삭제되었습니다' })
-  } catch {
-    res.status(500).json({ message: '파트너 신청 삭제 실패' })
   }
 }
 
@@ -441,5 +444,49 @@ export const getAdminProjectApplicants = async (req: AuthRequest, res: Response)
     res.json({ project, applicants })
   } catch {
     res.status(500).json({ message: '지원자 조회 실패' })
+  }
+}
+
+export const adminAddTeamMember = async (req: AuthRequest, res: Response) => {
+  try {
+    const { partnerId } = req.params
+    const { userId } = req.body
+
+    const partner = await Partner.findById(partnerId)
+    if (!partner) return res.status(404).json({ message: '파트너를 찾을 수 없습니다' })
+
+    const targetUser = await User.findById(userId)
+    if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (targetUser.memberType === 'corporate')
+      return res.status(400).json({ message: '기업회원은 팀원으로 추가할 수 없습니다' })
+    if (String(targetUser._id) === String(partner.userId))
+      return res.status(400).json({ message: '채널 소유자는 팀원으로 추가할 수 없습니다' })
+
+    const alreadyMember = partner.teamMembers.some(m => String(m.userId) === String(userId))
+    if (alreadyMember) return res.status(409).json({ message: '이미 팀원으로 등록된 사용자입니다' })
+
+    partner.teamMembers.push({ userId: targetUser._id as any, addedAt: new Date() })
+    await partner.save()
+    res.json({ message: '팀원이 추가되었습니다' })
+  } catch {
+    res.status(500).json({ message: '팀원 추가 실패' })
+  }
+}
+
+export const adminRemoveTeamMemberByUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params
+
+    const partner = await Partner.findOne({ 'teamMembers.userId': userId })
+    if (!partner) return res.status(404).json({ message: '소속된 기업을 찾을 수 없습니다' })
+
+    const idx = partner.teamMembers.findIndex(m => String(m.userId) === String(userId))
+    if (idx >= 0) {
+      partner.teamMembers.splice(idx, 1)
+      await partner.save()
+    }
+    res.json({ message: '기업 소속이 해제되었습니다' })
+  } catch {
+    res.status(500).json({ message: '소속 해제 실패' })
   }
 }

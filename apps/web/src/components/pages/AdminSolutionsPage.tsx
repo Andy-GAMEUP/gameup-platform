@@ -243,14 +243,17 @@ function SolutionsTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-text-primary font-bold text-lg">솔루션 관리</h2>
-        <button
-          onClick={() => { setEditTarget(null); setShowForm(true) }}
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-text-primary px-4 py-2 rounded-lg text-sm transition-colors"
-        >
-          <Plus className="w-4 h-4" /> 솔루션 추가
-        </button>
+      <div className="mb-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-text-primary font-bold text-lg">솔루션 관리</h2>
+          <button
+            onClick={() => { setEditTarget(null); setShowForm(true) }}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-text-primary px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            <Plus className="w-4 h-4" /> 솔루션 추가
+          </button>
+        </div>
+        <p className="text-text-muted text-sm mt-1">플랫폼에서 제공하는 솔루션 상품을 관리합니다</p>
       </div>
 
       {(showForm && !editTarget) && (

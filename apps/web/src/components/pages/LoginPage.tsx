@@ -57,8 +57,9 @@ export default function LoginPage() {
       else if (role === 'developer') {
         // 기업회원 중 개발사(companyType에 'developer' 포함)는 개발자 센터로
         // 파트너(게임서비스관련사)는 서비스 홈으로 이동
+        const companyCategory = session?.user?.companyInfo?.companyCategory || ''
         const companyType = session?.user?.companyInfo?.companyType || []
-        const isDeveloperCompany = companyType.includes('developer')
+        const isDeveloperCompany = companyCategory === 'developer' || (!companyCategory && companyType.includes('developer'))
         if (memberType === 'corporate' && !isDeveloperCompany) {
           router.push('/')
         } else {

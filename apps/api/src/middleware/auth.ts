@@ -27,7 +27,7 @@ export const authenticateToken = (
 
     const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret-change-in-production'
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
       if (err) {
         return res.status(403).json({ message: '유효하지 않은 토큰입니다' })
       }
@@ -37,6 +37,16 @@ export const authenticateToken = (
         email: string
         role: 'developer' | 'player' | 'admin'
         adminLevel?: 'super' | 'normal' | 'monitor' | null
+      }
+
+      // 중지 여부 DB 확인 (admin은 제외)
+      if (req.user.role !== 'admin') {
+        try {
+          const dbUser = await User.findById(req.user.id).select('isActive').lean()
+          if (!dbUser || (dbUser as any).isActive === false) {
+            return res.status(401).json({ message: '계정이 중지되었습니다', code: 'ACCOUNT_SUSPENDED' })
+          }
+        } catch { /* DB 오류 시 통과 */ }
       }
 
       // 일일 접속 포인트 (비동기, 응답 차단 안함)

@@ -3,11 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
 import Navbar from '@/components/Navbar'
 import partnerMatchingService, { PartnerMatchingProfile } from '@/services/partnerMatchingService'
 import MiniHomeCreateModal from '@/components/MiniHomeCreateModal'
-import { useAuth } from '@/lib/useAuth'
 
 const expertiseOptions = [
   { value: 'all', label: '전체 전문 분야' },
@@ -35,8 +33,6 @@ export default function PartnerMatchingDirectoryPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   const queryClient = useQueryClient()
-  const { isAuthenticated, user } = useAuth()
-  const isCorporate = isAuthenticated && user?.memberType === 'corporate'
 
   const { data, isLoading } = useQuery({
     queryKey: ['partnerMatchingProfiles', page, searchQuery, expertiseFilter, activeTab],
@@ -75,32 +71,9 @@ export default function PartnerMatchingDirectoryPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="py-8 flex items-start justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-text-primary mb-2">파트너라운지</h1>
+              <h1 className="text-3xl font-bold text-text-primary mb-2">파트너 찾기</h1>
               <p className="text-text-secondary">검증된 전문가와 개발사를 찾아보세요</p>
             </div>
-            {isCorporate && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-text-primary px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                프로필 등록
-              </button>
-            )}
-          </div>
-          <div className="flex gap-6 -mb-px">
-            <Link
-              href="/partner/projects"
-              className="pb-3 px-1 text-sm font-medium border-b-2 border-transparent text-text-secondary hover:text-text-primary transition-colors"
-            >
-              프로젝트
-            </Link>
-            <Link
-              href="/partner/directory"
-              className="pb-3 px-1 text-sm font-medium border-b-2 border-accent text-accent transition-colors"
-            >
-              파트너 디렉토리
-            </Link>
           </div>
         </div>
       </div>
@@ -173,86 +146,66 @@ export default function PartnerMatchingDirectoryPage() {
         ) : profiles.length === 0 ? (
           <div className="text-center py-12 text-text-muted">검색 결과가 없습니다.</div>
         ) : (
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-4">
             {profiles.map((profile) => (
-              <div key={profile._id} className="bg-bg-tertiary/50 border border-line-light rounded-xl p-6 hover:border-accent-muted transition-colors">
-                {/* Header */}
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center text-text-primary text-xl font-bold flex-shrink-0">
-                    {profile.companyName?.charAt(0) || '?'}
+              <div key={profile._id} className="bg-bg-tertiary/50 border border-line-light rounded-xl p-5 hover:border-accent-muted transition-colors flex items-center gap-6">
+                {/* 아바타 */}
+                <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center text-text-primary text-xl font-bold flex-shrink-0">
+                  {profile.companyName?.charAt(0) || '?'}
+                </div>
+
+                {/* 이름 + 소개 + 태그 */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg font-semibold text-text-primary truncate">{profile.companyName}</h3>
+                    {profile.isVerified && (
+                      <svg className="w-5 h-5 text-accent flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-xl font-semibold text-text-primary truncate">{profile.companyName}</h3>
-                      {profile.isVerified && (
-                        <svg className="w-5 h-5 text-accent flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </div>
-                    <p className="text-sm text-text-secondary mb-2">{profile.userId?.companyInfo?.companyName || ''}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {profile.expertiseArea?.slice(0, 2).map((area, i) => (
-                        <span key={i} className="bg-accent-light text-accent px-2 py-0.5 rounded text-xs">{area}</span>
-                      ))}
-                    </div>
+                  <p className="text-sm text-text-secondary truncate mb-2">{profile.introduction || profile.userId?.companyInfo?.companyName || ''}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile.expertiseArea?.slice(0, 3).map((area, i) => (
+                      <span key={i} className="bg-accent-light text-accent px-2 py-0.5 rounded text-xs">{area}</span>
+                    ))}
+                    {profile.skills?.slice(0, 3).map((skill, i) => (
+                      <span key={i} className="bg-bg-tertiary/50 text-text-secondary px-2 py-0.5 rounded text-xs">{skill}</span>
+                    ))}
                   </div>
                 </div>
 
-                {/* Description */}
-                <p className="text-sm text-text-secondary mb-4 line-clamp-2">{profile.introduction}</p>
-
-                {/* Stats row */}
-                <div className="grid grid-cols-3 gap-4 mb-4 pb-4 border-b border-line-light">
-                  <div>
-                    <div className="flex items-center gap-1">
+                {/* 스탯 */}
+                <div className="flex-shrink-0 flex gap-6 text-sm">
+                  <div className="text-center">
+                    <div className="flex items-center gap-1 justify-center">
                       <span className="text-yellow-500">★</span>
                       <span className="font-semibold text-text-primary">{profile.rating || 0}</span>
                     </div>
                     <div className="text-xs text-text-muted">{profile.reviewCount || 0} 리뷰</div>
                   </div>
-                  <div>
+                  <div className="text-center">
                     <div className="font-semibold text-text-primary">{profile.completedProjectCount || 0}</div>
                     <div className="text-xs text-text-muted">완료 프로젝트</div>
                   </div>
-                  <div>
-                    <div className="font-semibold text-text-primary text-sm">{profile.location || '-'}</div>
-                    <div className="text-xs text-text-muted">위치</div>
-                  </div>
-                </div>
-
-                {/* Skills */}
-                {profile.skills?.length > 0 && (
-                  <div className="mb-4">
-                    <div className="text-xs text-text-muted mb-2">주요 스킬</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {profile.skills.slice(0, 5).map((skill, i) => (
-                        <span key={i} className="bg-bg-tertiary/50 text-text-secondary px-2 py-0.5 rounded text-xs">{skill}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Rate + Availability */}
-                <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-                  <div>
-                    <div className="text-text-muted mb-1">단가 기준</div>
+                  <div className="text-center">
                     <div className="font-medium text-text-primary">{profile.hourlyRate || '협의'}</div>
+                    <div className="text-xs text-text-muted">단가 기준</div>
                   </div>
-                  <div>
-                    <div className="text-text-muted mb-1">작업 가능</div>
+                  <div className="text-center">
                     <div className={`font-medium ${availabilityLabel[profile.availability]?.color || 'text-text-secondary'}`}>
                       {availabilityLabel[profile.availability]?.text || '-'}
                     </div>
+                    <div className="text-xs text-text-muted">작업 가능</div>
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <button className="flex-1 bg-accent hover:bg-accent-hover text-text-primary py-2.5 rounded-lg text-sm font-medium transition-colors">
+                {/* 버튼 */}
+                <div className="flex-shrink-0 flex flex-col gap-2">
+                  <button className="bg-accent hover:bg-accent-hover text-text-primary px-5 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
                     연락하기
                   </button>
-                  <Link href={`/partner/${profile._id}`} className="flex-1 border border-line hover:border-line text-text-secondary py-2.5 rounded-lg text-sm font-medium text-center transition-colors">
+                  <Link href={profile.partnerChannelId ? `/partner/${profile.partnerChannelId}` : `/minihome/${profile._id}`} className="border border-line hover:border-accent text-text-secondary px-5 py-2 rounded-lg text-sm font-medium text-center transition-colors whitespace-nowrap">
                     프로필 보기
                   </Link>
                 </div>

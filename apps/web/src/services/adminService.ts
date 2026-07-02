@@ -224,6 +224,26 @@ export const adminService = {
     return res.data
   },
 
+  deleteUser: async (id: string) => {
+    const res = await apiClient.delete(`/admin/users/${id}`)
+    return res.data
+  },
+
+  getDeletedUsers: async (params?: { page?: number; limit?: number; search?: string }) => {
+    const res = await apiClient.get('/admin/users/deleted', { params })
+    return res.data
+  },
+
+  restoreUser: async (id: string) => {
+    const res = await apiClient.post(`/admin/users/deleted/${id}/restore`)
+    return res.data
+  },
+
+  deleteUserLog: async (id: string) => {
+    const res = await apiClient.delete(`/admin/users/deleted/${id}`)
+    return res.data
+  },
+
   getPendingMemberCounts: async () => {
     const res = await apiClient.get('/admin/members/pending-counts')
     return res.data
@@ -241,11 +261,6 @@ export const adminService = {
 
   banUser: async (id: string, data: { isActive: boolean; banReason?: string; bannedUntil?: string; banDuration?: number; banScope?: string[] }) => {
     const res = await apiClient.patch(`/admin/users/${id}/ban`, data)
-    return res.data
-  },
-
-  deleteUser: async (id: string) => {
-    const res = await apiClient.delete(`/admin/users/${id}`)
     return res.data
   },
 

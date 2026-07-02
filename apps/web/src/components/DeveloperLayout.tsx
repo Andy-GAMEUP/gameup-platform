@@ -46,8 +46,9 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!isAuthenticated || !user) return
+    const companyCategory: string = (user as any).companyInfo?.companyCategory || ''
     const companyType: string[] = user.companyInfo?.companyType ?? []
-    const isDeveloper = companyType.includes('developer')
+    const isDeveloper = companyCategory === 'developer' || (!companyCategory && companyType.includes('developer'))
     if (!isDeveloper) router.replace('/')
   }, [isAuthenticated, user, router])
 

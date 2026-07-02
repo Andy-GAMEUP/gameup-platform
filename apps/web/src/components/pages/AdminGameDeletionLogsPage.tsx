@@ -76,6 +76,7 @@ export default function AdminGameDeletionLogsPage() {
             <Trash2 className="w-6 h-6 text-red-400" />
             삭제 게임 관리
           </h1>
+          <p className="text-text-muted text-sm mt-1">개발자 포털에서 삭제된 게임을 검토하고 처리합니다</p>
         </div>
         <button
           onClick={load}

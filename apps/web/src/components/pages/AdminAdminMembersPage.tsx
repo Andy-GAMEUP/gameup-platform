@@ -1,9 +1,9 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
 import adminService from '@/services/adminService'
-import { Loader2, Search, Shield, X, Plus } from 'lucide-react'
+import { Loader2, Shield, ShieldOff, X } from 'lucide-react'
 
 interface AdminMember {
   _id: string
@@ -23,12 +23,6 @@ interface AdminMember {
 const getOriginalRole = (m: AdminMember) =>
   m.memberType === 'corporate' || m.companyInfo?.companyName ? 'developer' : 'player'
 
-const getOriginalRoleLabel = (m: AdminMember) => {
-  if (m.isPartner) return '파트너'
-  if (m.memberType === 'corporate' || m.companyInfo?.companyName) return '개발사'
-  return '게임회원'
-}
-
 interface BulkModalState {
   open: boolean
   type: 'notify' | null
@@ -38,211 +32,6 @@ const LEVEL_LABELS: Record<string, { label: string; cls: string }> = {
   super:   { label: 'Super',   cls: 'bg-accent-light text-accent-text border-accent-muted' },
   normal:  { label: 'Normal',  cls: 'bg-blue-600/20 text-blue-300 border-blue-500/30' },
   monitor: { label: 'Monitor', cls: 'bg-bg-muted/30 text-text-secondary border-line/30' },
-}
-
-interface UserSearchResult {
-  _id: string
-  username: string
-  email: string
-  role: string
-  isActive: boolean
-  isPartner?: boolean
-  memberType?: string
-  approvalStatus?: string
-  lastLoginAt?: string
-  createdAt: string
-  companyInfo?: { companyName?: string }
-}
-
-const TYPE_LABEL: Record<string, string> = {
-  player: '게임회원',
-  developer: '개발사',
-  partner: '파트너',
-}
-
-function GrantAdminModal({
-  onClose, onConfirm, loading,
-}: {
-  onClose: () => void
-  onConfirm: (user: UserSearchResult) => void
-  loading: boolean
-}) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<UserSearchResult[]>([])
-  const [searching, setSearching] = useState(false)
-  const [selected, setSelected] = useState<UserSearchResult | null>(null)
-  const [searched, setSearched] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const handleSearch = async (q?: string) => {
-    const term = (q ?? query).trim()
-    setSearching(true)
-    setSearched(true)
-    setSelected(null)
-    try {
-      const res = await adminService.getUsers({ search: term || undefined, limit: 20 })
-      const filtered = (res?.users ?? []).filter((u: UserSearchResult) => u.role !== 'admin')
-      setResults(filtered)
-      if (filtered.length === 1) setSelected(filtered[0])
-    } catch {
-      setResults([])
-    } finally {
-      setSearching(false)
-    }
-  }
-
-  const handleQueryChange = (value: string) => {
-    setQuery(value)
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (!value.trim()) { setResults([]); setSelected(null); setSearched(false); return }
-    debounceRef.current = setTimeout(() => handleSearch(value), 400)
-  }
-
-  const getUserTypeLabel = (u: UserSearchResult) => {
-    if (u.isPartner) return TYPE_LABEL.partner
-    return TYPE_LABEL[u.role] ?? u.role
-  }
-
-  const initials = (name: string) => name.slice(0, 2).toUpperCase()
-
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-bg-secondary border border-line rounded-2xl w-full max-w-lg p-6 flex flex-col gap-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-text-primary font-bold text-lg">관리자 추가</h3>
-          <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors"><X className="w-5 h-5" /></button>
-        </div>
-
-        <div className="flex gap-2">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary" />
-            <input
-              value={query}
-              onChange={e => handleQueryChange(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder="이메일로 검색"
-              className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2.5 text-text-primary text-sm focus:outline-none focus:border-accent"
-            />
-          </div>
-          <button
-            onClick={() => handleSearch()}
-            disabled={searching}
-            className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5 shrink-0 font-medium"
-          >
-            {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : '검색'}
-          </button>
-        </div>
-
-        {searched && (
-          results.length === 0 ? (
-            <p className="text-text-secondary text-sm text-center py-4">검색 결과가 없습니다</p>
-          ) : results.length > 1 ? (
-            <div className="space-y-1 max-h-48 overflow-y-auto -mx-1 px-1">
-              {results.map(u => (
-                <button
-                  key={u._id}
-                  onClick={() => setSelected(u)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
-                    selected?._id === u._id
-                      ? 'bg-red-600/10 border-red-500/40'
-                      : 'bg-bg-tertiary hover:bg-bg-hover border-transparent hover:border-line'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                    selected?._id === u._id ? 'bg-red-600/20 text-red-400' : 'bg-bg-hover text-text-secondary'
-                  }`}>
-                    {initials(u.username)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-text-primary text-sm font-medium truncate">{u.username}</p>
-                    <p className="text-text-secondary text-xs truncate">{u.email}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-text-secondary">{getUserTypeLabel(u)}</span>
-                    <span className={`w-1.5 h-1.5 rounded-full ${u.isActive !== false ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                  </div>
-                </button>
-              ))}
-            </div>
-          ) : null
-        )}
-
-        <div className="bg-bg-tertiary rounded-xl border border-line overflow-hidden min-h-[120px]">
-          {!selected ? (
-            <div className="flex items-center justify-center h-full min-h-[120px]">
-              <p className="text-text-secondary text-sm">추가할 관리자 계정을 이메일로 검색하세요</p>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-line bg-bg-hover/50">
-                <div className="w-9 h-9 rounded-full bg-red-600/20 flex items-center justify-center text-sm font-bold text-red-400 shrink-0">
-                  {initials(selected.username)}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-text-primary font-semibold text-sm">{selected.username}</p>
-                  <p className="text-text-secondary text-xs truncate">{selected.email}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-4 py-3 text-xs">
-                <div>
-                  <p className="text-text-secondary mb-0.5">계정 유형</p>
-                  <p className="text-text-primary font-medium">{getUserTypeLabel(selected)}</p>
-                </div>
-                {selected.companyInfo?.companyName && (
-                  <div>
-                    <p className="text-text-secondary mb-0.5">회사명</p>
-                    <p className="text-text-primary font-medium">{selected.companyInfo.companyName}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-text-secondary mb-0.5">유저 상태</p>
-                  {selected.isActive === false ? (
-                    <p className="font-medium text-red-400">정지</p>
-                  ) : selected.approvalStatus === 'rejected' ? (
-                    <p className="font-medium text-red-400">반려</p>
-                  ) : selected.approvalStatus === 'pending' ? (
-                    <p className="font-medium text-amber-400">대기</p>
-                  ) : (
-                    <p className="font-medium text-emerald-400">정상</p>
-                  )}
-                </div>
-                {selected.lastLoginAt && (
-                  <div>
-                    <p className="text-text-secondary mb-0.5">마지막 접속</p>
-                    <p className="text-text-primary font-medium">{new Date(selected.lastLoginAt).toLocaleDateString('ko-KR')}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-text-secondary mb-0.5">가입일</p>
-                  <p className="text-text-primary font-medium">{new Date(selected.createdAt).toLocaleDateString('ko-KR')}</p>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">
-            취소
-          </button>
-          {(() => {
-            const blocked = selected && (selected.isActive === false || selected.approvalStatus === 'rejected' || selected.approvalStatus === 'pending')
-            return (
-              <button
-                onClick={() => selected && onConfirm(selected)}
-                disabled={loading || !selected || !!blocked}
-                title={blocked ? '정지 또는 반려된 계정은 관리자로 추가할 수 없습니다' : undefined}
-                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                관리자로 추가
-              </button>
-            )
-          })()}
-        </div>
-      </div>
-    </div>
-  )
 }
 
 export default function AdminAdminMembersPage() {
@@ -255,8 +44,6 @@ export default function AdminAdminMembersPage() {
   const [modalTitle, setModalTitle] = useState('')
   const [modalMessage, setModalMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [showCreateAdmin, setShowCreateAdmin] = useState(false)
-  const [createLoading, setCreateLoading] = useState(false)
   const [revokeModal, setRevokeModal] = useState<{ open: boolean; member: AdminMember | null }>({ open: false, member: null })
   const [revokeLoading, setRevokeLoading] = useState(false)
 
@@ -308,21 +95,6 @@ export default function AdminAdminMembersPage() {
     }
   }
 
-  const handleGrantAdmin = async (user: UserSearchResult) => {
-    setCreateLoading(true)
-    try {
-      await adminService.updateUserRole(user._id, 'admin')
-      setShowCreateAdmin(false)
-      alert(`${user.username} 계정에 관리자 권한이 부여되었습니다`)
-      fetchData()
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } }
-      alert(e?.response?.data?.message || '관리자 권한 부여 실패')
-    } finally {
-      setCreateLoading(false)
-    }
-  }
-
   const handleRevoke = async () => {
     if (!revokeModal.member) return
     setRevokeLoading(true)
@@ -345,17 +117,13 @@ export default function AdminAdminMembersPage() {
   return (
     <AdminLayout>
       <div className="space-y-5">
-        <div className="flex items-center gap-3">
-          <Shield className="w-5 h-5 text-accent-text" />
-          <h2 className="text-text-primary text-xl font-bold">관리자</h2>
-          <span className="text-text-secondary text-sm ml-auto">{loading ? '로딩 중...' : `총 ${total.toLocaleString()}명`}</span>
-          <button onClick={() => setShowCreateAdmin(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-text-primary rounded-lg text-sm transition-colors">
-            <Plus className="w-4 h-4" />
-            관리자 추가
-          </button>
+        <div>
+          <div className="flex items-center gap-3">
+            <Shield className="w-5 h-5 text-accent-text" />
+            <h2 className="text-text-primary text-xl font-bold">관리자</h2>
+          </div>
+          <p className="text-text-muted text-sm mt-1">플랫폼 관리자 계정을 조회하고 권한을 관리합니다</p>
         </div>
-
 
         {selected.size > 0 && (
           <div className="flex items-center gap-3 bg-bg-tertiary/50 border border-line rounded-xl px-4 py-3">
@@ -382,7 +150,7 @@ export default function AdminAdminMembersPage() {
                     <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">이메일</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">가입일시</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">관리자 등급 일시</th>
-                    <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">상세</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">회원 정보</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3">관리</th>
                   </tr>
                 </thead>
@@ -401,7 +169,7 @@ export default function AdminAdminMembersPage() {
                       <td className="px-4 py-3 border-r border-line/20">
                         <Link href={`/admin/users-enhanced/${m._id}`}
                           className="px-2 py-1 bg-bg-tertiary hover:bg-bg-hover text-text-secondary text-xs rounded transition-colors">
-                          더보기
+                          보기
                         </Link>
                       </td>
                       <td className="px-4 py-3">
@@ -443,14 +211,6 @@ export default function AdminAdminMembersPage() {
         )}
       </div>
 
-      {showCreateAdmin && (
-        <GrantAdminModal
-          onClose={() => setShowCreateAdmin(false)}
-          onConfirm={handleGrantAdmin}
-          loading={createLoading}
-        />
-      )}
-
       {modal.open && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-bg-secondary border border-line rounded-2xl w-full max-w-md p-6 space-y-4">
@@ -482,25 +242,33 @@ export default function AdminAdminMembersPage() {
 
       {revokeModal.open && revokeModal.member && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-bg-secondary border border-line rounded-2xl w-full max-w-sm p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-text-primary font-bold">관리자 권한 해제</h3>
-              <button onClick={() => setRevokeModal({ open: false, member: null })} className="text-text-secondary hover:text-text-primary">
-                <X className="w-5 h-5" />
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
+              <h3 className="text-gray-900 font-bold text-base">관리자 권한 해제</h3>
+              <button onClick={() => setRevokeModal({ open: false, member: null })}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-600 hover:text-gray-900 transition-all shadow-sm">
+                <X className="w-4 h-4 stroke-[2.5]" />
               </button>
             </div>
-            <p className="text-text-secondary text-sm">
-              <span className="text-text-primary font-medium">{revokeModal.member.username}</span> 계정의 관리자 권한을 해제합니다.
-            </p>
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => setRevokeModal({ open: false, member: null })}
-                className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">
-                취소
-              </button>
+            <div className="mx-6 mt-5 px-4 py-3.5 bg-gray-50 rounded-xl flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-400 to-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                {revokeModal.member.username.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-gray-900 font-semibold text-sm truncate">{revokeModal.member.username}</p>
+                <p className="text-gray-400 text-xs truncate">{revokeModal.member.email}</p>
+              </div>
+            </div>
+            <div className="px-6 py-5">
               <button onClick={handleRevoke} disabled={revokeLoading}
-                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                {revokeLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                권한 해제
+                className="group w-full px-4 py-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 hover:border-rose-300 shadow-sm hover:shadow transition-all flex items-center gap-3 disabled:opacity-50">
+                <div className="w-8 h-8 rounded-lg bg-rose-100 group-hover:bg-rose-200 flex items-center justify-center flex-shrink-0 transition-all">
+                  {revokeLoading ? <Loader2 className="w-4 h-4 animate-spin text-rose-600" /> : <ShieldOff className="w-4 h-4 text-rose-600" />}
+                </div>
+                <div className="text-left">
+                  <p className="text-rose-700 font-semibold text-sm">권한 해제</p>
+                  <p className="text-rose-400 text-xs">관리자 → 원래 역할로 변경</p>
+                </div>
               </button>
             </div>
           </div>

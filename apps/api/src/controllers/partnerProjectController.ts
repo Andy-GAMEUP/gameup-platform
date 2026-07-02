@@ -2,7 +2,9 @@ import { Response } from 'express'
 import {
   PartnerProjectModel as PartnerProject,
   PartnerProjectApplicationModel as ProjectApplication,
+  PartnerProjectInquiryModel as ProjectInquiry,
   UserModel as User,
+  PartnerModel,
 } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 
@@ -112,7 +114,9 @@ export const getProjectById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: '프로젝트를 찾을 수 없습니다' })
     }
 
-    res.json({ success: true, project })
+    const partnerChannel = await PartnerModel.findOne({ userId: (project.ownerId as any)._id }).select('_id').lean()
+
+    res.json({ success: true, project, partnerChannelId: partnerChannel?._id ?? null })
   } catch (error) {
     console.error('Get project by id error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
@@ -134,6 +138,7 @@ export const createProject = async (req: AuthRequest, res: Response) => {
     const project = await PartnerProject.create({
       ownerId: req.user.id,
       ...req.body,
+      status: 'recruiting',
     })
 
     res.status(201).json({ success: true, project })
@@ -264,6 +269,28 @@ export const getProjectApplicants = async (req: AuthRequest, res: Response) => {
   }
 }
 
+// 내 프로젝트 전체 지원자 목록 (프로젝트 소유자용)
+export const getMyProjectApplicants = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: '인증이 필요합니다' })
+    }
+
+    const projects = await PartnerProject.find({ ownerId: req.user.id }).select('_id')
+    const projectIds = projects.map((p) => p._id)
+
+    const applicants = await ProjectApplication.find({ projectId: { $in: projectIds } })
+      .populate('applicantId', 'username companyInfo memberType')
+      .populate('projectId', 'title category')
+      .sort({ createdAt: -1 })
+
+    res.json({ success: true, applicants })
+  } catch (error) {
+    console.error('Get my project applicants error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
 // 지원 상태 변경
 export const updateApplicationStatus = async (req: AuthRequest, res: Response) => {
   try {
@@ -340,6 +367,27 @@ export const getMyProjects = async (req: AuthRequest, res: Response) => {
   }
 }
 
+// 특정 유저의 프로젝트 목록 (프로필 페이지용)
+export const getProjectsByUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params
+
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: '유효하지 않은 유저 ID입니다' })
+    }
+
+    const projects = await PartnerProject.find({
+      ownerId: userId,
+      status: { $in: ['recruiting', 'ongoing', 'completed'] },
+    }).sort({ createdAt: -1 })
+
+    res.json({ success: true, projects })
+  } catch (error) {
+    console.error('Get projects by user error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
 // 파트너라운지 활동 이력 확인
 export const getPartnerActivity = async (req: AuthRequest, res: Response) => {
   try {
@@ -348,15 +396,171 @@ export const getPartnerActivity = async (req: AuthRequest, res: Response) => {
     }
 
     const userId = req.user.id
+    const hasPartnerProfile = await PartnerModel.exists({ userId })
     const hasProjects = await PartnerProject.exists({ ownerId: userId })
     const hasApplications = await ProjectApplication.exists({ applicantId: userId })
 
     res.json({
       success: true,
-      hasActivity: !!(hasProjects || hasApplications),
+      hasActivity: !!(hasPartnerProfile || hasProjects || hasApplications),
     })
   } catch (error) {
     console.error('Get partner activity error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 문의 목록 조회
+export const getProjectInquiries = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const project = await PartnerProject.findById(id).select('ownerId')
+    if (!project) {
+      return res.status(404).json({ message: '프로젝트를 찾을 수 없습니다' })
+    }
+
+    const viewerId = req.user?.id
+    const isProjectOwner = !!viewerId && String(project.ownerId) === String(viewerId)
+
+    const rows = await ProjectInquiry.find({ projectId: id })
+      .populate('authorId', 'username')
+      .sort({ createdAt: 1 })
+
+    const authorIds = [...new Set(rows.map((row) => String(row.authorId?._id || row.authorId)))]
+    const partnerChannels = await PartnerModel.find({ userId: { $in: authorIds } }).select('_id userId').lean()
+    const partnerChannelMap = new Map(partnerChannels.map((p) => [String(p.userId), String(p._id)]))
+
+    const inquiries = rows
+      .filter((row) => {
+        if (!row.isHidden) return true
+        const isAuthor = !!viewerId && String(row.authorId?._id || row.authorId) === String(viewerId)
+        return isProjectOwner || isAuthor
+      })
+      .map((row) => {
+        const isAuthor = !!viewerId && String(row.authorId?._id || row.authorId) === String(viewerId)
+        const canSeeSecret = isProjectOwner || isAuthor
+        const obj = row.toObject()
+        if (obj.isSecret && !canSeeSecret) {
+          obj.content = '비밀글입니다'
+        }
+        const authorObjId = String((obj.authorId as any)?._id || obj.authorId)
+        ;(obj.authorId as any).partnerChannelId = partnerChannelMap.get(authorObjId) || null
+        return obj
+      })
+
+    res.json({ success: true, inquiries })
+  } catch (error) {
+    console.error('Get project inquiries error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 문의 등록 (답글은 parentId 포함)
+export const createProjectInquiry = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: '인증이 필요합니다' })
+    }
+
+    const { id } = req.params
+    const { content, parentId, isSecret } = req.body
+
+    if (!content?.trim()) {
+      return res.status(400).json({ message: '내용을 입력해주세요' })
+    }
+
+    const project = await PartnerProject.findById(id)
+    if (!project) {
+      return res.status(404).json({ message: '프로젝트를 찾을 수 없습니다' })
+    }
+
+    if (parentId) {
+      const parent = await ProjectInquiry.findOne({ _id: parentId, projectId: id })
+      if (!parent) {
+        return res.status(404).json({ message: '원본 문의를 찾을 수 없습니다' })
+      }
+    }
+
+    const inquiry = await ProjectInquiry.create({
+      projectId: id,
+      authorId: req.user.id,
+      content: content.trim(),
+      parentId: parentId || null,
+      isSecret: !!isSecret,
+    })
+    await inquiry.populate('authorId', 'username')
+
+    res.status(201).json({ success: true, inquiry })
+  } catch (error) {
+    console.error('Create project inquiry error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 문의 삭제 (작성자 본인만)
+export const deleteProjectInquiry = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: '인증이 필요합니다' })
+    }
+
+    const { id, inquiryId } = req.params
+    const inquiry = await ProjectInquiry.findOne({ _id: inquiryId, projectId: id })
+    if (!inquiry) {
+      return res.status(404).json({ message: '문의를 찾을 수 없습니다' })
+    }
+
+    if (String(inquiry.authorId) !== String(req.user.id)) {
+      return res.status(403).json({ message: '본인이 작성한 문의만 삭제할 수 있습니다' })
+    }
+
+    const idsToDelete = [String(inquiryId)]
+    let frontier = [String(inquiryId)]
+    while (frontier.length > 0) {
+      const children = await ProjectInquiry.find({ parentId: { $in: frontier } }).select('_id').lean()
+      const childIds = children.map((c) => String(c._id))
+      if (childIds.length === 0) break
+      idsToDelete.push(...childIds)
+      frontier = childIds
+    }
+
+    await ProjectInquiry.deleteMany({ _id: { $in: idsToDelete } })
+
+    res.json({ success: true })
+  } catch (error) {
+    console.error('Delete project inquiry error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 문의 숨기기/숨김 해제 (프로젝트 등록자 전용)
+export const hideProjectInquiry = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ message: '인증이 필요합니다' })
+    }
+
+    const { id, inquiryId } = req.params
+    const project = await PartnerProject.findById(id).select('ownerId')
+    if (!project) {
+      return res.status(404).json({ message: '프로젝트를 찾을 수 없습니다' })
+    }
+
+    if (String(project.ownerId) !== String(req.user.id)) {
+      return res.status(403).json({ message: '프로젝트 등록자만 숨길 수 있습니다' })
+    }
+
+    const inquiry = await ProjectInquiry.findOne({ _id: inquiryId, projectId: id })
+    if (!inquiry) {
+      return res.status(404).json({ message: '문의를 찾을 수 없습니다' })
+    }
+
+    inquiry.isHidden = !inquiry.isHidden
+    await inquiry.save()
+
+    res.json({ success: true, isHidden: inquiry.isHidden })
+  } catch (error) {
+    console.error('Hide project inquiry error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }
 }

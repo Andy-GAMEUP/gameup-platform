@@ -1,6 +1,6 @@
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
-import { UserModel as User, GameModel as Game, GameShopItemModel, GameMediaModel, AnnouncementModel as Announcement, ReviewModel as Review, PlayerActivityModel as PlayerActivity, NotificationModel as Notification } from '@gameup/db'
+import { UserModel as User, GameModel as Game, GameShopItemModel, GameMediaModel, AnnouncementModel as Announcement, ReviewModel as Review, PlayerActivityModel as PlayerActivity, NotificationModel as Notification, PartnerModel, UserDeletionLogModel } from '@gameup/db'
 import { hashPassword } from '../services/authService'
 
 // ── 플랫폼 전체 통계 ──────────────────────────────────────────────
@@ -81,6 +81,33 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
       .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
+
+    if (String(memberType) === 'corporate' && users.length > 0) {
+      const userIds = users.map(u => u._id)
+      const partnerRecords = await PartnerModel.find({ userId: { $in: userIds } }).select('userId').lean()
+      const partnerMap = new Map(partnerRecords.map(p => [p.userId.toString(), (p._id as any).toString()]))
+
+      // 승인된 기업회원 중 파트너 레코드 없는 계정 일괄 생성
+      const toCreate = users.filter(u =>
+        (u as any).companyInfo?.approvalStatus === 'approved' && !partnerMap.has(u._id.toString())
+      )
+      if (toCreate.length > 0) {
+        const created = await PartnerModel.insertMany(
+          toCreate.map(u => ({ userId: u._id, status: 'approved', approvedAt: new Date() })),
+          { ordered: false }
+        )
+        for (const p of created) {
+          partnerMap.set((p as any).userId.toString(), (p as any)._id.toString())
+        }
+      }
+
+      const usersWithPartner = users.map(u => ({
+        ...u.toObject(),
+        partnerId: partnerMap.get(u._id.toString()),
+      }))
+      return res.json({ users: usersWithPartner, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
+    }
+
     res.json({ users, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
   } catch {
     res.status(500).json({ message: '사용자 목록 조회 실패' })
@@ -94,6 +121,11 @@ export const updateUserRole = async (req: AuthRequest, res: Response) => {
     const { role } = req.body
     if (!['developer', 'player', 'admin'].includes(role))
       return res.status(400).json({ message: '유효하지 않은 역할입니다' })
+    const targetUser = await User.findById(id).select('memberType')
+    if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (role === 'admin' && targetUser.memberType === 'corporate') {
+      return res.status(403).json({ message: '기업회원 계정은 관리자로 변경할 수 없습니다' })
+    }
     const update = role === 'admin'
       ? { $set: { role, adminGrantedAt: new Date() } }
       : { $set: { role }, $unset: { adminGrantedAt: '' } }
@@ -171,20 +203,6 @@ export const banUser = async (req: AuthRequest, res: Response) => {
     res.json({ message: isActive ? '정지가 해제되었습니다' : '정지되었습니다', user })
   } catch {
     res.status(500).json({ message: '정지 처리 실패' })
-  }
-}
-
-// ── 사용자 삭제 (소프트 삭제) ──────────────────────────────────────
-export const deleteUser = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params
-    const user = await User.findById(id)
-    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
-    if (user.role === 'admin') return res.status(400).json({ message: '관리자 계정은 삭제할 수 없습니다' })
-    await User.findByIdAndDelete(id)
-    res.json({ message: '사용자가 삭제되었습니다' })
-  } catch {
-    res.status(500).json({ message: '사용자 삭제 실패' })
   }
 }
 
@@ -747,12 +765,110 @@ export const approveUser = async (req: AuthRequest, res: Response) => {
 
     const statusLabel = approvalStatus === 'approved' ? '승인' : approvalStatus === 'rejected' ? '거절' : '대기'
     const updatedUser = await User.findByIdAndUpdate(id, update, { new: true }).select('-password')
+
+    // 기업회원 승인 시 파트너 라운지 프로필 자동 생성
+    if (approvalStatus === 'approved' && user.memberType === 'corporate') {
+      const existing = await PartnerModel.findOne({ userId: id })
+      if (!existing) {
+        await PartnerModel.create({
+          userId: id,
+          status: 'approved',
+          approvedAt: new Date(),
+        })
+      }
+    }
+
     res.json({
       message: `회원 상태가 ${statusLabel}로 변경되었습니다`,
       user: updatedUser,
     })
   } catch {
     res.status(500).json({ message: '회원 승인 처리 실패' })
+  }
+}
+
+export const deleteUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(id)
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (user.approvalStatus === 'approved') {
+      return res.status(400).json({ message: '승인된 회원은 삭제할 수 없습니다' })
+    }
+    await User.findByIdAndDelete(id)
+    res.json({ success: true, message: '계정이 삭제되었습니다' })
+  } catch {
+    res.status(500).json({ message: '계정 삭제 실패' })
+  }
+}
+
+// ── 삭제된 회원 목록 ──────────────────────────────────────────────
+export const getDeletedUsers = async (req: AuthRequest, res: Response) => {
+  try {
+    const { page = 1, limit = 15, search } = req.query
+    const pageNum = Number(page)
+    const limitNum = Number(limit)
+
+    const query: Record<string, unknown> = { restoredAt: { $exists: false } }
+    if (search) {
+      query.$or = [
+        { username: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+      ]
+    }
+
+    const [logs, total] = await Promise.all([
+      UserDeletionLogModel.find(query)
+        .sort({ deletedAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      UserDeletionLogModel.countDocuments(query),
+    ])
+
+    res.json({ logs, total, page: pageNum, limit: limitNum })
+  } catch {
+    res.status(500).json({ message: '삭제 회원 목록 조회 실패' })
+  }
+}
+
+// ── 삭제된 회원 복구 ──────────────────────────────────────────────
+export const restoreUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const log = await UserDeletionLogModel.findById(id)
+    if (!log) return res.status(404).json({ message: '삭제 로그를 찾을 수 없습니다' })
+    if (log.restoredAt) return res.status(400).json({ message: '이미 복구된 계정입니다' })
+
+    const existing = await User.findOne({ email: log.email })
+    if (existing) return res.status(409).json({ message: '동일한 이메일의 계정이 이미 존재합니다' })
+
+    const snapshot = log.userSnapshot as Record<string, unknown>
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { _id, __v, updatedAt, ...userData } = snapshot
+    await User.create(userData)
+
+    await UserDeletionLogModel.findByIdAndUpdate(id, {
+      restoredAt: new Date(),
+      restoredBy: req.user!.id,
+    })
+
+    res.json({ success: true, message: '계정이 복구되었습니다' })
+  } catch {
+    res.status(500).json({ message: '계정 복구 실패' })
+  }
+}
+
+// ── 탈퇴 회원 로그 완전 삭제 ──────────────────────────────────────
+export const deleteUserLog = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const log = await UserDeletionLogModel.findById(id)
+    if (!log) return res.status(404).json({ message: '삭제 로그를 찾을 수 없습니다' })
+    await UserDeletionLogModel.findByIdAndDelete(id)
+    res.json({ success: true, message: '완전 삭제되었습니다' })
+  } catch {
+    res.status(500).json({ message: '완전 삭제 실패' })
   }
 }
 

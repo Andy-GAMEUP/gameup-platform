@@ -1,13 +1,18 @@
 import mongoose from 'mongoose'
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
-import { PartnerModel as Partner, PartnerPostModel as PartnerPost, TopicGroupModel as TopicGroup } from '@gameup/db'
+import { PartnerModel as Partner, PartnerPostModel as PartnerPost, TopicGroupModel as TopicGroup, UserModel as User, MiniHomeModel as MiniHome } from '@gameup/db'
 
 // ── 파트너 신청 ───────────────────────────────────────────────────
 export const applyPartner = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id
-    const { introduction, activityPlan, slogan, externalUrl, selectedTopics, profileImage } = req.body
+    const {
+      introduction, activityPlan, slogan, externalUrl, selectedTopics, profileImage,
+      techStack, portfolioUrls, availability,
+      careerYears, completedProjectCount, teamSize, genres,
+      preferredProjectSize, contractTypes, budgetRange, availableDuration, workStyle,
+    } = req.body
 
     if (!introduction || !activityPlan) {
       return res.status(400).json({ message: '자기소개와 활동 계획은 필수입니다' })
@@ -28,6 +33,18 @@ export const applyPartner = async (req: AuthRequest, res: Response) => {
       profileImage: profileImage || '',
       status: 'approved',
       approvedAt: new Date(),
+      techStack: techStack || [],
+      portfolioUrls: portfolioUrls || [],
+      availability: availability || 'available',
+      careerYears: careerYears ?? undefined,
+      completedProjectCount: completedProjectCount || 0,
+      teamSize: teamSize || undefined,
+      genres: genres || [],
+      preferredProjectSize: preferredProjectSize || undefined,
+      contractTypes: contractTypes || [],
+      budgetRange: budgetRange || '',
+      availableDuration: availableDuration || '',
+      workStyle: workStyle || undefined,
     })
     await partner.save()
 
@@ -41,11 +58,28 @@ export const applyPartner = async (req: AuthRequest, res: Response) => {
 export const getMyPartnerStatus = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id
-    const partner = await Partner.findOne({ userId })
+    let partner = await Partner.findOne({ userId })
+    let isTeamMember = false
+
     if (!partner) {
-      return res.status(404).json({ message: '파트너 신청 내역이 없습니다' })
+      const user = await User.findById(userId).select('memberType companyInfo')
+      if (user?.memberType === 'corporate' && (user as any).companyInfo?.approvalStatus === 'approved') {
+        partner = await Partner.create({ userId, status: 'approved', approvedAt: new Date() })
+      } else {
+        // 팀원 여부 확인
+        partner = await Partner.findOne({
+          status: 'approved',
+          'teamMembers.userId': new mongoose.Types.ObjectId(userId),
+        })
+        if (partner) {
+          isTeamMember = true
+        } else {
+          return res.status(404).json({ message: '파트너 신청 내역이 없습니다' })
+        }
+      }
     }
-    res.json({ partner })
+
+    res.json({ partner, isTeamMember })
   } catch {
     res.status(500).json({ message: '파트너 상태 조회 실패' })
   }
@@ -106,12 +140,12 @@ export const getPartners = async (req: AuthRequest, res: Response) => {
     const skip = (page - 1) * limit
 
     const [partners, total] = await Promise.all([
-      Partner.find({ status: 'approved' })
+      Partner.find({ status: 'approved', isProfilePublic: true })
         .populate('userId', 'username role profileImage')
         .sort({ approvedAt: -1 })
         .skip(skip)
         .limit(limit),
-      Partner.countDocuments({ status: 'approved' }),
+      Partner.countDocuments({ status: 'approved', isProfilePublic: true }),
     ])
 
     res.json({ partners, total, page, totalPages: Math.ceil(total / limit) })
@@ -125,13 +159,43 @@ export const getPartnerChannel = async (req: AuthRequest, res: Response) => {
   try {
     const { partnerId } = req.params
     const partner = await Partner.findOne({ _id: partnerId, status: 'approved' })
-      .populate('userId', 'username role profileImage')
+      .populate('userId', 'username role profileImage memberType companyInfo contactPerson createdAt')
+      .populate('teamMembers.userId', 'username role profileImage')
     if (!partner) {
       return res.status(404).json({ message: '파트너를 찾을 수 없습니다' })
     }
     res.json({ partner })
   } catch {
     res.status(500).json({ message: '파트너 채널 조회 실패' })
+  }
+}
+
+// ── 파트너 디렉토리 공개 토글 ─────────────────────────────────────
+export const toggleProfileVisibility = async (req: AuthRequest, res: Response) => {
+  try {
+    const { partnerId } = req.params
+    const partner = await Partner.findById(partnerId)
+    if (!partner) return res.status(404).json({ message: '파트너를 찾을 수 없습니다' })
+    if (String(partner.userId) !== req.user!.id) {
+      return res.status(403).json({ message: '본인 채널만 수정할 수 있습니다' })
+    }
+
+    partner.isProfilePublic = !partner.isProfilePublic
+    await partner.save()
+
+    // MiniHome 디렉토리 연동
+    const user = await User.findById(partner.userId).select('companyInfo').lean()
+    const companyName = (user as unknown as { companyInfo?: { companyName?: string } })?.companyInfo?.companyName || '이름 없음'
+    const existing = await MiniHome.findOne({ userId: partner.userId })
+    if (existing) {
+      await MiniHome.updateOne({ userId: partner.userId }, { isPublic: partner.isProfilePublic })
+    } else if (partner.isProfilePublic) {
+      await MiniHome.create({ userId: partner.userId, companyName, isPublic: true })
+    }
+
+    res.json({ success: true, isProfilePublic: partner.isProfilePublic })
+  } catch {
+    res.status(500).json({ message: '공개 설정 변경 실패' })
   }
 }
 
@@ -191,9 +255,20 @@ export const getPartnerPost = async (req: AuthRequest, res: Response) => {
 export const createPartnerPost = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id
-    const partner = await Partner.findOne({ userId, status: 'approved' })
+    const { partnerId: reqPartnerId } = req.body
+
+    // 소유자 확인
+    let partner = await Partner.findOne({ userId, status: 'approved' })
+    // 팀원인 경우 - partnerId 필수
+    if (!partner && reqPartnerId) {
+      partner = await Partner.findOne({
+        _id: reqPartnerId,
+        status: 'approved',
+        'teamMembers.userId': new mongoose.Types.ObjectId(userId),
+      })
+    }
     if (!partner) {
-      return res.status(403).json({ message: '승인된 파트너만 글을 작성할 수 있습니다' })
+      return res.status(403).json({ message: '채널에 글을 작성할 권한이 없습니다' })
     }
 
     const { title, content, topicGroup, topic, images, tags } = req.body
@@ -304,5 +379,97 @@ export const togglePartnerPostLike = async (req: AuthRequest, res: Response) => 
     res.json({ liked, likeCount: post.likes.length })
   } catch {
     res.status(500).json({ message: '좋아요 처리 실패' })
+  }
+}
+
+// ── 팀원 추가용 게임회원 검색 ─────────────────────────────────────
+export const searchGameUsers = async (req: AuthRequest, res: Response) => {
+  try {
+    const q = String(req.query.q || '').trim()
+    if (!q || q.length < 1) return res.json({ users: [] })
+
+    const users = await User.find({
+      memberType: { $ne: 'corporate' },
+      role: { $ne: 'admin' },
+      $or: [
+        { username: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } },
+      ],
+    })
+      .select('username email profileImage')
+      .limit(8)
+      .lean()
+
+    res.json({ users })
+  } catch {
+    res.status(500).json({ message: '검색 실패' })
+  }
+}
+
+// ── 팀원 목록 조회 ────────────────────────────────────────────────
+export const getTeamMembers = async (req: AuthRequest, res: Response) => {
+  try {
+    const { partnerId } = req.params
+    const partner = await Partner.findById(partnerId)
+      .populate('teamMembers.userId', 'username email role profileImage')
+    if (!partner) return res.status(404).json({ message: '파트너를 찾을 수 없습니다' })
+    res.json({ teamMembers: partner.teamMembers })
+  } catch {
+    res.status(500).json({ message: '팀원 목록 조회 실패' })
+  }
+}
+
+// ── 팀원 추가 ─────────────────────────────────────────────────────
+export const addTeamMember = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id
+    const { partnerId } = req.params
+    const { username } = req.body
+
+    const partner = await Partner.findById(partnerId)
+    if (!partner) return res.status(404).json({ message: '파트너를 찾을 수 없습니다' })
+    if (String(partner.userId) !== String(userId))
+      return res.status(403).json({ message: '채널 소유자만 팀원을 추가할 수 있습니다' })
+
+    const targetUser = await User.findOne({ $or: [{ username }, { email: username }] })
+    if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (targetUser.memberType === 'corporate')
+      return res.status(400).json({ message: '기업회원은 팀원으로 추가할 수 없습니다' })
+    if (String(targetUser._id) === String(partner.userId))
+      return res.status(400).json({ message: '채널 소유자는 팀원으로 추가할 수 없습니다' })
+
+    const alreadyMember = partner.teamMembers.some(m => String(m.userId) === String(targetUser._id))
+    if (alreadyMember) return res.status(409).json({ message: '이미 팀원으로 등록된 사용자입니다' })
+
+    partner.teamMembers.push({ userId: targetUser._id as any, addedAt: new Date() })
+    await partner.save()
+    await partner.populate('teamMembers.userId', 'username email role profileImage')
+
+    res.json({ message: '팀원이 추가되었습니다', teamMembers: partner.teamMembers })
+  } catch {
+    res.status(500).json({ message: '팀원 추가 실패' })
+  }
+}
+
+// ── 팀원 제거 ─────────────────────────────────────────────────────
+export const removeTeamMember = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id
+    const { partnerId, memberId } = req.params
+
+    const partner = await Partner.findById(partnerId)
+    if (!partner) return res.status(404).json({ message: '파트너를 찾을 수 없습니다' })
+    if (String(partner.userId) !== String(userId))
+      return res.status(403).json({ message: '채널 소유자만 팀원을 제거할 수 있습니다' })
+
+    const idx = partner.teamMembers.findIndex(m => String(m.userId) === String(memberId))
+    if (idx < 0) return res.status(404).json({ message: '팀원을 찾을 수 없습니다' })
+
+    partner.teamMembers.splice(idx, 1)
+    await partner.save()
+
+    res.json({ message: '팀원이 제거되었습니다' })
+  } catch {
+    res.status(500).json({ message: '팀원 제거 실패' })
   }
 }

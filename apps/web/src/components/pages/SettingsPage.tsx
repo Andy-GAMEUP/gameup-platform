@@ -296,7 +296,7 @@ export default function SettingsPage() {
             <div>
               <h3 className="font-semibold text-text-primary mb-2">계정 탈퇴</h3>
               <p className="text-sm text-text-secondary mb-4">
-                계정을 삭제하면 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다
+                계정을 삭제하면 즐겨찾기, 리뷰, 활동 내역이 영구적으로 삭제되며, 작성한 게시글과 댓글은 '탈퇴한 회원'으로 표시됩니다. 이 작업은 되돌릴 수 없습니다.
               </p>
               <Button variant="destructive" className="bg-red-600 hover:bg-red-700">
                 계정 탈퇴

@@ -1,9 +1,7 @@
 import { Router } from 'express'
 import {
   getPartnerRequests,
-  getPartnerRequestDetail,
   updatePartnerRequest,
-  deletePartnerRequest,
   getPartners,
   getPartnerDetail,
   updatePartnerStatus,
@@ -21,6 +19,8 @@ import {
   getAdminProjectStats,
   updateAdminProjectStatus,
   getAdminProjectApplicants,
+  adminAddTeamMember,
+  adminRemoveTeamMemberByUser,
 } from '../controllers/adminPartnerController'
 import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
 
@@ -29,7 +29,6 @@ router.use(authenticateToken, requireAdmin)
 
 // 조회 (모든 관리자)
 router.get('/partner/requests', getPartnerRequests)
-router.get('/partner/requests/:id', getPartnerRequestDetail)
 router.get('/partner/list', getPartners)
 router.get('/partner/topics', getTopicGroups)
 router.get('/partner/projects', getAdminProjects)
@@ -49,8 +48,11 @@ router.patch('/partner/:id/status', requireAdminLevel('super', 'normal'), update
 router.patch('/partner/:id/visibility', requireAdminLevel('super', 'normal'), togglePartnerProfileVisibility)
 router.put('/partner/:id/profile', requireAdminLevel('super', 'normal'), updatePartnerProfile)
 
+// 팀원 관리 (Normal 이상)
+router.post('/partner/:partnerId/team', requireAdminLevel('super', 'normal'), adminAddTeamMember)
+router.delete('/partner/team-member/:userId', requireAdminLevel('super', 'normal'), adminRemoveTeamMemberByUser)
+
 // 삭제 (Super만)
-router.delete('/partner/requests/:id', requireAdminLevel('super'), deletePartnerRequest)
 router.delete('/partner/topics/:id', requireAdminLevel('super'), deleteTopicGroup)
 router.delete('/partner/posts/:id', requireAdminLevel('super'), deletePartnerPost)
 

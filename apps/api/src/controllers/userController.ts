@@ -1,5 +1,5 @@
 import { Response } from 'express'
-import { UserModel as User, ScrapModel as Scrap, PlayerActivityModel as PlayerActivity, ReviewModel as Review } from '@gameup/db'
+import { UserModel as User, ScrapModel as Scrap, PlayerActivityModel as PlayerActivity, ReviewModel as Review, UserDeletionLogModel } from '@gameup/db'
 import { hashPassword, comparePassword, generateToken } from '../services/authService'
 import { AuthRequest } from '../middleware/auth'
 
@@ -24,8 +24,11 @@ export const register = async (req: AuthRequest, res: Response) => {
       if (!companyInfo?.companyName) {
         return res.status(400).json({ message: '회사명은 필수입니다' })
       }
+      if (!companyInfo?.companyCategory) {
+        return res.status(400).json({ message: '기업 유형(개발사/파트너)을 선택해주세요' })
+      }
       if (!companyInfo?.companyType || companyInfo.companyType.length === 0) {
-        return res.status(400).json({ message: '기업유형을 선택해주세요' })
+        return res.status(400).json({ message: '사업 형태를 선택해주세요' })
       }
       if (!contactPerson?.phone) {
         return res.status(400).json({ message: '담당자 연락처는 필수입니다' })
@@ -40,6 +43,18 @@ export const register = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({
         message: '이미 존재하는 이메일 또는 사용자명입니다'
       })
+    }
+
+    // 기업당 하나의 계정만 허용
+    if (memberType === 'corporate') {
+      const existingCompany = await User.findOne({
+        'companyInfo.companyName': companyInfo.companyName,
+        memberType: 'corporate',
+        approvalStatus: { $in: ['pending', 'approved'] },
+      })
+      if (existingCompany) {
+        return res.status(400).json({ message: '이미 등록된 회사명입니다. 회사당 하나의 계정만 가입할 수 있습니다.' })
+      }
     }
 
     const hashedPassword = await hashPassword(password)
@@ -57,6 +72,7 @@ export const register = async (req: AuthRequest, res: Response) => {
     if (memberType === 'corporate') {
       userData.companyInfo = {
         companyName: companyInfo.companyName,
+        companyCategory: companyInfo.companyCategory,
         companyType: companyInfo.companyType,
         isApproved: false,
         approvalStatus: 'pending',
@@ -291,6 +307,21 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
     const isValid = await comparePassword(password, user.password!)
     if (!isValid) return res.status(401).json({ message: '비밀번호가 올바르지 않습니다' })
 
+    await UserDeletionLogModel.create({
+      userId: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      memberType: user.memberType,
+      companyInfo: user.companyInfo,
+      isActive: user.isActive,
+      approvalStatus: user.approvalStatus,
+      activityScore: (user as unknown as Record<string, unknown>).activityScore,
+      deletedBy: user._id,
+      deletedByUsername: user.username,
+      userSnapshot: user.toObject(),
+    })
+
     await Promise.all([
       Scrap.deleteMany({ userId: req.user!.id }),
       PlayerActivity.deleteMany({ userId: req.user.id }),
@@ -301,6 +332,40 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, message: '계정이 삭제되었습니다' })
   } catch (error) {
     console.error('Delete account error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+export const reapplyCorporate = async (req: AuthRequest, res: Response) => {
+  try {
+    const { companyName, companyCategory, companyType, contactPhone } = req.body
+
+    if (!companyName) return res.status(400).json({ message: '회사명은 필수입니다' })
+    if (!companyCategory) return res.status(400).json({ message: '기업 유형을 선택해주세요' })
+    if (!companyType || companyType.length === 0) return res.status(400).json({ message: '사업 형태를 하나 이상 선택해주세요' })
+    if (!contactPhone) return res.status(400).json({ message: '대표 연락처는 필수입니다' })
+
+    const user = await User.findById(req.user!.id).select('memberType companyInfo')
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (user.memberType !== 'corporate') return res.status(400).json({ message: '기업회원만 재신청할 수 있습니다' })
+    if ((user.companyInfo as any)?.approvalStatus === 'approved') {
+      return res.status(400).json({ message: '이미 승인된 계정입니다' })
+    }
+
+    await User.findByIdAndUpdate(req.user!.id, {
+      $set: {
+        approvalStatus: 'pending',
+        'companyInfo.companyName': companyName,
+        'companyInfo.companyCategory': companyCategory,
+        'companyInfo.companyType': companyType,
+        'companyInfo.approvalStatus': 'pending',
+        'companyInfo.isApproved': false,
+        'contactPerson.phone': contactPhone,
+      },
+    })
+
+    res.json({ success: true, message: '재신청이 완료되었습니다' })
+  } catch {
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }
 }

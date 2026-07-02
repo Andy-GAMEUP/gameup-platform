@@ -31,6 +31,7 @@ export interface PartnerMatchingProfile {
   hourlyRate: string
   availability: 'available' | 'busy' | 'unavailable'
   location: string
+  partnerChannelId: string | null
   isVerified: boolean
   rating: number
   reviewCount: number
@@ -82,6 +83,18 @@ export interface PartnerProjectItem {
   milestones: { _id: string; phase: string; period: string; description: string }[]
   applicationDeadline: string
   applicantCount: number
+  createdAt: string
+}
+
+// 문의
+export interface ProjectInquiryItem {
+  _id: string
+  projectId: string
+  authorId: { _id: string; username: string; partnerChannelId?: string | null }
+  content: string
+  parentId: string | null
+  isSecret: boolean
+  isHidden: boolean
   createdAt: string
 }
 
@@ -234,6 +247,11 @@ export const partnerMatchingService = {
     return res.data
   },
 
+  getMyProjectApplicants: async (): Promise<{ success: boolean; applicants: ProjectApplicationItem[] }> => {
+    const res = await apiClient.get('/partner/projects/applicants/me')
+    return res.data
+  },
+
   updateApplicationStatus: async (projectId: string, appId: string, status: string) => {
     const res = await apiClient.patch(`/partner/projects/${projectId}/applicants/${appId}`, { status })
     return res.data
@@ -244,9 +262,35 @@ export const partnerMatchingService = {
     return res.data
   },
 
+  getProjectsByUser: async (userId: string) => {
+    const res = await apiClient.get(`/partner/projects/user/${userId}`)
+    return res.data
+  },
+
   // 파트너라운지 활동 이력 확인
   getPartnerActivity: async (): Promise<{ success: boolean; hasActivity: boolean }> => {
     const res = await apiClient.get('/partner/activity')
+    return res.data
+  },
+
+  // ── 문의하기 ────────────────────────────────────────────────
+  getProjectInquiries: async (projectId: string): Promise<{ success: boolean; inquiries: ProjectInquiryItem[] }> => {
+    const res = await apiClient.get(`/partner/projects/${projectId}/inquiries`)
+    return res.data
+  },
+
+  createProjectInquiry: async (projectId: string, content: string, parentId?: string, isSecret?: boolean) => {
+    const res = await apiClient.post(`/partner/projects/${projectId}/inquiries`, { content, parentId, isSecret })
+    return res.data
+  },
+
+  deleteProjectInquiry: async (projectId: string, inquiryId: string) => {
+    const res = await apiClient.delete(`/partner/projects/${projectId}/inquiries/${inquiryId}`)
+    return res.data
+  },
+
+  hideProjectInquiry: async (projectId: string, inquiryId: string) => {
+    const res = await apiClient.patch(`/partner/projects/${projectId}/inquiries/${inquiryId}/hide`)
     return res.data
   },
 }

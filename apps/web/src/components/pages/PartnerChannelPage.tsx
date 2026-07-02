@@ -6,14 +6,16 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import partnerService, { PartnerPostItem } from '@/services/partnerService'
 import { useAuth } from '@/lib/useAuth'
-import { useQuery } from '@tanstack/react-query'
-import { Clock, ThumbsUp, Eye, MessageSquare, Plus, ChevronLeft, ChevronRight, Loader2, ArrowLeft } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Clock, ThumbsUp, Eye, MessageSquare, Plus, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Globe, EyeOff } from 'lucide-react'
 
 export default function PartnerChannelPage() {
   const { id: partnerId } = useParams<{ id: string }>()
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const [visibilityLoading, setVisibilityLoading] = useState(false)
 
   const sort = searchParams.get('sort') || 'latest'
   const topic = searchParams.get('topic') || ''
@@ -45,6 +47,19 @@ export default function PartnerChannelPage() {
   const totalPages = postsData?.totalPages ?? 1
 
   const isMyChannel = partner && user && String((partner.userId as { _id: string })._id) === user.id
+
+  const handleToggleVisibility = async () => {
+    if (!partner) return
+    setVisibilityLoading(true)
+    try {
+      await partnerService.toggleProfileVisibility(partnerId)
+      queryClient.invalidateQueries({ queryKey: ['partnerChannel', partnerId] })
+    } catch {
+      alert('공개 설정 변경에 실패했습니다')
+    } finally {
+      setVisibilityLoading(false)
+    }
+  }
 
   if (channelLoading) return (
     <div className="min-h-screen bg-bg-primary">
@@ -102,10 +117,29 @@ export default function PartnerChannelPage() {
               <p className="text-text-muted text-xs mt-2">게시글 {partner.postCount}개 · 총 {total}개 게시글</p>
             </div>
             {isMyChannel && (
-              <Link href="/partner/write"
-                className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-text-primary px-4 py-2 rounded-xl text-sm font-medium transition-colors flex-shrink-0">
-                <Plus className="w-4 h-4" /> 글쓰기
-              </Link>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={handleToggleVisibility}
+                  disabled={visibilityLoading}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border ${
+                    partner.isProfilePublic
+                      ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-600/30'
+                      : 'bg-bg-tertiary text-text-secondary border-line hover:text-text-primary hover:bg-line-light'
+                  }`}
+                >
+                  {visibilityLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : partner.isProfilePublic ? (
+                    <><Globe className="w-4 h-4" /> 공개중</>
+                  ) : (
+                    <><EyeOff className="w-4 h-4" /> 비공개</>
+                  )}
+                </button>
+                <Link href="/partner/write"
+                  className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-text-primary px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                  <Plus className="w-4 h-4" /> 글쓰기
+                </Link>
+              </div>
             )}
           </div>
         </div>

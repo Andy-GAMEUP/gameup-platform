@@ -11,9 +11,12 @@ function ConsoleLayoutInner({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams()
   const adminView = searchParams.get('adminView') === '1'
 
+  const _companyCategory = (user as any)?.companyInfo?.companyCategory || ''
+  const _companyType: string[] = (user as any)?.companyInfo?.companyType ?? []
+  const _isDeveloperCompany = _companyCategory === 'developer' || (!_companyCategory && _companyType.includes('developer'))
   const isPartner = user?.memberType === 'corporate'
     && user?.role !== 'developer'
-    && !(user?.companyInfo?.companyType ?? []).includes('developer')
+    && !_isDeveloperCompany
 
   useEffect(() => {
     if (isLoading) return

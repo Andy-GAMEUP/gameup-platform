@@ -1,5 +1,5 @@
 import { Response } from 'express'
-import { MiniHomeModel as MiniHome, PartnerReviewModel as PartnerReview, UserModel as User } from '@gameup/db'
+import { MiniHomeModel as MiniHome, PartnerModel as Partner, PartnerReviewModel as PartnerReview, UserModel as User } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 
 // 파트너 프로필 목록 (MiniHome 기반)
@@ -45,9 +45,18 @@ export const getPartnerProfiles = async (req: AuthRequest, res: Response) => {
 
     const total = await MiniHome.countDocuments(filter)
 
+    const userIds = profiles.map(p => p.userId)
+    const partnerChannels = await Partner.find({ userId: { $in: userIds } }).select('_id userId').lean()
+    const partnerChannelMap = new Map(partnerChannels.map(p => [String(p.userId), String(p._id)]))
+
+    const profilesWithChannelId = profiles.map(p => ({
+      ...p.toObject(),
+      partnerChannelId: partnerChannelMap.get(String(p.userId?._id ?? p.userId)) ?? null,
+    }))
+
     res.json({
       success: true,
-      profiles,
+      profiles: profilesWithChannelId,
       pagination: {
         page: pageNum,
         limit: limitNum,

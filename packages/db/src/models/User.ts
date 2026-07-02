@@ -14,6 +14,7 @@ interface ICompanyInfo {
   businessNumber?: string
   companyLogo?: string
   businessLicense?: string
+  companyCategory?: 'developer' | 'partner'
   companyType?: string[]
   homepageUrl?: string
   isApproved?: boolean
@@ -157,7 +158,8 @@ const userSchema = new Schema<IUser>(
       businessNumber: { type: String },
       companyLogo: { type: String },
       businessLicense: { type: String },
-      companyType: { type: [String], enum: ['developer', 'publisher', 'game_solution', 'game_service', 'operations', 'qa', 'marketing', 'other'] },
+      companyCategory: { type: String, enum: ['developer', 'partner'] },
+      companyType: { type: [String], enum: ['publisher', 'game_solution', 'game_service', 'operations', 'qa', 'marketing', 'development', 'original_art', 'other'] },
       homepageUrl: { type: String },
       isApproved: { type: Boolean, default: false },
       approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },

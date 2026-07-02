@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import {
   getAdminStats,
-  getAllUsers, getUserDetail, updateUserRole, banUser, deleteUser, approveUser, getPendingMemberCounts, createAdminUser,
+  getAllUsers, getUserDetail, updateUserRole, banUser, approveUser, deleteUser, getPendingMemberCounts, createAdminUser, getDeletedUsers, restoreUser, deleteUserLog,
   getPendingGames, getAllGamesAdmin, approveGame, controlGameStatus, archiveGame, toggleNewFeatured,
   approveShopReview, rejectShopReview,
   getGameMetrics,
@@ -30,6 +30,7 @@ router.use(authenticateToken, requireAdmin)
 // 조회 (모든 관리자)
 router.get('/stats', getAdminStats)
 router.get('/users', getAllUsers)
+router.get('/users/deleted', requireAdminLevel('super', 'normal'), getDeletedUsers)
 router.get('/users/:id', getUserDetail)
 router.get('/members/pending-counts', getPendingMemberCounts)
 router.get('/games', getAllGamesAdmin)
@@ -50,7 +51,11 @@ router.patch('/games/:id/archive', requireAdminLevel('super', 'normal'), archive
 router.patch('/games/:id/new-featured', requireAdminLevel('super', 'normal'), toggleNewFeatured)
 router.patch('/reviews/:id/block', requireAdminLevel('super', 'normal'), blockReview)
 
-// 승인/삭제 (Super만)
+// 탈퇴 회원 복구/완전삭제 (Super만)
+router.post('/users/deleted/:id/restore', requireAdminLevel('super'), restoreUser)
+router.delete('/users/deleted/:id', requireAdminLevel('super'), deleteUserLog)
+
+// 승인 (Super만)
 router.patch('/users/:id/approve', requireAdminLevel('super'), approveUser)
 router.delete('/users/:id', requireAdminLevel('super'), deleteUser)
 router.post('/users/create-admin', requireAdminLevel('super'), createAdminUser)

@@ -198,8 +198,11 @@ export default function AdminGamesPage() {
       )}
 
       <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-text-primary text-xl font-bold">게임 관리</h2>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-text-primary text-xl font-bold">게임 관리</h2>
+            <p className="text-text-muted text-sm mt-1">등록된 게임 목록을 조회하고 상태를 관리합니다</p>
+          </div>
           <span className="text-text-muted text-sm">{loading ? '로딩 중...' : `총 ${total}개`}</span>
         </div>
 
