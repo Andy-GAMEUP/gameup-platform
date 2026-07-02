@@ -191,6 +191,7 @@ export const partnerMatchingService = {
     category?: string
     status?: string
     tab?: string
+    ownerType?: string
     page?: number
     limit?: number
   }) => {
