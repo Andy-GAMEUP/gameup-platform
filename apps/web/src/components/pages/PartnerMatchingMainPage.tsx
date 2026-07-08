@@ -1,12 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/useAuth'
 import partnerMatchingService from '@/services/partnerMatchingService'
 
 export default function PartnerMatchingMainPage() {
+  const router = useRouter()
   const { isAuthenticated, user } = useAuth()
 
   const isCorporateApproved = user?.memberType === 'corporate' && user?.companyInfo?.approvalStatus === 'approved'
@@ -53,12 +55,23 @@ export default function PartnerMatchingMainPage() {
               </p>
               <div className="flex flex-col items-center gap-3 pt-2">
                 <div className="flex flex-wrap gap-4 justify-center">
-                  <Link href="/partner/projects" className="bg-accent hover:bg-accent-hover text-text-primary px-8 py-3 rounded-lg font-medium transition-colors">
-                    프로젝트 둘러보기 →
-                  </Link>
-                  <Link href="/partner/directory" className="border border-line hover:border-accent-muted text-text-secondary hover:text-text-primary px-8 py-3 rounded-lg font-medium transition-colors">
-                    파트너 찾기
-                  </Link>
+                  {isAuthenticated ? (
+                    <Link href="/partner/projects" className="bg-accent hover:bg-accent-hover text-text-primary px-8 py-3 rounded-lg font-medium transition-colors">
+                      프로젝트 둘러보기 →
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => router.push('/login')}
+                      className="bg-accent hover:bg-accent-hover text-text-primary px-8 py-3 rounded-lg font-medium transition-colors"
+                    >
+                      로그인 후 파트너 찾기 →
+                    </button>
+                  )}
+                  {isAuthenticated && (
+                    <Link href="/partner/directory" className="border border-line hover:border-accent-muted text-text-secondary hover:text-text-primary px-8 py-3 rounded-lg font-medium transition-colors">
+                      파트너 찾기
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>

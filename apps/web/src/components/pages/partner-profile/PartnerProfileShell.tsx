@@ -79,6 +79,8 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
     try {
       await partnerService.toggleProfileVisibility(id)
       queryClient.invalidateQueries({ queryKey: ['partnerChannel', id] })
+      queryClient.invalidateQueries({ queryKey: ['partnerMatchingProfiles'] })
+      queryClient.invalidateQueries({ queryKey: ['partnerMatchingStats'] })
     } catch {
       alert('공개 설정 변경에 실패했습니다')
     } finally {
@@ -109,7 +111,7 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
   }
 
   const partnerUser = partner.userId
-  const username = partnerUser?.username || '?'
+  const username = (partnerUser as any)?.companyInfo?.companyName || partnerUser?.username || '?'
   const profileImage = partner.profileImage || partnerUser?.profileImage
   const companyCategory: string = (partnerUser as any)?.companyInfo?.companyCategory || ''
   const rawCompanyTypes: string[] = (partnerUser as any)?.companyInfo?.companyType || []

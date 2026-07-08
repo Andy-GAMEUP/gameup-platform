@@ -90,8 +90,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.level = (user as any).level || 1
         token.activityScore = (user as any).activityScore || 0
         token.accessToken = (user as any).accessToken || ''
+        return token
       }
-      if (trigger === 'update' && token.accessToken) {
+
+      // 기업회원이 미승인(pending/rejected) 상태로 세션에 남아있으면 매번 최신 승인 상태를 재조회한다.
+      // (승인 즉시 세션에 반영되어 재로그인 없이도 대기 화면에서 풀려나오도록 하기 위함)
+      const isUnapprovedCorporate = token.memberType === 'corporate' && (token.companyInfo as any)?.approvalStatus !== 'approved'
+      if ((trigger === 'update' || isUnapprovedCorporate) && token.accessToken) {
         try {
           const res = await fetch(`${process.env.API_URL || 'http://localhost:5000'}/api/users/profile`, {
             headers: { Authorization: `Bearer ${token.accessToken}` },

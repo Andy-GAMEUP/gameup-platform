@@ -164,7 +164,7 @@ export default function PartnerMatchingDirectoryPage() {
                       </svg>
                     )}
                   </div>
-                  <p className="text-sm text-text-secondary truncate mb-2">{profile.introduction || profile.userId?.companyInfo?.companyName || ''}</p>
+                  <p className="text-sm text-text-secondary truncate mb-2">{profile.introduction || '등록된 소개가 없습니다'}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {profile.expertiseArea?.slice(0, 3).map((area, i) => (
                       <span key={i} className="bg-accent-light text-accent px-2 py-0.5 rounded text-xs">{area}</span>

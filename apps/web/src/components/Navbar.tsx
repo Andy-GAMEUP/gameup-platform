@@ -90,9 +90,10 @@ export default function Navbar() {
       { path: '/live_games', label: '라이브게임' },
     ]
     if (!isAuthenticated) {
-      // 비로그인: 메인, 베타존, 라이브게임, 플랫폼 소개, 커뮤니티
+      // 비로그인: 메인, 베타존, 라이브게임, 플랫폼 소개, 커뮤니티, 파트너라운지
       links.push({ path: '/gameup_platform', label: '플랫폼 소개' })
       links.push({ path: '/community', label: '커뮤니티' })
+      links.push({ path: '/partner', label: '파트너라운지' })
     } else if (isAdmin || isCorporateApproved || showDeveloperCenter || isTeamMember) {
       // 관리자 / 기업회원(승인) / 개발자(개인·기업) / 기업 소속 게임회원: 메인, 베타존, 라이브게임, 커뮤니티, 파트너라운지
       links.push({ path: '/community', label: '커뮤니티' })

@@ -62,9 +62,22 @@ export const getMyPartnerStatus = async (req: AuthRequest, res: Response) => {
     let isTeamMember = false
 
     if (!partner) {
-      const user = await User.findById(userId).select('memberType companyInfo')
+      const user = await User.findById(userId).select('memberType companyInfo email username')
       if (user?.memberType === 'corporate' && (user as any).companyInfo?.approvalStatus === 'approved') {
         partner = await Partner.create({ userId, status: 'approved', approvedAt: new Date() })
+
+        const existingMiniHome = await MiniHome.findOne({ userId })
+        if (!existingMiniHome) {
+          const companyInfo = (user as any).companyInfo
+          await MiniHome.create({
+            userId,
+            companyName: companyInfo?.companyName || user.username,
+            isPublic: true,
+            website: companyInfo?.homepageUrl || '',
+            contactEmail: companyInfo?.companyEmail || user.email,
+            contactPhone: companyInfo?.phone || '',
+          })
+        }
       } else {
         // 팀원 여부 확인
         partner = await Partner.findOne({

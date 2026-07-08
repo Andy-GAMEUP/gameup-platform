@@ -223,12 +223,12 @@ export default function AdminMembersPage() {
                         <td className="px-4 py-3 border-r border-line/20">
                           {!user.isActive
                             ? <span className="text-rose-400 font-medium">중지됨</span>
-                            : user.approvalStatus === 'approved' ? <span className="text-text-primary font-medium">회원</span>
+                            : user.companyInfo?.approvalStatus === 'approved' ? <span className="text-text-primary font-medium">회원</span>
                             : <span className="text-amber-400 font-medium">가입 대기</span>}
                         </td>
                         <td className="px-4 py-3">
                           {(() => {
-                            const isApproved = user.approvalStatus === 'approved'
+                            const isApproved = user.companyInfo?.approvalStatus === 'approved'
                             return (
                               <div className="flex gap-1">
                                 <button
