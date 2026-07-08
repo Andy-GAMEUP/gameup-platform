@@ -294,13 +294,23 @@ export const partnerService = {
       return res.data
     },
 
-    updateProjectStatus: async (id: string, status: string) => {
-      const res = await apiClient.patch(`/admin/partner/projects/${id}/status`, { status })
+    getProjectApplicants: async (id: string) => {
+      const res = await apiClient.get(`/admin/partner/projects/${id}/applicants`)
       return res.data
     },
 
-    getProjectApplicants: async (id: string) => {
-      const res = await apiClient.get(`/admin/partner/projects/${id}/applicants`)
+    getDeletedProjects: async (params?: { page?: number; limit?: number; search?: string }) => {
+      const res = await apiClient.get('/admin/partner/projects/deleted', { params })
+      return res.data
+    },
+
+    restoreProject: async (id: string) => {
+      const res = await apiClient.post(`/admin/partner/projects/deleted/${id}/restore`)
+      return res.data
+    },
+
+    deleteProjectLog: async (id: string) => {
+      const res = await apiClient.delete(`/admin/partner/projects/deleted/${id}`)
       return res.data
     },
 

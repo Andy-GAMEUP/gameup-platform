@@ -75,6 +75,7 @@ const navItems: NavItem[] = [
     icon: Tags,
     children: [
       { path: '/admin/partner-topics', label: '프로젝트 관리', icon: Tags, exact: true },
+      { path: '/admin/partner-topics/deleted', label: '삭제된 프로젝트', icon: Trash2 },
     ],
   },
   {

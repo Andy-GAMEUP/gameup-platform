@@ -609,6 +609,42 @@ approvalStatus=pending
 | 토픽 그룹 삭제 | super |
 | 파트너 게시글 삭제 | super |
 
+### 9.5 프로젝트 관리 (관리자, `/admin/partner-topics`)
+
+> 2026-07-06: 상태값을 `모집중 / 매칭성공 / 매칭보류` 3단계로 재구성 (기존 초안/진행중/완료/취소 폐지), "삭제 & 복구" 방식 도입
+
+- 프로젝트 상태값: **`모집중(recruiting)`** / **`매칭성공(matched)`** / **`매칭보류(unmatched)`** 3가지만 존재
+  - `모집중`: 지원자를 받을 수 있는 상태. 지원 API(`applyToProject`)는 이 상태에서만 허용됨
+  - `매칭성공`: 지원자가 결정되어 모집이 종료되고 프로젝트가 진행되는 상태 (기존 `진행중`을 대체)
+  - `매칭보류`: 모집은 종료되었지만 지원자가 아직 결정되지 않은 상태 (기존 `완료`를 대체 — 내부 DB 값은 `unmatched`를 그대로 사용)
+  - 기존 `초안(draft)` / `취소(cancelled)`는 폐지됨 — 프로젝트 등록 시 바로 `모집중`으로 생성되며(임시저장 없음), 취소가 필요한 경우는 상태 변경이 아닌 **삭제**로 처리
+
+**자동 상태 전환** (2026-07-06 추가)
+- 프로젝트 소유자가 지원자를 **승인(approved)** 처리하는 즉시 → 프로젝트 상태 자동으로 `매칭성공` 전환하고, 같은 프로젝트의 승인되지 않은 나머지 지원서는 전부 자동으로 `거절(rejected)` 처리 (`updateApplicationStatus`, `partnerProjectController.ts`)
+- `매칭성공` 상태에서 그 승인을 취소(거절/보류/검토중으로 재변경)했을 때, 해당 프로젝트에 승인된 지원자가 더 이상 없으면 → 마감일이 남아있으면 `모집중`, 마감일이 지났으면 `매칭보류`로 자동 복구 (`updateApplicationStatus`, `partnerProjectController.ts`)
+- 매시간 배치 작업(`apps/api/src/jobs/closeExpiredProjects.ts`, 서버 시작 시 1회 + 이후 1시간마다)이 `모집중` 상태이면서 `applicationDeadline`이 지난 프로젝트를 검사 → 승인된 지원자가 있으면 `매칭성공`, 없으면 `매칭보류`로 자동 전환
+- `매칭보류` 상태의 프로젝트를 소유자가 `applicationDeadline`을 미래 날짜로 수정하면 → 상태가 `모집중`으로 자동 전환 (`updateProject`, `partnerProjectController.ts`). `매칭성공`은 이미 지원자가 승인된 상태이므로 마감일을 바꿔도 전환되지 않음
+
+**마감 후 승인/거절 제한** (2026-07-07 추가)
+- `applicationDeadline`이 지난 프로젝트는 아직 결정되지 않은(현재 상태가 `approved`가 아닌) 지원서를 새로 승인/거절할 수 없음 — 지원자 목록 화면(`ProjectsApplicantsView.tsx`)의 승인/거절 버튼이 비활성화되고, API(`updateApplicationStatus`)도 동일 조건으로 400 응답 처리
+- 단, 이미 `매칭성공`된 지원서의 승인을 취소(거절/보류/검토중으로 재변경)하는 것은 마감 여부와 무관하게 계속 허용 — 위 자동 복구 로직(`매칭보류`/`모집중` 전환)이 계속 동작해야 하기 때문
+
+**관리자 권한 제한** (2026-07-06 변경)
+- 상태(매칭) 전환은 위 자동 로직으로만 이루어지며, **관리자는 프로젝트 상태를 수동으로 변경할 수 없음** — 관리자 페이지의 "관리" 컬럼(상태 변경 드롭다운 + 삭제 버튼)은 폐지되고 **"바로보기"**(새 창으로 프로젝트 상세 페이지 열람)로 대체됨
+- **관리자는 파트너사가 등록한 살아있는 프로젝트를 직접 삭제할 수 없음** — 삭제는 프로젝트 소유자(파트너) 본인만 가능 (`DELETE /partner/projects/:id`)
+- 단, 이미 삭제된 프로젝트(삭제 로그)에 대한 **조회·복구·완전삭제**는 관리자 권한으로 계속 가능 — 이는 살아있는 프로젝트에 대한 매칭/삭제 권한이 아니라 사후 복구/정리 기능이므로 별개로 유지
+
+- 삭제(프로젝트 소유자 본인) 시 목록에서 제거되고 `PartnerProjectDeletionLog`에 스냅샷 기록
+- 삭제된 프로젝트는 **삭제된 프로젝트** 탭(`/admin/partner-topics/deleted`, 파트너라운지 관리 하위)에서 조회 — `GameDeletionLog`/탈퇴 회원 복구와 동일한 패턴 (삭제 시 스냅샷 저장 → 복구 시 스냅샷으로 재생성 → `restoredAt` 기록)
+
+| 액션 | 필요 등급 | 엔드포인트 |
+|------|---------|-----------|
+| 프로젝트 목록/지원자 조회 (읽기 전용) | 모든 관리자 | `GET /admin/partner/projects`, `GET /admin/partner/projects/:id/applicants` |
+| 삭제된 프로젝트 목록 조회 | normal+ | `GET /admin/partner/projects/deleted` |
+| 프로젝트 삭제 (소유자 본인만) | 로그인 파트너 | `DELETE /partner/projects/:id` |
+| 프로젝트 복구 | super | `POST /admin/partner/projects/deleted/:id/restore` |
+| 삭제 로그 완전 삭제 | super | `DELETE /admin/partner/projects/deleted/:id` |
+
 ---
 
 ## 10. 알림 규칙

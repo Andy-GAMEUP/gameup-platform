@@ -78,12 +78,16 @@ export default function LoginPage() {
     }
   }
 
-  const fillTestAccount = (type: 'admin' | 'developer' | 'partner' | 'player') => {
+  const fillTestAccount = (type: 'admin' | 'developer' | 'partner' | 'player' | 'company1' | 'company2' | 'company3' | 'company4') => {
     const accounts = {
       admin: { email: 'admin@gameup.com', password: 'test123456' },
       developer: { email: 'developer@test.com', password: 'test123456' },
       partner: { email: 'partner@test.com', password: 'test123456' },
       player: { email: 'player@test.com', password: 'test123456' },
+      company1: { email: 'dd@naver.com', password: 'test123456' },
+      company2: { email: 'a@naver.com', password: 'test123456' },
+      company3: { email: 'player2@test.com', password: 'test123456' },
+      company4: { email: '1@naver.com', password: 'test123456' },
     }
     setFormData(accounts[type])
     setServerError('')
@@ -208,6 +212,32 @@ export default function LoginPage() {
                   className="py-2 px-3 rounded-lg border border-line text-text-secondary hover:border-accent-muted hover:text-accent text-xs font-medium transition-colors"
                 >
                   {type === 'admin' ? '관리자' : type === 'developer' ? '개발자' : type === 'partner' ? '파트너' : '플레이어'}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative mt-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-line" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-3 bg-bg-secondary text-text-muted">기업 테스트 계정</span>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              {([
+                { type: 'company1', label: 'dedddd' },
+                { type: 'company2', label: 'aaa' },
+                { type: 'company3', label: '22' },
+                { type: 'company4', label: 'ㅇㅇㅇㅇ' },
+              ] as const).map(({ type, label }) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => fillTestAccount(type)}
+                  className="py-2 px-3 rounded-lg border border-line text-text-secondary hover:border-accent-muted hover:text-accent text-xs font-medium transition-colors"
+                >
+                  {label}
                 </button>
               ))}
             </div>

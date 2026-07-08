@@ -3,6 +3,7 @@ import {
   PartnerProjectModel as PartnerProject,
   PartnerProjectApplicationModel as ProjectApplication,
   PartnerProjectInquiryModel as ProjectInquiry,
+  PartnerProjectDeletionLogModel as PartnerProjectDeletionLog,
   UserModel as User,
   PartnerModel,
 } from '@gameup/db'
@@ -14,7 +15,7 @@ export const getProjects = async (req: AuthRequest, res: Response) => {
     const { search, category, status, tab, page = 1, limit = 12 } = req.query
 
     const filter: Record<string, unknown> = {
-      status: { $in: ['recruiting', 'ongoing'] },
+      status: { $in: ['recruiting', 'matched', 'unmatched'] },
     }
 
     if (search) {
@@ -31,8 +32,10 @@ export const getProjects = async (req: AuthRequest, res: Response) => {
 
     if (tab === 'recruiting') {
       filter.status = 'recruiting'
-    } else if (tab === 'ongoing') {
-      filter.status = 'ongoing'
+    } else if (tab === 'matched') {
+      filter.status = 'matched'
+    } else if (tab === 'unmatched') {
+      filter.status = 'unmatched'
     }
 
     if (status && status !== 'all') {
@@ -71,12 +74,12 @@ export const getProjects = async (req: AuthRequest, res: Response) => {
 export const getProjectStats = async (req: AuthRequest, res: Response) => {
   try {
     const total = await PartnerProject.countDocuments({
-      status: { $in: ['recruiting', 'ongoing'] },
+      status: { $in: ['recruiting', 'matched', 'unmatched'] },
     })
     const recruiting = await PartnerProject.countDocuments({ status: 'recruiting' })
 
     const applicantResult = await PartnerProject.aggregate([
-      { $match: { status: { $in: ['recruiting', 'ongoing'] } } },
+      { $match: { status: { $in: ['recruiting', 'matched', 'unmatched'] } } },
       { $group: { _id: null, totalApplicants: { $sum: '$applicantCount' } } },
     ])
     const totalApplicants = applicantResult.length > 0 ? applicantResult[0].totalApplicants : 0
@@ -85,7 +88,7 @@ export const getProjectStats = async (req: AuthRequest, res: Response) => {
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
     const newThisWeek = await PartnerProject.countDocuments({
       createdAt: { $gte: oneWeekAgo },
-      status: { $in: ['recruiting', 'ongoing'] },
+      status: { $in: ['recruiting', 'matched', 'unmatched'] },
     })
 
     res.json({
@@ -166,7 +169,15 @@ export const updateProject = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: '프로젝트 소유자만 수정할 수 있습니다' })
     }
 
-    const updated = await PartnerProject.findByIdAndUpdate(id, req.body, { new: true })
+    const update = { ...req.body }
+    if (project.status === 'unmatched' && update.applicationDeadline) {
+      const newDeadline = new Date(update.applicationDeadline)
+      if (newDeadline > new Date()) {
+        update.status = 'recruiting'
+      }
+    }
+
+    const updated = await PartnerProject.findByIdAndUpdate(id, update, { new: true })
     res.json({ success: true, project: updated })
   } catch (error) {
     console.error('Update project error:', error)
@@ -192,7 +203,23 @@ export const deleteProject = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: '프로젝트 소유자만 삭제할 수 있습니다' })
     }
 
-    await PartnerProject.findByIdAndUpdate(id, { status: 'cancelled' })
+    const owner = await User.findById(req.user.id).select('username')
+
+    await PartnerProjectDeletionLog.create({
+      projectId: project._id,
+      title: project.title,
+      category: project.category,
+      status: project.status,
+      ownerId: project.ownerId,
+      ownerUsername: owner?.username,
+      applicantCount: project.applicantCount,
+      createdAt: project.createdAt,
+      deletedBy: req.user.id,
+      deletedByUsername: owner?.username,
+      projectSnapshot: project.toObject(),
+    })
+
+    await PartnerProject.findByIdAndDelete(id)
     res.json({ success: true, message: '프로젝트가 삭제되었습니다' })
   } catch (error) {
     console.error('Delete project error:', error)
@@ -281,7 +308,7 @@ export const getMyProjectApplicants = async (req: AuthRequest, res: Response) =>
 
     const applicants = await ProjectApplication.find({ projectId: { $in: projectIds } })
       .populate('applicantId', 'username companyInfo memberType')
-      .populate('projectId', 'title category')
+      .populate('projectId', 'title category applicationDeadline')
       .sort({ createdAt: -1 })
 
     res.json({ success: true, applicants })
@@ -315,6 +342,17 @@ export const updateApplicationStatus = async (req: AuthRequest, res: Response) =
       return res.status(400).json({ message: '유효하지 않은 상태입니다' })
     }
 
+    const existingApplication = await ProjectApplication.findById(appId)
+    if (!existingApplication) {
+      return res.status(404).json({ message: '지원서를 찾을 수 없습니다' })
+    }
+
+    const isExpired = !!project.applicationDeadline && project.applicationDeadline < new Date()
+    const isNewDecision = existingApplication.status !== 'approved'
+    if (isExpired && isNewDecision && (status === 'approved' || status === 'rejected')) {
+      return res.status(400).json({ message: '마감된 프로젝트는 지원자를 승인/거절할 수 없습니다' })
+    }
+
     const application = await ProjectApplication.findByIdAndUpdate(
       appId,
       { status },
@@ -323,6 +361,22 @@ export const updateApplicationStatus = async (req: AuthRequest, res: Response) =
 
     if (!application) {
       return res.status(404).json({ message: '지원서를 찾을 수 없습니다' })
+    }
+
+    if (status === 'approved') {
+      await ProjectApplication.updateMany(
+        { projectId: id, _id: { $ne: appId }, status: { $ne: 'approved' } },
+        { status: 'rejected' }
+      )
+      if (project.status !== 'matched') {
+        await PartnerProject.findByIdAndUpdate(id, { status: 'matched' })
+      }
+    } else if (project.status === 'matched') {
+      const stillHasApproved = await ProjectApplication.exists({ projectId: id, status: 'approved' })
+      if (!stillHasApproved) {
+        const isExpired = !!project.applicationDeadline && project.applicationDeadline < new Date()
+        await PartnerProject.findByIdAndUpdate(id, { status: isExpired ? 'unmatched' : 'recruiting' })
+      }
     }
 
     res.json({ success: true, application })
@@ -378,7 +432,7 @@ export const getProjectsByUser = async (req: AuthRequest, res: Response) => {
 
     const projects = await PartnerProject.find({
       ownerId: userId,
-      status: { $in: ['recruiting', 'ongoing', 'completed'] },
+      status: { $in: ['recruiting', 'matched', 'unmatched'] },
     }).sort({ createdAt: -1 })
 
     res.json({ success: true, projects })

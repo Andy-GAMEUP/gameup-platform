@@ -120,8 +120,12 @@ export default function PartnerMatchingMainPage() {
                   <Link key={project._id} href={`/partner/projects/${project._id}`} className="block bg-bg-tertiary/50 border border-line-light rounded-xl p-5 hover:border-accent-muted transition-colors">
                     <div className="flex justify-between items-start mb-3">
                       <span className="bg-accent-light text-accent px-2.5 py-0.5 rounded text-xs font-medium">{project.category}</span>
-                      <span className={`px-2.5 py-0.5 rounded text-xs font-medium ${project.status === 'recruiting' ? 'bg-green-500/20 text-green-400' : 'bg-bg-muted/20 text-text-secondary'}`}>
-                        {project.status === 'recruiting' ? '모집중' : '진행중'}
+                      <span className={`px-2.5 py-0.5 rounded text-xs font-medium ${
+                        project.status === 'recruiting' ? 'bg-green-500/20 text-green-400' :
+                        project.status === 'matched' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-amber-500/20 text-amber-400'
+                      }`}>
+                        {project.status === 'recruiting' ? '모집중' : project.status === 'matched' ? '매칭성공' : '매칭보류'}
                       </span>
                     </div>
                     <h3 className="text-base font-semibold text-text-primary mb-1.5">{project.title}</h3>

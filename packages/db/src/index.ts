@@ -72,6 +72,8 @@ export { default as PartnerProjectApplicationModel } from './models/PartnerProje
 export type { IPartnerProjectApplication } from './models/PartnerProjectApplication'
 export { default as PartnerProjectInquiryModel } from './models/PartnerProjectInquiry'
 export type { IPartnerProjectInquiry } from './models/PartnerProjectInquiry'
+export { default as PartnerProjectDeletionLogModel } from './models/PartnerProjectDeletionLog'
+export type { IPartnerProjectDeletionLog } from './models/PartnerProjectDeletionLog'
 export { default as PartnerReviewModel } from './models/PartnerReview'
 export type { IPartnerReview } from './models/PartnerReview'
 export { default as PageVisitModel } from './models/PageVisit'

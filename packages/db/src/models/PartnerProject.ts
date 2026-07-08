@@ -12,7 +12,7 @@ export interface IPartnerProject extends Document {
   description: string
   detailedDescription: string
   category: string
-  status: 'draft' | 'recruiting' | 'ongoing' | 'completed' | 'cancelled'
+  status: 'recruiting' | 'matched' | 'unmatched'
   budget: string
   budgetMin: string
   budgetMax: string
@@ -51,8 +51,8 @@ const partnerProjectSchema = new Schema<IPartnerProject>(
     },
     status: {
       type: String,
-      enum: ['draft', 'recruiting', 'ongoing', 'completed', 'cancelled'],
-      default: 'draft',
+      enum: ['recruiting', 'matched', 'unmatched'],
+      default: 'recruiting',
     },
     budget: { type: String, default: '' },
     budgetMin: { type: String, default: '' },

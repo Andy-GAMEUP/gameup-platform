@@ -14,8 +14,8 @@ import {
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   recruiting: { text: '모집중', color: 'bg-green-500/20 text-green-400' },
-  ongoing: { text: '진행중', color: 'bg-accent-light text-accent' },
-  completed: { text: '완료', color: 'bg-bg-muted/20 text-text-secondary' },
+  matched: { text: '매칭성공', color: 'bg-blue-500/20 text-blue-400' },
+  unmatched: { text: '매칭보류', color: 'bg-amber-500/20 text-amber-400' },
 }
 
 const formatUnit = (value: string | undefined, unit: string) => {

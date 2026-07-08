@@ -4,7 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import partnerService from '@/services/partnerService'
 import {
   Loader2, Search, X,
-  FolderKanban, Users, TrendingUp, CalendarClock,
+  Users,
   ChevronLeft, ChevronRight, Eye, ArrowUpDown,
 } from 'lucide-react'
 
@@ -26,18 +26,6 @@ interface ProjectItem {
   requiredSkills: string[]
   ownerId?: { _id: string; username: string; email: string; companyInfo?: { companyName?: string } }
   createdAt: string
-}
-
-interface ProjectStats {
-  total: number
-  recruiting: number
-  ongoing: number
-  completed: number
-  cancelled: number
-  newThisWeek: number
-  totalApplicants: number
-  deadlineSoon: number
-  popularProjects: ProjectItem[]
 }
 
 interface Applicant {
@@ -70,11 +58,9 @@ const CATEGORIES = [
 
 const STATUS_OPTIONS = [
   { value: 'all', label: '전체' },
-  { value: 'draft', label: '초안' },
   { value: 'recruiting', label: '모집중' },
-  { value: 'ongoing', label: '진행중' },
-  { value: 'completed', label: '완료' },
-  { value: 'cancelled', label: '취소' },
+  { value: 'matched', label: '매칭성공' },
+  { value: 'unmatched', label: '매칭보류' },
 ]
 
 const SORT_OPTIONS = [
@@ -85,15 +71,13 @@ const SORT_OPTIONS = [
 ]
 
 const statusBadge = (status: string) => {
-  const map: Record<string, { bg: string; text: string; label: string }> = {
-    draft: { bg: 'bg-gray-100', text: 'text-gray-600', label: '초안' },
-    recruiting: { bg: 'bg-green-100', text: 'text-green-700', label: '모집중' },
-    ongoing: { bg: 'bg-blue-100', text: 'text-blue-700', label: '진행중' },
-    completed: { bg: 'bg-purple-100', text: 'text-purple-700', label: '완료' },
-    cancelled: { bg: 'bg-red-100', text: 'text-red-600', label: '취소' },
+  const map: Record<string, { text: string; label: string }> = {
+    recruiting: { text: 'text-green-700', label: '모집중' },
+    matched: { text: 'text-blue-700', label: '매칭성공' },
+    unmatched: { text: 'text-amber-700', label: '매칭보류' },
   }
-  const s = map[status] || map.draft
-  return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.bg} ${s.text}`}>{s.label}</span>
+  const s = map[status] || map.recruiting
+  return <span className={`text-xs font-medium ${s.text}`}>{s.label}</span>
 }
 
 // ────────── 메인 페이지 ──────────
@@ -101,7 +85,6 @@ const statusBadge = (status: string) => {
 export default function AdminPartnerTopicsPage() {
   // ── 프로젝트 관리 state ──
   const [projects, setProjects] = useState<ProjectItem[]>([])
-  const [projectStats, setProjectStats] = useState<ProjectStats | null>(null)
   const [projectLoading, setProjectLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -137,25 +120,9 @@ export default function AdminPartnerTopicsPage() {
     finally { setProjectLoading(false) }
   }, [currentPage, searchQuery, categoryFilter, statusFilter, sortBy])
 
-  const loadProjectStats = useCallback(async () => {
-    try {
-      const data = await partnerService.admin.getProjectStats()
-      setProjectStats(data)
-    } catch { /* silent */ }
-  }, [])
-
-  useEffect(() => { loadProjects(); loadProjectStats() }, [loadProjects, loadProjectStats])
+  useEffect(() => { loadProjects() }, [loadProjects])
 
   // ── 프로젝트 핸들러 ──
-  const handleStatusChange = async (id: string, newStatus: string) => {
-    try {
-      await partnerService.admin.updateProjectStatus(id, newStatus)
-      setProjects(prev => prev.map(p => p._id === id ? { ...p, status: newStatus } : p))
-      showToast('상태가 변경되었습니다')
-      loadProjectStats()
-    } catch { showToast('상태 변경 실패', false) }
-  }
-
   const handleViewApplicants = async (project: ProjectItem) => {
     setSelectedProject(project); setApplicantLoading(true)
     try {
@@ -168,13 +135,6 @@ export default function AdminPartnerTopicsPage() {
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setCurrentPage(1); loadProjects() }
 
   const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString('ko-KR') : '-'
-  const isDeadlineSoon = (d?: string) => {
-    if (!d) return false
-    const diff = new Date(d).getTime() - Date.now()
-    return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000
-  }
-  const isExpired = (d?: string) => d ? new Date(d).getTime() < Date.now() : false
-
   const formatBudget = (p: ProjectItem) => {
     if (p.budget) return p.budget
     if (p.budgetMin && p.budgetMax) return `${p.budgetMin} ~ ${p.budgetMax}`
@@ -188,54 +148,6 @@ export default function AdminPartnerTopicsPage() {
           <h1 className="text-text-primary font-bold text-xl">프로젝트 관리</h1>
           <p className="text-text-muted text-sm mt-1">파트너사가 등록한 프로젝트와 지원 현황을 관리합니다</p>
         </div>
-
-        {/* 통계 카드 */}
-        {projectStats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-bg-secondary border border-line rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center"><FolderKanban className="w-5 h-5 text-blue-600" /></div>
-                <div><p className="text-text-muted text-xs">전체 프로젝트</p><p className="text-text-primary text-xl font-bold">{projectStats.total}</p></div>
-              </div>
-            </div>
-            <div className="bg-bg-secondary border border-line rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center"><TrendingUp className="w-5 h-5 text-green-600" /></div>
-                <div><p className="text-text-muted text-xs">모집중</p><p className="text-text-primary text-xl font-bold">{projectStats.recruiting}</p></div>
-              </div>
-            </div>
-            <div className="bg-bg-secondary border border-line rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center"><CalendarClock className="w-5 h-5 text-amber-600" /></div>
-                <div><p className="text-text-muted text-xs">마감임박 (7일내)</p><p className="text-text-primary text-xl font-bold">{projectStats.deadlineSoon}</p></div>
-              </div>
-            </div>
-            <div className="bg-bg-secondary border border-line rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center"><Users className="w-5 h-5 text-purple-600" /></div>
-                <div><p className="text-text-muted text-xs">총 지원자</p><p className="text-text-primary text-xl font-bold">{projectStats.totalApplicants}</p></div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 인기 프로젝트 TOP 5 */}
-        {projectStats?.popularProjects && projectStats.popularProjects.length > 0 && (
-          <div className="bg-bg-secondary border border-line rounded-xl p-5">
-            <h3 className="text-text-primary font-semibold text-sm mb-3 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-accent" /> 인기 프로젝트 TOP 5</h3>
-            <div className="space-y-2">
-              {projectStats.popularProjects.map((p, i) => (
-                <div key={p._id} className="flex items-center gap-3 py-2 border-b border-line last:border-0">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i < 3 ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-muted'}`}>{i + 1}</span>
-                  <span className="flex-1 text-text-primary text-sm truncate">{p.title}</span>
-                  <span className="text-xs text-text-muted">{p.category}</span>
-                  {statusBadge(p.status)}
-                  <span className="text-sm font-medium text-accent">{p.applicantCount}명 지원</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* 검색 & 필터 */}
         <div className="bg-bg-secondary border border-line rounded-xl p-4 space-y-3">
@@ -275,63 +187,68 @@ export default function AdminPartnerTopicsPage() {
         </div>
 
         {/* 프로젝트 리스트 */}
-        {projectLoading ? (
-          <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-text-secondary" /></div>
-        ) : projects.length === 0 ? (
-          <div className="text-center py-12 text-text-secondary"><p className="text-sm">프로젝트가 없습니다</p></div>
-        ) : (
-          <div className="space-y-3">
-            {projects.map(project => (
-              <div key={project._id} className="bg-bg-secondary border border-line rounded-xl p-5 hover:border-accent/30 transition-colors">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
+        <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-text-secondary text-xs">
+                <th className="text-left px-4 py-3 font-medium border-r border-line/30">프로젝트명</th>
+                <th className="text-left px-4 py-3 font-medium border-r border-line/30">상태</th>
+                <th className="text-left px-4 py-3 font-medium border-r border-line/30">등록사</th>
+                <th className="text-left px-4 py-3 font-medium border-r border-line/30">예산</th>
+                <th className="text-left px-4 py-3 font-medium border-r border-line/30">기간</th>
+                <th className="text-left px-4 py-3 font-medium border-r border-line/30">등록일</th>
+                <th className="text-left px-4 py-3 font-medium border-r border-line/30">마감일</th>
+                <th className="text-left px-4 py-3 font-medium border-r border-line/30">지원자</th>
+                <th className="text-left px-4 py-3 font-medium">프로젝트 보기</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projectLoading ? (
+                <tr><td colSpan={9} className="text-center py-12 text-text-muted"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></td></tr>
+              ) : projects.length === 0 ? (
+                <tr><td colSpan={9} className="text-center py-12 text-text-secondary text-sm">프로젝트가 없습니다</td></tr>
+              ) : (
+                projects.map(project => (
+                  <tr key={project._id} className="border-b border-line/50 hover:bg-bg-tertiary/30 transition-colors align-top">
+                    <td className="px-4 py-3 max-w-xs border-r border-line/20">
+                      <span className="inline-block px-2 py-0.5 rounded-full text-xs bg-bg-tertiary text-text-secondary mb-1">{project.category}</span>
+                      <p className="text-text-primary font-medium truncate">{project.title}</p>
+                      <p className="text-text-muted text-xs mt-0.5 line-clamp-1">{project.description || '설명 없음'}</p>
+                      {project.requiredSkills?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {project.requiredSkills.slice(0, 3).map(skill => (
+                            <span key={skill} className="px-1.5 py-0.5 bg-bg-tertiary text-text-muted rounded text-[11px]">{skill}</span>
+                          ))}
+                          {project.requiredSkills.length > 3 && <span className="text-text-muted text-[11px]">+{project.requiredSkills.length - 3}</span>}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap border-r border-line/20">
                       {statusBadge(project.status)}
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-bg-tertiary text-text-secondary">{project.category}</span>
-                      {isDeadlineSoon(project.applicationDeadline) && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-600 font-medium">마감임박</span>
-                      )}
-                      {isExpired(project.applicationDeadline) && project.status === 'recruiting' && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-gray-200 text-gray-600">마감됨</span>
-                      )}
-                    </div>
-                    <h3 className="text-text-primary font-semibold text-base truncate">{project.title}</h3>
-                    <p className="text-text-muted text-sm mt-1 line-clamp-1">{project.description || '설명 없음'}</p>
-                    <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-text-secondary">
-                      <span>등록사: {project.ownerId?.companyInfo?.companyName || project.ownerId?.username || '-'}</span>
-                      <span>예산: {formatBudget(project)}</span>
-                      <span>기간: {project.duration || '-'}</span>
-                      <span>마감일: <span className={isDeadlineSoon(project.applicationDeadline) ? 'text-red-500 font-medium' : ''}>{formatDate(project.applicationDeadline)}</span></span>
-                      <span>등록일: {formatDate(project.createdAt)}</span>
-                    </div>
-                    {project.requiredSkills?.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {project.requiredSkills.slice(0, 5).map(skill => (
-                          <span key={skill} className="px-2 py-0.5 bg-bg-tertiary text-text-muted rounded text-xs">{skill}</span>
-                        ))}
-                        {project.requiredSkills.length > 5 && <span className="text-text-muted text-xs">+{project.requiredSkills.length - 5}</span>}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <button onClick={() => handleViewApplicants(project)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-accent/10 hover:bg-accent/20 text-accent rounded-lg text-xs font-medium transition-colors">
-                      <Users className="w-3.5 h-3.5" /> 지원자 {project.applicantCount}명
-                    </button>
-                    <select value={project.status} onChange={e => handleStatusChange(project._id, e.target.value)}
-                      className="bg-bg-tertiary border border-line rounded-lg px-2 py-1 text-xs text-text-primary focus:outline-none">
-                      <option value="draft">초안</option>
-                      <option value="recruiting">모집중</option>
-                      <option value="ongoing">진행중</option>
-                      <option value="completed">완료</option>
-                      <option value="cancelled">취소</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+                    </td>
+                    <td className="px-4 py-3 text-text-secondary whitespace-nowrap border-r border-line/20">{project.ownerId?.companyInfo?.companyName || project.ownerId?.username || '-'}</td>
+                    <td className="px-4 py-3 text-text-secondary whitespace-nowrap border-r border-line/20">{formatBudget(project)}</td>
+                    <td className="px-4 py-3 text-text-secondary whitespace-nowrap border-r border-line/20">{project.duration || '-'}</td>
+                    <td className="px-4 py-3 text-text-secondary whitespace-nowrap border-r border-line/20">{formatDate(project.createdAt)}</td>
+                    <td className="px-4 py-3 text-text-secondary whitespace-nowrap border-r border-line/20">{formatDate(project.applicationDeadline)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap border-r border-line/20">
+                      <button onClick={() => handleViewApplicants(project)}
+                        className="text-text-secondary hover:text-accent text-xs font-medium transition-colors underline-offset-2 hover:underline">
+                        {project.applicantCount}명
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <a href={`/partner/projects/${project._id}`} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition-colors w-fit">
+                        <Eye className="w-3.5 h-3.5" /> 바로가기
+                      </a>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* 페이지네이션 */}
         {totalPages > 1 && (

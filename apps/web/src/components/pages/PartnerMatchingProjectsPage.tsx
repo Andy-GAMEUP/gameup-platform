@@ -22,9 +22,9 @@ const categoryOptions = [
 ]
 
 const statusLabel: Record<string, { text: string; badge: string; border: string }> = {
-  recruiting: { text: '모집중', badge: 'bg-emerald-100 text-emerald-700 font-semibold',   border: 'border-l-emerald-400' },
-  ongoing:    { text: '진행중', badge: 'bg-violet-100 text-violet-700 font-semibold',     border: 'border-l-violet-500' },
-  completed:  { text: '완료',   badge: 'bg-zinc-100 text-zinc-600 font-semibold',         border: 'border-l-zinc-400' },
+  recruiting: { text: '모집중',   badge: 'bg-emerald-100 text-emerald-700 font-semibold', border: 'border-l-emerald-400' },
+  matched:    { text: '매칭성공', badge: 'bg-blue-100 text-blue-700 font-semibold',       border: 'border-l-blue-500' },
+  unmatched:  { text: '매칭보류', badge: 'bg-amber-100 text-amber-700 font-semibold',     border: 'border-l-amber-400' },
 }
 
 const SKILL_SUGGESTIONS = ['Unity', 'Unreal', 'React', 'Node.js', 'Python', 'Figma', 'iOS', 'Android', 'QA', '마케팅', '번역', '기획']

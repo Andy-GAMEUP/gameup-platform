@@ -7,6 +7,7 @@ import {
   UserModel as User,
   PartnerProjectModel as PartnerProject,
   PartnerProjectApplicationModel as PartnerProjectApplication,
+  PartnerProjectDeletionLogModel as PartnerProjectDeletionLog,
   MiniHomeModel as MiniHome,
 } from '@gameup/db'
 
@@ -374,12 +375,11 @@ export const getAdminProjects = async (req: AuthRequest, res: Response) => {
 
 export const getAdminProjectStats = async (_req: AuthRequest, res: Response) => {
   try {
-    const [total, recruiting, ongoing, completed, cancelled] = await Promise.all([
+    const [total, recruiting, matched, unmatched] = await Promise.all([
       PartnerProject.countDocuments(),
       PartnerProject.countDocuments({ status: 'recruiting' }),
-      PartnerProject.countDocuments({ status: 'ongoing' }),
-      PartnerProject.countDocuments({ status: 'completed' }),
-      PartnerProject.countDocuments({ status: 'cancelled' }),
+      PartnerProject.countDocuments({ status: 'matched' }),
+      PartnerProject.countDocuments({ status: 'unmatched' }),
     ])
 
     const oneWeekAgo = new Date()
@@ -393,7 +393,7 @@ export const getAdminProjectStats = async (_req: AuthRequest, res: Response) => 
       applicationDeadline: { $gte: new Date(), $lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
     })
 
-    const popularProjects = await PartnerProject.find({ status: { $in: ['recruiting', 'ongoing'] } })
+    const popularProjects = await PartnerProject.find({ status: { $in: ['recruiting', 'matched', 'unmatched'] } })
       .populate('ownerId', 'username companyInfo')
       .sort({ applicantCount: -1 })
       .limit(5)
@@ -402,9 +402,8 @@ export const getAdminProjectStats = async (_req: AuthRequest, res: Response) => 
     res.json({
       total,
       recruiting,
-      ongoing,
-      completed,
-      cancelled,
+      matched,
+      unmatched,
       newThisWeek,
       totalApplicants,
       deadlineSoon,
@@ -415,19 +414,66 @@ export const getAdminProjectStats = async (_req: AuthRequest, res: Response) => 
   }
 }
 
-export const updateAdminProjectStatus = async (req: AuthRequest, res: Response) => {
+// ── 삭제된 프로젝트 조회 & 복구 (매칭/삭제는 자동 전환·소유자 본인만 가능, 관리자는 조회/복구만) ──
+
+export const getDeletedAdminProjects = async (req: AuthRequest, res: Response) => {
+  try {
+    const { page = 1, limit = 15, search } = req.query
+    const pageNum = Number(page)
+    const limitNum = Number(limit)
+
+    const query: Record<string, unknown> = { restoredAt: { $exists: false } }
+    if (search) {
+      query.title = { $regex: search, $options: 'i' }
+    }
+
+    const [logs, total] = await Promise.all([
+      PartnerProjectDeletionLog.find(query)
+        .sort({ deletedAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      PartnerProjectDeletionLog.countDocuments(query),
+    ])
+
+    res.json({ logs, total, page: pageNum, limit: limitNum })
+  } catch {
+    res.status(500).json({ message: '삭제된 프로젝트 목록 조회 실패' })
+  }
+}
+
+export const restoreAdminProject = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
-    const { status } = req.body
-    if (!['draft', 'recruiting', 'ongoing', 'completed', 'cancelled'].includes(status)) {
-      return res.status(400).json({ message: '유효하지 않은 상태입니다' })
-    }
-    const project = await PartnerProject.findByIdAndUpdate(id, { status }, { new: true })
-      .populate('ownerId', 'username email companyInfo')
-    if (!project) return res.status(404).json({ message: '프로젝트를 찾을 수 없습니다' })
-    res.json({ message: '프로젝트 상태가 변경되었습니다', project })
+    const log = await PartnerProjectDeletionLog.findById(id)
+    if (!log) return res.status(404).json({ message: '삭제 로그를 찾을 수 없습니다' })
+    if (log.restoredAt) return res.status(400).json({ message: '이미 복구된 프로젝트입니다' })
+
+    const snapshot = log.projectSnapshot as Record<string, unknown>
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { _id, __v, ...projectData } = snapshot
+    await PartnerProject.create(projectData)
+
+    await PartnerProjectDeletionLog.findByIdAndUpdate(id, {
+      restoredAt: new Date(),
+      restoredBy: req.user!.id,
+    })
+
+    res.json({ success: true, message: '프로젝트가 복구되었습니다' })
   } catch {
-    res.status(500).json({ message: '프로젝트 상태 변경 실패' })
+    res.status(500).json({ message: '프로젝트 복구 실패' })
+  }
+}
+
+export const deleteAdminProjectLog = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const log = await PartnerProjectDeletionLog.findById(id)
+    if (!log) return res.status(404).json({ message: '삭제 로그를 찾을 수 없습니다' })
+    await PartnerProjectDeletionLog.findByIdAndDelete(id)
+    res.json({ success: true, message: '완전 삭제되었습니다' })
+  } catch {
+    res.status(500).json({ message: '완전 삭제 실패' })
   }
 }
 
