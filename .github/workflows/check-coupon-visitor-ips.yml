@@ -14,7 +14,7 @@ jobs:
       - name: Analyze nginx access log
         timeout-minutes: 3
         run: |
-          docker exec gameup-nginx sh -c 'tail -n 20000 /var/log/nginx/access.log' 2>/dev/null > /tmp/access.log || true
+          docker logs gameup-nginx --tail 20000 > /tmp/access.log 2>&1 || true
           wc -l /tmp/access.log
           awk '{ ip=$1; path=$7; key=ip SUBSEP path; if (!(key in seen)) { seen[key]=1; paths[ip]=paths[ip] SUBSEP path } } END { for (ip in paths) { n=split(paths[ip], arr, SUBSEP); hasCoupon=0; other=""; for (i=1;i<=n;i++) { p=arr[i]; if (p=="") continue; if (index(p,"/moayong/coupon-server")==1) hasCoupon=1; else other = other " " p } if (hasCoupon && other != "") print ip ":" other } }' /tmp/access.log > /tmp/suspicious.txt
           if [ -s /tmp/suspicious.txt ]; then
