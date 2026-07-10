@@ -1,0 +1,49 @@
+name: Check Coupon Visitor IPs (read-only)
+
+# 수동 실행 전용, 읽기 전용 로그 조회 — 아무 것도 변경/차단하지 않음.
+# 쿠폰 페이지(/moayong/coupon-server/...)로 들어온 IP 중, gameup.co.kr의
+# 다른 경로도 접근한 IP가 있는지 확인만 함 (자동 차단 없음, 사람이 보고 판단).
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Report suspicious IPs (coupon visitor who also hit other paths)
+    runs-on: [self-hosted, gameup-prod]
+    steps:
+      - name: Analyze nginx access log
+        run: |
+          docker exec gameup-nginx sh -c 'tail -n 20000 /var/log/nginx/access.log' > /tmp/access.log || true
+          python3 <<'PYEOF'
+          import re
+          from collections import defaultdict
+
+          coupon_prefix = "/moayong/coupon-server"
+          ip_paths = defaultdict(set)
+
+          pattern = re.compile(r'^(\S+) \S+ \S+ \[[^\]]+\] "(\S+) (\S+) \S+" (\d+)')
+
+          with open("/tmp/access.log") as f:
+              for line in f:
+                  m = pattern.match(line)
+                  if not m:
+                      continue
+                  ip, method, path, status = m.groups()
+                  ip_paths[ip].add(path)
+
+          suspicious = {}
+          for ip, paths in ip_paths.items():
+              hit_coupon = any(p.startswith(coupon_prefix) for p in paths)
+              other_paths = [p for p in paths if not p.startswith(coupon_prefix)]
+              if hit_coupon and other_paths:
+                  suspicious[ip] = other_paths
+
+          if not suspicious:
+              print("쿠폰 페이지 방문 후 다른 경로를 건드린 IP 없음.")
+          else:
+              print(f"쿠폰 페이지 방문 후 다른 경로도 접근한 IP {len(suspicious)}건:\n")
+              for ip, paths in suspicious.items():
+                  print(f"- {ip}")
+                  for p in sorted(paths)[:20]:
+                      print(f"    {p}")
+          PYEOF
