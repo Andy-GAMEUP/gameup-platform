@@ -1,0 +1,24 @@
+name: Diagnostic - External Access Check
+
+# 진짜 외부 인터넷(GitHub 클라우드, 회사망과 무관)에서 사이트 접속이 되는지 확인하는 일회성 진단용
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check gameup.co.kr from GitHub-hosted runner (외부 네트워크)
+    runs-on: ubuntu-latest
+    steps:
+      - name: DNS resolution
+        run: |
+          nslookup www.gameup.co.kr || true
+          echo "---"
+          getent hosts www.gameup.co.kr || true
+
+      - name: Connectivity check
+        run: |
+          echo "=== 메인 사이트 ==="
+          curl -v --max-time 15 -o /dev/null https://www.gameup.co.kr/ 2>&1 | tail -30 || true
+          echo ""
+          echo "=== 쿠폰 페이지 ==="
+          curl -sk -o /dev/null -w "HTTP %{http_code}\n" --max-time 15 https://www.gameup.co.kr/heroes/coupon-server/public/coupon.html || true
