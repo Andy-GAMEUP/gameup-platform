@@ -21,4 +21,4 @@ jobs:
           curl -v --max-time 15 -o /dev/null https://www.gameup.co.kr/ 2>&1 | tail -30 || true
           echo ""
           echo "=== 쿠폰 페이지 ==="
-          curl -sk -o /dev/null -w "HTTP %{http_code}\n" --max-time 15 https://www.gameup.co.kr/heroes/coupon-server/public/coupon.html || true
+          curl -sk -o /dev/null -w "HTTP %{http_code}\n" --max-time 15 https://www.gameup.co.kr/moayong/coupon-server/public/coupon.html || true

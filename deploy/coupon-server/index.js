@@ -19,9 +19,9 @@ const COUPON_API_URL = process.env.COUPON_API_URL || 'https://kross.moayong.co.k
 app.use(express.json({ limit: '10kb' }));
 
 // 정적 파일 제공 경로 설정
-// coupon.html에서 /heroes/coupon-server/public/styles.css 처럼 호출하는 경우 필요
+// coupon.html에서 /moayong/coupon-server/public/styles.css 처럼 호출하는 경우 필요
 app.use(
-    '/heroes/coupon-server/public',
+    '/moayong/coupon-server/public',
     express.static(path.join(__dirname, 'public'))
 );
 
@@ -34,8 +34,8 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'coupon.html'));
 });
 
-// 실제 운영 URL이 /heroes/coupon-server/public/coupon.html 인 경우도 대응
-app.get('/heroes/coupon-server/public/coupon.html', (req, res) => {
+// 실제 운영 URL이 /moayong/coupon-server/public/coupon.html 인 경우도 대응
+app.get('/moayong/coupon-server/public/coupon.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'coupon.html'));
 });
 
@@ -137,11 +137,11 @@ app.post('/api/redeem-coupon', redeemCoupon);
 // 혹시 프론트에서 /api/gift/gain으로 호출하는 경우도 대응
 app.post('/api/gift/gain', redeemCoupon);
 
-// 운영 경로가 /heroes/coupon-server/api/redeem-coupon 인 경우도 대응
-app.post('/heroes/coupon-server/api/redeem-coupon', redeemCoupon);
+// 운영 경로가 /moayong/coupon-server/api/redeem-coupon 인 경우도 대응
+app.post('/moayong/coupon-server/api/redeem-coupon', redeemCoupon);
 
-// 운영 경로가 /heroes/coupon-server/api/gift/gain 인 경우도 대응
-app.post('/heroes/coupon-server/api/gift/gain', redeemCoupon);
+// 운영 경로가 /moayong/coupon-server/api/gift/gain 인 경우도 대응
+app.post('/moayong/coupon-server/api/gift/gain', redeemCoupon);
 
 app.listen(PORT, () => {
     console.log(`Coupon server is running on http://localhost:${PORT}`);

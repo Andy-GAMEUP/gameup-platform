@@ -13,7 +13,7 @@ gameup-platform과 무관한 외부 이벤트용 쿠폰 발급 서버. 개발사
 | 서버 안 Docker 컨테이너 | `gameup-coupon-server` (다른 서비스: `gameup-web`, `gameup-api`, `gameup-nginx`, `gameup-mongodb`와 완전히 분리됨) |
 | GitHub repo secrets | `COUPON_SECRET_KEY`, `COUPON_API_URL` — 코드/로그에 절대 노출 안 됨 |
 
-접속 경로: `https://gameup.co.kr/heroes/coupon-server/`
+접속 경로: `https://gameup.co.kr/moayong/coupon-server/`
 
 ## 완전히 제거하는 방법
 

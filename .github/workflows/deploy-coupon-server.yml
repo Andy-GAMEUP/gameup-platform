@@ -40,7 +40,7 @@ jobs:
         run: |
           sleep 3
           docker ps --filter "name=gameup-coupon-server" --format "table {{.Names}}\t{{.Status}}"
-          docker exec gameup-coupon-server wget -qO- http://localhost:3002/heroes/coupon-server/public/coupon.html > /dev/null \
+          docker exec gameup-coupon-server wget -qO- http://localhost:3002/moayong/coupon-server/public/coupon.html > /dev/null \
             && echo "✅ coupon-server 정상 응답" \
             || (echo "❌ coupon-server 응답 실패" && exit 1)
 
