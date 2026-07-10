@@ -39,6 +39,11 @@ app.get('/moayong/coupon-server/public/coupon.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'coupon.html'));
 });
 
+// 운영 URL을 /moayong/coupon-server/public.html 로 사용하는 경우
+app.get('/moayong/coupon-server/public.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'coupon.html'));
+});
+
 // 서명 생성 함수
 function generateSign(uid, card, datetime) {
     return crypto

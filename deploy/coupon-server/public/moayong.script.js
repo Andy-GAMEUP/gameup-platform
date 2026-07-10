@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             try {
-                const response = await fetch('../api/redeem-coupon', {
+                const response = await fetch('/moayong/coupon-server/api/redeem-coupon', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
