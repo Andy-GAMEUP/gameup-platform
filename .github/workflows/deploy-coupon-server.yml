@@ -43,3 +43,11 @@ jobs:
           docker exec gameup-coupon-server wget -qO- http://localhost:3002/heroes/coupon-server/public/coupon.html > /dev/null \
             && echo "✅ coupon-server 정상 응답" \
             || (echo "❌ coupon-server 응답 실패" && exit 1)
+
+      # nginx 설정 파일 변경(bind mount)은 컨테이너 재기동만으로는 반영되지 않으므로,
+      # 문법 검사 통과 시에만 무중단 reload. 기존 사이트/다른 location에는 영향 없음.
+      - name: Validate & reload nginx (only if config is valid)
+        run: |
+          docker exec gameup-nginx nginx -t
+          docker exec gameup-nginx nginx -s reload
+          echo "✅ nginx reload 완료"
