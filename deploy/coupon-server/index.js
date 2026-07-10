@@ -18,6 +18,18 @@ const COUPON_API_URL = process.env.COUPON_API_URL || 'https://kross.moayong.co.k
 // JSON 요청 처리
 app.use(express.json({ limit: '10kb' }));
 
+// GitHub Pages 미러 페이지(별도 도메인)에서 쿠폰 API만 호출할 수 있도록 허용
+const ALLOWED_ORIGIN = 'https://dckim-capcloud.github.io';
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
+    next();
+});
+
 // 정적 파일 제공 경로 설정
 // coupon.html에서 /moayong/coupon-server/public/styles.css 처럼 호출하는 경우 필요
 app.use(

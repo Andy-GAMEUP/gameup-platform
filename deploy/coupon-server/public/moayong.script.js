@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             try {
-                const response = await fetch('/moayong/coupon-server/api/redeem-coupon', {
+                const response = await fetch('https://www.gameup.co.kr/moayong/coupon-server/api/redeem-coupon', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
