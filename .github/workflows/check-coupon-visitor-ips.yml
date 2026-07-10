@@ -12,38 +12,14 @@ jobs:
     runs-on: [self-hosted, gameup-prod]
     steps:
       - name: Analyze nginx access log
+        timeout-minutes: 3
         run: |
-          docker exec gameup-nginx sh -c 'tail -n 20000 /var/log/nginx/access.log' > /tmp/access.log || true
-          python3 <<'PYEOF'
-          import re
-          from collections import defaultdict
-
-          coupon_prefix = "/moayong/coupon-server"
-          ip_paths = defaultdict(set)
-
-          pattern = re.compile(r'^(\S+) \S+ \S+ \[[^\]]+\] "(\S+) (\S+) \S+" (\d+)')
-
-          with open("/tmp/access.log") as f:
-              for line in f:
-                  m = pattern.match(line)
-                  if not m:
-                      continue
-                  ip, method, path, status = m.groups()
-                  ip_paths[ip].add(path)
-
-          suspicious = {}
-          for ip, paths in ip_paths.items():
-              hit_coupon = any(p.startswith(coupon_prefix) for p in paths)
-              other_paths = [p for p in paths if not p.startswith(coupon_prefix)]
-              if hit_coupon and other_paths:
-                  suspicious[ip] = other_paths
-
-          if not suspicious:
-              print("쿠폰 페이지 방문 후 다른 경로를 건드린 IP 없음.")
-          else:
-              print(f"쿠폰 페이지 방문 후 다른 경로도 접근한 IP {len(suspicious)}건:\n")
-              for ip, paths in suspicious.items():
-                  print(f"- {ip}")
-                  for p in sorted(paths)[:20]:
-                      print(f"    {p}")
-          PYEOF
+          docker exec gameup-nginx sh -c 'tail -n 20000 /var/log/nginx/access.log' 2>/dev/null > /tmp/access.log || true
+          wc -l /tmp/access.log
+          awk '{ ip=$1; path=$7; key=ip SUBSEP path; if (!(key in seen)) { seen[key]=1; paths[ip]=paths[ip] SUBSEP path } } END { for (ip in paths) { n=split(paths[ip], arr, SUBSEP); hasCoupon=0; other=""; for (i=1;i<=n;i++) { p=arr[i]; if (p=="") continue; if (index(p,"/moayong/coupon-server")==1) hasCoupon=1; else other = other " " p } if (hasCoupon && other != "") print ip ":" other } }' /tmp/access.log > /tmp/suspicious.txt
+          if [ -s /tmp/suspicious.txt ]; then
+            echo "쿠폰 페이지 방문 후 다른 경로도 접근한 IP:"
+            cat /tmp/suspicious.txt
+          else
+            echo "쿠폰 페이지 방문 후 다른 경로를 건드린 IP 없음."
+          fi
