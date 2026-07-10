@@ -53,3 +53,8 @@ for r in data.get('workflow_runs', []):
 - **플랫폼 비즈니스 규칙은 반드시 `docs/platform-rules.md`를 먼저 확인한다**
 - 규칙이 변경되거나 새로운 프로세스가 추가되면 **작업 완료 후 `docs/platform-rules.md`를 업데이트한다**
 - 규칙 변경 예시: 회원 가입/승인 흐름, 파트너 등록 절차, 권한 체계, 상태값 변경 등
+
+## 쿠폰 서버 (gameup-platform과 무관한 외부 미니 프로젝트)
+
+- `deploy/coupon-server/` — 같은 운영 서버에 격리된 별도 Docker 컨테이너로 떠 있는 쿠폰 발급 서버. gameup-platform 본 서비스(웹/API/DB)와 코드·데이터 전혀 무관
+- **제거/롤백 방법은 `docs/coupon-server-deployment.md`에 정리되어 있음 — 관련 작업 전 반드시 확인**

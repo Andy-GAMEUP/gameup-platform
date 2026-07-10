@@ -1,0 +1,201 @@
+/* 모든 요소의 기본 박스 모델을 border-box로 설정하여 패딩과 테두리의 크기를 포함 */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif; /* 기본 글꼴 설정 */
+}
+
+/* 페이지 배경색, 텍스트 색상, 라인 높이, 페이지 최소 높이 설정 */
+body {
+    background-color: #f9f9f9;
+    color: #333;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+}
+
+/* 페이지 컨테이너 스타일 설정 */
+.container {
+    flex: 1;
+    max-width: 600px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* 헤더 스타일 설정 */
+.header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* 배너 이미지 스타일 설정 */
+.banner-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 5px;
+}
+
+/* 폼 컨테이너 스타일 설정 */
+.form-container {
+    margin-bottom: 20px;
+}
+
+/* 폼 그룹 스타일 설정 */
+.form-group {
+    margin-bottom: 15px;
+    position: relative; /* 하위 요소의 절대 위치를 위한 설정 */
+}
+
+/* 폼 그룹 라벨 스타일 설정 */
+.form-group label {
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    margin-right: 10px; /* 버튼과 간격 설정 */
+    line-height: 44px; /* "쿠폰 번호 입력" 필드와 동일한 높이 설정 */
+}
+
+/* 폼 그룹 입력 필드 스타일 설정 */
+.form-group input {
+    width: 100%; /* 입력 필드의 너비를 100%로 설정 */
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    display: block;
+    box-sizing: border-box; /* 패딩과 테두리를 너비에 포함 */
+    margin-top: 1px; /* 라벨과 간격 추가 */
+}
+
+/* 정보 링크 버튼 스타일 설정 */
+.info-link-button {
+    padding: 8px 10px; /* 버튼 패딩 설정 */
+    background-color: transparent; /* 버튼 배경색 투명 */
+    color: #007bff; /* 버튼 텍스트 색상 설정 */
+    border: 1px solid #007bff; /* 테두리 색상 설정 */
+    border-radius: 4px; /* 테두리 둥글게 설정 */
+    cursor: pointer; /* 마우스 포인터 변경 */
+    font-size: 14px; /* 폰트 크기 설정 */
+    text-align: left; /* 텍스트 왼쪽 정렬 */
+    white-space: nowrap; /* 텍스트 줄 바꿈 방지 */
+    height: 44px; /* "쿠폰 번호 입력" 필드와 동일한 높이 설정 */
+    line-height: 27px; /* 텍스트 수직 정렬 */
+    width: auto; /* 너비를 자동으로 설정 */
+    display: flex; /* 아이콘과 텍스트를 한 줄로 정렬 */
+    align-items: center; /* 아이콘과 텍스트를 수직으로 중앙 정렬 */
+    margin-left: auto;
+}
+
+/* 페이지 접힌 모양 아이콘 스타일 설정 */
+.page-fold-icon {
+    margin-right: 8px; /* 아이콘과 텍스트 사이 간격 */
+    font-size: 18px; /* 아이콘 크기 설정 */
+}
+
+/* 정보 링크 버튼 호버 스타일 설정 */
+.info-link-button:hover {
+    background-color: transparent; /* 호버 시 배경색 변경 */
+    color: #007bff; /* 호버 시 텍스트 색상 변경 */
+}
+
+/* 제출 버튼 스타일 설정 */
+button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-bottom: 30px;
+}
+
+/* 제출 버튼 호버 스타일 설정 */
+button:hover {
+    background-color: #0056b3;
+}
+
+/* 정보 섹션 스타일 설정 */
+.info {
+    margin-bottom: 20px;
+}
+
+/* 정보 섹션 제목 스타일 설정 */
+.info h2 {
+    font-size: 18px;
+    margin-bottom: 2px;
+}
+
+/* 정보 섹션 리스트 스타일 설정 */
+.info ul {
+    list-style-type: disc; /* 리스트 스타일을 디스크로 설정 */
+    margin-left: 20px;
+    margin-bottom: 30px;
+}
+
+/* 강조 텍스트 스타일 설정 */
+.highlight {
+    color: red; /* 텍스트 색상 설정 */
+    font-weight: bold; /* 텍스트 두껍게 설정 */
+}
+
+/* 입력 필드 포커스 스타일 설정 */
+.form-group input:focus {
+    border-color: #F5BCA9; /* 포커스 시 테두리 색상 */
+    outline: none; /* 기본 외곽선 제거 */
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* 포커스 시 그림자 */
+}
+
+/* 푸터 스타일 설정 */
+footer {
+    width: 100%;
+    padding: 10px 0;
+    background: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 0 0 8px 8px;
+    position: relative;
+    bottom: 0;
+    left: 0;
+    margin-top: auto;
+    font-size: 14px; /* 푸터 폰트 크기 설정 */
+}
+
+/* 반응형 디자인을 위한 미디어 쿼리 */
+@media (max-width: 600px) {
+    .container {
+        margin: 10px;
+        padding: 15px;
+    }
+
+    .form-group input {
+        width: 100%; /* 입력 필드가 전체 너비를 차지하도록 설정 */
+        padding: 6px 8px;
+    }
+
+    button {
+        padding: 8px;
+        font-size: 14px; /* 버튼 폰트 크기 설정 */
+    }
+
+    .info h2 {
+        font-size: 16px; /* 유의사항 제목 폰트 크기 설정 */
+    }
+
+    .info ul {
+        margin-left: 15px;
+    }
+
+    footer {
+        padding: 8px 0;
+        font-size: 12px; /* 푸터 폰트 크기 설정 */
+    }
+}

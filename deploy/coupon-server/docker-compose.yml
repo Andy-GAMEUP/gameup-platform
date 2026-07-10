@@ -1,0 +1,17 @@
+services:
+  coupon-server:
+    build:
+      context: .
+    container_name: gameup-coupon-server
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      default:
+        aliases:
+          - coupon-server
+
+networks:
+  default:
+    name: ${GAMEUP_NETWORK_NAME}
+    external: true

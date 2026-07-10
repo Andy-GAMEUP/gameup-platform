@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>쿠폰 보상 페이지</title>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="./images/topbanner.png" alt="상단 배너" class="banner-image">
+        </div>
+
+        <div class="form-container">
+            <form id="couponForm" novalidate>
+                <div class="form-group">
+                    <label for="game-id">■ 게임 ID 입력</label>
+                    <input type="text" id="game-id" name="game-id" placeholder="게임 ID를 입력해주세요.">
+                </div>
+
+                <div class="form-group">
+                    <label for="coupon">■ 쿠폰 번호 입력</label>
+                    <input type="text" id="coupon" name="coupon" placeholder="쿠폰 번호를 입력해주세요.">
+                </div>
+
+                <button type="submit">보상 받기</button>
+            </form>
+
+            <button id="toggleIdInfo" class="info-link-button" type="button">
+                <span class="page-fold-icon">&#9654;</span>
+                ID 확인하는 방법
+            </button>
+        </div>
+
+        <div class="info">
+            <h2>■ 유의사항</h2>
+            <ul>
+                <li>쿠폰 사용 시 게임 내 우편함으로 보상이 지급됩니다.</li>
+                <li>이미 보상이 지급된 쿠폰은 재사용할 수 없습니다.</li>
+                <li>사용 기한이 지난 쿠폰은 사용할 수 없습니다.</li>
+                <li>쿠폰 사용 후 보상 지급까지 약간의 시간이 소요될 수 있습니다.</li>
+                <li class="highlight">게임 ID를 잘못 입력하여 보상을 수령하지 못할 경우 쿠폰 재발급 및 추가적인 도움을 드리지 못하니 각별한 주의 바랍니다.</li>
+            </ul>
+
+            <div class="header" id="image-section" style="display: none;">
+                <img src="./images/IDverificationguide.png" alt="ID 확인" class="banner-image">
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; NTRILLGAMES Corp. LARKVSTUDIO All Rights Reserved.</p>
+    </footer>
+
+    <script src="./moayong.script.js"></script>
+</body>
+</html>
