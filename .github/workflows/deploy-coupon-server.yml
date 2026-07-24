@@ -1,0 +1,53 @@
+name: Deploy Coupon Server
+
+# 수동 실행 전용 — push 시 자동 실행되지 않음. 기존 "Deploy to gameup.co.kr" 워크플로우와는 완전히 별개.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: coupon-server-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & start coupon-server container (isolated, does not touch main app)
+    runs-on: [self-hosted, gameup-prod]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect existing gameup docker network
+        run: |
+          NETWORK=$(docker network ls --format '{{.Name}}' | grep -i gameup-net | head -1)
+          if [ -z "$NETWORK" ]; then
+            echo "gameup-net 네트워크를 찾지 못했습니다. 메인 서비스가 실행 중인지 확인하세요."
+            exit 1
+          fi
+          echo "GAMEUP_NETWORK_NAME=$NETWORK" >> "$GITHUB_ENV"
+
+      - name: Write coupon-server .env from secrets
+        run: |
+          cat > deploy/coupon-server/.env <<EOF
+          PORT=3002
+          SECRET_KEY=${{ secrets.COUPON_SECRET_KEY }}
+          COUPON_API_URL=${{ secrets.COUPON_API_URL }}
+          EOF
+          chmod 600 deploy/coupon-server/.env
+
+      - name: Build & start coupon-server (docker compose)
+        run: docker compose -f deploy/coupon-server/docker-compose.yml up -d --build
+
+      - name: Health check
+        run: |
+          sleep 3
+          docker ps --filter "name=gameup-coupon-server" --format "table {{.Names}}\t{{.Status}}"
+          docker exec gameup-coupon-server wget -qO- http://localhost:3002/moayong/coupon-server/public/coupon.html > /dev/null \
+            && echo "✅ coupon-server 정상 응답" \
+            || (echo "❌ coupon-server 응답 실패" && exit 1)
+
+      # nginx 설정 파일 변경(bind mount)은 컨테이너 재기동만으로는 반영되지 않으므로,
+      # 문법 검사 통과 시에만 무중단 reload. 기존 사이트/다른 location에는 영향 없음.
+      - name: Validate & reload nginx (only if config is valid)
+        run: |
+          docker exec gameup-nginx nginx -t
+          docker exec gameup-nginx nginx -s reload
+          echo "✅ nginx reload 완료"

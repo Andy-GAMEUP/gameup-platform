@@ -1,0 +1,25 @@
+name: Check Coupon Visitor IPs (read-only)
+
+# 수동 실행 전용, 읽기 전용 로그 조회 — 아무 것도 변경/차단하지 않음.
+# 쿠폰 페이지(/moayong/coupon-server/...)로 들어온 IP 중, gameup.co.kr의
+# 다른 경로도 접근한 IP가 있는지 확인만 함 (자동 차단 없음, 사람이 보고 판단).
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Report suspicious IPs (coupon visitor who also hit other paths)
+    runs-on: [self-hosted, gameup-prod]
+    steps:
+      - name: Analyze nginx access log
+        timeout-minutes: 3
+        run: |
+          docker logs gameup-nginx --tail 20000 > /tmp/access.log 2>&1 || true
+          wc -l /tmp/access.log
+          awk '{ ip=$1; path=$7; key=ip SUBSEP path; if (!(key in seen)) { seen[key]=1; paths[ip]=paths[ip] SUBSEP path } } END { for (ip in paths) { n=split(paths[ip], arr, SUBSEP); hasCoupon=0; other=""; for (i=1;i<=n;i++) { p=arr[i]; if (p=="") continue; if (index(p,"/moayong/coupon-server")==1) hasCoupon=1; else other = other " " p } if (hasCoupon && other != "") print ip ":" other } }' /tmp/access.log > /tmp/suspicious.txt
+          if [ -s /tmp/suspicious.txt ]; then
+            echo "쿠폰 페이지 방문 후 다른 경로도 접근한 IP:"
+            cat /tmp/suspicious.txt
+          else
+            echo "쿠폰 페이지 방문 후 다른 경로를 건드린 IP 없음."
+          fi
