@@ -60,7 +60,7 @@ export default function PartnerDirectoryPage() {
                   const p = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i
                   return (
                     <button key={p} onClick={() => setPage(p)}
-                      className={`w-8 h-8 rounded-lg text-sm transition-colors ${p === page ? 'bg-cyan-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
+                      className={`w-8 h-8 rounded-lg text-base transition-colors ${p === page ? 'bg-cyan-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
                       {p}
                     </button>
                   )
@@ -122,7 +122,7 @@ function PartnerCard({ partner, onClick }: { partner: PartnerProfile; onClick: (
       <div className="flex-shrink-0">
         <button
           onClick={onClick}
-          className="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+          className="bg-cyan-600 hover:bg-cyan-500 text-white text-base font-medium px-5 py-2 rounded-lg transition-colors"
         >
           프로필 보기
         </button>

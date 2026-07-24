@@ -30,7 +30,8 @@ interface CorporateMember {
 // ─── Constants ──────────────────────────────────────────────────────
 const COMPANY_TYPE_LABELS: Record<string, string> = {
   developer: '개발사', publisher: '퍼블리셔', game_solution: '게임솔루션',
-  game_service: '게임서비스', operations: '운영', qa: 'QA', marketing: '마케팅', other: '기타',
+  game_service: '게임서비스', operations: '운영', qa: 'QA', marketing: '마케팅',
+  development: '개발', original_art: '원화', other: '기타',
 }
 
 export const PARTNER_STATUS_MAP: Record<string, { label: string; cls: string }> = {
@@ -65,9 +66,9 @@ function ConfirmModal({
         <p className="text-text-secondary text-sm">{message}</p>
         {children}
         <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm">취소</button>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-base">취소</button>
           <button onClick={onConfirm} disabled={loading}
-            className={`flex-1 px-4 py-2.5 text-text-primary rounded-xl text-sm disabled:opacity-50 flex items-center justify-center gap-2 ${confirmColor}`}>
+            className={`flex-1 px-4 py-2.5 text-text-primary rounded-xl text-base disabled:opacity-50 flex items-center justify-center gap-2 ${confirmColor}`}>
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {confirmLabel}
           </button>
@@ -103,7 +104,6 @@ export function PartnerRequestDetailModal({
           <div><p className="text-text-secondary text-xs uppercase mb-1">이메일</p><p className="text-text-primary text-sm">{partner.userId?.email}</p></div>
           {partner.slogan && <div><p className="text-text-secondary text-xs uppercase mb-1">슬로건</p><p className="text-text-primary text-sm">{partner.slogan}</p></div>}
           <div><p className="text-text-secondary text-xs uppercase mb-1">자기소개</p><p className="text-text-primary text-sm whitespace-pre-wrap bg-bg-tertiary rounded-lg p-3">{partner.introduction}</p></div>
-          <div><p className="text-text-secondary text-xs uppercase mb-1">활동 계획</p><p className="text-text-primary text-sm whitespace-pre-wrap bg-bg-tertiary rounded-lg p-3">{partner.activityPlan}</p></div>
           {partner.selectedTopics?.length > 0 && (
             <div>
               <p className="text-text-secondary text-xs uppercase mb-2">선택 주제</p>
@@ -129,9 +129,9 @@ export function PartnerRequestDetailModal({
                 <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="거절 사유를 입력하세요" rows={3}
                   className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none resize-none" />
                 <div className="flex gap-2">
-                  <button onClick={() => setShowRejectInput(false)} className="flex-1 py-2 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">취소</button>
+                  <button onClick={() => setShowRejectInput(false)} className="flex-1 py-2 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">취소</button>
                   <button onClick={() => onReject(rejectReason)} disabled={loading}
-                    className="flex-1 py-2 text-sm text-text-primary bg-red-700 hover:bg-red-800 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50">
+                    className="flex-1 py-2 text-base text-text-primary bg-red-700 hover:bg-red-800 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50">
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />} 거절 확인
                   </button>
                 </div>
@@ -139,11 +139,11 @@ export function PartnerRequestDetailModal({
             ) : (
               <div className="flex gap-3">
                 <button onClick={() => setShowRejectInput(true)} disabled={loading}
-                  className="flex-1 py-2 text-sm text-accent-text border border-red-500/40 rounded-lg hover:bg-accent-light flex items-center justify-center gap-2">
+                  className="flex-1 py-2 text-base text-accent-text border border-red-500/40 rounded-lg hover:bg-accent-light flex items-center justify-center gap-2">
                   <XCircle className="w-4 h-4" /> 거절
                 </button>
                 <button onClick={onApprove} disabled={loading}
-                  className="flex-1 py-2 text-sm text-text-primary bg-green-700 hover:bg-green-800 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50">
+                  className="flex-1 py-2 text-base text-text-primary bg-green-700 hover:bg-green-800 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} 승인
                 </button>
               </div>
@@ -156,12 +156,6 @@ export function PartnerRequestDetailModal({
 }
 
 // ─── Partner Profile Edit Modal (참조: PartnerMatchingProfilePage) ──
-const AVAILABILITY_OPTIONS = [
-  { value: 'available', label: '즉시 가능', color: 'text-green-400' },
-  { value: 'busy', label: '협의 필요', color: 'text-yellow-400' },
-  { value: 'unavailable', label: '불가', color: 'text-red-400' },
-]
-
 function PartnerProfileEditModal({
   partner, onClose, onSave, loading,
 }: {
@@ -180,11 +174,6 @@ function PartnerProfileEditModal({
 
   // MiniHome 기업 프로필 정보
   const [companyName, setCompanyName] = useState(mh?.companyName || partner.userId?.companyInfo?.companyName || '')
-  const [skillInput, setSkillInput] = useState('')
-  const [skills, setSkills] = useState<string[]>(mh?.skills || [])
-  const [areaInput, setAreaInput] = useState('')
-  const [expertiseArea, setExpertiseArea] = useState<string[]>(mh?.expertiseArea || [])
-  const [availability, setAvailability] = useState(mh?.availability || 'available')
   const [location, setLocation] = useState(mh?.location || '')
   const [hourlyRate, setHourlyRate] = useState(mh?.hourlyRate || '')
 
@@ -201,7 +190,7 @@ function PartnerProfileEditModal({
   const handleSave = () => {
     onSave({
       slogan, introduction, externalUrl, selectedTopics: topics,
-      companyName, skills, expertiseArea, availability, location, hourlyRate,
+      companyName, location, hourlyRate,
       contactEmail, contactPhone, website,
     })
   }
@@ -233,7 +222,7 @@ function PartnerProfileEditModal({
         <div className="flex gap-1 p-4 pb-0 border-b border-line">
           {editTabs.map(tab => (
             <button key={tab.key} onClick={() => setEditTab(tab.key)}
-              className={`px-4 py-2 rounded-t-lg text-sm transition-colors ${editTab === tab.key ? 'bg-bg-tertiary text-text-primary border border-line border-b-transparent -mb-px' : 'text-text-secondary hover:text-text-primary'}`}>
+              className={`px-4 py-2 rounded-t-lg text-base transition-colors ${editTab === tab.key ? 'bg-bg-tertiary text-text-primary border border-line border-b-transparent -mb-px' : 'text-text-secondary hover:text-text-primary'}`}>
               {tab.label}
             </button>
           ))}
@@ -263,7 +252,7 @@ function PartnerProfileEditModal({
                   <input value={topicInput} onChange={e => setTopicInput(e.target.value)} placeholder="주제 입력 후 추가"
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(topicInput, setTopicInput, topics, setTopics) } }}
                     className={`flex-1 ${inputCls}`} />
-                  <button onClick={() => addTag(topicInput, setTopicInput, topics, setTopics)} className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm rounded-lg">추가</button>
+                  <button onClick={() => addTag(topicInput, setTopicInput, topics, setTopics)} className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-base rounded-lg">추가</button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {topics.map(t => (
@@ -284,35 +273,15 @@ function PartnerProfileEditModal({
                 <input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="기업명" className={inputCls} />
               </div>
               <div>
-                <label className="text-text-secondary text-xs font-medium block mb-1.5">전문 분야</label>
-                <div className="flex gap-2 mb-2">
-                  <input value={areaInput} onChange={e => setAreaInput(e.target.value)} placeholder="전문 분야 입력"
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(areaInput, setAreaInput, expertiseArea, setExpertiseArea) } }}
-                    className={`flex-1 ${inputCls}`} />
-                  <button onClick={() => addTag(areaInput, setAreaInput, expertiseArea, setExpertiseArea)} className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm rounded-lg">추가</button>
-                </div>
+                <label className="text-text-secondary text-xs font-medium block mb-1.5">사업 형태 (회원가입 시 선택)</label>
                 <div className="flex flex-wrap gap-2">
-                  {expertiseArea.map(a => (
-                    <span key={a} className="bg-accent-light text-accent-text border border-accent-muted px-2 py-0.5 rounded text-xs flex items-center gap-1">
-                      {a}<button onClick={() => setExpertiseArea(expertiseArea.filter(x => x !== a))} className="hover:text-white"><X className="w-3 h-3" /></button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-text-secondary text-xs font-medium block mb-1.5">주요 스킬</label>
-                <div className="flex gap-2 mb-2">
-                  <input value={skillInput} onChange={e => setSkillInput(e.target.value)} placeholder="스킬 입력"
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(skillInput, setSkillInput, skills, setSkills) } }}
-                    className={`flex-1 ${inputCls}`} />
-                  <button onClick={() => addTag(skillInput, setSkillInput, skills, setSkills)} className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm rounded-lg">추가</button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {skills.map(s => (
-                    <span key={s} className="bg-bg-tertiary text-text-secondary border border-line px-2 py-0.5 rounded text-xs flex items-center gap-1">
-                      {s}<button onClick={() => setSkills(skills.filter(x => x !== s))} className="hover:text-text-primary"><X className="w-3 h-3" /></button>
-                    </span>
-                  ))}
+                  {(partner.userId?.companyInfo?.companyType || []).filter(t => t !== 'developer').length > 0
+                    ? (partner.userId?.companyInfo?.companyType || []).filter(t => t !== 'developer').map(t => (
+                        <span key={t} className="bg-accent-light text-accent-text border border-accent-muted px-2 py-0.5 rounded text-xs">
+                          {COMPANY_TYPE_LABELS[t] || t}
+                        </span>
+                      ))
+                    : <span className="text-text-muted text-xs">등록된 사업 형태 없음</span>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -323,19 +292,6 @@ function PartnerProfileEditModal({
                 <div>
                   <label className="text-text-secondary text-xs font-medium block mb-1.5">단가 기준</label>
                   <input value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} placeholder="협의" className={inputCls} />
-                </div>
-              </div>
-              <div>
-                <label className="text-text-secondary text-xs font-medium block mb-1.5">작업 가능 상태</label>
-                <div className="flex gap-2">
-                  {AVAILABILITY_OPTIONS.map(opt => (
-                    <button key={opt.value} onClick={() => setAvailability(opt.value as typeof availability)}
-                      className={`px-4 py-2 rounded-lg text-sm border transition-colors ${availability === opt.value
-                        ? 'border-cyan-500/50 bg-cyan-600/20 text-cyan-300'
-                        : 'border-line text-text-secondary hover:border-line-light hover:text-text-primary'}`}>
-                      {opt.label}
-                    </button>
-                  ))}
                 </div>
               </div>
             </>
@@ -361,9 +317,9 @@ function PartnerProfileEditModal({
         </div>
 
         <div className="p-6 border-t border-line flex gap-3">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm">취소</button>
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-base">취소</button>
           <button onClick={handleSave} disabled={loading}
-            className="flex-1 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+            className="flex-1 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-base flex items-center justify-center gap-2 disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 저장
           </button>
         </div>
@@ -416,12 +372,12 @@ function PartnerManageDetailModal({
         <div className="p-6 border-t border-line flex gap-3">
           {partner.status === 'approved' ? (
             <button onClick={() => onStatusChange('suspended')} disabled={loading}
-              className="flex-1 py-2 text-sm text-accent-text border border-red-500/40 rounded-lg hover:bg-accent-light flex items-center justify-center gap-2 disabled:opacity-50">
+              className="flex-1 py-2 text-base text-accent-text border border-red-500/40 rounded-lg hover:bg-accent-light flex items-center justify-center gap-2 disabled:opacity-50">
               {loading && <Loader2 className="w-4 h-4 animate-spin" />} 파트너 정지
             </button>
           ) : (
             <button onClick={() => onStatusChange('approved')} disabled={loading}
-              className="flex-1 py-2 text-sm text-accent border border-green-500/40 rounded-lg hover:bg-green-900/20 flex items-center justify-center gap-2 disabled:opacity-50">
+              className="flex-1 py-2 text-base text-accent border border-green-500/40 rounded-lg hover:bg-green-900/20 flex items-center justify-center gap-2 disabled:opacity-50">
               {loading && <Loader2 className="w-4 h-4 animate-spin" />} 정지 해제
             </button>
           )}
@@ -446,7 +402,7 @@ export default function AdminCorporateManagementPage() {
         <div className="flex gap-1 bg-bg-secondary border border-line rounded-lg p-1 w-fit">
           {TABS.map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-1.5 rounded text-sm transition-colors ${activeTab === tab.key ? 'bg-accent-light text-accent-text border border-accent-muted' : 'text-text-secondary hover:text-text-primary'}`}>
+              className={`px-4 py-1.5 rounded text-base transition-colors ${activeTab === tab.key ? 'bg-accent-light text-accent-text border border-accent-muted' : 'text-text-secondary hover:text-text-primary'}`}>
               {tab.label}
             </button>
           ))}
@@ -579,12 +535,12 @@ function CorporateTabContent({ activeTab }: { activeTab: 'developers' | 'partner
                         </Link>
                         {m.isActive ? (
                           <button onClick={() => setBanModal({ open: true, user: m, reason: '', duration: '' })}
-                            className="text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 px-2 py-1 rounded flex items-center gap-1">
+                            className="text-base text-amber-400 hover:text-amber-300 border border-amber-500/30 px-2 py-1 rounded flex items-center gap-1">
                             <Ban className="w-3 h-3" /> 중지
                           </button>
                         ) : (
                           <button onClick={() => handleUnban(m._id)} disabled={submitting}
-                            className="text-xs text-accent hover:text-accent border border-green-500/30 px-2 py-1 rounded flex items-center gap-1 disabled:opacity-50">
+                            className="text-base text-accent hover:text-accent border border-green-500/30 px-2 py-1 rounded flex items-center gap-1 disabled:opacity-50">
                             <Check className="w-3 h-3" /> 해제
                           </button>
                         )}
@@ -601,16 +557,16 @@ function CorporateTabContent({ activeTab }: { activeTab: 'developers' | 'partner
       {totalPages > 1 && (
         <div className="flex justify-center gap-1">
           <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-            className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">이전</button>
+            className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">이전</button>
           {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
             const p = Math.max(1, Math.min(page - 3, totalPages - 6)) + i
             return p <= totalPages ? (
               <button key={p} onClick={() => setPage(p)}
-                className={`px-3 py-1.5 text-sm rounded-lg ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>{p}</button>
+                className={`px-3 py-1.5 text-base rounded-lg ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>{p}</button>
             ) : null
           })}
           <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-            className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
+            className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
         </div>
       )}
 
@@ -688,7 +644,7 @@ export function PartnerRequestsContent() {
       <div className="flex gap-1 bg-bg-tertiary/50 border border-line rounded-lg p-1 w-fit">
         {FILTER_TABS.map(tab => (
           <button key={tab.value} onClick={() => { setStatusFilter(tab.value); setPage(1) }}
-            className={`px-3 py-1 rounded text-xs transition-colors ${statusFilter === tab.value ? 'bg-accent-light text-accent-text border border-accent-muted' : 'text-text-secondary hover:text-text-primary'}`}>
+            className={`px-3 py-1 rounded text-base transition-colors ${statusFilter === tab.value ? 'bg-accent-light text-accent-text border border-accent-muted' : 'text-text-secondary hover:text-text-primary'}`}>
             {tab.label}
           </button>
         ))}
@@ -722,7 +678,7 @@ export function PartnerRequestsContent() {
                 <td className="px-4 py-3 text-text-secondary text-sm">{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
                 <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${PARTNER_STATUS_MAP[r.status]?.cls}`}>{PARTNER_STATUS_MAP[r.status]?.label}</span></td>
                 <td className="px-4 py-3">
-                  <button onClick={() => setSelected(r)} className="text-xs text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 px-2 py-1 rounded">상세</button>
+                  <button onClick={() => setSelected(r)} className="text-base text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 px-2 py-1 rounded">상세</button>
                 </td>
               </tr>
             ))}
@@ -732,9 +688,9 @@ export function PartnerRequestsContent() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">이전</button>
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">이전</button>
           <span className="text-text-secondary text-sm">{page} / {totalPages}</span>
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
         </div>
       )}
 
@@ -749,12 +705,6 @@ const SORT_OPTIONS = [
   { value: 'oldest', label: '가입일 (오래된순)' },
   { value: 'popular', label: '인기순 (게시글)' },
 ]
-
-const AVAILABILITY_LABEL: Record<string, { text: string; color: string }> = {
-  available: { text: '즉시 가능', color: 'text-green-400' },
-  busy: { text: '협의 필요', color: 'text-yellow-400' },
-  unavailable: { text: '불가', color: 'text-red-400' },
-}
 
 export function PartnerManagementContent() {
   const [partners, setPartners] = useState<PartnerApplication[]>([])
@@ -820,7 +770,7 @@ export function PartnerManagementContent() {
               placeholder="파트너 이름 검색..."
               className="pl-9 pr-3 py-2 bg-bg-tertiary border border-line rounded-lg text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-cyan-500/50 w-64" />
           </div>
-          <button onClick={handleSearch} className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-sm rounded-lg">검색</button>
+          <button onClick={handleSearch} className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-base rounded-lg">검색</button>
         </div>
         <div className="flex items-center gap-1.5">
           <ArrowUpDown className="w-3.5 h-3.5 text-text-muted" />
@@ -848,7 +798,6 @@ export function PartnerManagementContent() {
             const mh = p.minihome
             const isPublic = mh ? mh.isPublic !== false : p.isProfilePublic !== false
             const companyName = mh?.companyName || p.userId?.companyInfo?.companyName || ''
-            const avail = AVAILABILITY_LABEL[mh?.availability || '']
 
             return (
               <div key={p._id} className="bg-bg-secondary border border-line rounded-xl p-5 hover:border-cyan-500/40 transition-all group">
@@ -881,11 +830,11 @@ export function PartnerManagementContent() {
                   </div>
                 </div>
 
-                {/* 전문 분야 (PartnerMatchingProfilePage 스타일) */}
-                {mh?.expertiseArea && mh.expertiseArea.length > 0 && (
+                {/* 사업 형태 (PartnerMatchingProfilePage 스타일) */}
+                {(p.userId?.companyInfo?.companyType || []).filter(t => t !== 'developer').length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
-                    {mh.expertiseArea.map(area => (
-                      <span key={area} className="bg-accent-light text-accent-text px-2 py-0.5 rounded text-xs font-medium">{area}</span>
+                    {(p.userId?.companyInfo?.companyType || []).filter(t => t !== 'developer').map(type => (
+                      <span key={type} className="bg-accent-light text-accent-text px-2 py-0.5 rounded text-xs font-medium">{COMPANY_TYPE_LABELS[type] || type}</span>
                     ))}
                   </div>
                 )}
@@ -928,12 +877,6 @@ export function PartnerManagementContent() {
                           <span className="text-text-primary">{mh.location}</span>
                         </div>
                       )}
-                      {avail && (
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-text-muted">작업 가능</span>
-                          <span className={`font-medium ${avail.color}`}>{avail.text}</span>
-                        </div>
-                      )}
                     </>
                   )}
                   <div className="flex items-center justify-between text-xs">
@@ -955,7 +898,7 @@ export function PartnerManagementContent() {
                 <div className="flex items-center justify-between mb-3 p-2 bg-bg-tertiary/50 rounded-lg">
                   <span className="text-text-secondary text-xs">프로필 공개</span>
                   <button onClick={() => handleToggleVisibility(p)}
-                    className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full transition-colors ${
+                    className={`flex items-center gap-1.5 text-base px-2.5 py-1 rounded-full transition-colors ${
                       isPublic
                         ? 'bg-green-600/20 text-green-400 border border-green-500/30'
                         : 'bg-bg-muted/40 text-text-muted border border-line'
@@ -968,11 +911,11 @@ export function PartnerManagementContent() {
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2">
                   <button onClick={() => setSelected(p)}
-                    className="flex-1 text-xs text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 px-2 py-1.5 rounded-lg flex items-center justify-center gap-1">
+                    className="flex-1 text-base text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 px-2 py-1.5 rounded-lg flex items-center justify-center gap-1">
                     <Ban className="w-3 h-3" /> 상태
                   </button>
                   <button onClick={() => setEditTarget(p)}
-                    className="flex-1 text-xs text-amber-400 hover:text-amber-300 border border-amber-500/30 px-2 py-1.5 rounded-lg flex items-center justify-center gap-1">
+                    className="flex-1 text-base text-amber-400 hover:text-amber-300 border border-amber-500/30 px-2 py-1.5 rounded-lg flex items-center justify-center gap-1">
                     <Edit3 className="w-3 h-3" /> 편집
                   </button>
                   <Link href={`/admin/partner-posts/${p._id}`}
@@ -997,7 +940,7 @@ export function PartnerManagementContent() {
             const p = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i
             return (
               <button key={p} onClick={() => setPage(p)}
-                className={`w-8 h-8 rounded-lg text-sm transition-colors ${p === page ? 'bg-cyan-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
+                className={`w-8 h-8 rounded-lg text-base transition-colors ${p === page ? 'bg-cyan-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
                 {p}
               </button>
             )

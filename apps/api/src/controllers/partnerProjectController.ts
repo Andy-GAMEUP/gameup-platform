@@ -117,9 +117,14 @@ export const getProjectById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: '프로젝트를 찾을 수 없습니다' })
     }
 
-    const partnerChannel = await PartnerModel.findOne({ userId: (project.ownerId as any)._id }).select('_id').lean()
+    const partnerChannel = await PartnerModel.findOne({ userId: (project.ownerId as any)._id }).select('_id isProfilePublic').lean()
 
-    res.json({ success: true, project, partnerChannelId: partnerChannel?._id ?? null })
+    res.json({
+      success: true,
+      project,
+      partnerChannelId: partnerChannel?._id ?? null,
+      partnerChannelPublic: partnerChannel?.isProfilePublic ?? false,
+    })
   } catch (error) {
     console.error('Get project by id error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
@@ -252,10 +257,28 @@ export const applyToProject = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: '이미 지원한 프로젝트입니다' })
     }
 
+    const { title, content } = req.body
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ message: '제목을 입력해주세요' })
+    }
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({ message: '내용을 입력해주세요' })
+    }
+
+    const applicant = await User.findById(req.user.id).select('username email companyInfo contactPerson')
+    if (!applicant) {
+      return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    }
+
+    // 지원자 정보/제안 금액은 계정 정보에서 채우거나 비워두며, 지원자가 직접 입력/조작할 수 없다
     const application = await ProjectApplication.create({
       projectId: id,
       applicantId: req.user.id,
-      ...req.body,
+      applicantName: (applicant as any).companyInfo?.companyName || applicant.username,
+      email: applicant.email,
+      phone: (applicant as any).companyInfo?.phone || (applicant as any).contactPerson?.phone || '',
+      title: String(title).trim(),
+      content: String(content).trim(),
     })
 
     await PartnerProject.findByIdAndUpdate(id, { $inc: { applicantCount: 1 } })
@@ -438,6 +461,30 @@ export const getProjectsByUser = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, projects })
   } catch (error) {
     console.error('Get projects by user error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 특정 유저의 지원 현황 통계 (프로필 홈 공개 카드용 — 개인정보 없이 집계만 반환)
+export const getApplicationStatsByUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params
+
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: '유효하지 않은 유저 ID입니다' })
+    }
+
+    const approvedApplications = await ProjectApplication.find({ applicantId: userId, status: 'approved' })
+      .populate('projectId', 'status')
+
+    const participatingCount = approvedApplications.length
+    const completedCount = approvedApplications.filter(
+      (app: any) => app.projectId?.status === 'matched'
+    ).length
+
+    res.json({ success: true, participatingCount, completedCount })
+  } catch (error) {
+    console.error('Get application stats by user error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }
 }

@@ -76,7 +76,7 @@ export function TabsTrigger({ value, children, className = '' }: TabsTriggerProp
   return (
     <button
       onClick={() => setActiveTab(value)}
-      className={`px-4 py-2 text-sm font-medium transition-colors ${
+      className={`px-4 py-2 text-base font-medium transition-colors ${
         isActive
           ? 'border-b-2 border-blue-600 text-blue-600'
           : 'text-gray-600 hover:text-gray-900'

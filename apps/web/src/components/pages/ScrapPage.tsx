@@ -69,7 +69,7 @@ export default function ScrapPage() {
             <button
               key={tab.value}
               onClick={() => handleTabChange(tab.value)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`px-4 py-1.5 rounded-full text-base font-medium transition-colors ${
                 activeType === tab.value
                   ? 'bg-violet-600 text-text-primary'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
@@ -112,7 +112,7 @@ export default function ScrapPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-4 py-2 rounded-lg bg-bg-tertiary text-text-secondary disabled:opacity-40 hover:bg-line-light transition-colors text-sm"
+                  className="px-4 py-2 rounded-lg bg-bg-tertiary text-text-secondary disabled:opacity-40 hover:bg-line-light transition-colors text-base"
                 >
                   이전
                 </button>
@@ -122,7 +122,7 @@ export default function ScrapPage() {
                 <button
                   onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
                   disabled={page === data.totalPages}
-                  className="px-4 py-2 rounded-lg bg-bg-tertiary text-text-secondary disabled:opacity-40 hover:bg-line-light transition-colors text-sm"
+                  className="px-4 py-2 rounded-lg bg-bg-tertiary text-text-secondary disabled:opacity-40 hover:bg-line-light transition-colors text-base"
                 >
                   다음
                 </button>

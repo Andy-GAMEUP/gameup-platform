@@ -86,7 +86,7 @@ export default function AdminDeveloperBalancesPage() {
                   <td className="p-3 text-center">
                     <button
                       onClick={() => { setAdjustModal(b); setAdjustForm({ amount: '', type: 'admin_grant', description: '' }) }}
-                      className="px-3 py-1 bg-accent hover:bg-accent-hover rounded text-xs transition-colors"
+                      className="px-3 py-1 bg-accent hover:bg-accent-hover rounded text-base transition-colors"
                     >
                       조정
                     </button>
@@ -120,7 +120,7 @@ export default function AdminDeveloperBalancesPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setAdjustForm(f => ({ ...f, type: 'admin_grant' }))}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm border transition-colors ${
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-base border transition-colors ${
                     adjustForm.type === 'admin_grant' ? 'bg-green-600 border-green-600' : 'border-line hover:bg-bg-tertiary'
                   }`}
                 >
@@ -128,7 +128,7 @@ export default function AdminDeveloperBalancesPage() {
                 </button>
                 <button
                   onClick={() => setAdjustForm(f => ({ ...f, type: 'admin_deduct' }))}
-                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm border transition-colors ${
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-base border transition-colors ${
                     adjustForm.type === 'admin_deduct' ? 'bg-red-600 border-red-600' : 'border-line hover:bg-bg-tertiary'
                   }`}
                 >
@@ -155,11 +155,11 @@ export default function AdminDeveloperBalancesPage() {
                 />
               </div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setAdjustModal(null)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
+                <button onClick={() => setAdjustModal(null)} className="px-4 py-2 border border-line rounded-md text-base hover:bg-bg-tertiary">취소</button>
                 <button
                   onClick={handleAdjust}
                   disabled={!adjustForm.amount || !adjustForm.description}
-                  className={`px-4 py-2 rounded-md text-sm disabled:opacity-50 ${adjustForm.type === 'admin_grant' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                  className={`px-4 py-2 rounded-md text-base disabled:opacity-50 ${adjustForm.type === 'admin_grant' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
                 >
                   {adjustForm.type === 'admin_grant' ? '지급' : '차감'} 확인
                 </button>

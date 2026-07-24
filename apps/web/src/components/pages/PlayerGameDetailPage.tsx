@@ -10,6 +10,7 @@ import playerService, { Review } from '@/services/playerService'
 import apiClient from '@/services/api'
 import LevelBadge from '@/components/LevelBadge'
 import GracRatingBadge from '@/components/GracRatingBadge'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface GameQA {
   _id: string
@@ -124,6 +125,7 @@ export default function PlayerGameDetailPage() {
   })
   const [reviewSubmitting, setReviewSubmitting] = useState(false)
   const [reviewError, setReviewError] = useState('')
+  const [showDeleteReviewConfirm, setShowDeleteReviewConfirm] = useState(false)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [playStartTime, setPlayStartTime] = useState<number | null>(null)
@@ -337,7 +339,6 @@ const handleFavorite = async () => {
   }
 
   const handleDeleteReview = async () => {
-    if (!confirm('리뷰를 삭제하시겠습니까?')) return
     try {
       await playerService.deleteReview(id!)
       setMyReview(null)
@@ -441,7 +442,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
           onClick={() => setLightboxIndex(null)}
         >
           <button
-            className="absolute top-4 right-4 text-white/60 hover:text-white text-3xl leading-none"
+            className="absolute top-4 right-4 text-white/60 hover:text-white text-base leading-none"
             onClick={() => setLightboxIndex(null)}
           >
             ×
@@ -535,7 +536,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-5 py-3 text-base font-medium border-b-2 transition-colors ${
                   activeTab === tab.key
                     ? 'border-cyan-400 text-cyan-300'
                     : 'border-transparent text-text-secondary hover:text-text-primary'
@@ -558,7 +559,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               <div className="lg:col-span-2 flex justify-center">
                 <button
                   onClick={() => handlePurchase(`${game.title as string} 정식 구매`, gamePrice)}
-                  className="w-[50%] bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-text-primary py-3.5 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-yellow-900/30"
+                  className="w-[50%] bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-text-primary py-3.5 rounded-xl font-semibold text-base transition-all shadow-lg shadow-yellow-900/30"
                 >
                   💰 ₩{gamePrice.toLocaleString()} 구매하기
                 </button>
@@ -778,7 +779,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                       <button
                         onClick={handleQASubmit}
                         disabled={qaSubmitting || !qaQuestion.trim()}
-                        className="bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-text-primary text-sm px-5 py-2 rounded-lg font-medium transition-colors"
+                        className="bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-text-primary text-base px-5 py-2 rounded-lg font-medium transition-colors"
                       >
                         {qaSubmitting ? '전송 중...' : '질문하기'}
                       </button>
@@ -834,7 +835,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                   <div className="flex gap-2 justify-center mt-4">
                     {Array.from({ length: Math.ceil(qaTotal / 10) }, (_, i) => i + 1).map((p) => (
                       <button key={p} onClick={() => setQAPage(p)}
-                        className={`w-8 h-8 rounded text-sm ${qaPage === p ? 'bg-cyan-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}>
+                        className={`w-8 h-8 rounded text-base ${qaPage === p ? 'bg-cyan-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}>
                         {p}
                       </button>
                     ))}
@@ -861,12 +862,12 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                   <div className="flex gap-2">
                     {myReview && !showReviewForm && (
                       <>
-                        <button onClick={() => setShowReviewForm(true)} className="text-xs bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded hover:bg-blue-600/40 transition-colors">수정</button>
-                        <button onClick={handleDeleteReview} className="text-xs bg-red-600/20 text-red-400 border border-red-500/30 px-3 py-1 rounded hover:bg-red-600/40 transition-colors">삭제</button>
+                        <button onClick={() => setShowReviewForm(true)} className="text-base bg-blue-600/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded hover:bg-blue-600/40 transition-colors">수정</button>
+                        <button onClick={() => setShowDeleteReviewConfirm(true)} className="text-base bg-red-600/20 text-red-400 border border-red-500/30 px-3 py-1 rounded hover:bg-red-600/40 transition-colors">삭제</button>
                       </>
                     )}
                     {!myReview && !showReviewForm && (
-                      <button onClick={() => setShowReviewForm(true)} className="text-xs bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded hover:bg-cyan-600/40 transition-colors">+ 리뷰 작성</button>
+                      <button onClick={() => setShowReviewForm(true)} className="text-base bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded hover:bg-cyan-600/40 transition-colors">+ 리뷰 작성</button>
                     )}
                   </div>
                 </div>
@@ -924,10 +925,10 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                     </div>
                     {reviewError && <p className="text-red-400 text-sm">{reviewError}</p>}
                     <div className="flex gap-2">
-                      <button onClick={handleReviewSubmit} disabled={reviewSubmitting} className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-text-primary py-2 rounded font-medium text-sm transition-colors">
+                      <button onClick={handleReviewSubmit} disabled={reviewSubmitting} className="flex-1 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-text-primary py-2 rounded font-medium text-base transition-colors">
                         {reviewSubmitting ? '등록 중...' : myReview ? '수정 완료' : '리뷰 등록'}
                       </button>
-                      <button onClick={() => { setShowReviewForm(false); setReviewError('') }} className="flex-1 border border-line text-text-secondary hover:text-text-primary py-2 rounded text-sm transition-colors">취소</button>
+                      <button onClick={() => { setShowReviewForm(false); setReviewError('') }} className="flex-1 border border-line text-text-secondary hover:text-text-primary py-2 rounded text-base transition-colors">취소</button>
                     </div>
                   </div>
                 )}
@@ -938,7 +939,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               <div className="flex gap-1">
                 {[['', '전체'], ['general', '일반'], ['praise', '칭찬'], ['suggestion', '제안'], ['bug', '버그']].map(([val, label]) => (
                   <button key={val} onClick={() => { setReviewFilter(val); setReviewPage(1) }}
-                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${reviewFilter === val ? 'bg-cyan-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'}`}>
+                    className={`px-3 py-1 rounded text-base font-medium transition-colors ${reviewFilter === val ? 'bg-cyan-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'}`}>
                     {label}
                   </button>
                 ))}
@@ -946,7 +947,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               <div className="flex gap-1 ml-auto">
                 {[['recent', '최신순'], ['helpful', '도움순']].map(([val, label]) => (
                   <button key={val} onClick={() => setReviewSort(val as 'recent' | 'helpful')}
-                    className={`px-3 py-1 rounded text-xs transition-colors ${reviewSort === val ? 'text-cyan-400' : 'text-text-muted hover:text-text-secondary'}`}>
+                    className={`px-3 py-1 rounded text-base transition-colors ${reviewSort === val ? 'text-cyan-400' : 'text-text-muted hover:text-text-secondary'}`}>
                     {label}
                   </button>
                 ))}
@@ -988,7 +989,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                       <p className="text-text-primary font-semibold text-sm mb-1">{review.title}</p>
                       <p className="text-text-secondary text-sm leading-relaxed mb-3">{review.content}</p>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleHelpful(review._id)} className="flex items-center gap-1 text-xs text-text-muted hover:text-cyan-400 transition-colors">
+                        <button onClick={() => handleHelpful(review._id)} className="flex items-center gap-1 text-base text-text-muted hover:text-cyan-400 transition-colors">
                           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
                           </svg>
@@ -1005,7 +1006,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               <div className="flex gap-2 justify-center">
                 {Array.from({ length: Math.ceil(reviewTotal / 8) }, (_, i) => i + 1).map((p) => (
                   <button key={p} onClick={() => setReviewPage(p)}
-                    className={`w-8 h-8 rounded text-sm ${reviewPage === p ? 'bg-cyan-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}>
+                    className={`w-8 h-8 rounded text-base ${reviewPage === p ? 'bg-cyan-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}>
                     {p}
                   </button>
                 ))}
@@ -1046,7 +1047,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               {hasCashTab && (
               <button
                 onClick={() => setShopSubTab('currency')}
-                className={`flex flex-col items-center gap-1.5 px-10 py-4 rounded-xl border-2 text-sm font-bold transition-all ${shopSubTab === 'currency' ? 'bg-gradient-to-b from-cyan-500 to-cyan-700 border-cyan-400 text-white' : 'bg-zinc-800/40 border-zinc-700/40 hover:bg-zinc-800/60 hover:border-zinc-600/60'}`}
+                className={`flex flex-col items-center gap-1.5 px-10 py-4 rounded-xl border-2 text-base font-bold transition-all ${shopSubTab === 'currency' ? 'bg-gradient-to-b from-cyan-500 to-cyan-700 border-cyan-400 text-white' : 'bg-zinc-800/40 border-zinc-700/40 hover:bg-zinc-800/60 hover:border-zinc-600/60'}`}
               >
                 <div className="flex items-center gap-2 text-white" style={{ textShadow: '2px 2px 0px rgba(0,0,0,1)' }}>
                   {!!game.shopCurrencyIconUrl && (
@@ -1062,7 +1063,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               {hasCapcoinTab && (
               <button
                 onClick={() => setShopSubTab('challenge')}
-                className={`flex flex-col items-center justify-center px-10 rounded-xl border-2 text-sm font-bold transition-all ${shopSubTab === 'challenge' ? 'bg-gradient-to-b from-cyan-500 to-cyan-700 border-cyan-400 text-white' : 'bg-zinc-800/40 border-zinc-700/40 hover:bg-zinc-800/60 hover:border-zinc-600/60'}`}
+                className={`flex flex-col items-center justify-center px-10 rounded-xl border-2 text-base font-bold transition-all ${shopSubTab === 'challenge' ? 'bg-gradient-to-b from-cyan-500 to-cyan-700 border-cyan-400 text-white' : 'bg-zinc-800/40 border-zinc-700/40 hover:bg-zinc-800/60 hover:border-zinc-600/60'}`}
               >
                 <span className="text-lg font-bold text-white drop-shadow-none" style={{ textShadow: '3px 3px 0px rgba(0,0,0,1)', WebkitTextStroke: '0.5px rgba(0,0,0,0.3)' }}>챌린지 보상</span>
               </button>
@@ -1083,9 +1084,9 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                       <span className="text-sm font-semibold text-gray-800">{_user?.email || '-'}</span>
                     </div>
                     {/* 메뉴 항목 */}
-                    <button onClick={() => { setShopMenuOpen(false); setPaymentHistoryOpen(true); loadPaymentHistory() }} className="w-full text-left px-5 py-4 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors">결제내역</button>
-                    <button onClick={() => { setShopMenuOpen(false); setCurrencyHistoryOpen(true); loadPaymentHistory() }} className="w-full text-left px-5 py-4 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors">재화내역</button>
-<button className="w-full text-left px-5 py-4 text-sm text-gray-700 hover:bg-gray-50 transition-colors">1대1 문의</button>
+                    <button onClick={() => { setShopMenuOpen(false); setPaymentHistoryOpen(true); loadPaymentHistory() }} className="w-full text-left px-5 py-4 text-base text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors">결제내역</button>
+                    <button onClick={() => { setShopMenuOpen(false); setCurrencyHistoryOpen(true); loadPaymentHistory() }} className="w-full text-left px-5 py-4 text-base text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors">재화내역</button>
+<button className="w-full text-left px-5 py-4 text-base text-gray-700 hover:bg-gray-50 transition-colors">1대1 문의</button>
                   </div>
                 )}
               </div>
@@ -1139,7 +1140,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                         <div className="p-4 mt-auto">
                           <button
                             onClick={() => handleCapcoinPurchase(item, capcoinName, capcoinIconUrl)}
-                            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-lg transition-colors text-sm"
+                            className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-lg transition-colors text-base"
                           >
                             {capcoinIconUrl && <img src={`${UPLOADS_BASE}${capcoinIconUrl}`} className="inline w-4 h-4 object-contain mr-1" alt="" />}
                             {capcoinPrice.toLocaleString()} {capcoinName || '포인트'}
@@ -1192,7 +1193,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                       <div className="p-4 mt-auto">
                         <button
                           onClick={() => handlePurchase(item.name, item.price)}
-                          className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-lg transition-colors text-sm"
+                          className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-lg transition-colors text-base"
                         >
                           {currencySymbol}{item.price.toLocaleString()}
                         </button>
@@ -1221,7 +1222,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             {/* 닫기 */}
             <button
               onClick={() => setSpecialPopupItem(null)}
-              className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-black/10 hover:bg-black/20 flex items-center justify-center text-gray-500 text-sm transition-colors"
+              className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-black/10 hover:bg-black/20 flex items-center justify-center text-gray-500 text-base transition-colors"
             >✕</button>
 
             {/* 헤더 */}
@@ -1284,7 +1285,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h2 className="text-base font-bold text-gray-900">결제내역</h2>
-              <button onClick={() => setPaymentHistoryOpen(false)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
+              <button onClick={() => setPaymentHistoryOpen(false)} className="text-gray-400 hover:text-gray-700 text-base leading-none">✕</button>
             </div>
             <div className="overflow-y-auto max-h-[60vh]">
               {paymentHistoryLoading ? (
@@ -1351,7 +1352,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                 <h2 className="text-base font-bold text-gray-900">재화내역</h2>
-                <button onClick={() => setCurrencyHistoryOpen(false)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
+                <button onClick={() => setCurrencyHistoryOpen(false)} className="text-gray-400 hover:text-gray-700 text-base leading-none">✕</button>
               </div>
               <div className="overflow-y-auto max-h-[60vh]">
                 {paymentHistoryLoading ? (
@@ -1447,7 +1448,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 <div className="px-4 py-4 border-b border-line">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-semibold text-text-primary">게임 ID</p>
-                    <button className="text-xs text-cyan-400 hover:underline">게임 ID는 어디에있나요?</button>
+                    <button className="text-base text-cyan-400 hover:underline">게임 ID는 어디에있나요?</button>
                   </div>
                   {capcoinModal.purchaseSuccess ? (
                     <div className="w-full px-3 py-2.5 rounded-lg bg-bg-tertiary text-sm text-text-secondary">{capcoinModal.gameUserId}</div>
@@ -1470,12 +1471,12 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                       <div className="flex items-center flex-1 border border-line rounded-lg overflow-hidden">
                         <button
                           onClick={() => setCapcoinModal(prev => ({ ...prev, qty: Math.max(1, prev.qty - 1) }))}
-                          className="px-4 py-2.5 text-text-secondary hover:bg-bg-tertiary transition-colors text-lg"
+                          className="px-4 py-2.5 text-text-secondary hover:bg-bg-tertiary transition-colors text-base"
                         >−</button>
                         <span className="flex-1 text-center text-sm font-semibold text-text-primary py-2.5">{capcoinModal.qty}</span>
                         <button
                           onClick={() => setCapcoinModal(prev => ({ ...prev, qty: prev.qty + 1 }))}
-                          className="px-4 py-2.5 text-text-secondary hover:bg-bg-tertiary transition-colors text-lg"
+                          className="px-4 py-2.5 text-text-secondary hover:bg-bg-tertiary transition-colors text-base"
                         >+</button>
                       </div>
                       <button
@@ -1484,7 +1485,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                             setCapcoinModal(prev => ({ ...prev, qty: Math.floor(capcoinModal.userPoints! / item.currencyAmount) || 1 }))
                           }
                         }}
-                        className="px-4 py-2.5 border border-line rounded-lg text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
+                        className="px-4 py-2.5 border border-line rounded-lg text-base text-text-secondary hover:bg-bg-tertiary transition-colors"
                       >최대</button>
                     </div>
                   </div>
@@ -1544,7 +1545,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 {capcoinModal.purchaseSuccess ? (
                   <button
                     onClick={() => setCapcoinModal(prev => ({ ...prev, open: false }))}
-                    className="w-full py-4 rounded-xl font-bold text-sm bg-cyan-500 text-white"
+                    className="w-full py-4 rounded-xl font-bold text-base bg-cyan-500 text-white"
                   >
                     구매 완료! 닫기
                   </button>
@@ -1552,7 +1553,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                   <button
                     onClick={capcoinModal.gameUserId.trim() === '' ? undefined : submitCapcoinPurchase}
                     disabled={capcoinModal.gameUserId.trim() === '' || insufficient || capcoinModal.purchasing}
-                    className={`w-full py-4 rounded-xl font-bold text-sm transition-colors ${
+                    className={`w-full py-4 rounded-xl font-bold text-base transition-colors ${
                       capcoinModal.gameUserId.trim() === '' || insufficient
                         ? 'bg-bg-tertiary text-text-muted cursor-not-allowed'
                         : 'bg-cyan-500 hover:bg-cyan-400 text-white'
@@ -1566,6 +1567,19 @@ const avgRating = game ? (game.rating as number) || 0 : 0
           </div>
         )
       })()}
+
+      <ConfirmModal
+        isOpen={showDeleteReviewConfirm}
+        title="리뷰 삭제"
+        message="리뷰를 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          setShowDeleteReviewConfirm(false)
+          handleDeleteReview()
+        }}
+        onCancel={() => setShowDeleteReviewConfirm(false)}
+      />
     </div>
   )
 }

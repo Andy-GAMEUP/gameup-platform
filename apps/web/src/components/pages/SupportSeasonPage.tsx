@@ -130,7 +130,7 @@ export default function SupportSeasonPage() {
                   <div className="relative">
                     <button
                       onClick={() => setDropdownOpen(v => !v)}
-                      className="flex items-center gap-1 text-text-secondary hover:text-text-primary text-xs transition-colors"
+                      className="flex items-center gap-1 text-text-secondary hover:text-text-primary text-base transition-colors"
                     >
                       다른 시즌 <ChevronDown className="w-3 h-3" />
                     </button>
@@ -157,7 +157,7 @@ export default function SupportSeasonPage() {
             {season.status === 'recruiting' && user?.role === 'developer' && (
               <button
                 onClick={() => setApplyOpen(true)}
-                className="flex-shrink-0 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm font-medium transition-colors"
+                className="flex-shrink-0 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-base font-medium transition-colors"
               >
                 참가 신청
               </button>

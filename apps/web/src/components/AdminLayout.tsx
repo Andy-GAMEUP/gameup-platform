@@ -185,7 +185,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div key={path}>
           <button
             onClick={() => toggleMenu(path)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base transition-colors ${
               parentActive
                 ? 'bg-accent-light text-accent-text border border-accent-muted'
                 : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'

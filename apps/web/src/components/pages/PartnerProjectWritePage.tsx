@@ -6,7 +6,10 @@ import { useQueryClient } from '@tanstack/react-query'
 import Navbar from '@/components/Navbar'
 import Editor from '@/components/Editor'
 import partnerMatchingService from '@/services/partnerMatchingService'
+import { partnerService } from '@/services/partnerService'
 import { X, Loader2, ArrowLeft } from 'lucide-react'
+
+const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
 
 const categoryOptions = [
   '웹 개발', '앱 개발', '디자인', '마케팅', 'QA/테스트',
@@ -87,7 +90,7 @@ export default function PartnerProjectWritePage() {
     <div className="min-h-screen bg-bg-primary">
       <Navbar />
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-sm mb-5 transition-colors">
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-base mb-5 transition-colors">
           <ArrowLeft className="w-4 h-4" /> {isEdit ? '프로젝트로 돌아가기' : '프로젝트 목록으로 돌아가기'}
         </button>
 
@@ -104,7 +107,13 @@ export default function PartnerProjectWritePage() {
           <div>
             <label className="block text-text-secondary text-xs mb-1">설명 *</label>
             <Editor content={form.description} onChange={html => handleField('description', html)}
-              placeholder="프로젝트 내용을 설명해주세요" />
+              placeholder="프로젝트 내용을 설명해주세요"
+              onImageUpload={async (file) => {
+                const result = await partnerService.uploadImages([file])
+                const raw = result.images[0]
+                return raw.startsWith('http') ? raw : `${UPLOADS_URL}${raw}`
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -153,7 +162,7 @@ export default function PartnerProjectWritePage() {
             <div className="flex flex-wrap gap-1.5 mt-2">
               {SKILL_SUGGESTIONS.filter(s => !form.requiredSkills.includes(s)).map(s => (
                 <button key={s} onClick={() => addSkill(s)}
-                  className="px-2 py-0.5 bg-bg-card border border-line text-text-secondary hover:border-accent hover:text-accent rounded-full text-xs transition-colors">
+                  className="px-2 py-0.5 bg-bg-card border border-line text-text-secondary hover:border-accent hover:text-accent rounded-full text-base transition-colors">
                   + {s}
                 </button>
               ))}
@@ -163,11 +172,11 @@ export default function PartnerProjectWritePage() {
 
         <div className="flex gap-3 pt-6">
           <button onClick={() => router.back()}
-            className="flex-1 px-4 py-3 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">
+            className="flex-1 px-4 py-3 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-base transition-colors">
             취소
           </button>
           <button onClick={handleSubmit} disabled={submitting}
-            className="flex-1 px-4 py-3 bg-accent hover:bg-accent-hover text-text-primary rounded-xl text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            className="flex-1 px-4 py-3 bg-accent hover:bg-accent-hover text-text-primary rounded-xl text-base font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             {isEdit ? '저장' : '등록'}
           </button>

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Gift, Check, X, Eye, ToggleLeft, ToggleRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import adminService from '../../services/adminService'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface GamePointPolicy {
   _id: string
@@ -55,6 +56,8 @@ export default function AdminGamePointPoliciesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [batchRejectModal, setBatchRejectModal] = useState(false)
   const [batchRejectReason, setBatchRejectReason] = useState('')
+  const [approveConfirmId, setApproveConfirmId] = useState<string | null>(null)
+  const [showBatchApproveConfirm, setShowBatchApproveConfirm] = useState(false)
 
   const loadPolicies = useCallback(async () => {
     setLoading(true)
@@ -75,7 +78,6 @@ export default function AdminGamePointPoliciesPage() {
   }, [loadPolicies])
 
   const handleApprove = async (id: string) => {
-    if (!confirm('이 정책을 승인하시겠습니까?')) return
     try {
       await adminService.approveGamePointPolicy(id)
       loadPolicies()
@@ -118,7 +120,6 @@ export default function AdminGamePointPoliciesPage() {
 
   const handleBatchApprove = async () => {
     if (selectedIds.size === 0) return
-    if (!confirm(`${selectedIds.size}건의 정책을 일괄 승인하시겠습니까?`)) return
     try {
       await adminService.batchApproveGamePointPolicies(Array.from(selectedIds))
       setSelectedIds(new Set())
@@ -158,7 +159,7 @@ export default function AdminGamePointPoliciesPage() {
           <button
             key={f.value}
             onClick={() => { setStatusFilter(f.value); setPage(1) }}
-            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+            className={`px-3 py-1.5 rounded-md text-base transition-colors ${
               statusFilter === f.value
                 ? 'bg-accent text-text-primary'
                 : 'bg-bg-secondary border border-line text-text-secondary hover:text-text-primary'
@@ -173,13 +174,13 @@ export default function AdminGamePointPoliciesPage() {
       {selectedIds.size > 0 && (
         <div className="flex items-center gap-3 p-3 bg-accent/10 border border-accent/30 rounded-lg">
           <span className="text-sm font-medium">{selectedIds.size}건 선택됨</span>
-          <button onClick={handleBatchApprove} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-sm transition-colors">
+          <button onClick={() => setShowBatchApproveConfirm(true)} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 rounded text-base transition-colors">
             일괄 승인
           </button>
-          <button onClick={() => { setBatchRejectModal(true); setBatchRejectReason('') }} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm transition-colors">
+          <button onClick={() => { setBatchRejectModal(true); setBatchRejectReason('') }} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-base transition-colors">
             일괄 거절
           </button>
-          <button onClick={() => setSelectedIds(new Set())} className="px-3 py-1.5 border border-line rounded text-sm hover:bg-bg-tertiary">
+          <button onClick={() => setSelectedIds(new Set())} className="px-3 py-1.5 border border-line rounded text-base hover:bg-bg-tertiary">
             선택 해제
           </button>
         </div>
@@ -247,7 +248,7 @@ export default function AdminGamePointPoliciesPage() {
                       </button>
                       {policy.approvalStatus === 'pending' && (
                         <>
-                          <button onClick={() => handleApprove(policy._id)} className="p-1.5 border border-green-500/50 text-green-400 rounded-md hover:bg-green-500/10" title="승인">
+                          <button onClick={() => setApproveConfirmId(policy._id)} className="p-1.5 border border-green-500/50 text-green-400 rounded-md hover:bg-green-500/10" title="승인">
                             <Check className="w-4 h-4" />
                           </button>
                           <button onClick={() => { setRejectModal(policy._id); setRejectReason('') }} className="p-1.5 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10" title="거절">
@@ -299,8 +300,8 @@ export default function AdminGamePointPoliciesPage() {
                 />
               </div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setRejectModal(null)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-                <button onClick={handleReject} disabled={!rejectReason.trim()} className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-md text-sm disabled:opacity-50">거절</button>
+                <button onClick={() => setRejectModal(null)} className="px-4 py-2 border border-line rounded-md text-base hover:bg-bg-tertiary">취소</button>
+                <button onClick={handleReject} disabled={!rejectReason.trim()} className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-md text-base disabled:opacity-50">거절</button>
               </div>
             </div>
           </div>
@@ -323,8 +324,8 @@ export default function AdminGamePointPoliciesPage() {
                 />
               </div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setBatchRejectModal(false)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-                <button onClick={handleBatchReject} disabled={!batchRejectReason.trim()} className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-md text-sm disabled:opacity-50">일괄 거절</button>
+                <button onClick={() => setBatchRejectModal(false)} className="px-4 py-2 border border-line rounded-md text-base hover:bg-bg-tertiary">취소</button>
+                <button onClick={handleBatchReject} disabled={!batchRejectReason.trim()} className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-md text-base disabled:opacity-50">일괄 거절</button>
               </div>
             </div>
           </div>
@@ -366,11 +367,36 @@ export default function AdminGamePointPoliciesPage() {
               </div>
             </div>
             <div className="mt-4 flex justify-end">
-              <button onClick={() => setDetailModal(null)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">닫기</button>
+              <button onClick={() => setDetailModal(null)} className="px-4 py-2 border border-line rounded-md text-base hover:bg-bg-tertiary">닫기</button>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!approveConfirmId}
+        title="정책 승인"
+        message="이 정책을 승인하시겠습니까?"
+        confirmLabel="승인"
+        onConfirm={() => {
+          if (!approveConfirmId) return
+          handleApprove(approveConfirmId)
+          setApproveConfirmId(null)
+        }}
+        onCancel={() => setApproveConfirmId(null)}
+      />
+
+      <ConfirmModal
+        isOpen={showBatchApproveConfirm}
+        title="일괄 승인"
+        message={`${selectedIds.size}건의 정책을 일괄 승인하시겠습니까?`}
+        confirmLabel="일괄 승인"
+        onConfirm={() => {
+          setShowBatchApproveConfirm(false)
+          handleBatchApprove()
+        }}
+        onCancel={() => setShowBatchApproveConfirm(false)}
+      />
     </div>
   )
 }

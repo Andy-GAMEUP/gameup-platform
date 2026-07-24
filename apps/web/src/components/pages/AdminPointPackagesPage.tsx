@@ -75,7 +75,7 @@ export default function AdminPointPackagesPage() {
           </h1>
           <p className="text-sm text-text-secondary mt-1">개발사가 구매할 수 있는 포인트 패키지를 관리합니다</p>
         </div>
-        <button onClick={() => setCreateModal(true)} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors">
+        <button onClick={() => setCreateModal(true)} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base transition-colors">
           <Plus className="w-4 h-4" /> 새 상품
         </button>
       </div>
@@ -143,8 +143,8 @@ export default function AdminPointPackagesPage() {
               <div><label className="block text-sm text-text-secondary mb-1">설명</label><input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className={inputCls} placeholder="상품 설명" /></div>
               <div><label className="block text-sm text-text-secondary mb-1">정렬 순서</label><input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: e.target.value }))} className={inputCls} /></div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setCreateModal(false)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-                <button onClick={handleCreate} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">생성</button>
+                <button onClick={() => setCreateModal(false)} className="px-4 py-2 border border-line rounded-md text-base hover:bg-bg-tertiary">취소</button>
+                <button onClick={handleCreate} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base">생성</button>
               </div>
             </div>
           </div>
@@ -165,8 +165,8 @@ export default function AdminPointPackagesPage() {
               <div><label className="block text-sm text-text-secondary mb-1">설명</label><input value={editModal.description} onChange={e => setEditModal(p => p ? { ...p, description: e.target.value } : null)} className={inputCls} /></div>
               <div><label className="block text-sm text-text-secondary mb-1">정렬 순서</label><input type="number" value={editModal.sortOrder} onChange={e => setEditModal(p => p ? { ...p, sortOrder: Number(e.target.value) } : null)} className={inputCls} /></div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setEditModal(null)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-                <button onClick={handleUpdate} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">저장</button>
+                <button onClick={() => setEditModal(null)} className="px-4 py-2 border border-line rounded-md text-base hover:bg-bg-tertiary">취소</button>
+                <button onClick={handleUpdate} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base">저장</button>
               </div>
             </div>
           </div>

@@ -35,8 +35,8 @@ interface Applicant {
   phone?: string
   experience?: string
   proposedBudget?: string
-  portfolioUrl?: string
-  proposal?: string
+  title?: string
+  content?: string
   status: string
   createdAt: string
   applicantId?: { _id: string; username: string; companyInfo?: { companyName?: string } }
@@ -158,7 +158,7 @@ export default function AdminPartnerTopicsPage() {
                 placeholder="프로젝트명 또는 설명 검색..."
                 className="w-full pl-10 pr-4 py-2 bg-bg-tertiary border border-line rounded-lg text-sm text-text-primary focus:outline-none focus:border-accent" />
             </div>
-            <button type="submit" className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors">검색</button>
+            <button type="submit" className="px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium transition-colors">검색</button>
           </form>
           <div className="flex flex-wrap gap-3">
             <div className="flex items-center gap-2">
@@ -233,7 +233,7 @@ export default function AdminPartnerTopicsPage() {
                     <td className="px-4 py-3 text-text-secondary whitespace-nowrap border-r border-line/20">{formatDate(project.applicationDeadline)}</td>
                     <td className="px-4 py-3 whitespace-nowrap border-r border-line/20">
                       <button onClick={() => handleViewApplicants(project)}
-                        className="text-text-secondary hover:text-accent text-xs font-medium transition-colors underline-offset-2 hover:underline">
+                        className="text-text-secondary hover:text-accent text-base font-medium transition-colors underline-offset-2 hover:underline">
                         {project.applicantCount}명
                       </button>
                     </td>
@@ -263,7 +263,7 @@ export default function AdminPartnerTopicsPage() {
               if (page > totalPages) return null
               return (
                 <button key={page} onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${page === currentPage ? 'bg-accent text-white' : 'bg-bg-secondary border border-line text-text-muted hover:text-text-primary'}`}>
+                  className={`w-8 h-8 rounded-lg text-base font-medium transition-colors ${page === currentPage ? 'bg-accent text-white' : 'bg-bg-secondary border border-line text-text-muted hover:text-text-primary'}`}>
                   {page}
                 </button>
               )
@@ -320,12 +320,8 @@ export default function AdminPartnerTopicsPage() {
                             {app.proposedBudget && <span>제안예산: {app.proposedBudget}</span>}
                             <span>지원일: {formatDate(app.createdAt)}</span>
                           </div>
-                          {app.proposal && <p className="text-text-secondary text-sm mt-2 line-clamp-2">{app.proposal}</p>}
-                          {app.portfolioUrl && (
-                            <a href={app.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-accent text-xs mt-1 inline-flex items-center gap-1 hover:underline">
-                              <Eye className="w-3 h-3" /> 포트폴리오
-                            </a>
-                          )}
+                          {app.title && <p className="text-text-primary text-sm font-medium mt-2">{app.title}</p>}
+                          {app.content && <p className="text-text-secondary text-sm mt-1 line-clamp-2">{app.content}</p>}
                         </div>
                       </div>
                     </div>

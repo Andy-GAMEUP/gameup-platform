@@ -14,6 +14,7 @@ import {
   getMyApplications,
   getMyProjects,
   getProjectsByUser,
+  getApplicationStatsByUser,
   getPartnerActivity,
   getProjectInquiries,
   createProjectInquiry,
@@ -35,6 +36,7 @@ router.get('/partner/projects/applicants/me', authenticateToken, getMyProjectApp
 
 // 지원 관련
 router.get('/partner/applications/me', authenticateToken, getMyApplications)
+router.get('/partner/applications/user/:userId/stats', getApplicationStatsByUser)
 
 // 프로젝트 CRUD
 router.post('/partner/projects', authenticateToken, createProject)

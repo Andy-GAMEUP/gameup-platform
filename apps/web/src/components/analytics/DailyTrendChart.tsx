@@ -48,7 +48,7 @@ export default function DailyTrendChart({
             <button
               key={m.key}
               onClick={() => toggle(m.key)}
-              className={`px-3 py-1.5 text-xs transition-colors ${
+              className={`px-3 py-1.5 text-base transition-colors ${
                 active.has(m.key)
                   ? 'text-text-primary font-semibold'
                   : 'bg-bg-tertiary text-text-secondary hover:bg-bg-secondary'

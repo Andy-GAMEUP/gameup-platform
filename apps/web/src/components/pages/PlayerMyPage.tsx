@@ -372,7 +372,7 @@ export default function PlayerMyPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-base font-medium border-b-2 whitespace-nowrap transition-colors ${
                 tab === t.key
                   ? 'border-cyan-400 text-cyan-300'
                   : 'border-transparent text-text-secondary hover:text-text-primary'
@@ -529,7 +529,7 @@ export default function PlayerMyPage() {
                     <button
                       onClick={() => { loadActivityScores(activityScorePage - 1, activityScoreFilter) }}
                       disabled={activityScorePage <= 1}
-                      className="px-3 py-1.5 text-sm border border-line rounded-lg text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="px-3 py-1.5 text-base border border-line rounded-lg text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       이전
                     </button>
@@ -539,7 +539,7 @@ export default function PlayerMyPage() {
                     <button
                       onClick={() => { loadActivityScores(activityScorePage + 1, activityScoreFilter) }}
                       disabled={activityScorePage >= Math.ceil(activityScoreTotal / 20)}
-                      className="px-3 py-1.5 text-sm border border-line rounded-lg text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="px-3 py-1.5 text-base border border-line rounded-lg text-text-secondary hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       다음
                     </button>
@@ -635,17 +635,17 @@ export default function PlayerMyPage() {
                 </div>
                 {!profileEditing ? (
                   <button onClick={() => setProfileEditing(true)}
-                    className="flex items-center gap-1.5 text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
+                    className="flex items-center gap-1.5 text-base text-cyan-400 hover:text-cyan-300 transition-colors">
                     <Edit2 className="w-4 h-4" /> 편집
                   </button>
                 ) : (
                   <div className="flex gap-2">
                     <button onClick={() => { setProfileEditing(false); setProfileForm({ username: user?.username || '', bio: (user as any)?.bio || '', favoriteGenres: (user as any)?.favoriteGenres || [] }) }}
-                      className="text-sm text-text-secondary hover:text-text-primary px-3 py-1.5 rounded border border-line hover:border-line transition-colors">
+                      className="text-base text-text-secondary hover:text-text-primary px-3 py-1.5 rounded border border-line hover:border-line transition-colors">
                       취소
                     </button>
                     <button onClick={handleSaveProfile} disabled={profileSaving}
-                      className="flex items-center gap-1.5 text-sm bg-cyan-600 hover:bg-cyan-700 text-text-primary px-3 py-1.5 rounded transition-colors disabled:opacity-50">
+                      className="flex items-center gap-1.5 text-base bg-cyan-600 hover:bg-cyan-700 text-text-primary px-3 py-1.5 rounded transition-colors disabled:opacity-50">
                       {profileSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                       저장
                     </button>
@@ -722,7 +722,7 @@ export default function PlayerMyPage() {
                           key={g}
                           onClick={() => profileEditing && toggleGenre(g)}
                           disabled={!profileEditing}
-                          className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                          className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors ${
                             selected
                               ? 'bg-cyan-600 text-text-primary'
                               : profileEditing
@@ -799,7 +799,7 @@ export default function PlayerMyPage() {
                 <button
                   onClick={handleChangePassword}
                   disabled={pwSaving}
-                  className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-text-primary px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 mt-2"
+                  className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-text-primary px-5 py-2.5 rounded-lg text-base font-medium transition-colors disabled:opacity-50 mt-2"
                 >
                   {pwSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                   비밀번호 변경
@@ -818,7 +818,7 @@ export default function PlayerMyPage() {
               </p>
               <button
                 onClick={() => setDeleteModal(true)}
-                className="flex items-center gap-2 border border-red-600 text-red-400 hover:bg-red-950 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="flex items-center gap-2 border border-red-600 text-red-400 hover:bg-red-950 px-4 py-2 rounded-lg text-base font-medium transition-colors"
               >
                 <Trash2 className="w-4 h-4" /> 계정 삭제
               </button>
@@ -852,14 +852,14 @@ export default function PlayerMyPage() {
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => { setDeleteModal(false); setDeletePw('') }}
-                className="px-4 py-2 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors"
+                className="px-4 py-2 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors"
               >
                 취소
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleteLoading}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-red-700 hover:bg-red-800 text-text-primary rounded-lg transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 text-base bg-red-700 hover:bg-red-800 text-text-primary rounded-lg transition-colors disabled:opacity-50"
               >
                 {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 삭제 확인

@@ -370,6 +370,30 @@ export const reapplyCorporate = async (req: AuthRequest, res: Response) => {
   }
 }
 
+export const updateCompanyType = async (req: AuthRequest, res: Response) => {
+  try {
+    const { companyType } = req.body
+
+    if (!Array.isArray(companyType)) {
+      return res.status(400).json({ message: '사업 형태 값이 올바르지 않습니다' })
+    }
+
+    const user = await User.findById(req.user!.id).select('memberType companyInfo')
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (user.memberType !== 'corporate') {
+      return res.status(400).json({ message: '기업회원만 사업 형태를 수정할 수 있습니다' })
+    }
+
+    await User.findByIdAndUpdate(req.user!.id, {
+      $set: { 'companyInfo.companyType': companyType },
+    })
+
+    res.json({ success: true, companyType })
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
 export const submitAppeal = async (req: AuthRequest, res: Response) => {
   try {
     const { content } = req.body

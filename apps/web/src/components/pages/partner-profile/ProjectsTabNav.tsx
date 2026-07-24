@@ -8,7 +8,7 @@ import { usePartnerProfileCtx } from './PartnerProfileContext'
 export default function ProjectsTabNav() {
   const { id, isOwnProfile, userProjects, myProjectApplicants, myApplications } = usePartnerProfileCtx()
   const pathname = usePathname()
-  const base = `/partner/${id}/projects`
+  const base = `/partner/${id}/manage/projects`
   const activeKey = pathname === `${base}/applicants` ? 'applicants' : pathname === `${base}/applications` ? 'applications' : 'myProjects'
 
   return (

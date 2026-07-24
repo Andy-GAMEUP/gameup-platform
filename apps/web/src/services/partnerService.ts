@@ -40,9 +40,6 @@ export interface PartnerMinihomeInfo {
   companyName: string
   introduction: string
   isPublic: boolean
-  expertiseArea: string[]
-  skills: string[]
-  availability: 'available' | 'busy' | 'unavailable'
   location: string
   contactEmail: string
   contactPhone: string
@@ -64,7 +61,6 @@ export interface PartnerApplication {
   status: 'pending' | 'approved' | 'suspended' | 'rejected'
   slogan: string
   introduction: string
-  activityPlan: string
   externalUrl: string
   selectedTopics: string[]
   profileImage: string
@@ -75,6 +71,36 @@ export interface PartnerApplication {
   rejectedReason?: string
   createdAt: string
   updatedAt: string
+}
+
+export interface PartnerGameItem {
+  _id: string
+  partnerId: string
+  title: string
+  genre: string
+  description: string
+  iconUrl: string
+  coverUrl: string
+  screenshots: string[]
+  platforms: string[]
+  status: 'active' | 'inactive'
+  sortOrder: number
+  createdAt: string
+}
+
+export interface PartnerMessageItem {
+  _id: string
+  partnerId?: string
+  senderId: { _id: string; username: string; profileImage?: string; companyName?: string | null; partnerChannelId?: string | null }
+  recipientUserId?: string
+  parentId?: string | null
+  rootId?: string
+  content: string
+  createdAt: string
+  threadStatus?: 'open' | 'closed' | 'deleted'
+  threadClosedByMe?: boolean
+  permanentlyDeletedByMe?: boolean
+  counterpartPermanentlyDeleted?: boolean
 }
 
 export interface TopicItem {
@@ -94,14 +120,12 @@ export interface TopicGroup {
 export const partnerService = {
   apply: async (data: {
     introduction: string
-    activityPlan: string
     slogan?: string
     externalUrl?: string
     selectedTopics?: string[]
     profileImage?: string
     techStack?: string[]
     portfolioUrls?: string[]
-    availability?: string
     careerYears?: number
     completedProjectCount?: number
     teamSize?: string
@@ -119,6 +143,20 @@ export const partnerService = {
   getMyStatus: async () => {
     const res = await apiClient.get('/partner/status')
     return res.data
+  },
+
+  updateMyProfile: async (data: Record<string, unknown>) => {
+    const res = await apiClient.put('/partner/me', data)
+    return res.data
+  },
+
+  uploadImages: async (files: File[]) => {
+    const formData = new FormData()
+    files.forEach(f => formData.append('partnerImages', f))
+    const res = await apiClient.post('/partner/upload-images', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data as { success: boolean; images: string[] }
   },
 
   getPartnerSlogan: async (partnerId: string) => {
@@ -143,7 +181,7 @@ export const partnerService = {
 
   getPartnerChannel: async (partnerId: string) => {
     const res = await apiClient.get(`/partner/${partnerId}`)
-    return res.data as { partner: PartnerProfile }
+    return res.data as { partner: PartnerProfile; games: PartnerGameItem[] }
   },
 
   toggleProfileVisibility: async (partnerId: string) => {
@@ -201,6 +239,41 @@ export const partnerService = {
     return res.data
   },
 
+  sendMessage: async (partnerId: string, content: string) => {
+    const res = await apiClient.post(`/partner/${partnerId}/messages`, { content })
+    return res.data as { message: string; data: PartnerMessageItem }
+  },
+
+  getReceivedMessages: async () => {
+    const res = await apiClient.get('/partner/messages/received')
+    return res.data as { messages: PartnerMessageItem[] }
+  },
+
+  replyToMessage: async (messageId: string, content: string) => {
+    const res = await apiClient.post(`/partner/messages/${messageId}/reply`, { content })
+    return res.data as { message: string; data: PartnerMessageItem }
+  },
+
+  getMessageThread: async (rootId: string) => {
+    const res = await apiClient.get(`/partner/messages/thread/${rootId}`)
+    return res.data as { messages: PartnerMessageItem[] }
+  },
+
+  closeMessageThread: async (rootId: string) => {
+    const res = await apiClient.post(`/partner/messages/thread/${rootId}/close`)
+    return res.data as { message: string }
+  },
+
+  restoreMessageThread: async (rootId: string) => {
+    const res = await apiClient.post(`/partner/messages/thread/${rootId}/restore`)
+    return res.data as { message: string }
+  },
+
+  deleteMessageThread: async (rootId: string) => {
+    const res = await apiClient.post(`/partner/messages/thread/${rootId}/delete`)
+    return res.data as { message: string }
+  },
+
   admin: {
     getRequests: async (params?: { page?: number; limit?: number; status?: string; from?: string; to?: string; search?: string; companyType?: string }) => {
       const res = await apiClient.get('/admin/partner/requests', { params })
@@ -234,7 +307,7 @@ export const partnerService = {
 
     updatePartnerProfile: async (id: string, data: Partial<{
       slogan: string; introduction: string; externalUrl: string; selectedTopics: string[]; profileImage: string
-      companyName: string; skills: string[]; expertiseArea: string[]; availability: string
+      displayNameOverride: string
       location: string; contactEmail: string; contactPhone: string; website: string; hourlyRate: string
     }>) => {
       const res = await apiClient.put(`/admin/partner/${id}/profile`, data)

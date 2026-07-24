@@ -148,7 +148,7 @@ export default function SupportIntroPage() {
               <button
                 key={tab._id}
                 onClick={() => setActiveTab(tab._id)}
-                className={`px-5 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                className={`px-5 py-3.5 text-base font-medium whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === tab._id
                     ? 'border-red-500 text-red-400'
                     : 'border-transparent text-text-secondary hover:text-text-primary'

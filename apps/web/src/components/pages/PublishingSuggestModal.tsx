@@ -136,7 +136,7 @@ export default function PublishingSuggestModal({ type, onClose, onSuccess }: Pub
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-text-secondary text-sm font-medium">스크린샷 URL (2~8장)</label>
               {screenshots.length < 8 && (
-                <button type="button" onClick={addScreenshot} className="text-cyan-400 hover:text-cyan-300 text-xs flex items-center gap-1 transition-colors">
+                <button type="button" onClick={addScreenshot} className="text-cyan-400 hover:text-cyan-300 text-base flex items-center gap-1 transition-colors">
                   <Plus className="w-3 h-3" />추가
                 </button>
               )}
@@ -195,13 +195,13 @@ export default function PublishingSuggestModal({ type, onClose, onSuccess }: Pub
         </form>
 
         <div className="px-6 py-4 border-t border-line flex items-center justify-end gap-3 flex-shrink-0">
-          <button onClick={onClose} className="px-4 py-2 text-text-secondary hover:text-text-primary text-sm transition-colors">
+          <button onClick={onClose} className="px-4 py-2 text-text-secondary hover:text-text-primary text-base transition-colors">
             취소
           </button>
           <button
             onClick={handleSubmit as unknown as React.MouseEventHandler}
             disabled={submitting}
-            className="flex items-center gap-2 px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-6 py-2 bg-cyan-600 hover:bg-cyan-700 text-text-primary rounded-lg text-base font-medium transition-colors disabled:opacity-50"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             제출하기

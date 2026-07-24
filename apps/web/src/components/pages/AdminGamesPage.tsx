@@ -38,9 +38,9 @@ function ConfirmModal({ title, desc, onConfirm, onCancel, danger = true }: {
           placeholder="사유 입력 (선택)"
           className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-line mb-4 resize-none" />
         <div className="flex justify-end gap-3">
-          <button onClick={onCancel} className="px-4 py-2 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
+          <button onClick={onCancel} className="px-4 py-2 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
           <button onClick={() => onConfirm(reason)}
-            className={`px-4 py-2 text-sm text-text-primary rounded-lg transition-colors ${danger ? 'bg-red-700 hover:bg-red-800' : 'bg-green-700 hover:bg-green-800'}`}>
+            className={`px-4 py-2 text-base text-text-primary rounded-lg transition-colors ${danger ? 'bg-red-700 hover:bg-red-800' : 'bg-green-700 hover:bg-green-800'}`}>
             확인
           </button>
         </div>
@@ -184,7 +184,7 @@ export default function AdminGamesPage() {
           <div className="relative w-full max-w-4xl h-[90vh] bg-bg-secondary rounded-xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-4 py-3 border-b border-line">
               <span className="text-sm font-semibold text-text-primary truncate">{certModal.title} — 등급 인증서</span>
-              <button onClick={() => setCertModal(null)} className="text-text-muted hover:text-text-primary text-xl leading-none px-1">✕</button>
+              <button onClick={() => setCertModal(null)} className="text-text-muted hover:text-text-primary text-base leading-none px-1">✕</button>
             </div>
             {/\.(jpg|jpeg|png|gif|webp)$/i.test(certModal.url) ? (
               <div className="flex items-center justify-center h-[calc(90vh-48px)] bg-black/40 overflow-auto">
@@ -248,7 +248,7 @@ export default function AdminGamesPage() {
           <div className="flex flex-col items-center justify-center h-48 gap-2">
             <AlertCircle className="w-8 h-8 text-red-400" />
             <p className="text-red-400 font-medium">{loadError}</p>
-            <button onClick={() => load()} className="mt-2 px-4 py-1.5 text-sm bg-bg-tertiary border border-line rounded-lg text-text-secondary hover:text-text-primary transition-colors">다시 시도</button>
+            <button onClick={() => load()} className="mt-2 px-4 py-1.5 text-base bg-bg-tertiary border border-line rounded-lg text-text-secondary hover:text-text-primary transition-colors">다시 시도</button>
           </div>
         ) : games.length === 0 ? (
           <div className="text-center py-16 text-text-muted">게임이 없습니다</div>
@@ -360,12 +360,12 @@ export default function AdminGamesPage() {
                         <div className="flex items-center justify-center gap-1">
                           <button onClick={() => handleAction(g._id, 'approve', '심사 통과')}
                             disabled={isOperating || isSuspended || g.approvalStatus === 'not_submitted' || g.approvalStatus === 'approved'}
-                            className="px-2 py-1 rounded-md text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
+                            className="px-2 py-1 rounded-md text-base font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
                             통과
                           </button>
                           <button onClick={() => handleAction(g._id, 'reject', '심사 거부')}
                             disabled={isOperating || isSuspended || g.approvalStatus === 'not_submitted' || g.approvalStatus === 'rejected' || g.approvalStatus === 'approved'}
-                            className="px-2 py-1 rounded-md text-xs font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
+                            className="px-2 py-1 rounded-md text-base font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
                             거부
                           </button>
                         </div>
@@ -376,14 +376,14 @@ export default function AdminGamesPage() {
                           <button
                             onClick={() => handleShopReview(g._id, 'approve')}
                             disabled={!g.shopReviewingCount}
-                            className="px-2 py-1 rounded-md text-xs font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap"
+                            className="px-2 py-1 rounded-md text-base font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap"
                           >
                             통과
                           </button>
                           <button
                             onClick={() => handleShopReview(g._id, 'reject')}
                             disabled={!g.shopReviewingCount}
-                            className="px-2 py-1 rounded-md text-xs font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap"
+                            className="px-2 py-1 rounded-md text-base font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap"
                           >
                             거부
                           </button>
@@ -396,13 +396,13 @@ export default function AdminGamesPage() {
                       <td className="px-2 py-2 text-center border-r border-line/20">
                         {isSuspended ? (
                           <button onClick={() => handleAction(g._id, 'reactivate', '중지 취소')}
-                            className="px-2 py-1 rounded-md text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors whitespace-nowrap">
+                            className="px-2 py-1 rounded-md text-base font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors whitespace-nowrap">
                             중지 취소
                           </button>
                         ) : (
                           <button onClick={() => handleAction(g._id, 'suspend', '강제 중지')}
                             disabled={g.status !== 'published'}
-                            className="px-2 py-1 rounded-md text-xs font-semibold bg-slate-600 text-white hover:bg-slate-500 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
+                            className="px-2 py-1 rounded-md text-base font-semibold bg-slate-600 text-white hover:bg-slate-500 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap">
                             중지
                           </button>
                         )}

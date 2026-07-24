@@ -93,7 +93,7 @@ export default function AdminUsersPage() {
               <button
                 key={r}
                 onClick={() => { setRoleFilter(r); setPage(1) }}
-                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded text-base font-medium transition-colors ${
                   roleFilter === r ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'
                 }`}
               >
@@ -147,11 +147,11 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3 text-text-muted text-xs">{new Date(user.createdAt).toLocaleDateString('ko-KR')}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <button onClick={() => openModal(user, 'role')} className="text-xs bg-purple-600/20 text-purple-400 border border-purple-500/30 px-2 py-1 rounded hover:bg-purple-600/40 transition-colors">역할</button>
+                        <button onClick={() => openModal(user, 'role')} className="text-base bg-purple-600/20 text-purple-400 border border-purple-500/30 px-2 py-1 rounded hover:bg-purple-600/40 transition-colors">역할</button>
                         {user.isActive ? (
-                          <button onClick={() => openModal(user, 'ban')} className="text-xs bg-accent-light text-accent-text border border-accent-muted px-2 py-1 rounded hover:bg-red-600/40 transition-colors">정지</button>
+                          <button onClick={() => openModal(user, 'ban')} className="text-base bg-accent-light text-accent-text border border-accent-muted px-2 py-1 rounded hover:bg-red-600/40 transition-colors">정지</button>
                         ) : (
-                          <button onClick={() => handleBanToggle(true)} className="text-xs bg-accent-light text-accent border border-green-500/30 px-2 py-1 rounded hover:bg-accent/40 transition-colors" onMouseDown={() => setModalUser(user)}>해제</button>
+                          <button onClick={() => handleBanToggle(true)} className="text-base bg-accent-light text-accent border border-green-500/30 px-2 py-1 rounded hover:bg-accent/40 transition-colors" onMouseDown={() => setModalUser(user)}>해제</button>
                         )}
                       </div>
                     </td>
@@ -165,7 +165,7 @@ export default function AdminUsersPage() {
         {totalPages > 1 && (
           <div className="flex gap-2 justify-center">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded text-sm ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}>{p}</button>
+              <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded text-base ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}>{p}</button>
             ))}
           </div>
         )}
@@ -186,8 +186,8 @@ export default function AdminUsersPage() {
               ))}
             </div>
             <div className="flex gap-3">
-              <button onClick={handleRoleChange} className="flex-1 bg-red-600 hover:bg-red-700 text-text-primary py-2 rounded text-sm font-medium transition-colors">변경</button>
-              <button onClick={() => setModalUser(null)} className="flex-1 border border-line text-text-secondary hover:text-text-primary py-2 rounded text-sm transition-colors">취소</button>
+              <button onClick={handleRoleChange} className="flex-1 bg-red-600 hover:bg-red-700 text-text-primary py-2 rounded text-base font-medium transition-colors">변경</button>
+              <button onClick={() => setModalUser(null)} className="flex-1 border border-line text-text-secondary hover:text-text-primary py-2 rounded text-base transition-colors">취소</button>
             </div>
           </div>
         </div>
@@ -210,8 +210,8 @@ export default function AdminUsersPage() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => handleBanToggle(false)} className="flex-1 bg-red-600 hover:bg-red-700 text-text-primary py-2 rounded text-sm font-medium transition-colors">정지</button>
-              <button onClick={() => setModalUser(null)} className="flex-1 border border-line text-text-secondary hover:text-text-primary py-2 rounded text-sm transition-colors">취소</button>
+              <button onClick={() => handleBanToggle(false)} className="flex-1 bg-red-600 hover:bg-red-700 text-text-primary py-2 rounded text-base font-medium transition-colors">정지</button>
+              <button onClick={() => setModalUser(null)} className="flex-1 border border-line text-text-secondary hover:text-text-primary py-2 rounded text-base transition-colors">취소</button>
             </div>
           </div>
         </div>

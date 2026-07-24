@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import partnerService, { PartnerPostItem } from '@/services/partnerService'
+import ConfirmModal from '@/components/ConfirmModal'
 import { useAuth } from '@/lib/useAuth'
 import { ThumbsUp, Eye, ArrowLeft, Pencil, Trash2, Loader2, CheckCircle, MessageSquare } from 'lucide-react'
 
@@ -18,6 +19,7 @@ export default function PartnerPostDetailPage() {
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => () => { if (toastRef.current) clearTimeout(toastRef.current) }, [])
@@ -51,7 +53,6 @@ export default function PartnerPostDetailPage() {
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('게시글을 삭제하시겠습니까?')) return
     try {
       await partnerService.deletePartnerPost(postId)
       router.push(`/partner/${partnerId}`)
@@ -148,7 +149,7 @@ export default function PartnerPostDetailPage() {
 
           <div className="flex items-center gap-3 pt-4 border-t border-line">
             <button onClick={handleLike}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${liked ? 'bg-cyan-600/20 border-cyan-500/40 text-cyan-300' : 'border-line text-text-secondary hover:border-cyan-500/40 hover:text-cyan-300'}`}>
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-base font-medium border transition-colors ${liked ? 'bg-cyan-600/20 border-cyan-500/40 text-cyan-300' : 'border-line text-text-secondary hover:border-cyan-500/40 hover:text-cyan-300'}`}>
               <ThumbsUp className="w-4 h-4" /> {likeCount}
             </button>
             <span className="flex items-center gap-1 text-text-muted text-sm"><MessageSquare className="w-4 h-4" />{post.commentCount}</span>
@@ -158,8 +159,8 @@ export default function PartnerPostDetailPage() {
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-text-secondary border border-line hover:border-line hover:text-text-primary transition-colors">
                   <Pencil className="w-3 h-3" /> 수정
                 </Link>
-                <button onClick={handleDelete}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-red-400 border border-red-800/40 hover:border-red-600/60 transition-colors">
+                <button onClick={() => setShowDeleteConfirm(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-base text-red-400 border border-red-800/40 hover:border-red-600/60 transition-colors">
                   <Trash2 className="w-3 h-3" /> 삭제
                 </button>
               </div>
@@ -167,6 +168,19 @@ export default function PartnerPostDetailPage() {
           </div>
         </article>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="게시글 삭제"
+        message="게시글을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          setShowDeleteConfirm(false)
+          handleDelete()
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   )
 }

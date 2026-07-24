@@ -229,7 +229,7 @@ export default function CommunityPage() {
                     else if (isBookmarks) handleCategoryClick('bookmarks')
                     else handleCategoryClick(cat.value)
                   }}
-                  className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  className={`px-4 py-3 text-base font-medium whitespace-nowrap border-b-2 transition-colors ${
                     isActive
                       ? 'border-violet-600 text-violet-600 dark:text-violet-400 dark:border-violet-400'
                       : 'border-transparent text-text-muted hover:text-text-primary'
@@ -279,7 +279,7 @@ export default function CommunityPage() {
                         else if (isBookmarks) handleCategoryClick('bookmarks')
                         else handleCategoryClick(cat.value)
                       }}
-                      className={`flex-1 flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium text-left ${
+                      className={`flex-1 flex items-center gap-2.5 px-3 py-2.5 text-base font-medium text-left ${
                         isActive ? 'text-accent' : 'text-text-secondary'
                       }`}>
                       <Icon className="w-4 h-4 flex-shrink-0" />
@@ -311,7 +311,7 @@ export default function CommunityPage() {
                             <div className="absolute left-0 top-1/2 w-3 h-px bg-line" />
                             <button
                               onClick={() => handleCategoryClick(sub.value)}
-                              className={`ml-4 flex-1 flex items-center gap-1.5 text-left text-xs px-2 py-1 rounded-lg truncate transition-colors ${
+                              className={`ml-4 flex-1 flex items-center gap-1.5 text-left text-base px-2 py-1 rounded-lg truncate transition-colors ${
                                 isSubActive
                                   ? 'bg-accent-light text-accent font-semibold'
                                   : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
@@ -340,7 +340,7 @@ export default function CommunityPage() {
                             <div className="absolute left-0 top-1/2 w-3 h-px bg-line" />
                             <button
                               onClick={() => handleGameClick(game._id!, game.title, game.serviceType as string)}
-                              className={`ml-4 flex-1 text-left text-xs px-2 py-1 rounded-lg truncate transition-colors ${
+                              className={`ml-4 flex-1 text-left text-base px-2 py-1 rounded-lg truncate transition-colors ${
                                 isSelected
                                   ? 'bg-accent-light text-accent font-semibold'
                                   : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
@@ -563,7 +563,7 @@ export default function CommunityPage() {
                   return (
                     <>
                       <button onClick={() => setSortOpen(o => !o)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-text-muted hover:text-text-primary bg-bg-secondary border border-line rounded-lg transition-colors">
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-base text-text-muted hover:text-text-primary bg-bg-secondary border border-line rounded-lg transition-colors">
                         <currentSort.icon className="w-3.5 h-3.5" />
                         {currentSort.label}
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${sortOpen ? 'rotate-180' : ''}`} />
@@ -573,7 +573,7 @@ export default function CommunityPage() {
                           {SORT_OPTIONS.map(opt => (
                             <button key={opt.value}
                               onClick={() => { setParam('sort', opt.value); setSortOpen(false) }}
-                              className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                              className={`w-full flex items-center gap-2 px-3 py-2 text-base transition-colors ${
                                 sort === opt.value
                                   ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10'
                                   : 'text-text-muted hover:bg-bg-tertiary'
@@ -629,7 +629,7 @@ export default function CommunityPage() {
                   if (selectedGame?.id) params.set('gameId', selectedGame.id)
                   router.push('/community/write' + (params.toString() ? '?' + params.toString() : ''))
                 }}
-                  className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-text-primary px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0">
+                  className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-text-primary px-3 py-1.5 rounded-lg text-base font-medium transition-colors flex-shrink-0">
                   <PenSquare className="w-3.5 h-3.5" /> 글쓰기
                 </button>
               )}
@@ -751,7 +751,7 @@ export default function CommunityPage() {
                       <button
                         key={i}
                         onClick={() => setAnnPage(i)}
-                        className={`w-7 h-6 rounded text-xs font-medium transition-colors ${
+                        className={`w-7 h-6 rounded text-base font-medium transition-colors ${
                           i === annPage
                             ? 'bg-accent text-text-primary'
                             : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
@@ -796,7 +796,7 @@ export default function CommunityPage() {
                         if (selectedGame?.id) params.set('gameId', selectedGame.id)
                         router.push('/community/write' + (params.toString() ? '?' + params.toString() : ''))
                       }}
-                        className="mt-4 bg-accent hover:bg-accent-hover text-text-primary px-5 py-2 rounded-xl text-sm font-medium transition-colors">
+                        className="mt-4 bg-accent hover:bg-accent-hover text-text-primary px-5 py-2 rounded-xl text-base font-medium transition-colors">
                         첫 글 작성하기
                       </button>
                     )}

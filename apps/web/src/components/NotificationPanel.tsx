@@ -49,7 +49,7 @@ function AppealModal({ onClose }: { onClose: () => void }) {
           <>
             <p className="text-text-primary text-sm mb-4">이의 신청이 접수되었습니다.</p>
             <div className="flex justify-end">
-              <button onClick={onClose} className="px-3 py-1.5 text-sm text-white bg-accent rounded-lg">확인</button>
+              <button onClick={onClose} className="px-3 py-1.5 text-base text-white bg-accent rounded-lg">확인</button>
             </div>
           </>
         ) : (
@@ -63,9 +63,9 @@ function AppealModal({ onClose }: { onClose: () => void }) {
               className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none resize-none mb-3"
             />
             <div className="flex justify-end gap-2">
-              <button onClick={onClose} className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">취소</button>
+              <button onClick={onClose} className="px-3 py-1.5 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">취소</button>
               <button onClick={submit} disabled={loading || !content.trim()}
-                className="px-3 py-1.5 text-sm text-white bg-accent rounded-lg disabled:opacity-50">
+                className="px-3 py-1.5 text-base text-white bg-accent rounded-lg disabled:opacity-50">
                 {loading ? '전송 중...' : '보내기'}
               </button>
             </div>
@@ -127,7 +127,7 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
             <span className="text-text-primary font-bold">알림</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={handleMarkAll} className="text-xs text-text-secondary hover:text-text-primary transition-colors">
+            <button onClick={handleMarkAll} className="text-base text-text-secondary hover:text-text-primary transition-colors">
               모두 읽음
             </button>
             <button onClick={onClose} className="text-text-secondary hover:text-text-primary transition-colors">
@@ -141,7 +141,7 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filter === key ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}
+              className={`px-3 py-1 rounded-full text-base font-medium transition-colors ${filter === key ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}
             >
               {TYPE_LABELS[key]}
             </button>
@@ -177,7 +177,7 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
                       <span className="text-text-muted text-xs">{relativeTime(n.createdAt)}</span>
                       <button
                         onClick={(e) => { e.stopPropagation(); setAppealOpen(true) }}
-                        className="text-xs text-text-muted hover:text-accent transition-colors border border-line rounded px-2 py-0.5"
+                        className="text-base text-text-muted hover:text-accent transition-colors border border-line rounded px-2 py-0.5"
                       >
                         이의 신청
                       </button>

@@ -5,7 +5,11 @@ import { usePartnerProfileCtx } from './PartnerProfileContext'
 import { PROJECT_STATUS_LABELS, PROJECT_STATUS_COLORS, OPERATION_STATUS_LABELS, OPERATION_STATUS_COLORS } from './constants'
 
 export default function ProjectsMyProjectsView() {
-  const { id, userProjects } = usePartnerProfileCtx()
+  const { id, isOwnProfile, userProjects } = usePartnerProfileCtx()
+
+  if (!isOwnProfile) {
+    return <div className="px-5 py-14 text-center text-text-muted text-sm">접근 권한이 없습니다.</div>
+  }
 
   if (userProjects.length === 0) {
     return <div className="px-5 py-14 text-center text-text-muted text-sm">등록된 프로젝트가 없습니다.</div>
@@ -50,7 +54,7 @@ export default function ProjectsMyProjectsView() {
                 <td className="px-3 py-3 text-center text-xs border-r border-line/20">
                   {project.applicantCount > 0 ? (
                     <Link
-                      href={`/partner/${id}/projects/applicants?projectId=${project._id}`}
+                      href={`/partner/${id}/manage/projects/applicants?projectId=${project._id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-accent font-medium hover:underline"

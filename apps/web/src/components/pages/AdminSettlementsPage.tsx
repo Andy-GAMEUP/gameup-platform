@@ -171,7 +171,7 @@ export default function AdminSettlementsPage() {
             <div className="relative" ref={devRef}>
               <button
                 onClick={() => setDevOpen(v => !v)}
-                className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-line rounded-md text-sm text-text-primary hover:bg-bg-tertiary transition-colors min-w-[160px] justify-between"
+                className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-line rounded-md text-base text-text-primary hover:bg-bg-tertiary transition-colors min-w-[160px] justify-between"
               >
                 <span className="truncate">
                   {selCompanies.length === 0 ? '전체 회사' : selCompanies.length === 1 ? selCompanies[0] : `${selCompanies[0]} 외 ${selCompanies.length - 1}`}
@@ -203,7 +203,7 @@ export default function AdminSettlementsPage() {
             <div className="relative" ref={gameRef}>
               <button
                 onClick={() => setGameOpen(v => !v)}
-                className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-line rounded-md text-sm text-text-primary hover:bg-bg-tertiary transition-colors min-w-[180px] justify-between"
+                className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-line rounded-md text-base text-text-primary hover:bg-bg-tertiary transition-colors min-w-[180px] justify-between"
               >
                 <span className="truncate">
                   {selGames.length === 0 ? '전체 게임' : selGames.length === 1 ? selGames[0] : `${selGames[0]} 외 ${selGames.length - 1}`}
@@ -240,7 +240,7 @@ export default function AdminSettlementsPage() {
             <div className="relative">
               <button
                 onClick={() => setDropdown(v => !v)}
-                className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-xs bg-bg-tertiary text-text-primary hover:bg-bg-secondary transition-colors min-w-[90px] justify-between"
+                className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-base bg-bg-tertiary text-text-primary hover:bg-bg-secondary transition-colors min-w-[90px] justify-between"
               >
                 <span>{PERIOD_OPTIONS.find(o => o.value === period)?.label}</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
@@ -260,7 +260,7 @@ export default function AdminSettlementsPage() {
                               setDropdown(false)
                             }
                           }}
-                          className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                          className={`w-full text-left px-3 py-2 text-base transition-colors ${
                             period === opt.value ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'
                           }`}
                         >
@@ -272,7 +272,7 @@ export default function AdminSettlementsPage() {
                     <div className="p-3 w-56 space-y-3">
                       <button
                         onClick={() => setDropdownView('list')}
-                        className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1 transition-colors"
+                        className="text-base text-text-secondary hover:text-text-primary flex items-center gap-1 transition-colors"
                       >
                         ← 돌아가기
                       </button>
@@ -292,7 +292,7 @@ export default function AdminSettlementsPage() {
                       </div>
                       <button
                         onClick={() => { setPeriod('custom'); setDropdown(false); setDropdownView('list') }}
-                        className="w-full px-3 py-1.5 text-xs bg-accent hover:bg-accent-hover text-text-primary rounded-md font-medium transition-colors"
+                        className="w-full px-3 py-1.5 text-base bg-accent hover:bg-accent-hover text-text-primary rounded-md font-medium transition-colors"
                       >
                         적용
                       </button>
@@ -304,7 +304,7 @@ export default function AdminSettlementsPage() {
 
             {/* 새로고침 */}
             <button
-              className="flex items-center px-3 py-2 border border-line rounded-md text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
+              className="flex items-center px-3 py-2 border border-line rounded-md text-base text-text-secondary hover:bg-bg-tertiary transition-colors"
               title="새로고침"
             >
               <RefreshCw className="w-4 h-4" />
@@ -314,7 +314,7 @@ export default function AdminSettlementsPage() {
             <div className="relative group">
               <button
                 onClick={downloadCSV}
-                className="flex items-center px-3 py-2 border border-line rounded-md text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
+                className="flex items-center px-3 py-2 border border-line rounded-md text-base text-text-secondary hover:bg-bg-tertiary transition-colors"
               >
                 <Download className="w-4 h-4" />
               </button>

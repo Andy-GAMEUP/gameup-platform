@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import minihomeService from '@/services/minihomeService'
 import type { MiniHome, MiniHomeGame, PortfolioItem, CertificationItem, WorkExperienceItem } from '@/services/minihomeService'
+import ConfirmModal from '@/components/ConfirmModal'
 
 const EXPERTISE_OPTIONS = ['게임개발', '퍼블리싱', '게임솔루션', 'QA/테스팅', '마케팅', '로컬라이제이션', '사운드', '아트/그래픽']
 const AVAILABILITY_OPTIONS: { value: 'available' | 'busy' | 'unavailable'; label: string; color: string }[] = [
@@ -28,6 +29,7 @@ export default function MiniHomeManagementPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState<ManageTab>('basic')
   const [successMsg, setSuccessMsg] = useState('')
+  const [deleteGameId, setDeleteGameId] = useState<string | null>(null)
 
   // Basic info form
   const [formData, setFormData] = useState({
@@ -267,7 +269,7 @@ export default function MiniHomeManagementPage() {
               </a>
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary rounded-lg font-medium transition-colors inline-flex items-center gap-2 text-sm"
+                className="px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary rounded-lg font-medium transition-colors inline-flex items-center gap-2 text-base"
               >
                 <Edit3 className="w-4 h-4" />
                 수정하기
@@ -278,14 +280,14 @@ export default function MiniHomeManagementPage() {
             <>
               <button
                 onClick={() => setIsEditing(false)}
-                className="px-4 py-2 border border-line text-text-secondary rounded-lg hover:bg-bg-tertiary transition-colors text-sm"
+                className="px-4 py-2 border border-line text-text-secondary rounded-lg hover:bg-bg-tertiary transition-colors text-base"
               >
                 취소
               </button>
               <button
                 onClick={handleSave}
                 disabled={!formData.companyName || createMutation.isPending || updateMutation.isPending}
-                className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary disabled:cursor-not-allowed text-text-primary rounded-lg font-medium transition-colors inline-flex items-center gap-2 text-sm"
+                className="px-4 py-2 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary disabled:cursor-not-allowed text-text-primary rounded-lg font-medium transition-colors inline-flex items-center gap-2 text-base"
               >
                 {(createMutation.isPending || updateMutation.isPending) ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> 저장중...</>
@@ -311,7 +313,7 @@ export default function MiniHomeManagementPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-base font-medium border-b-2 whitespace-nowrap transition-colors ${
               activeTab === tab.key
                 ? 'border-green-400 text-accent'
                 : 'border-transparent text-text-secondary hover:text-text-primary'
@@ -360,7 +362,7 @@ export default function MiniHomeManagementPage() {
                         key={area}
                         type="button"
                         onClick={() => toggleExpertise(area)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                        className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors border ${
                           formData.expertiseArea.includes(area)
                             ? 'bg-blue-600 text-text-primary border-blue-500'
                             : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border-line hover:border-line'
@@ -429,7 +431,7 @@ export default function MiniHomeManagementPage() {
                           key={opt.value}
                           type="button"
                           onClick={() => setFormData(prev => ({ ...prev, availability: opt.value }))}
-                          className={`flex-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
+                          className={`flex-1 px-3 py-2.5 rounded-lg text-base font-medium transition-colors border ${
                             formData.availability === opt.value ? opt.color : 'bg-bg-tertiary text-text-secondary border-line'
                           }`}
                         >
@@ -674,11 +676,11 @@ export default function MiniHomeManagementPage() {
 
                   <div className="flex gap-2 pt-2">
                     <button onClick={() => setEditingPortfolio(null)}
-                      className="px-3 py-2 border border-line text-text-secondary rounded-lg text-sm hover:bg-bg-tertiary">
+                      className="px-3 py-2 border border-line text-text-secondary rounded-lg text-base hover:bg-bg-tertiary">
                       취소
                     </button>
                     <button onClick={addPortfolioItem} disabled={!editingPortfolio.title}
-                      className="px-3 py-2 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary text-text-primary rounded-lg text-sm font-medium inline-flex items-center gap-1">
+                      className="px-3 py-2 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary text-text-primary rounded-lg text-base font-medium inline-flex items-center gap-1">
                       <Plus className="w-4 h-4" /> 추가
                     </button>
                   </div>
@@ -686,7 +688,7 @@ export default function MiniHomeManagementPage() {
               ) : (
                 <button
                   onClick={() => setEditingPortfolio({ ...emptyPortfolio })}
-                  className="w-full py-3 border-2 border-dashed border-line rounded-lg text-text-secondary hover:text-text-primary hover:border-line transition-colors inline-flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-3 border-2 border-dashed border-line rounded-lg text-text-secondary hover:text-text-primary hover:border-line transition-colors inline-flex items-center justify-center gap-2 text-base"
                 >
                   <Plus className="w-4 h-4" /> 포트폴리오 항목 추가
                 </button>
@@ -783,7 +785,7 @@ export default function MiniHomeManagementPage() {
                   className="w-full bg-bg-secondary border border-line rounded-lg px-3 py-2 text-text-primary text-sm placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent resize-none"
                 />
                 <button onClick={addExp} disabled={!newExp.title}
-                  className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary text-text-primary rounded-lg text-sm font-medium inline-flex items-center gap-1">
+                  className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary text-text-primary rounded-lg text-base font-medium inline-flex items-center gap-1">
                   <Plus className="w-4 h-4" /> 추가
                 </button>
               </div>
@@ -837,7 +839,7 @@ export default function MiniHomeManagementPage() {
                   className="w-40 bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent"
                 />
                 <button onClick={addCert} disabled={!newCert.name}
-                  className="px-3 py-2 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary text-text-primary rounded-lg text-sm font-medium inline-flex items-center gap-1">
+                  className="px-3 py-2 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary text-text-primary rounded-lg text-base font-medium inline-flex items-center gap-1">
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
@@ -946,7 +948,7 @@ export default function MiniHomeManagementPage() {
             <h3 className="text-lg font-semibold text-text-primary">등록된 게임</h3>
             <button
               onClick={() => setShowGameForm(true)}
-              className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-text-primary rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1"
+              className="px-3 py-1.5 bg-accent hover:bg-accent-hover text-text-primary rounded-lg text-base font-medium transition-colors inline-flex items-center gap-1"
             >
               <Plus className="w-4 h-4" /> 게임 추가
             </button>
@@ -986,7 +988,7 @@ export default function MiniHomeManagementPage() {
               />
               <div className="flex gap-2">
                 <button onClick={() => setShowGameForm(false)}
-                  className="px-3 py-1.5 border border-line text-text-secondary rounded-lg text-sm hover:bg-bg-tertiary">
+                  className="px-3 py-1.5 border border-line text-text-secondary rounded-lg text-base hover:bg-bg-tertiary">
                   취소
                 </button>
                 <button
@@ -1000,7 +1002,7 @@ export default function MiniHomeManagementPage() {
                     })
                   }}
                   disabled={!gameForm.title || addGameMutation.isPending}
-                  className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary text-text-primary rounded-lg text-sm font-medium inline-flex items-center gap-1"
+                  className="px-3 py-1.5 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary text-text-primary rounded-lg text-base font-medium inline-flex items-center gap-1"
                 >
                   {addGameMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                   추가
@@ -1018,7 +1020,7 @@ export default function MiniHomeManagementPage() {
                     <p className="text-xs text-text-secondary">{game.genre} {game.platforms?.length > 0 && `· ${game.platforms.join(', ')}`}</p>
                   </div>
                   <button
-                    onClick={() => { if (confirm('이 게임을 삭제하시겠습니까?')) removeGameMutation.mutate(game._id) }}
+                    onClick={() => setDeleteGameId(game._id)}
                     className="text-text-muted hover:text-red-400 transition-colors p-1"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1031,6 +1033,20 @@ export default function MiniHomeManagementPage() {
           )}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteGameId}
+        title="게임 삭제"
+        message="이 게임을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteGameId) return
+          removeGameMutation.mutate(deleteGameId)
+          setDeleteGameId(null)
+        }}
+        onCancel={() => setDeleteGameId(null)}
+      />
     </div>
   )
 }

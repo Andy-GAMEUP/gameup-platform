@@ -383,11 +383,11 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
 
         <div className="flex gap-3">
           <button onClick={() => router.back()}
-            className="px-5 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors flex items-center gap-2">
+            className="px-5 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-base transition-colors flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" /> 뒤로가기
           </button>
           <button onClick={handleSave} disabled={saving}
-            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2">
+            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-base transition-colors disabled:opacity-50 flex items-center gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             저장
           </button>
@@ -428,11 +428,11 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={() => setScoreModal({ open: false, type: 'score' })}
-                className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">
+                className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-base transition-colors">
                 취소
               </button>
               <button onClick={submitScoreEdit} disabled={editSubmitting}
-                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-base transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 {editSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 적용
               </button>

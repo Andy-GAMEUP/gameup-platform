@@ -126,7 +126,7 @@ export default function AdminMenuStatsPage() {
         <div className="flex gap-1 border-b border-line overflow-x-auto">
           {MENU_TABS.map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
+              className={`px-4 py-2.5 text-base font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
                 activeTab.key === tab.key
                   ? 'text-accent-text border-red-500'
                   : 'text-text-secondary border-transparent hover:text-text-primary'
@@ -174,7 +174,7 @@ export default function AdminMenuStatsPage() {
             <div className="flex gap-1">
               {PERIOD_BUTTONS.map(p => (
                 <button key={p} onClick={() => applyPeriod(p)}
-                  className="px-3 py-1.5 rounded-lg text-xs bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary transition-colors border border-line">
+                  className="px-3 py-1.5 rounded-lg text-base bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary transition-colors border border-line">
                   {p}
                 </button>
               ))}
@@ -182,7 +182,7 @@ export default function AdminMenuStatsPage() {
             <div className="flex gap-1">
               {PERIOD_OPTIONS.map(opt => (
                 <button key={opt.value} onClick={() => setPeriod(opt.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs transition-colors border ${
+                  className={`px-3 py-1.5 rounded-lg text-base transition-colors border ${
                     period === opt.value
                       ? 'bg-blue-600/20 text-blue-400 border-blue-500/50'
                       : 'bg-bg-tertiary text-text-secondary border-line hover:bg-line-light'
@@ -194,7 +194,7 @@ export default function AdminMenuStatsPage() {
             <div className="flex gap-1">
               {PLATFORMS.map(p => (
                 <button key={p} onClick={() => setPlatform(p)}
-                  className={`px-3 py-1.5 rounded-lg text-xs transition-colors border ${
+                  className={`px-3 py-1.5 rounded-lg text-base transition-colors border ${
                     platform === p
                       ? 'bg-accent-light text-accent-text border-accent-muted'
                       : 'bg-bg-tertiary text-text-secondary border-line hover:bg-line-light'
@@ -204,7 +204,7 @@ export default function AdminMenuStatsPage() {
               ))}
             </div>
             <button onClick={fetchDetail}
-              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors">
+              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-base rounded-lg transition-colors">
               조회
             </button>
           </div>

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import adminService, { Announcement } from '@/services/adminService'
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
@@ -44,6 +45,7 @@ export default function AdminAnnouncementsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editTarget, setEditTarget] = useState<Announcement | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   const loadData = async () => {
     setLoading(true)
@@ -101,7 +103,6 @@ export default function AdminAnnouncementsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('정말 삭제하시겠습니까?')) return
     try {
       await adminService.deleteAnnouncement(id)
       loadData()
@@ -117,7 +118,7 @@ export default function AdminAnnouncementsPage() {
           <h2 className="text-text-primary text-xl font-bold">공지사항 관리</h2>
           <div className="flex items-center gap-3">
             <span className="text-text-secondary text-sm">총 {total}건</span>
-            <button onClick={openNew} className="bg-red-600 hover:bg-red-700 text-text-primary px-4 py-2 rounded text-sm font-medium transition-colors">
+            <button onClick={openNew} className="bg-red-600 hover:bg-red-700 text-text-primary px-4 py-2 rounded text-base font-medium transition-colors">
               + 공지 작성
             </button>
           </div>
@@ -162,8 +163,8 @@ export default function AdminAnnouncementsPage() {
                     <td className="px-4 py-3 text-text-muted text-xs">{new Date(a.createdAt).toLocaleDateString('ko-KR')}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <button onClick={() => openEdit(a)} className="text-xs bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded hover:bg-blue-600/40 transition-colors">편집</button>
-                        <button onClick={() => handleDelete(a._id)} className="text-xs bg-accent-light text-accent-text border border-accent-muted px-2 py-1 rounded hover:bg-red-600/40 transition-colors">삭제</button>
+                        <button onClick={() => openEdit(a)} className="text-base bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded hover:bg-blue-600/40 transition-colors">편집</button>
+                        <button onClick={() => setDeleteConfirmId(a._id)} className="text-base bg-accent-light text-accent-text border border-accent-muted px-2 py-1 rounded hover:bg-red-600/40 transition-colors">삭제</button>
                       </div>
                     </td>
                   </tr>
@@ -232,12 +233,26 @@ export default function AdminAnnouncementsPage() {
               </div>
             </div>
             <div className="flex gap-3 mt-6">
-              <button onClick={handleSubmit} className="flex-1 bg-red-600 hover:bg-red-700 text-text-primary py-2 rounded font-medium text-sm transition-colors">{editTarget ? '저장' : '작성'}</button>
-              <button onClick={() => setShowForm(false)} className="flex-1 border border-line text-text-secondary hover:text-text-primary py-2 rounded text-sm transition-colors">취소</button>
+              <button onClick={handleSubmit} className="flex-1 bg-red-600 hover:bg-red-700 text-text-primary py-2 rounded font-medium text-base transition-colors">{editTarget ? '저장' : '작성'}</button>
+              <button onClick={() => setShowForm(false)} className="flex-1 border border-line text-text-secondary hover:text-text-primary py-2 rounded text-base transition-colors">취소</button>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="공지사항 삭제"
+        message="정말 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteConfirmId) return
+          handleDelete(deleteConfirmId)
+          setDeleteConfirmId(null)
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </AdminLayout>
   )
 }

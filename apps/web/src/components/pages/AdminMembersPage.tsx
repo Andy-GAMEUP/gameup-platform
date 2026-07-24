@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import adminService from '@/services/adminService'
 import { Building2, Loader2, X, Search, UserCheck } from 'lucide-react'
 
@@ -43,6 +44,7 @@ export default function AdminMembersPage() {
   const [page, setPage] = useState(1)
   const [counts, setCounts] = useState<{ total: number; developer: number; partner: number; admin: number; corporate: number; individual: number }>({ total: 0, developer: 0, partner: 0, admin: 0, corporate: 0, individual: 0 })
   const [submitting, setSubmitting] = useState(false)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const limit = 15
 
   const loadCounts = useCallback(async () => {
@@ -106,7 +108,6 @@ export default function AdminMembersPage() {
   }
 
   const handleInlineDelete = async (userId: string) => {
-    if (!confirm('계정을 완전히 삭제합니다. 되돌릴 수 없습니다. 계속하시겠습니까?')) return
     setSubmitting(true)
     try {
       await adminService.deleteUser(userId)
@@ -234,13 +235,13 @@ export default function AdminMembersPage() {
                                 <button
                                   onClick={() => !isApproved && handleInlineApprove(user._id)}
                                   disabled={submitting || isApproved}
-                                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${isApproved ? 'bg-emerald-600/30 text-emerald-400/50 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50'}`}>
+                                  className={`px-3 py-1 rounded-md text-base font-medium transition-colors whitespace-nowrap ${isApproved ? 'bg-emerald-600/30 text-emerald-400/50 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50'}`}>
                                   승인
                                 </button>
                                 <button
-                                  onClick={() => !isApproved && !submitting && handleInlineDelete(user._id)}
+                                  onClick={() => !isApproved && !submitting && setDeleteConfirmId(user._id)}
                                   disabled={submitting || isApproved}
-                                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${isApproved ? 'bg-rose-600/30 text-rose-400/50 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-500 text-white disabled:opacity-50'}`}>
+                                  className={`px-3 py-1 rounded-md text-base font-medium transition-colors whitespace-nowrap ${isApproved ? 'bg-rose-600/30 text-rose-400/50 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-500 text-white disabled:opacity-50'}`}>
                                   삭제
                                 </button>
                               </div>
@@ -260,21 +261,34 @@ export default function AdminMembersPage() {
         {totalPages > 1 && (
           <div className="flex justify-center gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">이전</button>
+              className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">이전</button>
             {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
               const p = Math.max(1, Math.min(page - 3, totalPages - 6)) + i
               return p <= totalPages ? (
                 <button key={p} onClick={() => setPage(p)}
-                  className={`px-3 py-1.5 text-sm rounded-lg ${page === p ? 'bg-slate-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>{p}</button>
+                  className={`px-3 py-1.5 text-base rounded-lg ${page === p ? 'bg-slate-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>{p}</button>
               ) : null
             })}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
+              className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
           </div>
         )}
         </>}
       </div>
 
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="삭제"
+        message="계정을 완전히 삭제합니다. 되돌릴 수 없습니다. 계속하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteConfirmId) return
+          handleInlineDelete(deleteConfirmId)
+          setDeleteConfirmId(null)
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </AdminLayout>
   )
 }

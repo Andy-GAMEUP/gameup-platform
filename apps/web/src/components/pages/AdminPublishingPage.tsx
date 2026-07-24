@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import publishingService, {
   PublishingType,
   PublishingBanner,
@@ -156,7 +157,7 @@ function SortableTabRow({
         <button
           onClick={() => onUpdate(tab._id, { name, content })}
           disabled={saving}
-          className="flex items-center gap-1 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded text-xs transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded text-base transition-colors disabled:opacity-50"
         >
           <Save className="w-3 h-3" />저장
         </button>
@@ -192,6 +193,7 @@ function SuggestsTab({ type }: { type: PublishingType }) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [deleteSuggestId, setDeleteSuggestId] = useState<string | null>(null)
 
   const showToast = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3000) }
 
@@ -217,7 +219,6 @@ function SuggestsTab({ type }: { type: PublishingType }) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('이 제안을 삭제하시겠습니까?')) return
     setSaving(true)
     try {
       await publishingService.admin.deleteSuggest(id)
@@ -282,7 +283,7 @@ function SuggestsTab({ type }: { type: PublishingType }) {
                       <X className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(suggest._id)}
+                      onClick={() => setDeleteSuggestId(suggest._id)}
                       disabled={saving}
                       className="p-1.5 text-text-secondary hover:text-accent-text disabled:opacity-30 transition-colors"
                     >
@@ -345,6 +346,20 @@ function SuggestsTab({ type }: { type: PublishingType }) {
       )}
 
       {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+
+      <ConfirmModal
+        isOpen={!!deleteSuggestId}
+        title="제안 삭제"
+        message="이 제안을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteSuggestId) return
+          handleDelete(deleteSuggestId)
+          setDeleteSuggestId(null)
+        }}
+        onCancel={() => setDeleteSuggestId(null)}
+      />
     </div>
   )
 }
@@ -354,6 +369,7 @@ function BannersTab({ type }: { type: PublishingType }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [deleteBannerId, setDeleteBannerId] = useState<string | null>(null)
 
   const showToast = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3000) }
 
@@ -389,7 +405,6 @@ function BannersTab({ type }: { type: PublishingType }) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('이 배너를 삭제하시겠습니까?')) return
     setSaving(true)
     try {
       await publishingService.admin.deleteBanner(id)
@@ -422,7 +437,7 @@ function BannersTab({ type }: { type: PublishingType }) {
         <button
           onClick={handleAdd}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           배너 추가
@@ -442,7 +457,7 @@ function BannersTab({ type }: { type: PublishingType }) {
                   key={banner._id}
                   banner={banner}
                   onUpdate={handleUpdate}
-                  onDelete={handleDelete}
+                  onDelete={(id) => setDeleteBannerId(id)}
                   saving={saving}
                 />
               ))}
@@ -452,6 +467,20 @@ function BannersTab({ type }: { type: PublishingType }) {
       )}
 
       {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+
+      <ConfirmModal
+        isOpen={!!deleteBannerId}
+        title="배너 삭제"
+        message="이 배너를 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteBannerId) return
+          handleDelete(deleteBannerId)
+          setDeleteBannerId(null)
+        }}
+        onCancel={() => setDeleteBannerId(null)}
+      />
     </div>
   )
 }
@@ -461,6 +490,7 @@ function TabsTab({ type }: { type: PublishingType }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [deleteTabId, setDeleteTabId] = useState<string | null>(null)
 
   const showToast = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3000) }
 
@@ -496,7 +526,6 @@ function TabsTab({ type }: { type: PublishingType }) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('이 탭을 삭제하시겠습니까?')) return
     setSaving(true)
     try {
       await publishingService.admin.deleteTab(id)
@@ -529,7 +558,7 @@ function TabsTab({ type }: { type: PublishingType }) {
         <button
           onClick={handleAdd}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           탭 추가
@@ -549,7 +578,7 @@ function TabsTab({ type }: { type: PublishingType }) {
                   key={tab._id}
                   tab={tab}
                   onUpdate={handleUpdate}
-                  onDelete={handleDelete}
+                  onDelete={(id) => setDeleteTabId(id)}
                   saving={saving}
                 />
               ))}
@@ -559,6 +588,20 @@ function TabsTab({ type }: { type: PublishingType }) {
       )}
 
       {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+
+      <ConfirmModal
+        isOpen={!!deleteTabId}
+        title="탭 삭제"
+        message="이 탭을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteTabId) return
+          handleDelete(deleteTabId)
+          setDeleteTabId(null)
+        }}
+        onCancel={() => setDeleteTabId(null)}
+      />
     </div>
   )
 }
@@ -590,7 +633,7 @@ export default function AdminPublishingPage() {
               <button
                 key={item.key}
                 onClick={() => setActiveTab(item.key)}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-5 py-3 text-base font-medium border-b-2 transition-colors ${
                   activeTab === item.key
                     ? 'border-cyan-500 text-cyan-400'
                     : 'border-transparent text-text-secondary hover:text-text-primary'

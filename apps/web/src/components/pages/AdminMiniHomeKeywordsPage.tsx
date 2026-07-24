@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import minihomeService, { KeywordGroup } from '@/services/minihomeService'
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
@@ -72,7 +73,7 @@ function SortableGroupCard({
         <button
           onClick={() => onUpdateGroup(group._id, { name: group.name, keywords: group.keywords })}
           disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded text-xs transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded text-base transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
           저장
@@ -133,7 +134,7 @@ function SortableGroupCard({
 
           <button
             onClick={handleAddKeyword}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-line rounded-lg text-text-secondary hover:text-text-primary hover:border-line text-sm transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-line rounded-lg text-text-secondary hover:text-text-primary hover:border-line text-base transition-colors"
           >
             <Plus className="w-4 h-4" />
             키워드 추가
@@ -150,6 +151,7 @@ export default function AdminMiniHomeKeywordsPage() {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [deleteGroupId, setDeleteGroupId] = useState<string | null>(null)
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok })
@@ -202,7 +204,6 @@ export default function AdminMiniHomeKeywordsPage() {
   }
 
   const handleDeleteGroup = async (id: string) => {
-    if (!confirm('이 그룹을 삭제하시겠습니까?')) return
     setSaving(true)
     try {
       await minihomeService.admin.deleteKeywordGroup(id)
@@ -255,7 +256,7 @@ export default function AdminMiniHomeKeywordsPage() {
           <button
             onClick={handleAddGroup}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             그룹 추가
@@ -281,7 +282,7 @@ export default function AdminMiniHomeKeywordsPage() {
                     expandedId={expandedId}
                     setExpandedId={setExpandedId}
                     onUpdateGroup={handleUpdateGroup}
-                    onDeleteGroup={handleDeleteGroup}
+                    onDeleteGroup={setDeleteGroupId}
                     onGroupChange={handleGroupChange}
                     saving={saving}
                   />
@@ -297,6 +298,20 @@ export default function AdminMiniHomeKeywordsPage() {
           {toast.msg}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteGroupId}
+        title="삭제"
+        message="이 그룹을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteGroupId) return
+          handleDeleteGroup(deleteGroupId)
+          setDeleteGroupId(null)
+        }}
+        onCancel={() => setDeleteGroupId(null)}
+      />
     </AdminLayout>
   )
 }

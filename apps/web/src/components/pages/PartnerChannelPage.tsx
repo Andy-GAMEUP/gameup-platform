@@ -121,7 +121,7 @@ export default function PartnerChannelPage() {
                 <button
                   onClick={handleToggleVisibility}
                   disabled={visibilityLoading}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors border ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-base font-medium transition-colors border ${
                     partner.isProfilePublic
                       ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-600/30'
                       : 'bg-bg-tertiary text-text-secondary border-line hover:text-text-primary hover:bg-line-light'
@@ -151,7 +151,7 @@ export default function PartnerChannelPage() {
               <div className="space-y-1">
                 {[{ value: 'latest', label: '최신순', icon: Clock }, { value: 'popular', label: '인기순', icon: ThumbsUp }].map(({ value, label, icon: Icon }) => (
                   <button key={value} onClick={() => setParam('sort', value)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${sort === value ? 'bg-cyan-600/20 text-cyan-300' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-base transition-colors ${sort === value ? 'bg-cyan-600/20 text-cyan-300' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
                     <Icon className="w-3.5 h-3.5" /> {label}
                   </button>
                 ))}
@@ -163,12 +163,12 @@ export default function PartnerChannelPage() {
                 <p className="text-text-secondary text-xs font-semibold mb-3 uppercase tracking-wide">주제</p>
                 <div className="space-y-1">
                   <button onClick={() => setParam('topic', '')}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!topic ? 'bg-bg-tertiary text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
+                    className={`w-full text-left px-3 py-2 rounded-lg text-base transition-colors ${!topic ? 'bg-bg-tertiary text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
                     전체
                   </button>
                   {partner.selectedTopics.map(t => (
                     <button key={t} onClick={() => setParam('topic', t)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${topic === t ? 'bg-bg-tertiary text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
+                      className={`w-full text-left px-3 py-2 rounded-lg text-base transition-colors ${topic === t ? 'bg-bg-tertiary text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
                       {t}
                     </button>
                   ))}
@@ -207,7 +207,7 @@ export default function PartnerChannelPage() {
                       const p = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i
                       return (
                         <button key={p} onClick={() => { const n = new URLSearchParams(searchParams); n.set('page', String(p)); router.push('?' + n.toString()) }}
-                          className={`w-8 h-8 rounded-lg text-sm transition-colors ${p === page ? 'bg-cyan-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
+                          className={`w-8 h-8 rounded-lg text-base transition-colors ${p === page ? 'bg-cyan-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
                           {p}
                         </button>
                       )

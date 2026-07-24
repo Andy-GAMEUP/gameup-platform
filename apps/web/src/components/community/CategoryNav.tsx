@@ -44,7 +44,7 @@ export default function CategoryNav({ selected, onChange, sortBy, onSortChange }
           <button
             key={cat.value}
             onClick={() => onChange(cat.value)}
-            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+            className={`px-4 py-3 text-base font-medium whitespace-nowrap border-b-2 transition-colors ${
               selected === cat.value
                 ? 'border-violet-600 text-violet-600 dark:text-violet-400 dark:border-violet-400'
                 : 'border-transparent text-text-muted dark:text-text-secondary hover:text-text-primary dark:hover:text-text-primary'
@@ -59,7 +59,7 @@ export default function CategoryNav({ selected, onChange, sortBy, onSortChange }
       <div className="relative flex-shrink-0" ref={sortRef}>
         <button
           onClick={() => setSortOpen(!sortOpen)}
-          className="flex items-center gap-1.5 px-3 py-2 text-sm text-text-muted dark:text-text-secondary hover:text-text-secondary dark:hover:text-text-primary transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 text-base text-text-muted dark:text-text-secondary hover:text-text-secondary dark:hover:text-text-primary transition-colors"
         >
           <currentSort.icon className="w-3.5 h-3.5" />
           {currentSort.label}
@@ -71,7 +71,7 @@ export default function CategoryNav({ selected, onChange, sortBy, onSortChange }
               <button
                 key={opt.value}
                 onClick={() => { onSortChange(opt.value); setSortOpen(false) }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                className={`w-full flex items-center gap-2 px-3 py-2 text-base transition-colors ${
                   sortBy === opt.value
                     ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10'
                     : 'text-text-muted dark:text-text-secondary hover:bg-bg-tertiary dark:hover:bg-bg-tertiary'

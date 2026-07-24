@@ -189,14 +189,14 @@ export default function SolutionDetailModal({ isOpen, onClose, solutionId }: Pro
                     <button
                       type="button"
                       onClick={() => setShowForm(false)}
-                      className="flex-1 bg-bg-tertiary hover:bg-line-light text-text-secondary font-medium py-2.5 rounded-xl text-sm transition-colors"
+                      className="flex-1 bg-bg-tertiary hover:bg-line-light text-text-secondary font-medium py-2.5 rounded-xl text-base transition-colors"
                     >
                       취소
                     </button>
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:opacity-50 text-text-primary font-semibold py-2.5 rounded-xl text-sm transition-all"
+                      className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:opacity-50 text-text-primary font-semibold py-2.5 rounded-xl text-base transition-all"
                     >
                       {submitting ? '신청 중...' : '신청하기'}
                     </button>
@@ -212,7 +212,7 @@ export default function SolutionDetailModal({ isOpen, onClose, solutionId }: Pro
             <CheckCircle className="w-16 h-16 text-accent mx-auto mb-4" />
             <h3 className="text-text-primary text-xl font-bold mb-2">신청 완료!</h3>
             <p className="text-text-secondary mb-6">구독 신청이 접수되었습니다. 담당자가 확인 후 연락드리겠습니다.</p>
-            <button onClick={onClose} className="bg-bg-tertiary hover:bg-line-light text-text-primary px-6 py-2.5 rounded-xl text-sm transition-colors">
+            <button onClick={onClose} className="bg-bg-tertiary hover:bg-line-light text-text-primary px-6 py-2.5 rounded-xl text-base transition-colors">
               닫기
             </button>
           </div>

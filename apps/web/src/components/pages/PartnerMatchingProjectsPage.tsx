@@ -131,7 +131,7 @@ export default function PartnerMatchingProjectsPage() {
           <div ref={categoryDropRef} className="relative">
             <button
               onClick={() => setShowCategoryDrop(v => !v)}
-              className={`flex items-center gap-2 bg-bg-secondary border rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 bg-bg-secondary border rounded-lg px-3 py-2 text-base whitespace-nowrap transition-colors ${
                 categoryFilter.length > 0
                   ? 'border-accent text-accent'
                   : 'border-line text-text-secondary hover:border-accent/50'
@@ -155,7 +155,7 @@ export default function PartnerMatchingProjectsPage() {
                     <button
                       key={opt.value}
                       onClick={() => toggleCategory(opt.value)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-bg-tertiary transition-colors text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-base hover:bg-bg-tertiary transition-colors text-left"
                     >
                       <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
                         checked ? 'bg-accent border-accent' : 'border-line'
@@ -176,7 +176,7 @@ export default function PartnerMatchingProjectsPage() {
                   <div className="border-t border-line/50 mt-1 pt-1">
                     <button
                       onClick={() => { setCategoryFilter([]); setPage(1) }}
-                      className="w-full px-3 py-1.5 text-xs text-text-muted hover:text-danger transition-colors text-left"
+                      className="w-full px-3 py-1.5 text-base text-text-muted hover:text-danger transition-colors text-left"
                     >
                       초기화
                     </button>
@@ -189,7 +189,7 @@ export default function PartnerMatchingProjectsPage() {
           <div ref={skillDropRef} className="relative">
             <button
               onClick={() => setShowSkillDrop(v => !v)}
-              className={`flex items-center gap-2 bg-bg-secondary border rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 bg-bg-secondary border rounded-lg px-3 py-2 text-base whitespace-nowrap transition-colors ${
                 skillFilter.length > 0
                   ? 'border-accent text-accent'
                   : 'border-line text-text-secondary hover:border-accent/50'
@@ -213,7 +213,7 @@ export default function PartnerMatchingProjectsPage() {
                     <button
                       key={skill}
                       onClick={() => toggleSkill(skill)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-bg-tertiary transition-colors text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-base hover:bg-bg-tertiary transition-colors text-left"
                     >
                       <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
                         checked ? 'bg-accent border-accent' : 'border-line'
@@ -234,7 +234,7 @@ export default function PartnerMatchingProjectsPage() {
                   <div className="border-t border-line/50 mt-1 pt-1">
                     <button
                       onClick={() => { setSkillFilter([]); setPage(1) }}
-                      className="w-full px-3 py-1.5 text-xs text-text-muted hover:text-danger transition-colors text-left"
+                      className="w-full px-3 py-1.5 text-base text-text-muted hover:text-danger transition-colors text-left"
                     >
                       초기화
                     </button>
@@ -362,7 +362,7 @@ export default function PartnerMatchingProjectsPage() {
               <button
                 key={p}
                 onClick={() => setPage(p)}
-                className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-9 h-9 rounded-lg text-base font-medium transition-colors ${
                   p === page ? 'bg-accent text-text-primary' : 'text-text-secondary hover:bg-bg-tertiary'
                 }`}
               >

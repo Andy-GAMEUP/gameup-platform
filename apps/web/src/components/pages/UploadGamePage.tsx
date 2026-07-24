@@ -203,14 +203,14 @@ export default function UploadGamePage() {
             <button
               type="button"
               onClick={() => router.push('/games-management')}
-              className="px-5 py-3 rounded-2xl border border-line text-sm text-text-secondary hover:bg-bg-secondary transition-colors"
+              className="px-5 py-3 rounded-2xl border border-line text-base text-text-secondary hover:bg-bg-secondary transition-colors"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={submitting || (formData.serviceType === 'beta' && (!formData.startDate || !formData.endDate || !formData.maxTesters || !formData.testType))}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-base font-bold transition-colors"
             >
               {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> 등록 중...</> : '게임 생성'}
             </button>

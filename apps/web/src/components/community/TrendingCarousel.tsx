@@ -130,7 +130,7 @@ export default function TrendingCarousel({ hotPosts, hotGames }: TrendingCarouse
       {/* 하단 선택 탭 */}
       <div className="flex justify-center gap-2 mt-3">
         <button onClick={() => setActiveTab('posts')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-base font-medium transition-colors ${
             activeTab === 'posts'
               ? 'bg-violet-600 text-text-primary'
               : 'bg-bg-card dark:bg-bg-tertiary text-text-muted dark:text-text-secondary hover:text-violet-600'
@@ -138,7 +138,7 @@ export default function TrendingCarousel({ hotPosts, hotGames }: TrendingCarouse
           <Flame className="w-3 h-3" /> 인기 글
         </button>
         <button onClick={() => setActiveTab('games')}
-          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
+          className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-base font-medium transition-colors ${
             activeTab === 'games'
               ? 'bg-violet-600 text-text-primary'
               : 'bg-bg-card dark:bg-bg-tertiary text-text-muted dark:text-text-secondary hover:text-violet-600'

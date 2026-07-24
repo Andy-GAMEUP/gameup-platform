@@ -254,7 +254,7 @@ export default function Navbar() {
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-danger hover:text-danger/80 hover:bg-bg-tertiary transition-colors"
+                        className="w-full flex items-center gap-2 px-4 py-2 text-base text-danger hover:text-danger/80 hover:bg-bg-tertiary transition-colors"
                       >
                         <LogOut className="w-4 h-4" />
                         로그아웃

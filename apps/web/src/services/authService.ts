@@ -69,4 +69,9 @@ export const authService = {
     const response = await apiClient.patch('/users/reapply', data)
     return response.data
   },
+
+  updateCompanyType: async (companyType: string[]) => {
+    const response = await apiClient.patch('/users/company-type', { companyType })
+    return response.data
+  },
 }

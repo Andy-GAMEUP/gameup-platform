@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import adminService from '@/services/adminService'
 import { Loader2, Search, Activity, Settings, ToggleLeft, ToggleRight } from 'lucide-react'
 
@@ -38,6 +39,7 @@ function PolicyTab() {
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<Partial<PointPolicy>>({})
+  const [showSeedConfirm, setShowSeedConfirm] = useState(false)
 
   const fetchPolicies = useCallback(() => {
     setLoading(true)
@@ -50,7 +52,6 @@ function PolicyTab() {
   useEffect(() => { fetchPolicies() }, [fetchPolicies])
 
   const handleSeed = () => {
-    if (!confirm('기본 포인트 정책을 초기화하시겠습니까?')) return
     adminService.seedPointPolicies()
       .then(res => setPolicies(res.policies || []))
       .catch(() => alert('초기화 실패'))
@@ -82,7 +83,7 @@ function PolicyTab() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <p className="text-text-secondary text-sm">포인트 취득 유형별 정책을 설정합니다.</p>
-        <button onClick={handleSeed} className="px-4 py-2 bg-bg-tertiary border border-line text-text-primary text-sm rounded-lg hover:bg-line-light transition-colors">
+        <button onClick={() => setShowSeedConfirm(true)} className="px-4 py-2 bg-bg-tertiary border border-line text-text-primary text-base rounded-lg hover:bg-line-light transition-colors">
           기본값 초기화
         </button>
       </div>
@@ -147,11 +148,11 @@ function PolicyTab() {
                   <td className="text-center px-4 py-3">
                     {editingId === p._id ? (
                       <div className="flex gap-1 justify-center">
-                        <button onClick={() => saveEdit(p._id)} className="px-2 py-1 bg-red-600 text-text-primary text-xs rounded hover:bg-red-700 transition-colors">저장</button>
-                        <button onClick={() => setEditingId(null)} className="px-2 py-1 bg-bg-tertiary text-text-secondary text-xs rounded hover:bg-line-light transition-colors">취소</button>
+                        <button onClick={() => saveEdit(p._id)} className="px-2 py-1 bg-red-600 text-text-primary text-base rounded hover:bg-red-700 transition-colors">저장</button>
+                        <button onClick={() => setEditingId(null)} className="px-2 py-1 bg-bg-tertiary text-text-secondary text-base rounded hover:bg-line-light transition-colors">취소</button>
                       </div>
                     ) : (
-                      <button onClick={() => startEdit(p)} className="px-2 py-1 bg-bg-tertiary text-text-secondary text-xs rounded hover:bg-line-light transition-colors">수정</button>
+                      <button onClick={() => startEdit(p)} className="px-2 py-1 bg-bg-tertiary text-text-secondary text-base rounded hover:bg-line-light transition-colors">수정</button>
                     )}
                   </td>
                 </tr>
@@ -160,6 +161,19 @@ function PolicyTab() {
           </table>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showSeedConfirm}
+        title="포인트 정책 초기화"
+        message="기본 포인트 정책을 초기화하시겠습니까?"
+        confirmLabel="초기화"
+        danger
+        onConfirm={() => {
+          setShowSeedConfirm(false)
+          handleSeed()
+        }}
+        onCancel={() => setShowSeedConfirm(false)}
+      />
     </div>
   )
 }
@@ -232,13 +246,13 @@ export default function AdminActivityScorePage() {
         <div className="flex gap-1 bg-bg-secondary border border-line rounded-xl p-1">
           <button
             onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors ${activeTab === 'history' ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
+            className={`flex items-center gap-2 px-4 py-2 text-base rounded-lg transition-colors ${activeTab === 'history' ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
             <Search className="w-4 h-4" />
             활동점수 내역
           </button>
           <button
             onClick={() => setActiveTab('policy')}
-            className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-colors ${activeTab === 'policy' ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
+            className={`flex items-center gap-2 px-4 py-2 text-base rounded-lg transition-colors ${activeTab === 'policy' ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
             <Settings className="w-4 h-4" />
             포인트 정책 설정
           </button>
@@ -272,7 +286,7 @@ export default function AdminActivityScorePage() {
               <div className="flex gap-1">
                 {PERIOD_SHORTCUTS.map(({ label, offset }) => (
                   <button key={label} onClick={() => applyShortcut(offset)}
-                    className="px-3 py-1.5 rounded-lg text-xs bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary transition-colors border border-line">
+                    className="px-3 py-1.5 rounded-lg text-base bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary transition-colors border border-line">
                     {label}
                   </button>
                 ))}
@@ -294,7 +308,7 @@ export default function AdminActivityScorePage() {
                 {LIMIT_OPTIONS.map(l => <option key={l} value={l}>{l}개씩</option>)}
               </select>
               <button onClick={() => { setPage(1); fetchData() }}
-                className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-text-primary text-sm rounded-lg transition-colors">
+                className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-text-primary text-base rounded-lg transition-colors">
                 검색
               </button>
             </div>
@@ -345,20 +359,20 @@ export default function AdminActivityScorePage() {
         {activeTab === 'history' && totalPages > 1 && (
           <div className="flex justify-center gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
+              className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
               이전
             </button>
             {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
               const p = Math.max(1, Math.min(page - 3, totalPages - 6)) + i
               return p <= totalPages ? (
                 <button key={p} onClick={() => setPage(p)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>
+                  className={`px-3 py-1.5 text-base rounded-lg transition-colors ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>
                   {p}
                 </button>
               ) : null
             })}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
+              className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
               다음
             </button>
           </div>

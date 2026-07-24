@@ -1,7 +1,7 @@
 'use client'
 import apiClient from './api'
 
-// 파트너 프로필 (MiniHome 확장)
+// 파트너 프로필 (Partner/내채널 기반)
 export interface PartnerMatchingProfile {
   _id: string
   userId: {
@@ -9,29 +9,20 @@ export interface PartnerMatchingProfile {
     username: string
     companyInfo?: {
       companyName: string
+      companyCategory?: string
       companyType: string[]
-      employeeCount: number
-      businessNumber: string
-      homepageUrl: string
-      description: string
-      companyLogo: string
     }
     memberType: string
-    contactPerson?: { name: string; email: string; phone: string }
   }
-  companyName: string
+  displayNameOverride: string
   introduction: string
   profileImage: string
   coverImage: string
   website: string
   tags: string[]
   keywords: string[]
-  expertiseArea: string[]
-  skills: string[]
   hourlyRate: string
-  availability: 'available' | 'busy' | 'unavailable'
   location: string
-  partnerChannelId: string | null
   isVerified: boolean
   rating: number
   reviewCount: number
@@ -47,8 +38,8 @@ export interface PartnerMatchingProfile {
     duration: string
     completedAt: string
   }[]
-  certifications: { _id: string; name: string; issuedAt: string }[]
-  workExperience: { _id: string; title: string; description: string; period: string }[]
+  history: { _id: string; year: string; month: string; description: string }[]
+  skills: { _id: string; name: string; experienceLevel: string }[]
   contactEmail: string
   contactPhone: string
   createdAt: string
@@ -113,8 +104,8 @@ export interface ProjectApplicationItem {
   phone: string
   experience: string
   proposedBudget: string
-  portfolioUrl: string
-  proposal: string
+  title: string
+  content: string
   attachments: string[]
   status: string
   createdAt: string
@@ -150,8 +141,7 @@ export const partnerMatchingService = {
   // ── 파트너 프로필 ────────────────────────────────────────
   getPartnerProfiles: async (params?: {
     search?: string
-    expertise?: string
-    availability?: string
+    companyType?: string
     tab?: string
     page?: number
     limit?: number
@@ -231,13 +221,8 @@ export const partnerMatchingService = {
 
   // ── 지원 ────────────────────────────────────────────────
   applyToProject: async (projectId: string, data: {
-    applicantName: string
-    email: string
-    phone?: string
-    experience?: string
-    proposedBudget?: string
-    portfolioUrl?: string
-    proposal?: string
+    title: string
+    content: string
   }) => {
     const res = await apiClient.post(`/partner/projects/${projectId}/apply`, data)
     return res.data
@@ -265,6 +250,11 @@ export const partnerMatchingService = {
 
   getProjectsByUser: async (userId: string) => {
     const res = await apiClient.get(`/partner/projects/user/${userId}`)
+    return res.data
+  },
+
+  getApplicationStatsByUser: async (userId: string): Promise<{ success: boolean; participatingCount: number; completedCount: number }> => {
+    const res = await apiClient.get(`/partner/applications/user/${userId}/stats`)
     return res.data
   },
 

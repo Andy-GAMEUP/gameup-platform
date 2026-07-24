@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import supportService, { Season, GameApplication } from '@/services/supportService'
 import {
   Loader2, ChevronDown, ChevronUp, Save, Trash2, Plus,
@@ -64,6 +65,8 @@ function ApplicationRow({
     title: '', date: '', description: '', buildUrl: '', isCompleted: false,
   })
   const [addingMilestone, setAddingMilestone] = useState(false)
+  const [confirmingApplication, setConfirmingApplication] = useState(false)
+  const [deleteMilestoneIdx, setDeleteMilestoneIdx] = useState<number | null>(null)
 
   const handleSaveStatus = async () => {
     setSaving(true)
@@ -78,7 +81,6 @@ function ApplicationRow({
   }
 
   const handleConfirm = async () => {
-    if (!confirm('이 신청을 확정하시겠습니까?')) return
     setSaving(true)
     try {
       await supportService.admin.confirmApplication(app._id)
@@ -138,7 +140,6 @@ function ApplicationRow({
   }
 
   const handleDeleteMilestone = async (idx: number) => {
-    if (!confirm('이 마일스톤을 삭제하시겠습니까?')) return
     setSaving(true)
     try {
       await supportService.admin.deleteMilestone(app._id, idx)
@@ -217,9 +218,9 @@ function ApplicationRow({
                   ))}
                 </select>
                 <button
-                  onClick={handleConfirm}
+                  onClick={() => setConfirmingApplication(true)}
                   disabled={saving || app.isConfirmed}
-                  className="px-3 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-xs transition-colors disabled:opacity-50"
+                  className="px-3 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
                 >
                   확정
                 </button>
@@ -234,7 +235,7 @@ function ApplicationRow({
               <button
                 onClick={handleSaveStatus}
                 disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 저장
@@ -269,7 +270,7 @@ function ApplicationRow({
             <button
               onClick={handleSaveScore}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               점수 저장
@@ -281,7 +282,7 @@ function ApplicationRow({
               <p className="text-text-secondary text-xs font-bold uppercase">마일스톤</p>
               <button
                 onClick={() => setAddingMilestone(v => !v)}
-                className="flex items-center gap-1 text-accent hover:text-accent text-xs transition-colors"
+                className="flex items-center gap-1 text-accent hover:text-accent text-base transition-colors"
               >
                 <Plus className="w-3 h-3" />추가
               </button>
@@ -311,7 +312,7 @@ function ApplicationRow({
                     <span className="text-text-secondary text-xs">완료됨</span>
                   </label>
                   <button onClick={handleAddMilestone} disabled={saving || !newMilestone.title.trim()}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-text-primary rounded text-xs transition-colors disabled:opacity-50">
+                    className="flex items-center gap-1 px-3 py-1.5 bg-green-700 hover:bg-green-800 text-text-primary rounded text-base transition-colors disabled:opacity-50">
                     {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                     추가
                   </button>
@@ -325,7 +326,7 @@ function ApplicationRow({
                   key={idx}
                   milestone={m}
                   onUpdate={data => handleUpdateMilestone(idx, data)}
-                  onDelete={() => handleDeleteMilestone(idx)}
+                  onDelete={() => setDeleteMilestoneIdx(idx)}
                   saving={saving}
                 />
               ))}
@@ -333,6 +334,32 @@ function ApplicationRow({
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmingApplication}
+        title="신청 확정"
+        message="이 신청을 확정하시겠습니까?"
+        confirmLabel="확정"
+        onConfirm={() => {
+          setConfirmingApplication(false)
+          handleConfirm()
+        }}
+        onCancel={() => setConfirmingApplication(false)}
+      />
+
+      <ConfirmModal
+        isOpen={deleteMilestoneIdx !== null}
+        title="마일스톤 삭제"
+        message="이 마일스톤을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (deleteMilestoneIdx === null) return
+          handleDeleteMilestone(deleteMilestoneIdx)
+          setDeleteMilestoneIdx(null)
+        }}
+        onCancel={() => setDeleteMilestoneIdx(null)}
+      />
     </div>
   )
 }

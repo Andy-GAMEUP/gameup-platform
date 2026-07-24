@@ -70,7 +70,7 @@ export default function AnnouncementDetailPage() {
       )}
 
       <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 py-8">
-        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-sm mb-5 transition-colors">
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-base mb-5 transition-colors">
           <ArrowLeft className="w-4 h-4" /> {fromLabel}
         </button>
 
@@ -116,11 +116,11 @@ export default function AnnouncementDetailPage() {
           {/* 액션 */}
           <div className="flex items-center gap-2 pt-4 border-t border-line">
             <button onClick={handleShare}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border border-line text-text-secondary hover:border-accent-muted hover:text-accent transition-colors">
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-base font-medium border border-line text-text-secondary hover:border-accent-muted hover:text-accent transition-colors">
               <Share2 className="w-4 h-4" /> 공유
             </button>
             <button onClick={() => router.back()}
-              className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border border-line text-text-secondary hover:bg-bg-tertiary transition-colors">
+              className="ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl text-base font-medium border border-line text-text-secondary hover:bg-bg-tertiary transition-colors">
               <ArrowLeft className="w-4 h-4" /> {fromLabel}
             </button>
           </div>

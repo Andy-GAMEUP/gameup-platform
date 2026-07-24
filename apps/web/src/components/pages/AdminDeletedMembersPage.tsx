@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import adminService from '@/services/adminService'
 import { Trash2, Loader2, Search, RotateCcw } from 'lucide-react'
 
@@ -26,6 +27,8 @@ export default function AdminDeletedMembersPage() {
   const [page, setPage] = useState(1)
   const [submitting, setSubmitting] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<DeletionLog | null>(null)
+  const [restoreTarget, setRestoreTarget] = useState<DeletionLog | null>(null)
   const limit = 15
 
   const loadLogs = useCallback(async () => {
@@ -45,7 +48,6 @@ export default function AdminDeletedMembersPage() {
   useEffect(() => { loadLogs() }, [loadLogs])
 
   const handlePermanentDelete = async (log: DeletionLog) => {
-    if (!confirm(`"${log.username}" 계정 기록을 완전히 삭제합니다. 되돌릴 수 없습니다. 계속하시겠습니까?`)) return
     setDeleting(log._id)
     try {
       await adminService.deleteUserLog(log._id)
@@ -58,7 +60,6 @@ export default function AdminDeletedMembersPage() {
   }
 
   const handleRestore = async (log: DeletionLog) => {
-    if (!confirm(`"${log.username}" 계정을 복구하시겠습니까?\n이메일: ${log.email}`)) return
     setSubmitting(log._id)
     try {
       await adminService.restoreUser(log._id)
@@ -139,9 +140,9 @@ export default function AdminDeletedMembersPage() {
                       </td>
                       <td className="px-4 py-3 border-r border-line/20">
                         <button
-                          onClick={() => handleRestore(log)}
+                          onClick={() => setRestoreTarget(log)}
                           disabled={submitting === log._id || deleting === log._id}
-                          className="flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-50 whitespace-nowrap"
+                          className="flex items-center gap-1 px-3 py-1 rounded-md text-base font-medium bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-50 whitespace-nowrap"
                         >
                           {submitting === log._id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -153,9 +154,9 @@ export default function AdminDeletedMembersPage() {
                       </td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => handlePermanentDelete(log)}
+                          onClick={() => setDeleteTarget(log)}
                           disabled={submitting === log._id || deleting === log._id}
-                          className="flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium bg-rose-600 hover:bg-rose-500 text-white transition-colors disabled:opacity-50 whitespace-nowrap"
+                          className="flex items-center gap-1 px-3 py-1 rounded-md text-base font-medium bg-rose-600 hover:bg-rose-500 text-white transition-colors disabled:opacity-50 whitespace-nowrap"
                         >
                           {deleting === log._id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -177,19 +178,46 @@ export default function AdminDeletedMembersPage() {
         {totalPages > 1 && (
           <div className="flex justify-center gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">이전</button>
+              className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">이전</button>
             {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
               const p = Math.max(1, Math.min(page - 3, totalPages - 6)) + i
               return p <= totalPages ? (
                 <button key={p} onClick={() => setPage(p)}
-                  className={`px-3 py-1.5 text-sm rounded-lg ${page === p ? 'bg-slate-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>{p}</button>
+                  className={`px-3 py-1.5 text-base rounded-lg ${page === p ? 'bg-slate-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>{p}</button>
               ) : null
             })}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
+              className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="완전 삭제"
+        message={`"${deleteTarget?.username}" 계정 기록을 완전히 삭제합니다. 되돌릴 수 없습니다. 계속하시겠습니까?`}
+        confirmLabel="완전 삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteTarget) return
+          handlePermanentDelete(deleteTarget)
+          setDeleteTarget(null)
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmModal
+        isOpen={!!restoreTarget}
+        title="복구"
+        message={`"${restoreTarget?.username}" 계정을 복구하시겠습니까?\n이메일: ${restoreTarget?.email}`}
+        confirmLabel="복구"
+        onConfirm={() => {
+          if (!restoreTarget) return
+          handleRestore(restoreTarget)
+          setRestoreTarget(null)
+        }}
+        onCancel={() => setRestoreTarget(null)}
+      />
     </AdminLayout>
   )
 }

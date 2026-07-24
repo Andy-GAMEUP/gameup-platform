@@ -140,7 +140,7 @@ export default function DevLogPanel() {
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`text-xs px-2 py-0.5 rounded font-mono transition-colors ${
+                  className={`text-base px-2 py-0.5 rounded font-mono transition-colors ${
                     filter === f ? 'bg-gray-600 text-white' : 'text-gray-500 hover:text-gray-300'
                   }`}
                 >
@@ -149,9 +149,9 @@ export default function DevLogPanel() {
               ))}
             </div>
             <div className="ml-auto flex gap-2">
-              <button onClick={copyAll} className="text-xs text-gray-500 hover:text-gray-300 font-mono px-2 py-0.5 border border-gray-700 rounded transition-colors">복사</button>
-              <button onClick={() => setLogs([])} className="text-xs text-gray-500 hover:text-red-400 font-mono px-2 py-0.5 border border-gray-700 rounded transition-colors">지우기</button>
-              <button onClick={() => setOpen(false)} className="text-xs text-gray-500 hover:text-gray-200 font-mono px-2 py-0.5 transition-colors">✕</button>
+              <button onClick={copyAll} className="text-base text-gray-500 hover:text-gray-300 font-mono px-2 py-0.5 border border-gray-700 rounded transition-colors">복사</button>
+              <button onClick={() => setLogs([])} className="text-base text-gray-500 hover:text-red-400 font-mono px-2 py-0.5 border border-gray-700 rounded transition-colors">지우기</button>
+              <button onClick={() => setOpen(false)} className="text-base text-gray-500 hover:text-gray-200 font-mono px-2 py-0.5 transition-colors">✕</button>
             </div>
           </div>
 
@@ -190,7 +190,7 @@ export default function DevLogPanel() {
       <div className="pointer-events-auto flex justify-end px-4 pb-3 pt-1">
         <button
           onClick={() => setOpen(o => !o)}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono font-bold shadow-lg border transition-all ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-base font-mono font-bold shadow-lg border transition-all ${
             open
               ? 'bg-gray-800 border-gray-600 text-gray-300'
               : errorCount > 0

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import adminService from '@/services/adminService'
 import { Loader2, Save, FileText } from 'lucide-react'
 
@@ -19,6 +20,7 @@ export default function AdminTermsPage() {
   const [contents, setContents] = useState<Record<TermsType, string>>({ privacy: '', service: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -34,7 +36,6 @@ export default function AdminTermsPage() {
   }, [])
 
   const handleSave = async () => {
-    if (!window.confirm('약관을 저장하시겠습니까?')) return
     setSaving(true)
     try {
       await adminService.updateTerms(activeTab, contents[activeTab])
@@ -54,9 +55,9 @@ export default function AdminTermsPage() {
             <FileText className="w-5 h-5 text-accent-text" />
             <h2 className="text-text-primary text-xl font-bold">약관 관리</h2>
             <button
-              onClick={handleSave}
+              onClick={() => setShowSaveConfirm(true)}
               disabled={saving || loading}
-              className="ml-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="ml-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-base transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               저장
@@ -70,7 +71,7 @@ export default function AdminTermsPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              className={`px-4 py-2.5 text-base font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === tab.key
                   ? 'text-accent-text border-red-500'
                   : 'text-text-secondary border-transparent hover:text-text-primary'
@@ -100,15 +101,27 @@ export default function AdminTermsPage() {
 
         <div className="flex justify-end">
           <button
-            onClick={handleSave}
+            onClick={() => setShowSaveConfirm(true)}
             disabled={saving || loading}
-            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-base transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             저장
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showSaveConfirm}
+        title="약관 저장"
+        message="약관을 저장하시겠습니까?"
+        confirmLabel="저장"
+        onConfirm={() => {
+          setShowSaveConfirm(false)
+          handleSave()
+        }}
+        onCancel={() => setShowSaveConfirm(false)}
+      />
     </AdminLayout>
   )
 }

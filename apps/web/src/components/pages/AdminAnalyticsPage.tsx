@@ -221,7 +221,7 @@ export default function AdminAnalyticsPage() {
               <div className="flex gap-1">
                 {PERIOD_BUTTONS.map(p => (
                   <button key={p} onClick={() => applyPeriod(p)}
-                    className="px-3 py-1.5 rounded-lg text-xs bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary transition-colors border border-line">
+                    className="px-3 py-1.5 rounded-lg text-base bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary transition-colors border border-line">
                     {p}
                   </button>
                 ))}
@@ -229,7 +229,7 @@ export default function AdminAnalyticsPage() {
               <div className="flex gap-1">
                 {PLATFORMS.map(p => (
                   <button key={p} onClick={() => setPlatform(p)}
-                    className={`px-3 py-1.5 rounded-lg text-xs transition-colors border ${
+                    className={`px-3 py-1.5 rounded-lg text-base transition-colors border ${
                       platform === p
                         ? 'bg-accent-light text-accent-text border-accent-muted'
                         : 'bg-bg-tertiary text-text-secondary border-line hover:bg-line-light'
@@ -239,7 +239,7 @@ export default function AdminAnalyticsPage() {
                 ))}
               </div>
               <button onClick={fetchVisitorStats}
-                className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors">
+                className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-base rounded-lg transition-colors">
                 조회
               </button>
             </div>
@@ -248,7 +248,7 @@ export default function AdminAnalyticsPage() {
             <div className="flex flex-wrap gap-2">
               {LINE_KEYS.map(({ key, label, color }) => (
                 <button key={key} onClick={() => toggleLine(key)}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs border transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-base border transition-colors ${
                     activeLines.has(key)
                       ? 'border-transparent text-text-primary'
                       : 'border-line text-text-muted bg-bg-tertiary'

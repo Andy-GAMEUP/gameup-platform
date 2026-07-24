@@ -184,7 +184,7 @@ export default function GameListPage() {
             />
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-accent hover:bg-accent-hover px-4 py-1.5 rounded text-sm font-medium transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-accent hover:bg-accent-hover px-4 py-1.5 rounded text-base font-medium transition-colors"
             >
               검색
             </button>
@@ -202,7 +202,7 @@ export default function GameListPage() {
               <button
                 key={genre}
                 onClick={() => { setSelectedGenre(genre); setPage(1) }}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors ${
                   selectedGenre === genre
                     ? 'bg-accent text-text-primary'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary'
@@ -220,7 +220,7 @@ export default function GameListPage() {
               <button
                 key={opt.value}
                 onClick={() => { setSort(opt.value); setPage(1) }}
-                className={`px-3 py-1.5 rounded text-sm transition-colors ${
+                className={`px-3 py-1.5 rounded text-base transition-colors ${
                   sort === opt.value
                     ? 'bg-bg-tertiary text-text-primary'
                     : 'text-text-secondary hover:text-text-primary'
@@ -284,7 +284,7 @@ export default function GameListPage() {
                   <button
                     key={i + 1}
                     onClick={() => setPage(i + 1)}
-                    className={`w-10 h-10 rounded-full text-sm font-medium transition-colors ${
+                    className={`w-10 h-10 rounded-full text-base font-medium transition-colors ${
                       page === i + 1
                         ? 'bg-accent text-text-primary'
                         : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'

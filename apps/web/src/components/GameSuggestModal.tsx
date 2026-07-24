@@ -102,7 +102,7 @@ export default function GameSuggestModal({ isOpen, onClose, publishingType }: Pr
             <CheckCircle className="w-12 h-12 text-accent mb-4" />
             <p className="text-text-primary font-semibold text-lg mb-2">제안이 완료되었습니다!</p>
             <p className="text-text-secondary text-sm mb-6">검토 후 결과를 알려드립니다.</p>
-            <button onClick={handleClose} className="bg-red-600 hover:bg-red-700 text-text-primary px-6 py-2.5 rounded-xl text-sm font-medium transition-colors">
+            <button onClick={handleClose} className="bg-red-600 hover:bg-red-700 text-text-primary px-6 py-2.5 rounded-xl text-base font-medium transition-colors">
               확인
             </button>
           </div>
@@ -162,7 +162,7 @@ export default function GameSuggestModal({ isOpen, onClose, publishingType }: Pr
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-text-secondary text-sm font-medium">스크린샷 URL (2~8장)</label>
                   {screenshots.length < 8 && (
-                    <button type="button" onClick={addScreenshot} className="text-red-400 hover:text-red-300 text-xs flex items-center gap-1 transition-colors">
+                    <button type="button" onClick={addScreenshot} className="text-red-400 hover:text-red-300 text-base flex items-center gap-1 transition-colors">
                       <Plus className="w-3 h-3" />추가
                     </button>
                   )}
@@ -217,11 +217,11 @@ export default function GameSuggestModal({ isOpen, onClose, publishingType }: Pr
             </div>
 
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-line flex-shrink-0">
-              <button onClick={handleClose} className="px-4 py-2 text-sm text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
+              <button onClick={handleClose} className="px-4 py-2 text-base text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
                 취소
               </button>
               <button onClick={handleSubmit} disabled={submitting}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary px-5 py-2 rounded-xl text-sm font-medium transition-colors">
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary px-5 py-2 rounded-xl text-base font-medium transition-colors">
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 제출하기
               </button>

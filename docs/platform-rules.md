@@ -1,6 +1,6 @@
 # GameUp 플랫폼 운영 규칙
 
-> 작성일: 2026-06-19 / 최종 수정: 2026-06-26  
+> 작성일: 2026-06-19 / 최종 수정: 2026-07-24  
 > 이 문서는 코드에서 실제 동작하는 규칙을 정리한 것입니다. 플랫폼에 참여하는 개발자·관리자·파트너 모두를 위한 기준입니다.
 
 ---
@@ -207,6 +207,13 @@ approvalStatus=pending (가입 대기) → /register/pending 화면으로 이동
 - `approvalStatus=pending` 상태의 기업회원은 `/register/pending`, `/login`, `/terms` 외 모든 페이지 접근 불가
 - 접근 시도 시 `/register/pending`으로 자동 리다이렉트
 - `/register/pending` 페이지에서 "홈으로 돌아가기" 클릭 시 **로그아웃** 후 홈으로 이동
+
+#### 사업 형태(companyType) 수정
+
+- 승인된 기업회원 대표 계정은 **파트너 라운지 프로필 > 소개 수정** 화면에서 `사업 형태`를 언제든 재설정할 수 있다 (`PATCH /api/users/company-type`)
+- 재신청(`reapply`)과 달리 `approvalStatus`를 변경하지 않으며, `companyInfo.companyType`만 갱신된다
+- 팀원 계정은 수정 불가 (대표 계정 본인만 가능)
+- **가입/재신청과 달리 이 수정 화면에서는 최소 선택 개수 제한이 없다** (전체 해제하여 빈 배열로 저장 가능)
 
 #### 회사 단일 계정 원칙
 
@@ -548,7 +555,7 @@ approvalStatus=pending
 
 ## 9. 파트너 라운지
 
-> 최종 업데이트: 2026-06-25
+> 최종 업데이트: 2026-07-24
 
 ### 9.1 파트너 라운지 채널 등록 흐름 (현행)
 
@@ -629,6 +636,10 @@ approvalStatus=pending
 - `applicationDeadline`이 지난 프로젝트는 아직 결정되지 않은(현재 상태가 `approved`가 아닌) 지원서를 새로 승인/거절할 수 없음 — 지원자 목록 화면(`ProjectsApplicantsView.tsx`)의 승인/거절 버튼이 비활성화되고, API(`updateApplicationStatus`)도 동일 조건으로 400 응답 처리
 - 단, 이미 `매칭성공`된 지원서의 승인을 취소(거절/보류/검토중으로 재변경)하는 것은 마감 여부와 무관하게 계속 허용 — 위 자동 복구 로직(`매칭보류`/`모집중` 전환)이 계속 동작해야 하기 때문
 
+**지원서 제목/내용 열람** (2026-07-24 추가)
+- 지원 시 applicant가 작성한 제목/내용은 프로젝트 소유자의 **채널 관리 > 프로젝트 활동 > 지원자 목록**(`ProjectsApplicantsView.tsx`)에서 "지원서" 컬럼의 "보기" 버튼으로 확인 가능 (관리자 화면 `/admin/partner-topics`에서는 기존부터 노출)
+- 지원자 본인의 **내가 한 지원** 화면(`ProjectsApplicationsView.tsx`)에는 아직 제목/내용이 노출되지 않음 — 필요 시 추후 추가
+
 **관리자 권한 제한** (2026-07-06 변경)
 - 상태(매칭) 전환은 위 자동 로직으로만 이루어지며, **관리자는 프로젝트 상태를 수동으로 변경할 수 없음** — 관리자 페이지의 "관리" 컬럼(상태 변경 드롭다운 + 삭제 버튼)은 폐지되고 **"바로보기"**(새 창으로 프로젝트 상세 페이지 열람)로 대체됨
 - **관리자는 파트너사가 등록한 살아있는 프로젝트를 직접 삭제할 수 없음** — 삭제는 프로젝트 소유자(파트너) 본인만 가능 (`DELETE /partner/projects/:id`)
@@ -644,6 +655,29 @@ approvalStatus=pending
 | 프로젝트 삭제 (소유자 본인만) | 로그인 파트너 | `DELETE /partner/projects/:id` |
 | 프로젝트 복구 | super | `POST /admin/partner/projects/deleted/:id/restore` |
 | 삭제 로그 완전 삭제 | super | `DELETE /admin/partner/projects/deleted/:id` |
+
+### 9.6 파트너 프로필 페이지 구조 (미니홈 흡수, 2026-07-24 개편)
+
+> 파트너 매칭에 필요한 프로필 정보(소개, 포트폴리오, 연혁, 보유 기술, 연락처, 게임 목록)가 별도의 미니홈(MiniHome) 컬렉션과 파트너(Partner) 컬렉션으로 나뉘어 있던 것을 **Partner 컬렉션으로 흡수 통합**. MiniHome 컬렉션 자체는 삭제하지 않으며(뉴스피드/제안함/공개 미니홈 디렉토리는 계속 MiniHome 사용), 1회성 마이그레이션 스크립트(`scripts/merge-minihome-into-partner.ts`)로 데이터를 이관함.
+
+- Partner 모델에 확장 필드 추가: `displayNameOverride`, `coverImage`, `website`, `tags`, `keywords`, `hourlyRate`, `location`, `isVerified`, `rating`, `reviewCount`, `portfolio[]`, `history[]`, `skills[]`, `contactEmail`, `contactPhone`, `representativeGameId`
+- 폐지된 필드: `activityPlan`(활동 계획), `availability`(활동 가능 여부) — 정리 스크립트(`apps/api/src/scripts/cleanup-partner-experience-fields.ts`)로 구필드 제거
+- 공개 프로필은 `/partner/:id` 하위 탭으로 재구성: **파트너 홈**(`/partner/:id`) / **회사 연혁**(`/history`) / **보유 기술**(`/skills`) / **개발 게임**(`/games`, 개발사 유형만 노출) / **포트폴리오**(`/portfolio`) / **등록 프로젝트**(`/posts`)
+- 소유자 전용 관리 기능은 `/partner/:id/manage` 하위로 통합: **프로젝트 활동**(`/manage/projects`, 지원자 목록 포함) / **받은 메시지**(`/manage/messages`, 메시지 휴지통 포함) / **팀원 관리**(`/manage/team`) — 소유자가 아니면 접근 불가
+- 기존 `/plan`(활동계획), `/topics`(토픽), `/team`·`/projects`·`/projects/applicants`·`/projects/applications`(구 경로) 라우트는 전부 폐지되고 위 신규 구조로 대체됨
+- 독립 운영되던 `/minihome-manage` 화면은 폐지되고 파트너 프로필 관리로 완전히 흡수됨
+
+### 9.7 파트너 쪽지(메시지)
+
+> 파트너 라운지 채널 간 1:1 쪽지 기능. 채널 상세에서 "연락하기"로 시작되며, 소유자는 **채널 관리 > 받은 메시지**에서 확인.
+
+- 데이터 모델: `PartnerMessage`(개별 메시지, `rootId`로 대화를 묶음) + `PartnerMessageThread`(대화별 상태 문서, `rootId` 기준 1개)
+- 새 "연락하기"는 매번 자기 자신을 `rootId`로 갖는 새 대화로 생성됨 — 같은 상대와 이미 종료/삭제된 대화가 있어도 항상 새로 도달 가능하며, 받은 메시지함에는 대화(rootId)별로 별도 카드가 쌓임 (같은 상대와 여러 개의 독립된 대화 가능)
+- 대화 상태는 3단계: `open`(정상) / `closed`(종료) / `deleted`(완전 삭제)
+  - **종료**: 종료한 사람의 메시지 휴지통으로 이동. 상대방은 계속 받은 메시지함에서 보이지만 답장은 차단되고 "상대방이 대화를 종료하여 답장할 수 없습니다" 안내 표시
+  - **복원**: 종료한 본인만, `closed` 상태에서만 가능
+  - **완전 삭제**: 되돌릴 수 없음. 종료한 본인이 삭제하면 양쪽 모두 영구적으로 답장 불가 상태가 됨. 종료하지 않은 쪽(차단당한 쪽)이 삭제하면 본인 화면에서만 사라지는 개인적 삭제이며 상대방 상태에는 영향 없음
+- 본인 채널로는 메시지를 보낼 수 없음
 
 ---
 

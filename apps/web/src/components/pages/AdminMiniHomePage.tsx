@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import minihomeService, { MiniHome } from '@/services/minihomeService'
 import { ChevronLeft, ChevronRight, Loader2, Search, Trash2, Building2 } from 'lucide-react'
 
@@ -18,6 +19,7 @@ export default function AdminMiniHomePage() {
   const [visibility, setVisibility] = useState('all')
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [updating, setUpdating] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<MiniHome | null>(null)
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok })
@@ -74,7 +76,6 @@ export default function AdminMiniHomePage() {
   }
 
   const handleDelete = async (mh: MiniHome) => {
-    if (!confirm(`"${mh.companyName}" 미니홈을 삭제하시겠습니까?`)) return
     try {
       await minihomeService.admin.delete(mh._id)
       setMinihomes(prev => prev.filter(m => m._id !== mh._id))
@@ -208,7 +209,7 @@ export default function AdminMiniHomePage() {
                           {new Date(mh.createdAt).toLocaleDateString('ko-KR')}
                         </td>
                         <td className="px-4 py-3">
-                          <button onClick={() => handleDelete(mh)}
+                          <button onClick={() => setDeleteTarget(mh)}
                             className="p-1 text-accent-text hover:text-accent-text transition-colors" title="삭제">
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -230,7 +231,7 @@ export default function AdminMiniHomePage() {
                   const p = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i
                   return (
                     <button key={p} onClick={() => setPage(p)}
-                      className={`w-8 h-8 rounded-lg text-sm transition-colors ${p === page ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
+                      className={`w-8 h-8 rounded-lg text-base transition-colors ${p === page ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
                       {p}
                     </button>
                   )
@@ -250,6 +251,20 @@ export default function AdminMiniHomePage() {
           {toast.msg}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="삭제"
+        message={`"${deleteTarget?.companyName}" 미니홈을 삭제하시겠습니까?`}
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteTarget) return
+          handleDelete(deleteTarget)
+          setDeleteTarget(null)
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </AdminLayout>
   )
 }

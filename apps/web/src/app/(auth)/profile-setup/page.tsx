@@ -100,7 +100,7 @@ export default function ProfileSetupPage() {
                   key={genre}
                   type="button"
                   onClick={() => toggleGenre(genre)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-full text-base font-medium transition-all ${
                     selectedGenres.includes(genre)
                       ? 'bg-emerald-500 text-text-primary'
                       : 'bg-bg-tertiary text-text-secondary hover:bg-bg-tertiary hover:text-text-primary border border-line'

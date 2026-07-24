@@ -1,7 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose'
 
 export interface IMiniHomeGame extends Document {
-  minihomeId: mongoose.Types.ObjectId
+  minihomeId?: mongoose.Types.ObjectId | null
+  partnerId?: mongoose.Types.ObjectId | null
   title: string
   genre: string
   description: string
@@ -17,7 +18,8 @@ export interface IMiniHomeGame extends Document {
 
 const miniHomeGameSchema = new Schema<IMiniHomeGame>(
   {
-    minihomeId: { type: Schema.Types.ObjectId, ref: 'MiniHome', required: true },
+    minihomeId: { type: Schema.Types.ObjectId, ref: 'MiniHome', required: false, default: null },
+    partnerId: { type: Schema.Types.ObjectId, ref: 'Partner', default: null },
     title: { type: String, required: true, maxlength: 100 },
     genre: { type: String, default: '' },
     description: { type: String, default: '', maxlength: 2000 },
@@ -32,5 +34,6 @@ const miniHomeGameSchema = new Schema<IMiniHomeGame>(
 )
 
 miniHomeGameSchema.index({ minihomeId: 1, sortOrder: 1 })
+miniHomeGameSchema.index({ partnerId: 1, sortOrder: 1 })
 
 export default mongoose.model<IMiniHomeGame>('MiniHomeGame', miniHomeGameSchema)

@@ -15,6 +15,7 @@ import { developerBalanceService } from '../../services/developerBalanceService'
 import DeleteGameModal from '../DeleteGameModal'
 import GracRatingBadge from '../GracRatingBadge'
 import RequestReviewButton from '../RequestReviewButton'
+import ConfirmModal from '../ConfirmModal'
 import { RatingClass } from '@gameup/types'
 import { useRouter } from 'next/navigation'
 import { FORM_GENRES } from '@/constants/game'
@@ -218,6 +219,8 @@ export default function GameDetailManagementPage() {
   const [editCapcoinIconFile, setEditCapcoinIconFile] = useState<File | null>(null)
   const [editCapcoinIconPreview, setEditCapcoinIconPreview] = useState('')
   const [notiModal, setNotiModal] = useState(false)
+  const [showDeleteItemConfirm, setShowDeleteItemConfirm] = useState(false)
+  const [deleteAnnouncementId, setDeleteAnnouncementId] = useState<string | null>(null)
   const ssFileRef = useRef<HTMLInputElement>(null)
   const vidFileRef = useRef<HTMLInputElement>(null)
   const [newItem, setNewItem] = useState({ name: '', price: '', currency: 'KRW', type: '패키지', paymentType: 'cash' as 'cash' | 'capcoin', currencyName: '', currencyIconFile: null as File | null, currencyIconPreview: '', currencyType: '', currencyAmount: '', bonusAmount: '', stock: '무제한', description: '', country: 'KR', itemId: '', imageFile: null as File | null, imagePreview: '', isSpecial: false, specialImageFile: null as File | null, specialImagePreview: '', capcoinPrice: '', capcoinName: '', capcoinIconFile: null as File | null, capcoinIconPreview: '' })
@@ -246,6 +249,8 @@ export default function GameDetailManagementPage() {
     estimatedDailyUsage: number; developerNote: string;
   } | null>(null)
   const [pointStats, setPointStats] = useState<{ stats: { type: string; totalPoints: number; count: number; uniqueUsers: number }[]; totalPoints: number; totalTransactions: number } | null>(null)
+  const [deletePolicyType, setDeletePolicyType] = useState<string | null>(null)
+  const [showSubmitApprovalConfirm, setShowSubmitApprovalConfirm] = useState(false)
 
   // ── 잔액 & API Key 상태 ──────────────────────────────────────
   const [balanceInfo, setBalanceInfo] = useState<BalanceInfo | null>(null)
@@ -253,6 +258,7 @@ export default function GameDetailManagementPage() {
   const [apiKeyModal, setApiKeyModal] = useState(false)
   const [newApiKeyName, setNewApiKeyName] = useState('')
   const [createdApiKey, setCreatedApiKey] = useState<string | null>(null)
+  const [deleteApiKeyId, setDeleteApiKeyId] = useState<string | null>(null)
 
   // ── 메인 세팅 탭 상태 ──────────────────────────────────────
   const [certRatingClass, setCertRatingClass] = useState('')
@@ -403,8 +409,13 @@ export default function GameDetailManagementPage() {
     }
   }
 
+  const handleDeleteApiKeyClick = (keyId: string) => {
+    if (!gameId) return
+    setDeleteApiKeyId(keyId)
+  }
+
   const handleDeleteApiKey = async (keyId: string) => {
-    if (!gameId || !confirm('이 API Key를 삭제하시겠습니까?')) return
+    if (!gameId) return
     try {
       await gameService.deleteApiKey(gameId, keyId)
       loadApiKeys()
@@ -432,9 +443,13 @@ export default function GameDetailManagementPage() {
     } catch { alert('정책 저장에 실패했습니다') }
   }
 
+  const handleSubmitForApprovalClick = () => {
+    if (!gameId) return
+    setShowSubmitApprovalConfirm(true)
+  }
+
   const handleSubmitForApproval = async () => {
     if (!gameId) return
-    if (!confirm('포인트 정책 승인을 요청하시겠습니까?')) return
     try {
       await gameService.submitPointPolicies(gameId)
       loadPointPolicies()
@@ -445,9 +460,13 @@ export default function GameDetailManagementPage() {
     }
   }
 
+  const handleDeletePolicyClick = (type: string) => {
+    if (!gameId) return
+    setDeletePolicyType(type)
+  }
+
   const handleDeletePolicy = async (type: string) => {
     if (!gameId) return
-    if (!confirm('이 정책을 삭제하시겠습니까?')) return
     try {
       await gameService.deleteGamePointPolicy(gameId, type)
       loadPointPolicies()
@@ -787,7 +806,7 @@ export default function GameDetailManagementPage() {
     } catch { alert('복사에 실패했습니다') }
   }
   const deleteItem = async (itemId: string) => {
-    if (!gameId || !confirm('이 아이템을 삭제하시겠습니까?')) return
+    if (!gameId) return
     try {
       await gameService.deleteGameShopItem(gameId, itemId)
       loadShopItems(shopSort, shopPeriod)
@@ -828,8 +847,13 @@ export default function GameDetailManagementPage() {
       alert(msg)
     }
   }
+  const handleDeleteAnnouncementClick = (announcementId: string) => {
+    if (!gameId) return
+    setDeleteAnnouncementId(announcementId)
+  }
+
   const deleteAnnouncement = async (announcementId: string) => {
-    if (!gameId || !confirm('삭제하시겠습니까?')) return
+    if (!gameId) return
     try {
       await gameService.deleteGameAnnouncement(gameId, announcementId)
       loadAnnouncements()
@@ -933,7 +957,7 @@ export default function GameDetailManagementPage() {
 
       <div>
         <Link href="/games-management">
-          <button className="flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors mb-2">
+          <button className="flex items-center gap-1 text-base text-text-secondary hover:text-text-primary transition-colors mb-2">
             <ChevronLeft className="w-4 h-4" /> 게임 목록
           </button>
         </Link>
@@ -980,7 +1004,7 @@ export default function GameDetailManagementPage() {
             )
             return (
               <button key={t.key} onClick={() => setActiveTab(t.key)}
-                className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === t.key ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
+                className={`px-4 py-2 text-base rounded-md transition-colors ${activeTab === t.key ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
                 {t.label}
               </button>
             )
@@ -988,7 +1012,7 @@ export default function GameDetailManagementPage() {
         </div>
         <button
           onClick={() => setActiveTab('main-settings')}
-          className={`flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg border transition-colors ${activeTab === 'main-settings' ? 'bg-purple-600 border-purple-500 text-white' : 'border-purple-500/50 text-purple-400 hover:bg-purple-500/10'}`}
+          className={`flex items-center gap-1.5 px-4 py-2 text-base font-semibold rounded-lg border transition-colors ${activeTab === 'main-settings' ? 'bg-purple-600 border-purple-500 text-white' : 'border-purple-500/50 text-purple-400 hover:bg-purple-500/10'}`}
         >
           <Shield className="w-4 h-4" /> 등급 분류
         </button>
@@ -1090,7 +1114,7 @@ export default function GameDetailManagementPage() {
               </div>
             </div>
 
-            <button onClick={handleSaveCert} disabled={certSaving || !certRatingClass || !certNumber.trim() || !certDate || !certFile} className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-sm font-semibold transition-colors">
+            <button onClick={handleSaveCert} disabled={certSaving || !certRatingClass || !certNumber.trim() || !certDate || !certFile} className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-base font-semibold transition-colors">
               <Save className="w-4 h-4" /> {certSaving ? '저장 중...' : '저장'}
             </button>
           </div>
@@ -1172,7 +1196,7 @@ export default function GameDetailManagementPage() {
         <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div><h2 className="text-xl font-bold">공지사항 및 푸시 알림</h2><p className="text-sm text-text-secondary mt-1">테스터들에게 중요한 소식을 전달하세요</p></div>
-            <button onClick={() => setNotiModal(true)} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors">
+            <button onClick={() => setNotiModal(true)} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base transition-colors">
               <Megaphone className="w-4 h-4" /> 공지 작성
             </button>
           </div>
@@ -1197,7 +1221,7 @@ export default function GameDetailManagementPage() {
                   {a.sendPush && <><span>•</span><span className="flex items-center gap-1"><Bell className="w-3 h-3" />{a.recipients.toLocaleString()}명에게 발송</span></>}
                 </div>
               </div>
-              <button onClick={() => deleteAnnouncement(a._id)} className="text-red-400 hover:text-red-300 p-1"><Trash2 className="w-4 h-4" /></button>
+              <button onClick={() => handleDeleteAnnouncementClick(a._id)} className="text-red-400 hover:text-red-300 p-1"><Trash2 className="w-4 h-4" /></button>
             </div>
           ))}
           <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
@@ -1384,7 +1408,7 @@ export default function GameDetailManagementPage() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative group">
-                  <button onClick={() => setItemModal(true)} disabled={gameData?.monetization === 'free'} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                  <button onClick={() => setItemModal(true)} disabled={gameData?.monetization === 'free'} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-base font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                     <Plus className="w-4 h-4" /> 상품 추가
                   </button>
                   {gameData?.monetization === 'free' && (
@@ -1403,7 +1427,7 @@ export default function GameDetailManagementPage() {
                     } catch { alert('심사 요청에 실패했습니다') }
                   }}
                   disabled={!shopItems.some(i => i.saleStatus === 'registering' || i.saleStatus === 'rejected')}
-                  className="flex items-center gap-2 px-4 py-2 bg-violet-500/70 hover:bg-violet-500 border border-violet-400/40 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-4 py-2 bg-violet-500/70 hover:bg-violet-500 border border-violet-400/40 rounded-lg text-base font-medium text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Send className="w-4 h-4" /> 상품 심사
                 </button>
@@ -1612,7 +1636,7 @@ export default function GameDetailManagementPage() {
                 <p className="text-sm text-text-secondary mt-1">게임과 연동하여 플레이어에게 플랫폼 포인트를 지급할 수 있습니다</p>
               </div>
               {pointPolicies.some(p => p.approvalStatus === 'draft' || p.approvalStatus === 'rejected') && (
-                <button onClick={handleSubmitForApproval} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors">
+                <button onClick={handleSubmitForApprovalClick} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base transition-colors">
                   <Send className="w-4 h-4" /> 승인 요청
                 </button>
               )}
@@ -1684,8 +1708,8 @@ export default function GameDetailManagementPage() {
                                 <input value={editingPolicy.developerNote} placeholder="관리자에게 전달할 메모" onChange={e => setEditingPolicy(p => p ? { ...p, developerNote: e.target.value } : null)} className={inputCls} />
                               </div>
                               <div className="col-span-2 md:col-span-4 flex gap-2">
-                                <button onClick={handleSavePolicy} className="px-3 py-1.5 bg-accent hover:bg-accent-hover rounded text-sm transition-colors">저장</button>
-                                <button onClick={() => setEditingPolicy(null)} className="px-3 py-1.5 border border-line rounded text-sm hover:bg-bg-tertiary transition-colors">취소</button>
+                                <button onClick={handleSavePolicy} className="px-3 py-1.5 bg-accent hover:bg-accent-hover rounded text-base transition-colors">저장</button>
+                                <button onClick={() => setEditingPolicy(null)} className="px-3 py-1.5 border border-line rounded text-base hover:bg-bg-tertiary transition-colors">취소</button>
                               </div>
                             </div>
                           ) : (
@@ -1708,7 +1732,7 @@ export default function GameDetailManagementPage() {
                           {existing?.approvalStatus === 'approved' && (
                             <button
                               onClick={() => handleTogglePolicy(pt.type)}
-                              className={`px-2 py-1.5 text-xs rounded-md border transition-colors ${existing.isActive ? 'border-green-500/50 text-green-400 hover:bg-green-500/10' : 'border-gray-500/50 text-gray-400 hover:bg-gray-500/10'}`}
+                              className={`px-2 py-1.5 text-base rounded-md border transition-colors ${existing.isActive ? 'border-green-500/50 text-green-400 hover:bg-green-500/10' : 'border-gray-500/50 text-gray-400 hover:bg-gray-500/10'}`}
                             >
                               {existing.isActive ? 'ON' : 'OFF'}
                             </button>
@@ -1731,7 +1755,7 @@ export default function GameDetailManagementPage() {
                             <Edit className="w-4 h-4" />
                           </button>
                           {existing && (existing.approvalStatus === 'draft' || existing.approvalStatus === 'rejected') && (
-                            <button onClick={() => handleDeletePolicy(pt.type)} className="p-1.5 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10 transition-colors">
+                            <button onClick={() => handleDeletePolicyClick(pt.type)} className="p-1.5 border border-red-500/50 text-red-400 rounded-md hover:bg-red-500/10 transition-colors">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           )}
@@ -1780,7 +1804,7 @@ export default function GameDetailManagementPage() {
                 <h2 className="text-xl font-bold flex items-center gap-2"><Shield className="w-5 h-5 text-blue-400" /> API Key 관리</h2>
                 <p className="text-sm text-text-secondary mt-1">게임 서버에서 포인트 지급 API를 호출할 때 사용하는 인증 키입니다</p>
               </div>
-              <button onClick={() => { setApiKeyModal(true); setCreatedApiKey(null) }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-sm transition-colors">
+              <button onClick={() => { setApiKeyModal(true); setCreatedApiKey(null) }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-base transition-colors">
                 <Plus className="w-4 h-4" /> API Key 생성
               </button>
             </div>
@@ -1797,10 +1821,10 @@ export default function GameDetailManagementPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       {key.lastUsedAt && <span className="text-xs text-text-muted">마지막 사용: {new Date(key.lastUsedAt).toLocaleDateString()}</span>}
-                      <button onClick={() => handleToggleApiKey(key._id)} className={`px-2 py-1 text-xs rounded border ${key.isActive ? 'border-green-500/50 text-green-400' : 'border-gray-500/50 text-gray-400'}`}>
+                      <button onClick={() => handleToggleApiKey(key._id)} className={`px-2 py-1 text-base rounded border ${key.isActive ? 'border-green-500/50 text-green-400' : 'border-gray-500/50 text-gray-400'}`}>
                         {key.isActive ? '활성' : '비활성'}
                       </button>
-                      <button onClick={() => handleDeleteApiKey(key._id)} className="p-1 text-red-400 hover:bg-red-500/10 rounded">
+                      <button onClick={() => handleDeleteApiKeyClick(key._id)} className="p-1 text-red-400 hover:bg-red-500/10 rounded">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -1853,7 +1877,7 @@ export default function GameDetailManagementPage() {
               <button
                 onClick={handleSaveGameInfo}
                 disabled={isEditLocked || editSaving || !(gameData.thumbnail || pendingIconFile) || !editTitle.trim() || !editGenre || !editNotes.trim() || !editDescription.trim() || (gameData.serviceType !== 'live' && (!editStartDate || !editEndDate || !editMaxTesters || !editTestType))}
-                className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4" /> {editSaving ? '저장 중...' : '저장'}
               </button>
@@ -1890,7 +1914,7 @@ export default function GameDetailManagementPage() {
                 <button
                   onClick={() => iconInputRef.current?.click()}
                   disabled={editSaving}
-                  className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-base hover:bg-bg-tertiary transition-colors disabled:opacity-50"
                 >
                   <Upload className="w-4 h-4" /> {pendingIconFile ? '아이콘 선택됨 (미저장)' : '아이콘 업로드'}
                 </button>
@@ -2006,7 +2030,7 @@ export default function GameDetailManagementPage() {
           <div className="flex justify-end pt-2">
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-semibold transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-base font-semibold transition-colors"
             >
               <Trash2 className="w-4 h-4" /> 게임 영구 삭제
             </button>
@@ -2023,6 +2047,76 @@ export default function GameDetailManagementPage() {
         />
       )}
 
+      <ConfirmModal
+        isOpen={!!deleteApiKeyId}
+        title="API Key 삭제"
+        message="이 API Key를 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteApiKeyId) return
+          handleDeleteApiKey(deleteApiKeyId)
+          setDeleteApiKeyId(null)
+        }}
+        onCancel={() => setDeleteApiKeyId(null)}
+      />
+
+      <ConfirmModal
+        isOpen={showSubmitApprovalConfirm}
+        title="승인 요청"
+        message="포인트 정책 승인을 요청하시겠습니까?"
+        confirmLabel="요청"
+        onConfirm={() => {
+          setShowSubmitApprovalConfirm(false)
+          handleSubmitForApproval()
+        }}
+        onCancel={() => setShowSubmitApprovalConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={!!deletePolicyType}
+        title="정책 삭제"
+        message="이 정책을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deletePolicyType) return
+          handleDeletePolicy(deletePolicyType)
+          setDeletePolicyType(null)
+        }}
+        onCancel={() => setDeletePolicyType(null)}
+      />
+
+      <ConfirmModal
+        isOpen={showDeleteItemConfirm}
+        title="아이템 삭제"
+        message="이 아이템을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          setShowDeleteItemConfirm(false)
+          if (editingItem) {
+            deleteItem(editingItem._id)
+            setEditItemModal(false)
+            setEditingItem(null)
+          }
+        }}
+        onCancel={() => setShowDeleteItemConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteAnnouncementId}
+        title="공지 삭제"
+        message="삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteAnnouncementId) return
+          deleteAnnouncement(deleteAnnouncementId)
+          setDeleteAnnouncementId(null)
+        }}
+        onCancel={() => setDeleteAnnouncementId(null)}
+      />
 
       <Modal open={itemModal} onClose={() => { setItemModal(false); resetNewItem() }} title="상품 추가" size="xl" disableBackdropClose showCloseButton>
         <div className="max-h-[75vh] overflow-y-auto pr-1">
@@ -2098,7 +2192,7 @@ export default function GameDetailManagementPage() {
                     type="button"
                     onClick={() => { if (newItem.itemId.trim()) setNewItemIdLocked(true) }}
                     disabled={newItemIdLocked || !newItem.itemId.trim()}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors flex-shrink-0 ${newItemIdLocked ? 'bg-green-500/20 text-green-400 border-green-500/40 cursor-not-allowed' : 'bg-bg-tertiary hover:bg-bg-secondary border-line text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed'}`}
+                    className={`px-3 py-2 rounded-lg text-base font-medium border transition-colors flex-shrink-0 ${newItemIdLocked ? 'bg-green-500/20 text-green-400 border-green-500/40 cursor-not-allowed' : 'bg-bg-tertiary hover:bg-bg-secondary border-line text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed'}`}
                   >
                     {newItemIdLocked ? '등록됨' : '등록'}
                   </button>
@@ -2155,7 +2249,7 @@ export default function GameDetailManagementPage() {
             <div className="flex p-1 bg-bg-tertiary rounded-lg w-fit">
               {([{ value: 'cash', label: '현금 결제' }, { value: 'capcoin', label: '포인트 결제' }] as const).map(opt => (
                 <button key={opt.value} type="button" onClick={() => setNewItem(p => ({ ...p, paymentType: opt.value, price: opt.value === 'capcoin' ? '0' : p.price }))}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${newItem.paymentType === opt.value ? 'bg-bg-primary text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
+                  className={`px-4 py-1.5 rounded-md text-base font-medium transition-all ${newItem.paymentType === opt.value ? 'bg-bg-primary text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
                   {opt.label}
                 </button>
               ))}
@@ -2212,7 +2306,7 @@ export default function GameDetailManagementPage() {
                   {newItemErrors.price && <div className="absolute left-2 top-full mt-1 z-10"><div className="w-2 h-2 bg-red-500 rotate-45 ml-2 -mb-1" /><div className="bg-red-500 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap">{newItemErrors.price}</div></div>}
                 </div>
               </div>
-              <button type="button" onClick={() => setPriceSettingModal(true)} className="w-full px-2 py-2 bg-accent border border-accent rounded-md text-xs text-white font-medium hover:bg-accent/80 transition-colors">환율 확인</button>
+              <button type="button" onClick={() => setPriceSettingModal(true)} className="w-full px-2 py-2 bg-accent border border-accent rounded-md text-base text-white font-medium hover:bg-accent/80 transition-colors">환율 확인</button>
             </div>
           )}
 
@@ -2283,7 +2377,7 @@ export default function GameDetailManagementPage() {
           </div>
 
           <div className="flex justify-end pt-4">
-            <button onClick={addItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium">등록</button>
+            <button onClick={addItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-base font-medium">등록</button>
           </div>
         </div>
       </Modal>
@@ -2362,7 +2456,7 @@ export default function GameDetailManagementPage() {
                       type="button"
                       onClick={() => { if (editingItem.itemId?.trim()) setEditItemIdLocked(true) }}
                       disabled={editItemIdLocked || !editingItem.itemId?.trim()}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors flex-shrink-0 ${editItemIdLocked ? 'bg-green-500/20 text-green-400 border-green-500/40 cursor-not-allowed' : 'bg-bg-tertiary hover:bg-bg-secondary border-line text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed'}`}
+                      className={`px-3 py-2 rounded-lg text-base font-medium border transition-colors flex-shrink-0 ${editItemIdLocked ? 'bg-green-500/20 text-green-400 border-green-500/40 cursor-not-allowed' : 'bg-bg-tertiary hover:bg-bg-secondary border-line text-text-secondary hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed'}`}
                     >
                       {editItemIdLocked ? '등록됨' : '등록'}
                     </button>
@@ -2416,7 +2510,7 @@ export default function GameDetailManagementPage() {
               <div className="flex p-1 bg-bg-tertiary rounded-lg w-fit">
                 {([{ value: 'cash', label: '현금 결제' }, { value: 'capcoin', label: '포인트 결제' }] as const).map(opt => (
                   <button key={opt.value} type="button" onClick={() => setEditingItem(p => p ? { ...p, paymentType: opt.value } : null)}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${editingItem.paymentType === opt.value ? 'bg-bg-primary text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
+                    className={`px-4 py-1.5 rounded-md text-base font-medium transition-all ${editingItem.paymentType === opt.value ? 'bg-bg-primary text-text-primary shadow-sm' : 'text-text-muted hover:text-text-secondary'}`}>
                     {opt.label}
                   </button>
                 ))}
@@ -2473,7 +2567,7 @@ export default function GameDetailManagementPage() {
                     <span className="px-3 py-2 text-xs text-text-secondary border-l border-line bg-bg-secondary whitespace-nowrap">{editingItem.currency}</span>
                   </div>
                 </div>
-                <button type="button" onClick={() => setPriceSettingModal(true)} className="w-full px-2 py-2 bg-accent border border-accent rounded-md text-xs text-white font-medium hover:bg-accent/80 transition-colors">환율 확인</button>
+                <button type="button" onClick={() => setPriceSettingModal(true)} className="w-full px-2 py-2 bg-accent border border-accent rounded-md text-base text-white font-medium hover:bg-accent/80 transition-colors">환율 확인</button>
               </div>
             )}
 
@@ -2548,8 +2642,8 @@ export default function GameDetailManagementPage() {
 
 
             <div className="flex items-center justify-end gap-2 pt-4">
-              <button onClick={() => { if (editingItem) { deleteItem(editingItem._id); setEditItemModal(false); setEditingItem(null) } }} className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-sm font-medium text-white">삭제</button>
-              <button onClick={saveEditItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-sm font-medium">저장</button>
+              <button onClick={() => { if (editingItem) setShowDeleteItemConfirm(true) }} className="px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-base font-medium text-white">삭제</button>
+              <button onClick={saveEditItem} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-lg text-base font-medium">저장</button>
             </div>
           </div>
         )}
@@ -2592,7 +2686,7 @@ export default function GameDetailManagementPage() {
                 <div className="bg-bg-tertiary p-3 rounded font-mono text-sm break-all select-all">{createdApiKey}</div>
               </div>
               <div className="flex justify-end">
-                <button onClick={() => { setApiKeyModal(false); setCreatedApiKey(null) }} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">확인</button>
+                <button onClick={() => { setApiKeyModal(false); setCreatedApiKey(null) }} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base">확인</button>
               </div>
             </div>
           ) : (
@@ -2603,8 +2697,8 @@ export default function GameDetailManagementPage() {
               </div>
               <p className="text-xs text-text-muted">게임당 최대 5개의 API Key를 생성할 수 있습니다.</p>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setApiKeyModal(false)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-                <button onClick={handleCreateApiKey} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">생성</button>
+                <button onClick={() => setApiKeyModal(false)} className="px-4 py-2 border border-line rounded-md text-base hover:bg-bg-tertiary">취소</button>
+                <button onClick={handleCreateApiKey} className="px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base">생성</button>
               </div>
             </div>
           )}
@@ -2643,8 +2737,8 @@ export default function GameDetailManagementPage() {
             )}
           </div>
           <div className="flex justify-end gap-3">
-            <button onClick={() => setNotiModal(false)} className="px-4 py-2 border border-line rounded-md text-sm hover:bg-bg-tertiary">취소</button>
-            <button onClick={addAnnouncement} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm">
+            <button onClick={() => setNotiModal(false)} className="px-4 py-2 border border-line rounded-md text-base hover:bg-bg-tertiary">취소</button>
+            <button onClick={addAnnouncement} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base">
               <Send className="w-4 h-4" />{newNoti.sendPush ? '발송 및 등록' : '등록'}
             </button>
           </div>

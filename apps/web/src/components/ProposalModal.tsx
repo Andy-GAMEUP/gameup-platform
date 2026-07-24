@@ -58,7 +58,7 @@ export default function ProposalModal({ isOpen, onClose, minihomeId, games }: Pr
             <CheckCircle className="w-12 h-12 text-accent mb-4" />
             <p className="text-text-primary font-semibold text-lg mb-2">제안이 전송되었습니다!</p>
             <p className="text-text-secondary text-sm mb-6">상대방이 검토 후 답변을 드릴 것입니다.</p>
-            <button onClick={onClose} className="bg-red-600 hover:bg-red-700 text-text-primary px-6 py-2.5 rounded-xl text-sm font-medium transition-colors">
+            <button onClick={onClose} className="bg-red-600 hover:bg-red-700 text-text-primary px-6 py-2.5 rounded-xl text-base font-medium transition-colors">
               확인
             </button>
           </div>
@@ -74,7 +74,7 @@ export default function ProposalModal({ isOpen, onClose, minihomeId, games }: Pr
                 <div className="flex gap-3">
                   {(['investment', 'publishing'] as const).map(t => (
                     <button key={t} type="button" onClick={() => { setType(t); setSelectedGameId('') }}
-                      className={`flex-1 py-2.5 text-sm rounded-xl border transition-colors ${type === t ? 'bg-red-600/20 border-red-500/40 text-red-300 font-medium' : 'border-line text-text-secondary hover:text-text-primary'}`}>
+                      className={`flex-1 py-2.5 text-base rounded-xl border transition-colors ${type === t ? 'bg-red-600/20 border-red-500/40 text-red-300 font-medium' : 'border-line text-text-secondary hover:text-text-primary'}`}>
                       {t === 'investment' ? '투자 제안' : '퍼블리싱 제안'}
                     </button>
                   ))}
@@ -113,11 +113,11 @@ export default function ProposalModal({ isOpen, onClose, minihomeId, games }: Pr
             </div>
 
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-line">
-              <button onClick={onClose} className="px-4 py-2 text-sm text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
+              <button onClick={onClose} className="px-4 py-2 text-base text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
                 취소
               </button>
               <button onClick={handleSubmit} disabled={submitState === 'loading'}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary px-5 py-2 rounded-xl text-sm font-medium transition-colors">
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary px-5 py-2 rounded-xl text-base font-medium transition-colors">
                 {submitState === 'loading' && <Loader2 className="w-4 h-4 animate-spin" />}
                 전송
               </button>

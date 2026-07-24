@@ -156,7 +156,7 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
               <div className="grid grid-cols-8 gap-0.5">
                 {SYMBOLS.map(s => (
                   <button key={s} type="button" onMouseDown={e => { e.preventDefault(); insertSymbol(s) }}
-                    className="flex items-center justify-center w-7 h-7 rounded-lg text-text-secondary hover:bg-bg-tertiary hover:text-text-primary transition-colors text-sm">
+                    className="flex items-center justify-center w-7 h-7 rounded-lg text-text-secondary hover:bg-bg-tertiary hover:text-text-primary transition-colors text-base">
                     {s}
                   </button>
                 ))}

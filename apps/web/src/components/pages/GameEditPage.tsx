@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { RefreshCw, Save, ArrowLeft, Plus, X, Upload, Globe, Send } from 'lucide-react'
 import { gameService } from '@/services/gameService'
 import { FORM_GENRES } from '@/constants/game'
+import ConfirmModal from '@/components/ConfirmModal'
 
 interface GameData {
   _id: string
@@ -60,6 +61,8 @@ export default function GameEditPage() {
   const [saving, setSaving] = useState(false)
   const [requestingReview, setRequestingReview] = useState(false)
   const [error, setError] = useState('')
+  const [showReviewConfirm, setShowReviewConfirm] = useState(false)
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false)
 
   // 폼 상태
   const [title, setTitle] = useState('')
@@ -166,13 +169,17 @@ export default function GameEditPage() {
     }
   }
 
-  const handleRequestReview = async () => {
+  const handleRequestReviewClick = () => {
     if (!id || !game) return
     if (!gameDomain.trim()) {
       alert('게임 서비스 URL을 먼저 입력하고 저장하세요.')
       return
     }
-    if (!confirm('심사를 요청하시겠습니까? 관리자 검토 후 승인됩니다.')) return
+    setShowReviewConfirm(true)
+  }
+
+  const handleRequestReview = async () => {
+    if (!id) return
     setRequestingReview(true)
     try {
       await gameService.requestReview(id)
@@ -187,7 +194,7 @@ export default function GameEditPage() {
     }
   }
 
-  const handleSave = async () => {
+  const handleSaveClick = () => {
     if (!id || !game) return
 
     if (gameDomain.trim() && !isValidUrl(gameDomain.trim())) {
@@ -196,12 +203,11 @@ export default function GameEditPage() {
     }
 
     // 재승인 필요 안내
-    const confirmed = confirm(
-      '게임 정보를 수정하면 관리자의 재승인이 필요합니다.\n' +
-      '승인 완료 전까지 승인 상태가 "승인대기"로 변경됩니다.\n\n' +
-      '계속하시겠습니까?'
-    )
-    if (!confirmed) return
+    setShowSaveConfirm(true)
+  }
+
+  const handleSave = async () => {
+    if (!id || !game) return
 
     setSaving(true)
     try {
@@ -256,7 +262,7 @@ export default function GameEditPage() {
       <div className="p-6 text-center">
         <p className="text-red-400 mb-4">{error || '게임을 찾을 수 없습니다.'}</p>
         <Link href="/games-management">
-          <button className="px-4 py-2 bg-bg-tertiary hover:bg-line-light rounded-md text-sm">게임 목록으로</button>
+          <button className="px-4 py-2 bg-bg-tertiary hover:bg-line-light rounded-md text-base">게임 목록으로</button>
         </Link>
       </div>
     )
@@ -268,7 +274,7 @@ export default function GameEditPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/games-management">
-            <button className="flex items-center gap-1 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-md text-sm transition-colors">
+            <button className="flex items-center gap-1 px-3 py-2 text-text-secondary hover:text-text-primary hover:bg-bg-tertiary rounded-md text-base transition-colors">
               <ArrowLeft className="w-4 h-4" /> 게임 목록
             </button>
           </Link>
@@ -284,8 +290,8 @@ export default function GameEditPage() {
             </div>
           </div>
         </div>
-        <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-md text-sm font-semibold transition-colors">
+        <button onClick={handleSaveClick} disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-md text-base font-semibold transition-colors">
           {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? '저장 중...' : '변경사항 저장'}
         </button>
@@ -311,9 +317,9 @@ export default function GameEditPage() {
             </div>
           </div>
           <button
-            onClick={handleRequestReview}
+            onClick={handleRequestReviewClick}
             disabled={requestingReview}
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded-md text-sm font-semibold transition-colors text-white"
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded-md text-base font-semibold transition-colors text-white"
           >
             {requestingReview ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             {requestingReview ? '요청 중...' : '심사 요청'}
@@ -681,14 +687,38 @@ export default function GameEditPage() {
       {/* 하단 버튼 */}
       <div className="flex justify-between">
         <Link href="/games-management">
-          <button className="px-4 py-2 border border-line hover:bg-bg-tertiary rounded-md text-sm transition-colors">취소</button>
+          <button className="px-4 py-2 border border-line hover:bg-bg-tertiary rounded-md text-base transition-colors">취소</button>
         </Link>
-        <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-md text-sm font-semibold transition-colors">
+        <button onClick={handleSaveClick} disabled={saving}
+          className="flex items-center gap-2 px-6 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 rounded-md text-base font-semibold transition-colors">
           {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? '저장 중...' : '변경사항 저장'}
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={showReviewConfirm}
+        title="심사 요청"
+        message="심사를 요청하시겠습니까? 관리자 검토 후 승인됩니다."
+        confirmLabel="심사 요청"
+        onConfirm={() => {
+          setShowReviewConfirm(false)
+          handleRequestReview()
+        }}
+        onCancel={() => setShowReviewConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showSaveConfirm}
+        title="변경사항 저장"
+        message={'게임 정보를 수정하면 관리자의 재승인이 필요합니다.\n승인 완료 전까지 승인 상태가 "승인대기"로 변경됩니다.\n\n계속하시겠습니까?'}
+        confirmLabel="저장"
+        onConfirm={() => {
+          setShowSaveConfirm(false)
+          handleSave()
+        }}
+        onCancel={() => setShowSaveConfirm(false)}
+      />
     </div>
   )
 }

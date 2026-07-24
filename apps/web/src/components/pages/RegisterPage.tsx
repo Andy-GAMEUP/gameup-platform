@@ -552,7 +552,7 @@ export default function RegisterPage() {
                                 ? prev.companyType.filter(t => t !== value)
                                 : [...prev.companyType, value],
                             }))}
-                            className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                            className={`px-4 py-2 rounded-lg border text-base font-medium transition-colors ${
                               selected
                                 ? 'border-accent bg-accent-light text-accent'
                                 : 'border-line text-text-secondary hover:border-line hover:text-text-primary'

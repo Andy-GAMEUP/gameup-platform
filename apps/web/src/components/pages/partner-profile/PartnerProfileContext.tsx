@@ -3,6 +3,7 @@
 import { createContext, useContext } from 'react'
 import { UseMutationResult } from '@tanstack/react-query'
 import { PartnerData } from './constants'
+import { PartnerMessageItem } from '@/services/partnerService'
 
 export interface PartnerProfileCtxValue {
   id: string
@@ -14,6 +15,11 @@ export interface PartnerProfileCtxValue {
   userProjects: any[]
   myApplications: any[]
   myProjectApplicants: any[]
+  participatingProjectCount: number
+  completedParticipatingProjectCount: number
+  isDeveloperCompany: boolean
+  developerGames: any[]
+  receivedMessages: PartnerMessageItem[]
   applicantStatusMutation: UseMutationResult<any, any, { projectId: string; appId: string; status: string }>
 }
 

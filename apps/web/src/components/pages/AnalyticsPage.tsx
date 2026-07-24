@@ -254,7 +254,7 @@ export default function AnalyticsPage() {
             <div className="relative" ref={gameDropdownRef}>
               <button
                 onClick={() => setGameDropdownOpen(prev => !prev)}
-                className="flex items-center gap-2 px-3 py-2 bg-bg-tertiary border border-line rounded-md text-sm text-text-primary hover:bg-bg-secondary transition-colors min-w-[200px] justify-between"
+                className="flex items-center gap-2 px-3 py-2 bg-bg-tertiary border border-line rounded-md text-base text-text-primary hover:bg-bg-secondary transition-colors min-w-[200px] justify-between"
               >
                 {games.length === 0 ? (
                   <span className="text-text-secondary">게임 없음</span>
@@ -279,7 +279,7 @@ export default function AnalyticsPage() {
                     <button
                       key={g._id}
                       onClick={() => { setGameId(g._id); setGameDropdownOpen(false) }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-base transition-colors ${
                         g._id === gameId
                           ? 'bg-accent text-text-primary font-semibold'
                           : 'text-text-secondary hover:bg-bg-tertiary'
@@ -302,7 +302,7 @@ export default function AnalyticsPage() {
               <div className="relative" ref={vipHeaderDropdownRef}>
                 <button
                   onClick={() => setVipHeaderDropdownOpen(prev => !prev)}
-                  className="flex items-center gap-2 px-3 py-2 bg-bg-tertiary border border-line rounded-md text-sm text-text-primary hover:bg-bg-secondary transition-colors min-w-[200px] justify-between"
+                  className="flex items-center gap-2 px-3 py-2 bg-bg-tertiary border border-line rounded-md text-base text-text-primary hover:bg-bg-secondary transition-colors min-w-[200px] justify-between"
                 >
                   {(() => {
                     const u = DUMMY_PAYERS.find(p => p.rank === vipSelectedRank)!
@@ -326,7 +326,7 @@ export default function AnalyticsPage() {
                           router.replace(`/analytics?${params.toString()}`, { scroll: false })
                           setVipHeaderDropdownOpen(false)
                         }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 text-base transition-colors ${
                           p.rank === vipSelectedRank
                             ? 'bg-accent text-text-primary font-semibold'
                             : 'text-text-secondary hover:bg-bg-tertiary'
@@ -391,7 +391,7 @@ export default function AnalyticsPage() {
                   </div>
                   <button
                     onClick={() => { setSubmittedCac(cac); setSubmittedTargetDays(targetDays); setPaybackResult(undefined) }}
-                    className="px-4 py-2 text-sm bg-accent hover:bg-accent-hover text-text-primary font-semibold rounded-lg transition-colors whitespace-nowrap"
+                    className="px-4 py-2 text-base bg-accent hover:bg-accent-hover text-text-primary font-semibold rounded-lg transition-colors whitespace-nowrap"
                   >
                     계산하기
                   </button>
@@ -476,7 +476,7 @@ export default function AnalyticsPage() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(prev => !prev)}
-                className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-xs bg-bg-tertiary text-text-primary hover:bg-bg-secondary transition-colors min-w-[90px] justify-between"
+                className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-base bg-bg-tertiary text-text-primary hover:bg-bg-secondary transition-colors min-w-[90px] justify-between"
               >
                 <span>{PERIOD_OPTIONS.find(o => o.value === period)?.label ?? '기간'}</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
@@ -497,7 +497,7 @@ export default function AnalyticsPage() {
                               setDropdownView('list')
                             }
                           }}
-                          className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                          className={`w-full text-left px-3 py-2 text-base transition-colors ${
                             period === opt.value
                               ? 'bg-accent text-text-primary font-semibold'
                               : 'text-text-secondary hover:bg-bg-tertiary'
@@ -511,7 +511,7 @@ export default function AnalyticsPage() {
                     <div className="p-3 w-64 space-y-3">
                       <button
                         onClick={() => setDropdownView('list')}
-                        className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1 transition-colors"
+                        className="text-base text-text-secondary hover:text-text-primary flex items-center gap-1 transition-colors"
                       >
                         ← 돌아가기
                       </button>
@@ -535,7 +535,7 @@ export default function AnalyticsPage() {
                       </div>
                       <button
                         onClick={() => { setPeriod('custom'); load('custom'); setDropdownOpen(false); setDropdownView('list') }}
-                        className="w-full px-3 py-1.5 text-xs bg-accent hover:bg-accent-hover text-text-primary rounded-md font-medium transition-colors"
+                        className="w-full px-3 py-1.5 text-base bg-accent hover:bg-accent-hover text-text-primary rounded-md font-medium transition-colors"
                       >
                         조회
                       </button>
@@ -549,7 +549,7 @@ export default function AnalyticsPage() {
             <button
               onClick={() => load()}
               disabled={!gameId || loading}
-              className="flex items-center gap-1.5 px-3 py-2 border border-line rounded-md text-sm text-text-secondary hover:bg-bg-tertiary disabled:opacity-40"
+              className="flex items-center gap-1.5 px-3 py-2 border border-line rounded-md text-base text-text-secondary hover:bg-bg-tertiary disabled:opacity-40"
               title="새로고침"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -560,7 +560,7 @@ export default function AnalyticsPage() {
               <button
                 onClick={handleExport}
                 disabled={!gameId || exporting || loading || !data}
-                className="flex items-center px-3 py-2 border border-line rounded-md text-sm text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors"
+                className="flex items-center px-3 py-2 border border-line rounded-md text-base text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors"
               >
                 <Download className={`w-4 h-4 ${exporting ? 'animate-pulse' : ''}`} />
               </button>

@@ -113,7 +113,7 @@ export default function TeamSection() {
           <button
             onClick={() => teamSearch.trim() && addMutation.mutate(selectedUser?.username || teamSearch.trim())}
             disabled={addMutation.isPending || !teamSearch.trim()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-sm font-medium rounded-lg transition-colors disabled:opacity-50 self-start"
+            className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary text-base font-medium rounded-lg transition-colors disabled:opacity-50 self-start"
           >
             <UserPlus className="w-4 h-4" />
             추가
@@ -144,7 +144,7 @@ export default function TeamSection() {
             <button
               onClick={() => removeMutation.mutate(m.userId._id)}
               disabled={removeMutation.isPending}
-              className="flex items-center gap-1 text-xs text-danger hover:text-danger/80 border border-danger/30 hover:border-danger/60 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 text-base text-danger hover:text-danger/80 border border-danger/30 hover:border-danger/60 px-2.5 py-1 rounded-md transition-colors disabled:opacity-50"
             >
               <X className="w-3 h-3" />
               제거

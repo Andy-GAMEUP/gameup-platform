@@ -180,7 +180,7 @@ export default function AdminGameMetricsPage() {
       <div className="text-center py-16">
         <AlertTriangle className="w-12 h-12 text-text-muted mx-auto mb-3" />
         <p className="text-text-secondary">데이터를 불러올 수 없습니다</p>
-        <button onClick={() => router.push('/admin/games')} className="mt-4 text-cyan-400 hover:text-cyan-300 text-sm">← 게임 목록으로</button>
+        <button onClick={() => router.push('/admin/games')} className="mt-4 text-cyan-400 hover:text-cyan-300 text-base">← 게임 목록으로</button>
       </div>
     </AdminLayout>
   )
@@ -236,10 +236,10 @@ export default function AdminGameMetricsPage() {
             <h3 className="text-text-primary font-bold text-lg mb-1">{confirm.title}</h3>
             <p className="text-text-secondary text-sm mb-5">{confirm.desc}</p>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirm(null)} className="px-4 py-2 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
+              <button onClick={() => setConfirm(null)} className="px-4 py-2 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
               <button
                 onClick={() => handleControl(confirm.action)}
-                className={`px-4 py-2 text-sm text-text-primary rounded-lg transition-colors ${confirm.danger ? 'bg-red-700 hover:bg-red-800' : 'bg-orange-700 hover:bg-orange-800'}`}
+                className={`px-4 py-2 text-base text-text-primary rounded-lg transition-colors ${confirm.danger ? 'bg-red-700 hover:bg-red-800' : 'bg-orange-700 hover:bg-orange-800'}`}
               >
                 확인
               </button>
@@ -273,7 +273,7 @@ export default function AdminGameMetricsPage() {
               <button
                 onClick={() => setConfirm({ title: '게임 서비스 중지', desc: '게임이 즉시 중지되고 플레이어가 접근할 수 없게 됩니다. 계속하시겠습니까?', action: 'suspend' })}
                 disabled={actionLoading}
-                className="flex items-center gap-1.5 bg-orange-600/20 text-orange-300 border border-orange-500/30 hover:bg-orange-600/40 px-3 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 bg-orange-600/20 text-orange-300 border border-orange-500/30 hover:bg-orange-600/40 px-3 py-1.5 rounded-lg text-base transition-colors disabled:opacity-50"
               >
                 <Pause className="w-3.5 h-3.5" /> 중지
               </button>
@@ -281,7 +281,7 @@ export default function AdminGameMetricsPage() {
               <button
                 onClick={() => setConfirm({ title: '게임 재활성화', desc: '게임을 베타 상태로 재활성화합니다. 계속하시겠습니까?', action: 'reactivate' })}
                 disabled={actionLoading}
-                className="flex items-center gap-1.5 bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-600/40 px-3 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-600/40 px-3 py-1.5 rounded-lg text-base transition-colors disabled:opacity-50"
               >
                 <RotateCcw className="w-3.5 h-3.5" /> 재활성화
               </button>
@@ -290,7 +290,7 @@ export default function AdminGameMetricsPage() {
               <button
                 onClick={() => setConfirm({ title: '게임 종료 (아카이브)', desc: '이 게임을 영구적으로 종료 처리합니다. 이 작업은 되돌리기 어렵습니다. 정말 진행하시겠습니까?', action: 'archive', danger: true })}
                 disabled={actionLoading}
-                className="flex items-center gap-1.5 bg-bg-tertiary/50 text-text-secondary border border-line/40 hover:bg-line-light px-3 py-1.5 rounded-lg text-xs transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 bg-bg-tertiary/50 text-text-secondary border border-line/40 hover:bg-line-light px-3 py-1.5 rounded-lg text-base transition-colors disabled:opacity-50"
               >
                 <Archive className="w-3.5 h-3.5" /> 아카이브
               </button>
@@ -323,7 +323,7 @@ export default function AdminGameMetricsPage() {
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === key ? 'bg-bg-tertiary text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+              className={`px-4 py-1.5 rounded-lg text-base font-medium transition-colors ${tab === key ? 'bg-bg-tertiary text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
             >
               {label}
             </button>
@@ -342,7 +342,7 @@ export default function AdminGameMetricsPage() {
                 <div className="flex gap-1">
                   {(['7d', '30d'] as const).map((m) => (
                     <button key={m} onClick={() => setTrendMode(m)}
-                      className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${trendMode === m ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/40' : 'text-text-muted hover:text-text-secondary'}`}
+                      className={`px-2.5 py-1 rounded text-base font-medium transition-colors ${trendMode === m ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/40' : 'text-text-muted hover:text-text-secondary'}`}
                     >
                       {m === '7d' ? '7일' : '30일'}
                     </button>
@@ -514,7 +514,7 @@ export default function AdminGameMetricsPage() {
               <span className="text-text-secondary text-sm">유형:</span>
               {(['', 'general', 'bug', 'suggestion', 'praise'] as const).map((f) => (
                 <button key={f} onClick={() => setReviewFilter(f)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                  className={`px-3 py-1 rounded-lg text-base font-medium border transition-colors ${
                     reviewFilter === f
                       ? 'bg-bg-tertiary text-text-primary border-line'
                       : 'text-text-secondary border-line hover:border-line'

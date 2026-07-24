@@ -80,13 +80,13 @@ export default function RequestReviewButton({
                 <>
                   <button
                     onClick={handleConfirm}
-                    className="flex-1 px-4 py-2.5 text-sm text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors"
+                    className="flex-1 px-4 py-2.5 text-base text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors"
                   >
                     심사 취소
                   </button>
                   <button
                     onClick={() => setModalOpen(false)}
-                    className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors text-white bg-accent hover:bg-accent-hover"
+                    className="flex-1 px-4 py-2.5 text-base font-semibold rounded-xl transition-colors text-white bg-accent hover:bg-accent-hover"
                   >
                     계속 진행
                   </button>
@@ -95,13 +95,13 @@ export default function RequestReviewButton({
                 <>
                   <button
                     onClick={() => setModalOpen(false)}
-                    className="flex-1 px-4 py-2.5 text-sm text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors"
+                    className="flex-1 px-4 py-2.5 text-base text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors"
                   >
                     취소
                   </button>
                   <button
                     onClick={handleConfirm}
-                    className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors text-white bg-accent hover:bg-accent-hover"
+                    className="flex-1 px-4 py-2.5 text-base font-semibold rounded-xl transition-colors text-white bg-accent hover:bg-accent-hover"
                   >
                     심사 넣기
                   </button>

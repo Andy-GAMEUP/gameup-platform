@@ -7,6 +7,8 @@ import Editor from '@/components/Editor'
 import { useAuth } from '@/lib/useAuth'
 import { Plus, Trash2, Tag, Loader2, ArrowLeft } from 'lucide-react'
 
+const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
+
 export default function PartnerPostWritePage() {
   const params = useParams<{ id?: string }>()
   const editId = params?.id
@@ -103,7 +105,7 @@ export default function PartnerPostWritePage() {
       <div className="max-w-xl mx-auto px-4 py-16 text-center">
         <p className="text-text-primary font-semibold text-lg mb-2">파트너 전용 기능</p>
         <p className="text-text-secondary text-sm mb-6">승인된 파트너만 글을 작성할 수 있습니다.</p>
-        <button onClick={() => router.push('/partner')} className="bg-cyan-600 hover:bg-cyan-700 text-text-primary px-4 py-2 rounded-xl text-sm transition-colors">
+        <button onClick={() => router.push('/partner')} className="bg-cyan-600 hover:bg-cyan-700 text-text-primary px-4 py-2 rounded-xl text-base transition-colors">
           파트너 목록으로
         </button>
       </div>
@@ -114,7 +116,7 @@ export default function PartnerPostWritePage() {
     <div className="min-h-screen bg-bg-primary">
       <Navbar />
       <div className="max-w-3xl mx-auto px-4 py-8">
-        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-sm mb-6 transition-colors">
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-secondary hover:text-text-primary text-base mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> 뒤로
         </button>
 
@@ -161,7 +163,13 @@ export default function PartnerPostWritePage() {
 
           <div>
             <label className="text-text-secondary text-sm mb-2 block">내용 <span className="text-red-400">*</span></label>
-            <Editor content={content} onChange={setContent} placeholder="내용을 입력하세요..." />
+            <Editor content={content} onChange={setContent} placeholder="내용을 입력하세요..."
+              onImageUpload={async (file) => {
+                const result = await partnerService.uploadImages([file])
+                const raw = result.images[0]
+                return raw.startsWith('http') ? raw : `${UPLOADS_URL}${raw}`
+              }}
+            />
           </div>
 
           <div>
@@ -192,11 +200,11 @@ export default function PartnerPostWritePage() {
           </div>
 
           <div className="flex justify-end gap-3 pt-2 border-t border-line">
-            <button onClick={() => router.back()} className="px-5 py-2.5 text-sm text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
+            <button onClick={() => router.back()} className="px-5 py-2.5 text-base text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
               취소
             </button>
             <button onClick={handleSubmit} disabled={submitting}
-              className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-text-primary px-5 py-2.5 rounded-xl text-sm font-medium transition-colors">
+              className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-text-primary px-5 py-2.5 rounded-xl text-base font-medium transition-colors">
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {isEdit ? '수정 완료' : '게시하기'}
             </button>

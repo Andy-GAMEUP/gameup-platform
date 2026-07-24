@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import solutionService, { Solution, SolutionSubscription } from '@/services/solutionService'
 import {
   DndContext,
@@ -180,8 +181,8 @@ function SolutionForm({
         </div>
       </div>
       <div className="flex gap-2 pt-2">
-        <button type="button" onClick={onCancel} className="flex-1 bg-bg-tertiary hover:bg-bg-hover text-text-primary py-2 rounded-lg text-sm transition-colors">취소</button>
-        <button type="submit" disabled={saving} className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-text-primary py-2 rounded-lg text-sm transition-colors">
+        <button type="button" onClick={onCancel} className="flex-1 bg-bg-tertiary hover:bg-bg-hover text-text-primary py-2 rounded-lg text-base transition-colors">취소</button>
+        <button type="submit" disabled={saving} className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-text-primary py-2 rounded-lg text-base transition-colors">
           {saving ? '저장 중...' : '저장'}
         </button>
       </div>
@@ -194,6 +195,7 @@ function SolutionsTab() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editTarget, setEditTarget] = useState<Solution | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -231,7 +233,6 @@ function SolutionsTab() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('삭제하시겠습니까?')) return
     await solutionService.admin.deleteSolution(id)
     load()
   }
@@ -248,7 +249,7 @@ function SolutionsTab() {
           <h2 className="text-text-primary font-bold text-lg">솔루션 관리</h2>
           <button
             onClick={() => { setEditTarget(null); setShowForm(true) }}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-text-primary px-4 py-2 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-text-primary px-4 py-2 rounded-lg text-base transition-colors"
           >
             <Plus className="w-4 h-4" /> 솔루션 추가
           </button>
@@ -297,7 +298,7 @@ function SolutionsTab() {
                         key={s._id}
                         solution={s}
                         onEdit={sol => { setEditTarget(sol); setShowForm(false) }}
-                        onDelete={handleDelete}
+                        onDelete={setDeleteConfirmId}
                         onToggle={handleToggle}
                       />
                     )
@@ -311,6 +312,20 @@ function SolutionsTab() {
           )}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="솔루션 삭제"
+        message="삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteConfirmId) return
+          handleDelete(deleteConfirmId)
+          setDeleteConfirmId(null)
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   )
 }
@@ -390,21 +405,21 @@ function SubscriptionRow({ sub, onStatusUpdate, onConfirm, onDelete }: {
               <button
                 disabled={saving}
                 onClick={async () => { setSaving(true); await onStatusUpdate(sub._id, status, adminNote); setSaving(false) }}
-                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-text-primary px-4 py-2 rounded-lg text-sm transition-colors"
+                className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-text-primary px-4 py-2 rounded-lg text-base transition-colors"
               >
                 {saving ? '저장...' : '저장'}
               </button>
               {!sub.isConfirmed && (
                 <button
                   onClick={() => onConfirm(sub._id)}
-                  className="bg-accent hover:bg-accent text-text-primary px-4 py-2 rounded-lg text-sm transition-colors"
+                  className="bg-accent hover:bg-accent text-text-primary px-4 py-2 rounded-lg text-base transition-colors"
                 >
                   확정
                 </button>
               )}
               <button
                 onClick={() => onDelete(sub._id)}
-                className="bg-red-900/40 hover:bg-red-900/60 text-accent-text px-4 py-2 rounded-lg text-sm transition-colors"
+                className="bg-red-900/40 hover:bg-red-900/60 text-accent-text px-4 py-2 rounded-lg text-base transition-colors"
               >
                 삭제
               </button>
@@ -422,6 +437,7 @@ function SubscriptionsTab() {
   const [filterStatus, setFilterStatus] = useState('')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   const load = (p = 1) => {
     setLoading(true)
@@ -447,7 +463,6 @@ function SubscriptionsTab() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('삭제하시겠습니까?')) return
     await solutionService.admin.deleteSubscription(id)
     load(page)
   }
@@ -487,7 +502,7 @@ function SubscriptionsTab() {
                   sub={sub}
                   onStatusUpdate={handleStatusUpdate}
                   onConfirm={handleConfirm}
-                  onDelete={handleDelete}
+                  onDelete={setDeleteConfirmId}
                 />
               ))
             )}
@@ -498,12 +513,26 @@ function SubscriptionsTab() {
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 mt-4">
           <button disabled={page <= 1} onClick={() => load(page - 1)}
-            className="px-3 py-1.5 rounded-lg bg-bg-tertiary text-text-secondary text-sm disabled:opacity-40 hover:bg-line-light transition-colors">이전</button>
+            className="px-3 py-1.5 rounded-lg bg-bg-tertiary text-text-secondary text-base disabled:opacity-40 hover:bg-line-light transition-colors">이전</button>
           <span className="text-text-secondary text-sm">{page} / {totalPages}</span>
           <button disabled={page >= totalPages} onClick={() => load(page + 1)}
-            className="px-3 py-1.5 rounded-lg bg-bg-tertiary text-text-secondary text-sm disabled:opacity-40 hover:bg-line-light transition-colors">다음</button>
+            className="px-3 py-1.5 rounded-lg bg-bg-tertiary text-text-secondary text-base disabled:opacity-40 hover:bg-line-light transition-colors">다음</button>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="구독 신청 삭제"
+        message="삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteConfirmId) return
+          handleDelete(deleteConfirmId)
+          setDeleteConfirmId(null)
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   )
 }
@@ -517,13 +546,13 @@ export default function AdminSolutionsPage() {
         <div className="flex items-center gap-1 mb-6 bg-bg-secondary border border-line rounded-xl p-1 w-fit">
           <button
             onClick={() => setTab('solutions')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'solutions' ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+            className={`px-4 py-2 rounded-lg text-base font-medium transition-colors ${tab === 'solutions' ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
           >
             솔루션 관리
           </button>
           <button
             onClick={() => setTab('subscriptions')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === 'subscriptions' ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+            className={`px-4 py-2 rounded-lg text-base font-medium transition-colors ${tab === 'subscriptions' ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
           >
             구독 신청
           </button>

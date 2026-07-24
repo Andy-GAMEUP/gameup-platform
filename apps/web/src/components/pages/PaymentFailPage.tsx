@@ -33,7 +33,7 @@ export default function PaymentFailPage() {
             </Link>
             <button
               onClick={() => router.back()}
-              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition-colors"
+              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 rounded-lg text-base font-semibold transition-colors"
             >
               다시 시도
             </button>

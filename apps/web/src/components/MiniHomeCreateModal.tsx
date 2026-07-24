@@ -123,7 +123,7 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
             <CheckCircle className="w-12 h-12 text-accent mb-4" />
             <p className="text-text-primary font-semibold text-lg mb-2">미니홈이 생성되었습니다!</p>
             <p className="text-text-secondary text-sm mb-6">게임 포트폴리오 페이지를 통해 투자자와 퍼블리셔를 만나보세요.</p>
-            <button onClick={onSuccess} className="bg-red-600 hover:bg-red-700 text-text-primary px-6 py-2.5 rounded-xl text-sm font-medium transition-colors">
+            <button onClick={onSuccess} className="bg-red-600 hover:bg-red-700 text-text-primary px-6 py-2.5 rounded-xl text-base font-medium transition-colors">
               확인
             </button>
           </div>
@@ -270,7 +270,7 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
                           key={tag}
                           type="button"
                           onClick={() => toggleTag(tag)}
-                          className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${selectedTags.includes(tag) ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-line text-text-secondary hover:text-text-primary'}`}
+                          className={`px-3 py-1.5 rounded-full text-base border transition-colors ${selectedTags.includes(tag) ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-line text-text-secondary hover:text-text-primary'}`}
                         >
                           {tag}
                         </button>
@@ -302,7 +302,7 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
                                 key={k.name}
                                 type="button"
                                 onClick={() => toggleKeyword(k.name)}
-                                className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${selectedKeywords.includes(k.name) ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-line text-text-secondary hover:text-text-primary'}`}
+                                className={`px-3 py-1.5 rounded-full text-base border transition-colors ${selectedKeywords.includes(k.name) ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-line text-text-secondary hover:text-text-primary'}`}
                               >
                                 {k.name}
                               </button>
@@ -319,23 +319,23 @@ export default function MiniHomeCreateModal({ isOpen, onClose, onSuccess }: Prop
             <div className="flex justify-between gap-3 px-6 py-4 border-t border-line">
               {step > 1 ? (
                 <button onClick={() => { setErrorMsg(''); setStep(s => s - 1) }}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
+                  className="flex items-center gap-1.5 px-4 py-2 text-base text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
                   <ChevronLeft className="w-4 h-4" /> 이전
                 </button>
               ) : (
-                <button onClick={onClose} className="px-4 py-2 text-sm text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
+                <button onClick={onClose} className="px-4 py-2 text-base text-text-secondary border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
                   취소
                 </button>
               )}
 
               {step < 3 ? (
                 <button onClick={goNext}
-                  className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-text-primary px-5 py-2 rounded-xl text-sm font-medium transition-colors">
+                  className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-text-primary px-5 py-2 rounded-xl text-base font-medium transition-colors">
                   다음 <ChevronRight className="w-4 h-4" />
                 </button>
               ) : (
                 <button onClick={handleSubmit} disabled={submitState === 'loading'}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary px-5 py-2 rounded-xl text-sm font-medium transition-colors">
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary px-5 py-2 rounded-xl text-base font-medium transition-colors">
                   {submitState === 'loading' && <Loader2 className="w-4 h-4 animate-spin" />}
                   완료
                 </button>

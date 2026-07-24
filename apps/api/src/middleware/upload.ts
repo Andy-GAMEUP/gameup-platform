@@ -20,6 +20,7 @@ ensureDir(path.join(UPLOAD_BASE, 'screenshots'))
 ensureDir(path.join(UPLOAD_BASE, 'certs'))
 ensureDir(path.join(UPLOAD_BASE, 'shop-items'))
 ensureDir(path.join(UPLOAD_BASE, 'videos'))
+ensureDir(path.join(UPLOAD_BASE, 'partner'))
 
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
@@ -33,6 +34,8 @@ const storage = multer.diskStorage({
       cb(null, path.join(UPLOAD_BASE, 'certs'))
     } else if (file.fieldname === 'communityImages') {
       cb(null, path.join(UPLOAD_BASE, 'community'))
+    } else if (file.fieldname === 'partnerImages') {
+      cb(null, path.join(UPLOAD_BASE, 'partner'))
     } else if (file.fieldname === 'screenshot') {
       cb(null, path.join(UPLOAD_BASE, 'screenshots'))
     } else if (file.fieldname === 'videoFile') {
@@ -60,7 +63,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     } else {
       cb(new Error('게임 파일은 HTML 또는 ZIP 형식만 가능합니다'))
     }
-  } else if (['thumbnail','bannerImage','communityImages','screenshot','shopItemImage','shopCurrencyIcon'].includes(file.fieldname)) {
+  } else if (['thumbnail','bannerImage','communityImages','partnerImages','screenshot','shopItemImage','shopCurrencyIcon'].includes(file.fieldname)) {
     const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     const allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     const ext = path.extname(file.originalname).toLowerCase()
@@ -180,3 +183,13 @@ export const communityUpload = multer({
     files: 5
   }
 }).array('communityImages', 5)
+
+// 파트너 채널(소개/활동 계획 등) 이미지 업로드 (최대 5장, 5MB/장)
+export const partnerUpload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB per file
+    files: 5
+  }
+}).array('partnerImages', 5)

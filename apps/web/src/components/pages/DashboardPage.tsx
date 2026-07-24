@@ -182,7 +182,7 @@ export function DashboardPage() {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(prev => !prev)}
-                className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-xs bg-bg-tertiary text-text-primary hover:bg-bg-secondary transition-colors min-w-[90px] justify-between"
+                className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-base bg-bg-tertiary text-text-primary hover:bg-bg-secondary transition-colors min-w-[90px] justify-between"
               >
                 <span>{PERIOD_OPTIONS.find(o => o.value === period)?.label ?? '기간'}</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
@@ -203,7 +203,7 @@ export function DashboardPage() {
                               setDropdownView('list')
                             }
                           }}
-                          className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                          className={`w-full text-left px-3 py-2 text-base transition-colors ${
                             period === opt.value
                               ? 'bg-accent text-text-primary font-semibold'
                               : 'text-text-secondary hover:bg-bg-tertiary'
@@ -217,7 +217,7 @@ export function DashboardPage() {
                     <div className="p-3 w-64 space-y-3">
                       <button
                         onClick={() => setDropdownView('list')}
-                        className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1 transition-colors"
+                        className="text-base text-text-secondary hover:text-text-primary flex items-center gap-1 transition-colors"
                       >
                         ← 돌아가기
                       </button>
@@ -246,7 +246,7 @@ export function DashboardPage() {
                       </div>
                       <button
                         onClick={() => { setPeriod('custom'); load('custom'); setDropdownOpen(false); setDropdownView('list') }}
-                        className="w-full px-3 py-1.5 text-xs bg-accent hover:bg-accent-hover text-text-primary rounded-md font-medium transition-colors"
+                        className="w-full px-3 py-1.5 text-base bg-accent hover:bg-accent-hover text-text-primary rounded-md font-medium transition-colors"
                       >
                         조회
                       </button>
@@ -257,7 +257,7 @@ export function DashboardPage() {
             </div>
             <button
               onClick={() => load()}
-              className="flex items-center gap-1.5 px-3 py-2 border border-line rounded-md text-sm text-text-secondary hover:bg-bg-tertiary"
+              className="flex items-center gap-1.5 px-3 py-2 border border-line rounded-md text-base text-text-secondary hover:bg-bg-tertiary"
               title="새로고침"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -266,7 +266,7 @@ export function DashboardPage() {
               <button
                 onClick={handleExport}
                 disabled={exporting || loading}
-                className="flex items-center px-3 py-2 border border-line rounded-md text-sm text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors"
+                className="flex items-center px-3 py-2 border border-line rounded-md text-base text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors"
               >
                 <Download className={`w-4 h-4 ${exporting ? 'animate-pulse' : ''}`} />
               </button>
@@ -290,7 +290,7 @@ export function DashboardPage() {
       {error && (
         <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => load()} className="text-xs underline">다시 시도</button>
+          <button onClick={() => load()} className="text-base underline">다시 시도</button>
         </div>
       )}
 
@@ -348,7 +348,7 @@ export function DashboardPage() {
                 <button
                   key={tab.value}
                   onClick={() => setActiveTab(tab.value)}
-                  className={`px-3 py-2 text-xs transition-colors whitespace-nowrap ${
+                  className={`px-3 py-2 text-base transition-colors whitespace-nowrap ${
                     activeTab === tab.value
                       ? 'bg-accent text-text-primary'
                       : 'bg-bg-tertiary text-text-secondary hover:bg-bg-secondary'
@@ -367,7 +367,7 @@ export function DashboardPage() {
               <div className="text-center py-16 text-text-secondary">
                 <p className="mb-4">표시할 게임이 없습니다.</p>
                 <Link href="/upload">
-                  <button className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-sm font-semibold transition-colors">
+                  <button className="inline-flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base font-semibold transition-colors">
                     <Plus className="w-4 h-4" /> 첫 게임 등록하기
                   </button>
                 </Link>

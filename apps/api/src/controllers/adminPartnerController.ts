@@ -8,7 +8,6 @@ import {
   PartnerProjectModel as PartnerProject,
   PartnerProjectApplicationModel as PartnerProjectApplication,
   PartnerProjectDeletionLogModel as PartnerProjectDeletionLog,
-  MiniHomeModel as MiniHome,
 } from '@gameup/db'
 
 export const getPartnerRequests = async (req: AuthRequest, res: Response) => {
@@ -99,20 +98,7 @@ export const getPartners = async (req: AuthRequest, res: Response) => {
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
 
-    // MiniHome 정보를 같이 조회 (isPublic, companyName, skills, expertiseArea 등)
-    const partnerUserIds = partners.map((p) => p.userId?._id || p.userId).filter(Boolean)
-    const minihomes = await MiniHome.find({ userId: { $in: partnerUserIds } })
-      .select('userId companyName introduction isPublic expertiseArea skills availability location contactEmail contactPhone website hourlyRate rating reviewCount completedProjectCount isVerified')
-    const minihomeMap = new Map(minihomes.map((m) => [String(m.userId), m]))
-
-    const enriched = partners.map((p) => {
-      const pObj = p.toObject()
-      const uid = String(p.userId?._id || p.userId)
-      const mh = minihomeMap.get(uid)
-      return { ...pObj, minihome: mh ? mh.toObject() : null }
-    })
-
-    res.json({ partners: enriched, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
+    res.json({ partners, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
   } catch {
     res.status(500).json({ message: '파트너 목록 조회 실패' })
   }
@@ -121,16 +107,8 @@ export const getPartners = async (req: AuthRequest, res: Response) => {
 export const togglePartnerProfileVisibility = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
-    // id는 partner _id → userId를 찾아서 MiniHome의 isPublic을 토글
     const partner = await Partner.findById(id)
     if (!partner) return res.status(404).json({ message: '파트너를 찾을 수 없습니다' })
-    const minihome = await MiniHome.findOne({ userId: partner.userId })
-    if (minihome) {
-      minihome.isPublic = !minihome.isPublic
-      await minihome.save()
-      return res.json({ isPublic: minihome.isPublic })
-    }
-    // MiniHome이 없는 경우 Partner의 isProfilePublic 토글
     partner.isProfilePublic = !partner.isProfilePublic
     await partner.save()
     res.json({ isPublic: partner.isProfilePublic })
@@ -143,40 +121,26 @@ export const updatePartnerProfile = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const { slogan, introduction, externalUrl, selectedTopics, profileImage,
-      companyName, skills, expertiseArea, availability, location,
+      displayNameOverride, location,
       contactEmail, contactPhone, website, hourlyRate } = req.body
     const partner = await Partner.findById(id)
     if (!partner) return res.status(404).json({ message: '파트너를 찾을 수 없습니다' })
 
-    // Partner 필드 업데이트
     if (slogan !== undefined) partner.slogan = slogan
     if (introduction !== undefined) partner.introduction = introduction
     if (externalUrl !== undefined) partner.externalUrl = externalUrl
     if (selectedTopics !== undefined) partner.selectedTopics = selectedTopics
     if (profileImage !== undefined) partner.profileImage = profileImage
+    if (displayNameOverride !== undefined) partner.displayNameOverride = displayNameOverride
+    if (location !== undefined) partner.location = location
+    if (contactEmail !== undefined) partner.contactEmail = contactEmail
+    if (contactPhone !== undefined) partner.contactPhone = contactPhone
+    if (website !== undefined) partner.website = website
+    if (hourlyRate !== undefined) partner.hourlyRate = hourlyRate
     await partner.save()
 
-    // MiniHome 필드 업데이트 (기업프로필 세부정보)
-    const minihome = await MiniHome.findOne({ userId: partner.userId })
-    if (minihome) {
-      if (companyName !== undefined) minihome.companyName = companyName
-      if (introduction !== undefined) minihome.introduction = introduction
-      if (skills !== undefined) minihome.skills = skills
-      if (expertiseArea !== undefined) minihome.expertiseArea = expertiseArea
-      if (availability !== undefined) minihome.availability = availability
-      if (location !== undefined) minihome.location = location
-      if (contactEmail !== undefined) minihome.contactEmail = contactEmail
-      if (contactPhone !== undefined) minihome.contactPhone = contactPhone
-      if (website !== undefined) minihome.website = website
-      if (hourlyRate !== undefined) minihome.hourlyRate = hourlyRate
-      await minihome.save()
-    }
-
     const updated = await Partner.findById(id).populate('userId', 'username email profileImage createdAt companyInfo contactPerson')
-    const updatedMh = await MiniHome.findOne({ userId: partner.userId })
-      .select('userId companyName introduction isPublic expertiseArea skills availability location contactEmail contactPhone website hourlyRate rating reviewCount completedProjectCount isVerified')
-    const result = { ...updated?.toObject(), minihome: updatedMh?.toObject() || null }
-    res.json({ partner: result })
+    res.json({ partner: updated })
   } catch {
     res.status(500).json({ message: '파트너 프로필 수정 실패' })
   }

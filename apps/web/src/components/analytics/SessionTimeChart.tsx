@@ -51,7 +51,7 @@ export default function SessionTimeChart({ data }: { data: DailyPoint[] }) {
             <button
               key={s.key}
               onClick={() => toggle(s.key)}
-              className={`px-3 py-1.5 text-xs transition-colors ${
+              className={`px-3 py-1.5 text-base transition-colors ${
                 active.has(s.key)
                   ? 'text-text-primary font-semibold'
                   : 'bg-bg-tertiary text-text-secondary hover:bg-bg-secondary'

@@ -147,7 +147,7 @@ export default function AdminIndividualMembersPage() {
             <div className="flex gap-1">
               {STATUS_OPTIONS.map(s => (
                 <button key={s} onClick={() => { setStatus(s); setPage(1) }}
-                  className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${status === s ? 'bg-accent-light text-accent-text border-accent-muted' : 'bg-bg-tertiary text-text-secondary border-line hover:bg-line-light'}`}>
+                  className={`px-3 py-1.5 rounded-lg text-base border transition-colors ${status === s ? 'bg-accent-light text-accent-text border-accent-muted' : 'bg-bg-tertiary text-text-secondary border-line hover:bg-line-light'}`}>
                   {s}
                 </button>
               ))}
@@ -177,7 +177,7 @@ export default function AdminIndividualMembersPage() {
               {LIMIT_OPTIONS.map(l => <option key={l} value={l}>{l}개씩</option>)}
             </select>
             <button onClick={() => { setPage(1); fetchData() }}
-              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-text-primary text-sm rounded-lg transition-colors">
+              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-text-primary text-base rounded-lg transition-colors">
               검색
             </button>
           </div>
@@ -187,15 +187,15 @@ export default function AdminIndividualMembersPage() {
           <div className="flex items-center gap-3 bg-bg-tertiary/50 border border-line rounded-xl px-4 py-3">
             <span className="text-text-secondary text-sm font-medium">{selected.size}명 선택됨</span>
             <button onClick={() => openModal('notify')}
-              className="px-3 py-1.5 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg text-xs hover:bg-blue-600/30 transition-colors">
+              className="px-3 py-1.5 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg text-base hover:bg-blue-600/30 transition-colors">
               알림 발송
             </button>
             <button onClick={() => openModal('score')}
-              className="px-3 py-1.5 bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs hover:bg-emerald-600/30 transition-colors">
+              className="px-3 py-1.5 bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 rounded-lg text-base hover:bg-emerald-600/30 transition-colors">
               활동점수 지급
             </button>
             <button onClick={() => openModal('points')}
-              className="px-3 py-1.5 bg-yellow-600/20 text-yellow-300 border border-yellow-500/30 rounded-lg text-xs hover:bg-yellow-600/30 transition-colors">
+              className="px-3 py-1.5 bg-yellow-600/20 text-yellow-300 border border-yellow-500/30 rounded-lg text-base hover:bg-yellow-600/30 transition-colors">
               포인트 지급
             </button>
           </div>
@@ -261,20 +261,20 @@ export default function AdminIndividualMembersPage() {
         {totalPages > 1 && (
           <div className="flex justify-center gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
+              className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
               이전
             </button>
             {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
               const p = Math.max(1, Math.min(page - 3, totalPages - 6)) + i
               return p <= totalPages ? (
                 <button key={p} onClick={() => setPage(p)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>
+                  className={`px-3 py-1.5 text-base rounded-lg transition-colors ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>
                   {p}
                 </button>
               ) : null
             })}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
+              className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
               다음
             </button>
           </div>
@@ -311,11 +311,11 @@ export default function AdminIndividualMembersPage() {
             )}
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal({ open: false, type: null })}
-                className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">
+                className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-base transition-colors">
                 취소
               </button>
               <button onClick={submitModal} disabled={submitting}
-                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-base transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 확인
               </button>

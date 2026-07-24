@@ -174,7 +174,7 @@ export default function PaymentsPage() {
           <div className="relative" ref={periodDropdownRef}>
             <button
               onClick={() => setPeriodDropdownOpen(v => !v)}
-              className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-xs bg-bg-tertiary text-text-primary hover:bg-bg-secondary transition-colors min-w-[100px] justify-between"
+              className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-base bg-bg-tertiary text-text-primary hover:bg-bg-secondary transition-colors min-w-[100px] justify-between"
             >
               <span>{PERIOD_OPTIONS.find(o => o.value === period)?.label ?? '기간'}</span>
               <ChevronDown className={`w-3.5 h-3.5 transition-transform ${periodDropdownOpen ? 'rotate-180' : ''}`} />
@@ -194,7 +194,7 @@ export default function PaymentsPage() {
                             setPeriodDropdownOpen(false)
                           }
                         }}
-                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${
+                        className={`w-full text-left px-3 py-2 text-base transition-colors ${
                           period === opt.value ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'
                         }`}
                       >
@@ -206,7 +206,7 @@ export default function PaymentsPage() {
                   <div className="p-3 w-56 space-y-3">
                     <button
                       onClick={() => setPeriodDropdownView('list')}
-                      className="text-xs text-text-secondary hover:text-text-primary flex items-center gap-1 transition-colors"
+                      className="text-base text-text-secondary hover:text-text-primary flex items-center gap-1 transition-colors"
                     >
                       ← 돌아가기
                     </button>
@@ -226,7 +226,7 @@ export default function PaymentsPage() {
                     </div>
                     <button
                       onClick={() => { setPeriod('custom'); setPeriodDropdownOpen(false); setPeriodDropdownView('list') }}
-                      className="w-full px-3 py-1.5 text-xs bg-accent hover:bg-accent-hover text-text-primary rounded-md font-medium transition-colors"
+                      className="w-full px-3 py-1.5 text-base bg-accent hover:bg-accent-hover text-text-primary rounded-md font-medium transition-colors"
                     >
                       적용
                     </button>
@@ -237,14 +237,14 @@ export default function PaymentsPage() {
           </div>
           {/* 갱신 */}
           <button onClick={() => load(1)} disabled={loading}
-            className="flex items-center px-3 py-2 border border-line rounded-md text-sm text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors"
+            className="flex items-center px-3 py-2 border border-line rounded-md text-base text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors"
             title="새로고침">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           {/* 엑셀 내보내기 */}
           <div className="relative group">
             <button onClick={downloadCSV} disabled={!payments.length}
-              className="flex items-center px-3 py-2 border border-line rounded-md text-sm text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors">
+              className="flex items-center px-3 py-2 border border-line rounded-md text-base text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors">
               <Download className="w-4 h-4" />
             </button>
             <div className="absolute right-0 top-full mt-1.5 px-2 py-1 bg-bg-primary border border-line rounded text-xs text-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
@@ -272,7 +272,7 @@ export default function PaymentsPage() {
             <div className="relative" ref={gameDropdownRef}>
               <button
                 onClick={() => setGameDropdownOpen(v => !v)}
-                className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-line rounded-md text-sm text-text-primary hover:bg-bg-tertiary transition-colors min-w-[180px] justify-between"
+                className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-line rounded-md text-base text-text-primary hover:bg-bg-tertiary transition-colors min-w-[180px] justify-between"
               >
                 {gameId === '' ? (
                   <span className="flex items-center gap-2">
@@ -298,7 +298,7 @@ export default function PaymentsPage() {
                 <div className="absolute left-0 top-full mt-1 bg-bg-primary border border-line rounded-md shadow-lg z-20 min-w-[180px] max-h-60 overflow-y-auto">
                   <button
                     onClick={() => { setGameId(''); setGameDropdownOpen(false) }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${gameId === '' ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
+                    className={`w-full flex items-center gap-2 px-3 py-2 text-base transition-colors ${gameId === '' ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
                   >
                     <span className="w-5 h-5 rounded bg-bg-secondary flex items-center justify-center flex-shrink-0">
                       <LayoutGrid className="w-3 h-3 text-text-muted" />
@@ -309,7 +309,7 @@ export default function PaymentsPage() {
                     <button
                       key={g._id}
                       onClick={() => { setGameId(g._id); setGameDropdownOpen(false) }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${g._id === gameId ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-base transition-colors ${g._id === gameId ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
                     >
                       {g.thumbnail
                         ? <Image src={g.thumbnail} alt={g.title} width={20} height={20} className="w-5 h-5 rounded object-cover flex-shrink-0" unoptimized />
@@ -343,7 +343,7 @@ export default function PaymentsPage() {
           </div>
 
           <button onClick={() => load(1)} disabled={loading}
-            className="px-5 py-2 bg-accent text-text-inverse text-sm font-semibold rounded-md hover:bg-accent-hover disabled:opacity-40 transition-colors">
+            className="px-5 py-2 bg-accent text-text-inverse text-base font-semibold rounded-md hover:bg-accent-hover disabled:opacity-40 transition-colors">
             {loading ? '조회 중...' : '조회'}
           </button>
         </div>
@@ -429,10 +429,10 @@ export default function PaymentsPage() {
       {pages > 1 && (
         <div className="flex justify-center items-center gap-2">
           <button onClick={() => load(page - 1)} disabled={page <= 1}
-            className="px-3 py-1.5 text-sm border border-line rounded-md disabled:opacity-30 hover:bg-bg-tertiary">이전</button>
+            className="px-3 py-1.5 text-base border border-line rounded-md disabled:opacity-30 hover:bg-bg-tertiary">이전</button>
           <span className="text-sm text-text-secondary">{page} / {pages}</span>
           <button onClick={() => load(page + 1)} disabled={page >= pages}
-            className="px-3 py-1.5 text-sm border border-line rounded-md disabled:opacity-30 hover:bg-bg-tertiary">다음</button>
+            className="px-3 py-1.5 text-base border border-line rounded-md disabled:opacity-30 hover:bg-bg-tertiary">다음</button>
         </div>
       )}
     </div>

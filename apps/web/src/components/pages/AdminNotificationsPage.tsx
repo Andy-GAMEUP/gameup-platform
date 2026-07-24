@@ -108,7 +108,7 @@ function SendTab() {
       <button
         onClick={handleSend}
         disabled={sending || !title.trim() || !content.trim()}
-        className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-text-primary text-sm font-medium rounded-lg transition-colors"
+        className="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-text-primary text-base font-medium rounded-lg transition-colors"
       >
         {sending ? '발송 중...' : '발송'}
       </button>
@@ -179,7 +179,7 @@ function HistoryTab() {
           <button
             disabled={page === 1}
             onClick={() => setPage((p) => p - 1)}
-            className="px-3 py-1.5 bg-bg-tertiary hover:bg-line-light disabled:opacity-40 text-text-secondary text-sm rounded-lg transition-colors"
+            className="px-3 py-1.5 bg-bg-tertiary hover:bg-line-light disabled:opacity-40 text-text-secondary text-base rounded-lg transition-colors"
           >
             이전
           </button>
@@ -187,7 +187,7 @@ function HistoryTab() {
           <button
             disabled={page === totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className="px-3 py-1.5 bg-bg-tertiary hover:bg-line-light disabled:opacity-40 text-text-secondary text-sm rounded-lg transition-colors"
+            className="px-3 py-1.5 bg-bg-tertiary hover:bg-line-light disabled:opacity-40 text-text-secondary text-base rounded-lg transition-colors"
           >
             다음
           </button>
@@ -218,7 +218,7 @@ export default function AdminNotificationsPage() {
             <button
               key={t.key}
               onClick={() => setActiveTab(t.key)}
-              className={`pb-3 text-sm font-medium border-b-2 transition-colors -mb-px ${
+              className={`pb-3 text-base font-medium border-b-2 transition-colors -mb-px ${
                 activeTab === t.key
                   ? 'border-accent text-accent'
                   : 'border-transparent text-text-secondary hover:text-text-primary'

@@ -25,7 +25,7 @@ export default function Page() {
       <div className="flex gap-1 mb-4 border-b border-line">
         <button
           onClick={() => setTab('posts')}
-          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+          className={`px-4 py-2 text-base font-medium transition-colors border-b-2 -mb-px ${
             tab === 'posts'
               ? 'border-accent text-accent-text'
               : 'border-transparent text-text-muted hover:text-text-primary'
@@ -35,7 +35,7 @@ export default function Page() {
         </button>
         <button
           onClick={() => setTab('comments')}
-          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+          className={`px-4 py-2 text-base font-medium transition-colors border-b-2 -mb-px ${
             tab === 'comments'
               ? 'border-accent text-accent-text'
               : 'border-transparent text-text-muted hover:text-text-primary'
@@ -45,7 +45,7 @@ export default function Page() {
         </button>
         <button
           onClick={() => setTab('users')}
-          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+          className={`px-4 py-2 text-base font-medium transition-colors border-b-2 -mb-px ${
             tab === 'users'
               ? 'border-accent text-accent-text'
               : 'border-transparent text-text-muted hover:text-text-primary'

@@ -43,7 +43,7 @@ function HistoryModal({ user, onClose }: { user: ReportedUser; onClose: () => vo
           </div>
         )}
         <div className="flex justify-end mt-4">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">닫기</button>
+          <button onClick={onClose} className="px-3 py-1.5 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">닫기</button>
         </div>
       </div>
     </div>
@@ -66,7 +66,7 @@ function AppealViewModal({ appeal, username, onClose }: {
           {appeal.content}
         </p>
         <div className="flex justify-end mt-4">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">
+          <button onClick={onClose} className="px-3 py-1.5 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">
             닫기
           </button>
         </div>
@@ -224,7 +224,7 @@ export function ReportedUsersTab() {
                     <td className="px-4 py-3 text-center border-r border-line/20">
                       {u.appeal ? (
                         <button onClick={() => setAppealTarget(u)}
-                          className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-blue-700/20 text-blue-400 border-blue-600/40 hover:bg-blue-700/40 transition-colors whitespace-nowrap">
+                          className="inline-flex items-center px-2.5 py-1.5 rounded-lg text-base font-medium border bg-blue-700/20 text-blue-400 border-blue-600/40 hover:bg-blue-700/40 transition-colors whitespace-nowrap">
                           {formatDate(u.appeal.createdAt)}
                         </button>
                       ) : (
@@ -233,7 +233,7 @@ export function ReportedUsersTab() {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <button onClick={() => setHistoryTarget(u)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-bg-tertiary text-text-secondary border-line hover:text-text-primary hover:bg-bg-tertiary/80 transition-colors">
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-bg-tertiary text-text-secondary border-line hover:text-text-primary hover:bg-bg-tertiary/80 transition-colors">
                         <History className="w-3 h-3" />
                         {(u.history?.length ?? 0) > 0 ? `${u.history!.length}건` : '보기'}
                       </button>

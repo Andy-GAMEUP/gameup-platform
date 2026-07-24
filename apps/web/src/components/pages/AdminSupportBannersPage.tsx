@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import supportService, { SupportBanner, SupportTab } from '@/services/supportService'
 import adminService from '@/services/adminService'
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core'
@@ -144,7 +145,7 @@ function SortableTabRow({
         <button
           onClick={() => onUpdate(tab._id, { name, content })}
           disabled={saving}
-          className="flex items-center gap-1 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded text-xs transition-colors disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded text-base transition-colors disabled:opacity-50"
         >
           <Save className="w-3 h-3" />저장
         </button>
@@ -178,6 +179,7 @@ function BannersSection({ category, label }: { category: SupportBanner['category
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [deleteBannerId, setDeleteBannerId] = useState<string | null>(null)
 
   const showToast = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3000) }
 
@@ -213,7 +215,6 @@ function BannersSection({ category, label }: { category: SupportBanner['category
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('이 배너를 삭제하시겠습니까?')) return
     setSaving(true)
     try {
       await supportService.admin.deleteBanner(id)
@@ -246,7 +247,7 @@ function BannersSection({ category, label }: { category: SupportBanner['category
         <button
           onClick={handleAdd}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           배너 추가
@@ -266,7 +267,7 @@ function BannersSection({ category, label }: { category: SupportBanner['category
                   key={banner._id}
                   banner={banner}
                   onUpdate={handleUpdate}
-                  onDelete={handleDelete}
+                  onDelete={(id) => setDeleteBannerId(id)}
                   saving={saving}
                 />
               ))}
@@ -276,6 +277,20 @@ function BannersSection({ category, label }: { category: SupportBanner['category
       )}
 
       {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+
+      <ConfirmModal
+        isOpen={!!deleteBannerId}
+        title="배너 삭제"
+        message="이 배너를 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteBannerId) return
+          handleDelete(deleteBannerId)
+          setDeleteBannerId(null)
+        }}
+        onCancel={() => setDeleteBannerId(null)}
+      />
     </div>
   )
 }
@@ -285,6 +300,7 @@ function TabsSection() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [deleteTabId, setDeleteTabId] = useState<string | null>(null)
 
   const showToast = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3000) }
 
@@ -320,7 +336,6 @@ function TabsSection() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('이 탭을 삭제하시겠습니까?')) return
     setSaving(true)
     try {
       await supportService.admin.deleteTab(id)
@@ -353,7 +368,7 @@ function TabsSection() {
         <button
           onClick={handleAdd}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           탭 추가
@@ -373,7 +388,7 @@ function TabsSection() {
                   key={tab._id}
                   tab={tab}
                   onUpdate={handleUpdate}
-                  onDelete={handleDelete}
+                  onDelete={(id) => setDeleteTabId(id)}
                   saving={saving}
                 />
               ))}
@@ -383,6 +398,20 @@ function TabsSection() {
       )}
 
       {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+
+      <ConfirmModal
+        isOpen={!!deleteTabId}
+        title="탭 삭제"
+        message="이 탭을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteTabId) return
+          handleDelete(deleteTabId)
+          setDeleteTabId(null)
+        }}
+        onCancel={() => setDeleteTabId(null)}
+      />
     </div>
   )
 }
@@ -406,6 +435,7 @@ function EventBannersSection() {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState({ title: '', description: '', imageUrl: '', linkUrl: '' })
+  const [deleteBannerId, setDeleteBannerId] = useState<string | null>(null)
 
   const showToast = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3000) }
 
@@ -456,7 +486,6 @@ function EventBannersSection() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('이 이벤트 배너를 삭제하시겠습니까? 관련 신청 데이터도 함께 삭제됩니다.')) return
     setSaving(true)
     try {
       await adminService.deleteEventBanner(id)
@@ -483,12 +512,12 @@ function EventBannersSection() {
         </div>
         <div className="flex gap-2">
           <button onClick={handleSave} disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-sm disabled:opacity-50">
+            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-base disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             {editId ? '수정' : '추가'}
           </button>
           {editId && (
-            <button onClick={resetForm} className="px-4 py-2 text-text-secondary hover:text-text-primary text-sm">취소</button>
+            <button onClick={resetForm} className="px-4 py-2 text-text-secondary hover:text-text-primary text-base">취소</button>
           )}
         </div>
       </div>
@@ -518,8 +547,8 @@ function EventBannersSection() {
                   className="text-text-secondary hover:text-text-primary transition-colors">
                   {banner.isActive ? <Eye className="w-4 h-4 text-accent" /> : <EyeOff className="w-4 h-4" />}
                 </button>
-                <button onClick={() => handleEdit(banner)} className="p-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded text-xs"><Save className="w-3.5 h-3.5" /></button>
-                <button onClick={() => handleDelete(banner._id)} disabled={saving} className="p-1.5 text-accent-text hover:text-accent-text"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => handleEdit(banner)} className="p-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded text-base"><Save className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setDeleteBannerId(banner._id)} disabled={saving} className="p-1.5 text-accent-text hover:text-accent-text"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             </div>
           ))}
@@ -527,6 +556,20 @@ function EventBannersSection() {
       )}
 
       {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+
+      <ConfirmModal
+        isOpen={!!deleteBannerId}
+        title="이벤트 배너 삭제"
+        message="이 이벤트 배너를 삭제하시겠습니까? 관련 신청 데이터도 함께 삭제됩니다."
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteBannerId) return
+          handleDelete(deleteBannerId)
+          setDeleteBannerId(null)
+        }}
+        onCancel={() => setDeleteBannerId(null)}
+      />
     </div>
   )
 }
@@ -621,7 +664,7 @@ function EventRegistrationsSection() {
         <div className="flex justify-center gap-2 mt-4">
           {Array.from({ length: totalPages }, (_, i) => (
             <button key={i + 1} onClick={() => setPage(i + 1)}
-              className={`w-8 h-8 rounded text-sm ${page === i + 1 ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>
+              className={`w-8 h-8 rounded text-base ${page === i + 1 ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>
               {i + 1}
             </button>
           ))}
@@ -659,7 +702,7 @@ export default function AdminSupportBannersPage() {
               <button
                 key={item.key}
                 onClick={() => setActiveTab(item.key)}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                className={`px-5 py-3 text-base font-medium border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === item.key
                     ? 'border-red-500 text-accent-text'
                     : 'border-transparent text-text-secondary hover:text-text-primary'

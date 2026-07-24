@@ -147,7 +147,7 @@ export default function SalesProductChart({ data, topItems }: { data: DailyPoint
                 <button
                   key={m.key}
                   onClick={() => setMetric(m.key)}
-                  className={`px-3 py-1.5 text-xs transition-colors ${
+                  className={`px-3 py-1.5 text-base transition-colors ${
                     metric === m.key
                       ? 'bg-accent text-text-primary font-semibold'
                       : 'bg-bg-tertiary text-text-secondary hover:bg-bg-secondary'

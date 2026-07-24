@@ -4,6 +4,7 @@ import { Search, RefreshCw, Trash2, ChevronLeft, ChevronRight, Eye, X, RotateCcw
 import { gameService } from '@/services/gameService'
 import adminService from '@/services/adminService'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import { GENRES } from '@/constants/game'
 
 const GENRE_NORMALIZE: Record<string, string> = Object.fromEntries(GENRES.map(g => [g, g]))
@@ -42,6 +43,7 @@ export default function AdminGameDeletionLogsPage() {
   const [total, setTotal] = useState(0)
   const [detail, setDetail] = useState<DeletionLog | null>(null)
   const [restoring, setRestoring] = useState<string | null>(null)
+  const [restoreTarget, setRestoreTarget] = useState<DeletionLog | null>(null)
   const limit = 20
 
   useEffect(() => {
@@ -67,6 +69,20 @@ export default function AdminGameDeletionLogsPage() {
 
   useEffect(() => { load() }, [load])
 
+  const handleRestore = async (log: DeletionLog) => {
+    setRestoring(log._id)
+    try {
+      await adminService.restoreGame(log._id)
+      alert('게임이 복구되었습니다.')
+      load()
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      alert(msg || '복구에 실패했습니다.')
+    } finally {
+      setRestoring(null)
+    }
+  }
+
   return (
     <AdminLayout>
     <div className="space-y-6 p-6">
@@ -80,7 +96,7 @@ export default function AdminGameDeletionLogsPage() {
         </div>
         <button
           onClick={load}
-          className="flex items-center gap-2 px-3 py-2 border border-line hover:bg-bg-tertiary rounded-md text-sm text-text-secondary"
+          className="flex items-center gap-2 px-3 py-2 border border-line hover:bg-bg-tertiary rounded-md text-base text-text-secondary"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           새로고침
@@ -163,22 +179,9 @@ export default function AdminGameDeletionLogsPage() {
                     </td>
                     <td className="px-4 py-3 text-left">
                       <button
-                        onClick={async () => {
-                          if (!confirm(`"${log.gameTitle}" 게임을 복구하시겠습니까?`)) return
-                          setRestoring(log._id)
-                          try {
-                            await adminService.restoreGame(log._id)
-                            alert('게임이 복구되었습니다.')
-                            load()
-                          } catch (e: unknown) {
-                            const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-                            alert(msg || '복구에 실패했습니다.')
-                          } finally {
-                            setRestoring(null)
-                          }
-                        }}
+                        onClick={() => setRestoreTarget(log)}
                         disabled={restoring === log._id}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-500 hover:bg-blue-400 text-black rounded-md disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-base font-semibold bg-blue-500 hover:bg-blue-400 text-black rounded-md disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         title="게임 복구"
                       >
                         <RotateCcw className={`w-3.5 h-3.5 ${restoring === log._id ? 'animate-spin' : ''}`} />
@@ -265,6 +268,19 @@ export default function AdminGameDeletionLogsPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!restoreTarget}
+        title="복구"
+        message={`"${restoreTarget?.gameTitle}" 게임을 복구하시겠습니까?`}
+        confirmLabel="복구"
+        onConfirm={() => {
+          if (!restoreTarget) return
+          handleRestore(restoreTarget)
+          setRestoreTarget(null)
+        }}
+        onCancel={() => setRestoreTarget(null)}
+      />
     </div>
     </AdminLayout>
   )

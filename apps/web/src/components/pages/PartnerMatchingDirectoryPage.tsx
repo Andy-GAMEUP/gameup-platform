@@ -4,44 +4,39 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Navbar from '@/components/Navbar'
+import { useAuth } from '@/lib/useAuth'
 import partnerMatchingService, { PartnerMatchingProfile } from '@/services/partnerMatchingService'
 import MiniHomeCreateModal from '@/components/MiniHomeCreateModal'
+import ContactPartnerModal from '@/components/ContactPartnerModal'
+import { COMPANY_TYPE_LABELS } from '@/components/pages/partner-profile/constants'
+import { isEmptyRichText, stripRichText } from '@/lib/richText'
 
-const expertiseOptions = [
-  { value: 'all', label: '전체 전문 분야' },
-  { value: 'developer', label: '게임 개발' },
-  { value: 'publisher', label: '퍼블리싱' },
-  { value: 'game_solution', label: '게임 솔루션' },
-  { value: 'game_service', label: '게임 서비스' },
-  { value: 'operations', label: '운영' },
-  { value: 'qa', label: 'QA/테스트' },
-  { value: 'marketing', label: '마케팅' },
-  { value: 'other', label: '기타' },
+const companyTypeOptions = [
+  { value: 'all', label: '전체 사업 형태' },
+  ...Object.entries(COMPANY_TYPE_LABELS)
+    .filter(([value]) => value !== 'developer')
+    .map(([value, label]) => ({ value, label })),
 ]
-
-const availabilityLabel: Record<string, { text: string; color: string }> = {
-  available: { text: '즉시 가능', color: 'text-green-400' },
-  busy: { text: '협의 필요', color: 'text-yellow-400' },
-  unavailable: { text: '불가', color: 'text-red-400' },
-}
 
 export default function PartnerMatchingDirectoryPage() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [expertiseFilter, setExpertiseFilter] = useState('all')
+  const [companyTypeFilter, setCompanyTypeFilter] = useState('all')
   const [activeTab, setActiveTab] = useState('all')
   const [page, setPage] = useState(1)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [contactTarget, setContactTarget] = useState<{ id: string; name: string } | null>(null)
 
+  const { user, isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
-    queryKey: ['partnerMatchingProfiles', page, searchQuery, expertiseFilter, activeTab],
+    queryKey: ['partnerMatchingProfiles', page, searchQuery, companyTypeFilter, activeTab],
     queryFn: () =>
       partnerMatchingService.getPartnerProfiles({
         page,
         limit: 12,
         search: searchQuery || undefined,
-        expertise: expertiseFilter !== 'all' ? expertiseFilter : undefined,
+        companyType: companyTypeFilter !== 'all' ? companyTypeFilter : undefined,
         tab: activeTab !== 'all' ? activeTab : undefined,
       }),
   })
@@ -88,18 +83,18 @@ export default function PartnerMatchingDirectoryPage() {
               </svg>
               <input
                 type="text"
-                placeholder="파트너명, 회사명, 스킬로 검색..."
+                placeholder="파트너명, 회사명으로 검색..."
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }}
                 className="w-full bg-bg-secondary border border-line text-text-primary rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:border-accent"
               />
             </div>
             <select
-              value={expertiseFilter}
-              onChange={(e) => { setExpertiseFilter(e.target.value); setPage(1) }}
+              value={companyTypeFilter}
+              onChange={(e) => { setCompanyTypeFilter(e.target.value); setPage(1) }}
               className="bg-bg-secondary border border-line text-text-primary rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent"
             >
-              {expertiseOptions.map((opt) => (
+              {companyTypeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
@@ -129,7 +124,7 @@ export default function PartnerMatchingDirectoryPage() {
             <button
               key={tab.key}
               onClick={() => { setActiveTab(tab.key); setPage(1) }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-base font-medium transition-colors ${
                 activeTab === tab.key
                   ? 'bg-accent text-text-primary'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
@@ -147,30 +142,33 @@ export default function PartnerMatchingDirectoryPage() {
           <div className="text-center py-12 text-text-muted">검색 결과가 없습니다.</div>
         ) : (
           <div className="flex flex-col gap-4">
-            {profiles.map((profile) => (
+            {profiles.map((profile) => {
+              const displayName = profile.displayNameOverride || profile.userId?.companyInfo?.companyName || profile.userId?.username || '이름 없음'
+              const hasIntro = !isEmptyRichText(profile.introduction)
+              const hasHistory = (profile.history?.length ?? 0) > 0
+              const hasSkills = (profile.skills?.length ?? 0) > 0
+              const isProfileComplete = hasIntro && hasHistory && hasSkills
+              return (
               <div key={profile._id} className="bg-bg-tertiary/50 border border-line-light rounded-xl p-5 hover:border-accent-muted transition-colors flex items-center gap-6">
                 {/* 아바타 */}
                 <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center text-text-primary text-xl font-bold flex-shrink-0">
-                  {profile.companyName?.charAt(0) || '?'}
+                  {displayName.charAt(0) || '?'}
                 </div>
 
                 {/* 이름 + 소개 + 태그 */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-semibold text-text-primary truncate">{profile.companyName}</h3>
+                    <h3 className="text-lg font-semibold text-text-primary truncate">{displayName}</h3>
                     {profile.isVerified && (
                       <svg className="w-5 h-5 text-accent flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                     )}
                   </div>
-                  <p className="text-sm text-text-secondary truncate mb-2">{profile.introduction || '등록된 소개가 없습니다'}</p>
+                  <p className="text-sm text-text-secondary truncate mb-2">{hasIntro ? stripRichText(profile.introduction) : '등록된 소개가 없습니다'}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {profile.expertiseArea?.slice(0, 3).map((area, i) => (
-                      <span key={i} className="bg-accent-light text-accent px-2 py-0.5 rounded text-xs">{area}</span>
-                    ))}
-                    {profile.skills?.slice(0, 3).map((skill, i) => (
-                      <span key={i} className="bg-bg-tertiary/50 text-text-secondary px-2 py-0.5 rounded text-xs">{skill}</span>
+                    {profile.userId?.companyInfo?.companyType?.filter(t => t !== 'developer').slice(0, 3).map((type, i) => (
+                      <span key={i} className="bg-accent-light text-accent px-2 py-0.5 rounded text-xs">{COMPANY_TYPE_LABELS[type] || type}</span>
                     ))}
                   </div>
                 </div>
@@ -192,25 +190,37 @@ export default function PartnerMatchingDirectoryPage() {
                     <div className="font-medium text-text-primary">{profile.hourlyRate || '협의'}</div>
                     <div className="text-xs text-text-muted">단가 기준</div>
                   </div>
-                  <div className="text-center">
-                    <div className={`font-medium ${availabilityLabel[profile.availability]?.color || 'text-text-secondary'}`}>
-                      {availabilityLabel[profile.availability]?.text || '-'}
-                    </div>
-                    <div className="text-xs text-text-muted">작업 가능</div>
-                  </div>
                 </div>
 
                 {/* 버튼 */}
                 <div className="flex-shrink-0 flex flex-col gap-2">
-                  <button className="bg-accent hover:bg-accent-hover text-text-primary px-5 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap">
+                  <button
+                    onClick={() => {
+                      if (!isAuthenticated) { alert('로그인이 필요합니다'); return }
+                      if (user?.id === profile.userId?._id) { alert('본인 채널에는 메시지를 보낼 수 없습니다'); return }
+                      setContactTarget({ id: profile._id, name: displayName })
+                    }}
+                    className="bg-accent hover:bg-accent-hover text-text-primary px-5 py-2 rounded-lg text-base font-medium transition-colors whitespace-nowrap"
+                  >
                     연락하기
                   </button>
-                  <Link href={profile.partnerChannelId ? `/partner/${profile.partnerChannelId}` : `/minihome/${profile._id}`} className="border border-line hover:border-accent text-text-secondary px-5 py-2 rounded-lg text-sm font-medium text-center transition-colors whitespace-nowrap">
-                    프로필 보기
-                  </Link>
+                  {isProfileComplete ? (
+                    <Link href={`/partner/${profile._id}`} className="border border-line hover:border-accent text-text-secondary px-5 py-2 rounded-lg text-sm font-medium text-center transition-colors whitespace-nowrap">
+                      프로필 보기
+                    </Link>
+                  ) : (
+                    <span
+                      title="소개, 회사 연혁, 보유 기술을 모두 등록해야 프로필을 볼 수 있습니다"
+                      aria-disabled="true"
+                      className="border border-line text-text-muted px-5 py-2 rounded-lg text-sm font-medium text-center whitespace-nowrap cursor-not-allowed opacity-50"
+                    >
+                      프로필 보기
+                    </span>
+                  )}
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -221,7 +231,7 @@ export default function PartnerMatchingDirectoryPage() {
               <button
                 key={p}
                 onClick={() => setPage(p)}
-                className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-10 h-10 rounded-lg text-base font-medium transition-colors ${
                   p === page ? 'bg-accent text-text-primary' : 'text-text-secondary hover:bg-bg-tertiary'
                 }`}
               >
@@ -241,6 +251,13 @@ export default function PartnerMatchingDirectoryPage() {
         queryClient.invalidateQueries({ queryKey: ['partnerMatchingProfiles'] })
         queryClient.invalidateQueries({ queryKey: ['partnerMatchingStats'] })
       }}
+    />
+
+    <ContactPartnerModal
+      isOpen={!!contactTarget}
+      partnerId={contactTarget?.id || ''}
+      partnerName={contactTarget?.name || ''}
+      onClose={() => setContactTarget(null)}
     />
     </>
   )

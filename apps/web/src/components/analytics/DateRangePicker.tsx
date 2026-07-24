@@ -43,7 +43,7 @@ export default function DateRangePicker({ from, to, onChange, presets = true }: 
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-sm bg-bg-tertiary hover:bg-bg-secondary text-text-primary"
+        className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-base bg-bg-tertiary hover:bg-bg-secondary text-text-primary"
       >
         <Calendar className="w-4 h-4 text-text-secondary" />
         <span>
@@ -64,7 +64,7 @@ export default function DateRangePicker({ from, to, onChange, presets = true }: 
                   key={p.days}
                   type="button"
                   onClick={() => applyPreset(p.days)}
-                  className="px-2.5 py-1 text-xs border border-line rounded hover:bg-bg-tertiary text-text-secondary"
+                  className="px-2.5 py-1 text-base border border-line rounded hover:bg-bg-tertiary text-text-secondary"
                 >
                   {p.label}
                 </button>

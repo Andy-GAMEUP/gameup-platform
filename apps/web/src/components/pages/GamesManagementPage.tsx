@@ -263,7 +263,7 @@ export default function GamesManagementPage() {
       {error && (
         <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4 text-red-400 text-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={loadGames} className="text-xs underline">다시 시도</button>
+          <button onClick={loadGames} className="text-base underline">다시 시도</button>
         </div>
       )}
 

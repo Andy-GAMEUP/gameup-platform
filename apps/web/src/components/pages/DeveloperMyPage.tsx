@@ -156,7 +156,7 @@ export default function DeveloperMyPage() {
         <div className="flex gap-2 flex-wrap">
           {TABS.map(({ key, label, icon }) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-base font-medium whitespace-nowrap transition-colors ${
                 tab === key ? 'bg-accent text-text-inverse' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
               }`}>
               {icon}{label}
@@ -173,7 +173,7 @@ export default function DeveloperMyPage() {
               </h2>
               {!usernameEditing && (
                 <button onClick={() => setUsernameEditing(true)}
-                  className="flex items-center gap-1.5 text-sm text-accent hover:text-accent-hover transition-colors">
+                  className="flex items-center gap-1.5 text-base text-accent hover:text-accent-hover transition-colors">
                   <Edit2 className="w-4 h-4" />편집
                 </button>
               )}
@@ -279,7 +279,7 @@ export default function DeveloperMyPage() {
               </h2>
               <p className="text-text-secondary text-sm mb-4">계정을 삭제하면 즐겨찾기, 리뷰, 활동 내역이 영구적으로 삭제되며, 작성한 게시글과 댓글은 '탈퇴한 회원'으로 표시됩니다. 이 작업은 되돌릴 수 없습니다.</p>
               <button onClick={() => setDeleteModal(true)}
-                className="px-6 py-2.5 rounded-lg border border-danger text-danger hover:bg-danger/10 transition-colors text-sm font-medium">
+                className="px-6 py-2.5 rounded-lg border border-danger text-danger hover:bg-danger/10 transition-colors text-base font-medium">
                 계정 삭제
               </button>
             </div>

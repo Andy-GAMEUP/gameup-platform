@@ -27,7 +27,7 @@ export default function CommunityBookmarksPage() {
     <div className="min-h-screen bg-bg-primary accent-violet community-accent">
       <Navbar />
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <button onClick={() => router.push('/community')} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-sm mb-6 transition-colors">
+        <button onClick={() => router.push('/community')} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-base mb-6 transition-colors">
           <ArrowLeft className="w-4 h-4" /> 커뮤니티로
         </button>
         <h1 className="text-text-primary text-xl sm:text-2xl font-bold mb-2 flex items-center gap-2">

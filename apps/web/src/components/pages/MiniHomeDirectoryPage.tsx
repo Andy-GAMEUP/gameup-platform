@@ -58,7 +58,7 @@ export default function MiniHomeDirectoryPage() {
           {user?.role === 'developer' && (
             <button
               onClick={() => setShowCreate(true)}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-text-primary px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-text-primary px-4 py-2 rounded-xl text-base font-medium transition-colors"
             >
               <Plus className="w-4 h-4" /> 미니홈 만들기
             </button>
@@ -88,7 +88,7 @@ export default function MiniHomeDirectoryPage() {
             <div className="flex flex-wrap gap-2 flex-1">
               <button
                 onClick={() => { setSelectedKeyword(''); setPage(1) }}
-                className={`px-3 py-1.5 rounded-full text-xs transition-colors ${selectedKeyword === '' ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'}`}
+                className={`px-3 py-1.5 rounded-full text-base transition-colors ${selectedKeyword === '' ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'}`}
               >
                 전체
               </button>
@@ -96,7 +96,7 @@ export default function MiniHomeDirectoryPage() {
                 <button
                   key={kw}
                   onClick={() => { setSelectedKeyword(kw); setPage(1) }}
-                  className={`px-3 py-1.5 rounded-full text-xs transition-colors ${selectedKeyword === kw ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'}`}
+                  className={`px-3 py-1.5 rounded-full text-base transition-colors ${selectedKeyword === kw ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'}`}
                 >
                   {kw}
                 </button>
@@ -140,7 +140,7 @@ export default function MiniHomeDirectoryPage() {
                     const p = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page >= totalPages - 3 ? totalPages - 6 + i : page - 3 + i
                     return (
                       <button key={p} onClick={() => setPage(p)}
-                        className={`w-8 h-8 rounded-lg text-sm transition-colors ${p === page ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
+                        className={`w-8 h-8 rounded-lg text-base transition-colors ${p === page ? 'bg-red-600 text-text-primary' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'}`}>
                         {p}
                       </button>
                     )

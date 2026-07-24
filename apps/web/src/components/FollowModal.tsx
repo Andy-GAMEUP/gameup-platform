@@ -124,7 +124,7 @@ export default function FollowModal({ userId, type, isOpen, onClose }: FollowMod
               <button
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="text-sm text-cyan-400 hover:text-cyan-300 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+                className="text-base text-cyan-400 hover:text-cyan-300 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
               >
                 {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 더 보기

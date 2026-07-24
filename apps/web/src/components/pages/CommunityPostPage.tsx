@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar'
 import communityService, { PostSummary, CommentItem } from '@/services/communityService'
 import playerService from '@/services/playerService'
 import FollowModal from '@/components/FollowModal'
+import ConfirmModal from '@/components/ConfirmModal'
 import { useAuth } from '@/lib/useAuth'
 import { getRelativeTime } from '@/lib/relativeTime'
 import LevelBadge from '@/components/LevelBadge'
@@ -74,6 +75,8 @@ export default function CommunityPostPage() {
   const [submitting, setSubmitting] = useState(false)
   const [reportModal, setReportModal] = useState<{ type: 'post' | 'comment'; id: string } | null>(null)
   const [reportReason, setReportReason] = useState('')
+  const [showDeletePostConfirm, setShowDeletePostConfirm] = useState(false)
+  const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const commentInputRef = useRef<HTMLTextAreaElement>(null)
@@ -161,7 +164,6 @@ export default function CommunityPostPage() {
   }
 
   const handleDeletePost = async () => {
-    if (!window.confirm('게시글을 삭제하시겠습니까?')) return
     try {
       await communityService.deletePost(id!)
       router.back()
@@ -195,7 +197,6 @@ export default function CommunityPostPage() {
   }
 
   const handleDeleteComment = async (cid: string) => {
-    if (!window.confirm('댓글을 삭제하시겠습니까?')) return
     try {
       await communityService.deleteComment(cid)
       setComments(prev => prev.map(c => {
@@ -273,8 +274,8 @@ export default function CommunityPostPage() {
               className="w-full bg-bg-secondary border border-line text-text-primary text-sm px-3 py-2 rounded-lg resize-none focus:outline-none focus:border-red-500 mb-4"
             />
             <div className="flex justify-end gap-3">
-              <button onClick={()=>{setReportModal(null);setReportReason('')}} className="px-4 py-2 text-sm text-text-muted border border-line rounded-lg hover:bg-bg-tertiary">취소</button>
-              <button onClick={handleReport} disabled={!reportReason.trim()} className="px-4 py-2 text-sm text-text-primary bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50">신고하기</button>
+              <button onClick={()=>{setReportModal(null);setReportReason('')}} className="px-4 py-2 text-base text-text-muted border border-line rounded-lg hover:bg-bg-tertiary">취소</button>
+              <button onClick={handleReport} disabled={!reportReason.trim()} className="px-4 py-2 text-base text-text-primary bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50">신고하기</button>
             </div>
           </div>
         </div>
@@ -284,9 +285,36 @@ export default function CommunityPostPage() {
         <FollowModal userId={post.author._id} type={showFollowModal} isOpen={true} onClose={() => setShowFollowModal(null)} />
       )}
 
+      <ConfirmModal
+        isOpen={showDeletePostConfirm}
+        title="게시글 삭제"
+        message="게시글을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          setShowDeletePostConfirm(false)
+          handleDeletePost()
+        }}
+        onCancel={() => setShowDeletePostConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteCommentId}
+        title="댓글 삭제"
+        message="댓글을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteCommentId) return
+          handleDeleteComment(deleteCommentId)
+          setDeleteCommentId(null)
+        }}
+        onCancel={() => setDeleteCommentId(null)}
+      />
+
       <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 py-8">
         {/* 뒤로가기 */}
-        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-sm mb-5 transition-colors">
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-base mb-5 transition-colors">
           <ArrowLeft className="w-4 h-4" /> {fromLabel}
         </button>
 
@@ -315,7 +343,7 @@ export default function CommunityPostPage() {
                 <RoleBadge role={post.author?.role||''} />
                 {isAuthenticated && !isOwner && (
                   <button onClick={handleFollow}
-                    className={`ml-1 text-xs px-3 py-1 rounded-lg border transition-colors ${
+                    className={`ml-1 text-base px-3 py-1 rounded-lg border transition-colors ${
                       isFollowing
                         ? 'border-line text-text-secondary hover:border-red-400 hover:text-red-500'
                         : 'border-accent-muted text-accent hover:bg-accent-light'
@@ -403,7 +431,7 @@ export default function CommunityPostPage() {
           {/* 액션 버튼 */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-4 border-t border-line">
             <button onClick={handleLike}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-base font-medium border transition-colors ${
                 liked
                   ? 'bg-accent-light border-accent-muted text-accent'
                   : 'border-line text-text-secondary hover:border-accent-muted hover:text-accent'
@@ -411,11 +439,11 @@ export default function CommunityPostPage() {
               <ThumbsUp className="w-4 h-4" /> <span className="hidden sm:inline">좋아요</span> {likeCount}
             </button>
             <button onClick={handleShare}
-              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-medium border border-line text-text-secondary hover:border-accent-muted hover:text-accent transition-colors">
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-base font-medium border border-line text-text-secondary hover:border-accent-muted hover:text-accent transition-colors">
               <Share2 className="w-4 h-4" /> 공유
             </button>
             <button onClick={handleBookmark}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-sm font-medium border transition-colors ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-base font-medium border transition-colors ${
                 bookmarked
                   ? 'bg-amber-50 dark:bg-yellow-600/20 border-amber-400 dark:border-yellow-500/40 text-amber-600 dark:text-yellow-300'
                   : 'border-line text-text-secondary hover:border-amber-400 hover:text-amber-600'
@@ -431,14 +459,14 @@ export default function CommunityPostPage() {
                 </Link>
               )}
               {(isOwner || user?.role === 'admin') && (
-                <button onClick={handleDeletePost}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-red-500 border border-red-200 dark:border-red-800/40 hover:border-red-400 transition-colors">
+                <button onClick={() => setShowDeletePostConfirm(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-base text-red-500 border border-red-200 dark:border-red-800/40 hover:border-red-400 transition-colors">
                   <Trash2 className="w-3 h-3"/> 삭제
                 </button>
               )}
               {!isOwner && isAuthenticated && (
                 <button onClick={()=>setReportModal({type:'post',id:id!})}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-text-secondary hover:text-red-500 transition-colors">
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-base text-text-secondary hover:text-red-500 transition-colors">
                   <Flag className="w-3 h-3"/> 신고
                 </button>
               )}
@@ -474,7 +502,7 @@ export default function CommunityPostPage() {
                   />
                   <div className="flex justify-end mt-2">
                     <button onClick={handleSubmitComment} disabled={!commentText.trim() || submitting}
-                      className="flex items-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-primary text-sm px-4 py-2 rounded-xl transition-colors">
+                      className="flex items-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-primary text-base px-4 py-2 rounded-xl transition-colors">
                       {submitting ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
                       {editingComment ? '수정' : '등록'}
                     </button>
@@ -495,7 +523,7 @@ export default function CommunityPostPage() {
               <CommentBlock key={c._id} comment={c} currentUser={user}
                 onReply={(cid, username) => { setReplyTo({id: cid, username}); setEditingComment(null); setCommentText(''); commentInputRef.current?.focus() }}
                 onEdit={(cid, content) => { setEditingComment({id: cid, content}); setReplyTo(null); setCommentText(content); commentInputRef.current?.focus() }}
-                onDelete={handleDeleteComment}
+                onDelete={(cid) => setDeleteCommentId(cid)}
                 onLike={handleCommentLike}
                 onReport={(cid) => setReportModal({type:'comment', id: cid})}
               />
@@ -540,30 +568,30 @@ function CommentBlock({
             <p className="text-text-secondary text-sm whitespace-pre-wrap break-words">{comment.content}</p>
             <div className="flex items-center gap-3 mt-2">
               <button onClick={() => onLike(comment._id)}
-                className="flex items-center gap-1 text-xs text-text-secondary hover:text-accent transition-colors">
+                className="flex items-center gap-1 text-base text-text-secondary hover:text-accent transition-colors">
                 <ThumbsUp className="w-3 h-3"/> {comment.likeCount}
               </button>
               {currentUser && depth===0 && (
                 <button onClick={() => onReply(comment._id, comment.author?.username)}
-                  className="flex items-center gap-1 text-xs text-text-secondary hover:text-accent transition-colors">
+                  className="flex items-center gap-1 text-base text-text-secondary hover:text-accent transition-colors">
                   <CornerDownRight className="w-3 h-3"/> 답글
                 </button>
               )}
               {(isOwner || isAdminOrDev) && (
                 <>
                   <button onClick={() => onEdit(comment._id, comment.content)}
-                    className="flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors">
+                    className="flex items-center gap-1 text-base text-text-secondary hover:text-text-primary transition-colors">
                     <Pencil className="w-3 h-3"/> 수정
                   </button>
                   <button onClick={() => onDelete(comment._id)}
-                    className="flex items-center gap-1 text-xs text-text-secondary hover:text-red-500 transition-colors">
+                    className="flex items-center gap-1 text-base text-text-secondary hover:text-red-500 transition-colors">
                     <Trash2 className="w-3 h-3"/> 삭제
                   </button>
                 </>
               )}
               {!isOwner && currentUser && (
                 <button onClick={() => onReport(comment._id)}
-                  className="flex items-center gap-1 text-xs text-text-secondary hover:text-red-500 transition-colors">
+                  className="flex items-center gap-1 text-base text-text-secondary hover:text-red-500 transition-colors">
                   <Flag className="w-3 h-3"/> 신고
                 </button>
               )}

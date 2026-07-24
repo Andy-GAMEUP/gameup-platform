@@ -8,8 +8,8 @@ export interface IPartnerProjectApplication extends Document {
   phone: string
   experience: string
   proposedBudget: string
-  portfolioUrl: string
-  proposal: string
+  title: string
+  content: string
   attachments: string[]
   status: 'pending' | 'approved' | 'on-hold' | 'rejected'
   createdAt: Date
@@ -25,8 +25,8 @@ const partnerProjectApplicationSchema = new Schema<IPartnerProjectApplication>(
     phone: { type: String, default: '' },
     experience: { type: String, default: '' },
     proposedBudget: { type: String, default: '' },
-    portfolioUrl: { type: String, default: '' },
-    proposal: { type: String, default: '', maxlength: 10000 },
+    title: { type: String, required: true, maxlength: 200 },
+    content: { type: String, required: true, maxlength: 10000 },
     attachments: [{ type: String }],
     status: {
       type: String,

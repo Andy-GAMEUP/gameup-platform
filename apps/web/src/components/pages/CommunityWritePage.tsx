@@ -222,7 +222,7 @@ export default function CommunityWritePage() {
     <div className="min-h-screen bg-bg-primary accent-violet community-accent">
       <Navbar />
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-sm mb-5 transition-colors">
+        <button onClick={() => router.back()} className="flex items-center gap-1.5 text-text-muted hover:text-text-primary text-base mb-5 transition-colors">
           <ArrowLeft className="w-4 h-4" /> 커뮤니티로 돌아가기
         </button>
 
@@ -245,7 +245,7 @@ export default function CommunityWritePage() {
                     <div key={ch.value}>
                       <button
                         onClick={() => selectChannel(ch.value)}
-                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors text-left
+                        className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-base font-medium transition-colors text-left
                           ${isActive ? 'bg-accent-light text-accent' : 'text-text-secondary hover:bg-bg-tertiary'}
                         `}
                       >
@@ -268,7 +268,7 @@ export default function CommunityWritePage() {
                                 <div className="absolute left-0 top-1/2 w-3 h-px bg-line" />
                                 <button
                                   onClick={() => setSelectedGameId(isSelected ? null : game._id)}
-                                  className={`ml-4 flex-1 flex items-center gap-1.5 text-left text-xs px-2 py-1 rounded-lg truncate transition-colors ${
+                                  className={`ml-4 flex-1 flex items-center gap-1.5 text-left text-base px-2 py-1 rounded-lg truncate transition-colors ${
                                     isSelected
                                       ? 'bg-accent-light text-accent font-semibold'
                                       : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
@@ -316,7 +316,7 @@ export default function CommunityWritePage() {
               <h1 className="text-text-primary text-xl font-bold">{isEdit ? '게시글 수정' : '게시글 작성'}</h1>
               {!isEdit && (
                 <button onClick={handleTempSave} disabled={tempSaving}
-                  className="flex items-center gap-1.5 text-sm text-text-muted hover:text-accent transition-colors">
+                  className="flex items-center gap-1.5 text-base text-text-muted hover:text-accent transition-colors">
                   {tempSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                   임시저장
                   {tempSaveMsg && (
@@ -366,7 +366,7 @@ export default function CommunityWritePage() {
                   ) : (
                     <button
                       onClick={openChanDropdown}
-                      className="flex items-center gap-1 text-xs text-text-muted hover:text-text-primary transition-colors group"
+                      className="flex items-center gap-1 text-base text-text-muted hover:text-text-primary transition-colors group"
                     >
                       <span>{currentPath}</span>
                       <ChevronDown className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -477,7 +477,7 @@ export default function CommunityWritePage() {
                   ))}
                   {links.length < 10 && (
                     <button onClick={() => setLinks([...links, { url: '', label: '' }])}
-                      className="flex items-center gap-1.5 text-sm text-text-muted hover:text-accent transition-colors mt-1">
+                      className="flex items-center gap-1.5 text-base text-text-muted hover:text-accent transition-colors mt-1">
                       <Plus className="w-4 h-4" /> 링크 추가
                     </button>
                   )}
@@ -489,12 +489,12 @@ export default function CommunityWritePage() {
             {/* 제출 */}
             <div className="flex items-center gap-3 pt-2">
               <button onClick={handleSubmit} disabled={submitting}
-                className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-primary py-3 rounded-xl text-sm font-semibold transition-colors">
+                className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-primary py-3 rounded-xl text-base font-semibold transition-colors">
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isEdit ? '수정 완료' : '게시하기'}
               </button>
               <button onClick={() => router.back()}
-                className="px-6 py-3 text-sm text-text-muted border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
+                className="px-6 py-3 text-base text-text-muted border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
                 취소
               </button>
             </div>

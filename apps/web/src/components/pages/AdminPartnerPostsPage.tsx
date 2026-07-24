@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import partnerService, { PartnerApplication, PartnerPostItem } from '@/services/partnerService'
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
@@ -70,6 +71,7 @@ export default function AdminPartnerPostsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok })
@@ -96,7 +98,6 @@ export default function AdminPartnerPostsPage() {
   useEffect(() => { load() }, [load])
 
   const handleDelete = async (id: string) => {
-    if (!confirm('이 포스트를 삭제하시겠습니까?')) return
     setSaving(true)
     try {
       await partnerService.admin.deletePartnerPost(id)
@@ -139,7 +140,7 @@ export default function AdminPartnerPostsPage() {
       <div className="space-y-6">
         <button
           onClick={() => router.push('/admin/partner-management')}
-          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors text-sm"
+          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors text-base"
         >
           <ChevronLeft className="w-4 h-4" />
           파트너 관리로 돌아가기
@@ -185,7 +186,7 @@ export default function AdminPartnerPostsPage() {
                         key={post._id}
                         post={post}
                         index={idx}
-                        onDelete={handleDelete}
+                        onDelete={setDeleteConfirmId}
                         saving={saving}
                       />
                     ))}
@@ -202,6 +203,20 @@ export default function AdminPartnerPostsPage() {
           {toast.msg}
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteConfirmId}
+        title="포스트 삭제"
+        message="이 포스트를 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteConfirmId) return
+          handleDelete(deleteConfirmId)
+          setDeleteConfirmId(null)
+        }}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </AdminLayout>
   )
 }

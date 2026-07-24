@@ -79,7 +79,7 @@ export default function RevenueDetailChart({ data, title = '매출 추이', show
               <button
                 key={m.key}
                 onClick={() => toggleBar(m.key)}
-                className={`px-3 py-1.5 text-xs transition-colors ${
+                className={`px-3 py-1.5 text-base transition-colors ${
                   activeBars.has(m.key)
                     ? 'text-text-primary font-semibold'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-bg-secondary'
@@ -95,7 +95,7 @@ export default function RevenueDetailChart({ data, title = '매출 추이', show
               <button
                 key={m.key}
                 onClick={() => toggleLine(m.key)}
-                className={`px-3 py-1.5 text-xs transition-colors ${
+                className={`px-3 py-1.5 text-base transition-colors ${
                   activeLines.has(m.key)
                     ? 'text-text-primary font-semibold'
                     : 'bg-bg-tertiary text-text-secondary hover:bg-bg-secondary'

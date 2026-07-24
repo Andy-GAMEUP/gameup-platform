@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import ProposalModal from '@/components/ProposalModal'
 import LevelBadge from '@/components/LevelBadge'
+import ConfirmModal from '@/components/ConfirmModal'
 
 const TABS = [
   { id: 'game-news', label: '게임 뉴스' },
@@ -110,18 +111,18 @@ export default function MiniHomeDetailPage() {
           <div className="relative z-10 pb-2 flex gap-2">
             {!isOwner && user?.role === 'developer' && (
               <button onClick={() => setShowProposal(true)}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-text-primary px-4 py-2 rounded-xl text-sm font-medium transition-colors">
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-text-primary px-4 py-2 rounded-xl text-base font-medium transition-colors">
                 <TrendingUp className="w-4 h-4" /> 제안 보내기
               </button>
             )}
             {isOwner && (
               <>
                 <button onClick={() => setShowAddGame(true)}
-                  className="flex items-center gap-2 bg-bg-tertiary hover:bg-line-light text-text-primary px-3 py-2 rounded-xl text-sm transition-colors border border-line">
+                  className="flex items-center gap-2 bg-bg-tertiary hover:bg-line-light text-text-primary px-3 py-2 rounded-xl text-base transition-colors border border-line">
                   <Gamepad2 className="w-4 h-4" /> 게임 관리
                 </button>
                 <button onClick={() => setShowNewsForm(true)}
-                  className="flex items-center gap-2 bg-bg-tertiary hover:bg-line-light text-text-primary px-3 py-2 rounded-xl text-sm transition-colors border border-line">
+                  className="flex items-center gap-2 bg-bg-tertiary hover:bg-line-light text-text-primary px-3 py-2 rounded-xl text-base transition-colors border border-line">
                   <Plus className="w-4 h-4" /> 뉴스 작성
                 </button>
               </>
@@ -179,7 +180,7 @@ export default function MiniHomeDetailPage() {
               if ((tab.id === 'investment' || tab.id === 'publishing') && !isOwner) return null
               return (
                 <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                  className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === tab.id ? 'border-red-500 text-red-400' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>
+                  className={`px-5 py-3 text-base font-medium transition-colors border-b-2 ${activeTab === tab.id ? 'border-red-500 text-red-400' : 'border-transparent text-text-secondary hover:text-text-primary'}`}>
                   {tab.label}
                 </button>
               )
@@ -242,9 +243,9 @@ export default function MiniHomeDetailPage() {
 
 function GameCard({ game, isOwner, onRefresh }: { game: MiniHomeGame; isOwner: boolean; onRefresh: () => void }) {
   const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const handleDelete = async () => {
-    if (!confirm(`"${game.title}" 게임을 삭제하시겠습니까?`)) return
     setDeleting(true)
     try {
       await minihomeService.removeGame(game._id)
@@ -289,16 +290,29 @@ function GameCard({ game, isOwner, onRefresh }: { game: MiniHomeGame; isOwner: b
         {isOwner && (
           <div className="flex gap-1 mt-2">
             <button onClick={handleSetRepresentative} title="대표 게임으로 설정"
-              className="flex-1 text-xs py-1 bg-bg-tertiary hover:bg-red-600/20 text-text-secondary hover:text-red-400 rounded transition-colors border border-line">
+              className="flex-1 text-base py-1 bg-bg-tertiary hover:bg-red-600/20 text-text-secondary hover:text-red-400 rounded transition-colors border border-line">
               대표
             </button>
-            <button onClick={handleDelete} disabled={deleting}
+            <button onClick={() => setShowDeleteConfirm(true)} disabled={deleting}
               className="p-1 text-red-400 hover:text-red-300 disabled:opacity-30 transition-colors">
               {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
             </button>
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="게임 삭제"
+        message={`"${game.title}" 게임을 삭제하시겠습니까?`}
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          setShowDeleteConfirm(false)
+          handleDelete()
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   )
 }
@@ -364,9 +378,9 @@ function AddGameForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
         ))}
       </div>
       <div className="flex justify-end gap-2">
-        <button onClick={onClose} className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
+        <button onClick={onClose} className="px-3 py-1.5 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
         <button onClick={handleSubmit} disabled={saving || !title.trim()}
-          className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary text-sm rounded-lg transition-colors">
+          className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary text-base rounded-lg transition-colors">
           {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} 추가
         </button>
       </div>
@@ -401,7 +415,7 @@ function AddNewsForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       <div className="flex gap-2">
         {(['game', 'company'] as const).map(t => (
           <button key={t} onClick={() => setType(t)}
-            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${type === t ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-line text-text-secondary hover:text-text-primary'}`}>
+            className={`px-3 py-1.5 text-base rounded-lg border transition-colors ${type === t ? 'bg-red-600/20 border-red-500/40 text-red-300' : 'border-line text-text-secondary hover:text-text-primary'}`}>
             {t === 'game' ? '게임 뉴스' : '회사 뉴스'}
           </button>
         ))}
@@ -411,9 +425,9 @@ function AddNewsForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       <textarea value={content} onChange={e => setContent(e.target.value)} rows={4} placeholder="내용 *"
         className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg resize-none focus:outline-none focus:border-red-500 transition-colors" />
       <div className="flex justify-end gap-2">
-        <button onClick={onClose} className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
+        <button onClick={onClose} className="px-3 py-1.5 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">취소</button>
         <button onClick={handleSubmit} disabled={saving || !title.trim() || !content.trim()}
-          className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary text-sm rounded-lg transition-colors">
+          className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-text-primary text-base rounded-lg transition-colors">
           {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} 등록
         </button>
       </div>
@@ -435,7 +449,7 @@ function NewsItem({ news }: { news: MiniHomeNews }) {
           </div>
           <p className={`text-text-secondary text-sm leading-relaxed ${!expanded ? 'line-clamp-2' : ''}`}>{news.content}</p>
           {news.content.length > 120 && (
-            <button onClick={() => setExpanded(!expanded)} className="text-text-muted hover:text-text-secondary text-xs mt-1 transition-colors">
+            <button onClick={() => setExpanded(!expanded)} className="text-text-muted hover:text-text-secondary text-base mt-1 transition-colors">
               {expanded ? '접기' : '더 보기'}
             </button>
           )}
@@ -486,11 +500,11 @@ function ProposalItem({ proposal, onRefresh }: { proposal: Proposal; onRefresh: 
       {proposal.status === 'pending' && (
         <div className="flex gap-2">
           <button onClick={() => handleStatus('accepted')} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700/30 hover:bg-accent-hover/50 text-accent text-xs rounded-lg border border-green-700/40 transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-700/30 hover:bg-accent-hover/50 text-accent text-base rounded-lg border border-green-700/40 transition-colors disabled:opacity-50">
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} 수락
           </button>
           <button onClick={() => handleStatus('rejected')} disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-700/30 hover:bg-red-700/50 text-red-300 text-xs rounded-lg border border-red-700/40 transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-700/30 hover:bg-red-700/50 text-red-300 text-base rounded-lg border border-red-700/40 transition-colors disabled:opacity-50">
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />} 거절
           </button>
         </div>

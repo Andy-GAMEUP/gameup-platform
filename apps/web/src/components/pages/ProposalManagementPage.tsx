@@ -65,7 +65,7 @@ export default function ProposalManagementPage() {
           <button
             key={tab.key}
             onClick={() => setDirection(tab.key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-base font-medium transition-colors ${
               direction === tab.key
                 ? 'bg-accent text-text-primary'
                 : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
@@ -138,14 +138,14 @@ export default function ProposalManagementPage() {
                         <button
                           onClick={() => statusMutation.mutate({ id: proposal._id, status: 'accepted' })}
                           disabled={statusMutation.isPending}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-text-primary rounded-lg text-base font-medium transition-colors disabled:opacity-50"
                         >
                           <Check className="w-4 h-4" /> 수락
                         </button>
                         <button
                           onClick={() => statusMutation.mutate({ id: proposal._id, status: 'rejected' })}
                           disabled={statusMutation.isPending}
-                          className="flex items-center gap-1.5 px-4 py-2 border border-red-600 text-red-400 hover:bg-red-950 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-4 py-2 border border-red-600 text-red-400 hover:bg-red-950 rounded-lg text-base font-medium transition-colors disabled:opacity-50"
                         >
                           <X className="w-4 h-4" /> 거절
                         </button>

@@ -153,19 +153,19 @@ function FeedbackCard({
         <div className="flex gap-2 mt-4 pt-4 border-t border-line">
           <button
             onClick={() => onApprove(feedback.id)}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-accent hover:bg-accent-hover rounded-md transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 text-base bg-accent hover:bg-accent-hover rounded-md transition-colors"
           >
             <CheckCircle className="w-4 h-4" /> 승인
           </button>
           <button
             onClick={() => onReview(feedback.id)}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm border border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 rounded-md transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 text-base border border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 rounded-md transition-colors"
           >
             <Clock className="w-4 h-4" /> 검토
           </button>
           <button
             onClick={() => onReject(feedback.id)}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm border border-red-500/50 text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 text-base border border-red-500/50 text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
           >
             <XCircle className="w-4 h-4" /> 거절
           </button>
@@ -281,7 +281,7 @@ export default function FeedbackManagementPage() {
       <div className="flex gap-1 bg-bg-secondary border border-line rounded-lg p-1 w-fit">
         <button
           onClick={() => setSectionTab('feedback')}
-          className={`flex items-center gap-2 px-5 py-2.5 text-sm rounded-md transition-colors ${
+          className={`flex items-center gap-2 px-5 py-2.5 text-base rounded-md transition-colors ${
             sectionTab === 'feedback' ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'
           }`}
         >
@@ -289,7 +289,7 @@ export default function FeedbackManagementPage() {
         </button>
         <button
           onClick={() => setSectionTab('qa')}
-          className={`flex items-center gap-2 px-5 py-2.5 text-sm rounded-md transition-colors relative ${
+          className={`flex items-center gap-2 px-5 py-2.5 text-base rounded-md transition-colors relative ${
             sectionTab === 'qa' ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'
           }`}
         >
@@ -345,7 +345,7 @@ export default function FeedbackManagementPage() {
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`px-4 py-2 text-sm rounded-md transition-colors ${
+                className={`px-4 py-2 text-base rounded-md transition-colors ${
                   activeTab === t.key
                     ? 'bg-accent text-text-primary'
                     : 'text-text-secondary hover:text-text-primary'
@@ -404,7 +404,7 @@ export default function FeedbackManagementPage() {
               <button
                 key={f.key}
                 onClick={() => { setQaFilter(f.key); setQaPage(1) }}
-                className={`px-4 py-2 text-sm rounded-md transition-colors ${
+                className={`px-4 py-2 text-base rounded-md transition-colors ${
                   qaFilter === f.key
                     ? 'bg-accent text-text-primary'
                     : 'text-text-secondary hover:text-text-primary'
@@ -503,14 +503,14 @@ export default function FeedbackManagementPage() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => { setAnsweringId(null); setAnswerText('') }}
-                                  className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-md hover:bg-bg-tertiary transition-colors"
+                                  className="px-3 py-1.5 text-base text-text-secondary border border-line rounded-md hover:bg-bg-tertiary transition-colors"
                                 >
                                   취소
                                 </button>
                                 <button
                                   onClick={() => handleAnswer(qa._id)}
                                   disabled={answerSubmitting || !answerText.trim()}
-                                  className="flex items-center gap-1.5 px-4 py-1.5 text-sm bg-accent hover:bg-accent-hover text-text-primary rounded-md transition-colors disabled:opacity-50"
+                                  className="flex items-center gap-1.5 px-4 py-1.5 text-base bg-accent hover:bg-accent-hover text-text-primary rounded-md transition-colors disabled:opacity-50"
                                 >
                                   {answerSubmitting ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -525,7 +525,7 @@ export default function FeedbackManagementPage() {
                         ) : (
                           <button
                             onClick={() => { setAnsweringId(qa._id); setAnswerText('') }}
-                            className="flex items-center gap-1.5 px-4 py-2 text-sm bg-accent-light text-accent border border-green-600/30 rounded-md hover:bg-accent/30 transition-colors"
+                            className="flex items-center gap-1.5 px-4 py-2 text-base bg-accent-light text-accent border border-green-600/30 rounded-md hover:bg-accent/30 transition-colors"
                           >
                             <Send className="w-4 h-4" /> 답변 작성
                           </button>
@@ -545,7 +545,7 @@ export default function FeedbackManagementPage() {
                 <button
                   key={p}
                   onClick={() => setQaPage(p)}
-                  className={`w-8 h-8 rounded text-sm ${
+                  className={`w-8 h-8 rounded text-base ${
                     qaPage === p ? 'bg-accent text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'
                   }`}
                 >

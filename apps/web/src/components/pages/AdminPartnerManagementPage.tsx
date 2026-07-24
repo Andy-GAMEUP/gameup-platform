@@ -91,13 +91,13 @@ function PartnerDetailModal({
         <div className="p-6 border-t border-line flex gap-3">
           {partner.status === 'approved' ? (
             <button onClick={() => onStatusChange('suspended')} disabled={loading}
-              className="flex-1 py-2 text-sm text-accent-text border border-red-500/40 rounded-lg hover:bg-accent-light transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+              className="flex-1 py-2 text-base text-accent-text border border-red-500/40 rounded-lg hover:bg-accent-light transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               파트너 정지
             </button>
           ) : (
             <button onClick={() => onStatusChange('approved')} disabled={loading}
-              className="flex-1 py-2 text-sm text-accent border border-green-500/40 rounded-lg hover:bg-green-900/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+              className="flex-1 py-2 text-base text-accent border border-green-500/40 rounded-lg hover:bg-green-900/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               정지 해제
             </button>
@@ -200,7 +200,7 @@ export default function AdminPartnerManagementPage() {
                      <td className="px-4 py-3">
                        <div className="flex items-center gap-2">
                          <button onClick={() => setSelected(p)}
-                           className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors border border-cyan-500/30 px-2 py-1 rounded">
+                           className="text-base text-cyan-400 hover:text-cyan-300 transition-colors border border-cyan-500/30 px-2 py-1 rounded">
                            관리
                          </button>
                          <Link href={`/admin/partner-posts/${p._id}`}

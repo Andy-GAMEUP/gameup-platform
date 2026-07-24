@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import AdminLayout from '@/components/AdminLayout'
+import ConfirmModal from '@/components/ConfirmModal'
 import supportService, { Season } from '@/services/supportService'
 import {
   Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, Eye, EyeOff,
@@ -94,7 +95,7 @@ function SeasonRow({
             <button
               onClick={() => onStatusChange(season._id, nextStatus)}
               disabled={saving}
-              className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-xs transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
             >
               {NEXT_LABEL[season.status]}
             </button>
@@ -237,7 +238,7 @@ function SeasonRow({
                 completionDate: completionDate || null,
               })}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               저장
@@ -255,6 +256,7 @@ export default function AdminSupportSeasonsPage() {
   const [saving, setSaving] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [creating, setCreating] = useState(false)
+  const [deleteSeasonId, setDeleteSeasonId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
   const showToast = (msg: string, ok = true) => {
@@ -306,7 +308,6 @@ export default function AdminSupportSeasonsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('이 시즌을 삭제하시겠습니까?')) return
     setSaving(true)
     try {
       await supportService.admin.deleteSeason(id)
@@ -342,7 +343,7 @@ export default function AdminSupportSeasonsPage() {
           </div>
           <button
             onClick={() => setCreating(v => !v)}
-            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-green-700 hover:bg-green-800 text-text-primary rounded-lg text-base transition-colors"
           >
             <Plus className="w-4 h-4" />
             시즌 추가
@@ -363,7 +364,7 @@ export default function AdminSupportSeasonsPage() {
               <button
                 onClick={handleCreate}
                 disabled={saving || !newTitle.trim()}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-sm transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-800 text-text-primary rounded-lg text-base transition-colors disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 생성
@@ -385,7 +386,7 @@ export default function AdminSupportSeasonsPage() {
                 key={season._id}
                 season={season}
                 onUpdate={handleUpdate}
-                onDelete={handleDelete}
+                onDelete={(id) => setDeleteSeasonId(id)}
                 onStatusChange={handleStatusChange}
                 saving={saving}
               />
@@ -395,6 +396,20 @@ export default function AdminSupportSeasonsPage() {
       </div>
 
       {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+
+      <ConfirmModal
+        isOpen={!!deleteSeasonId}
+        title="시즌 삭제"
+        message="이 시즌을 삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteSeasonId) return
+          handleDelete(deleteSeasonId)
+          setDeleteSeasonId(null)
+        }}
+        onCancel={() => setDeleteSeasonId(null)}
+      />
     </AdminLayout>
   )
 }

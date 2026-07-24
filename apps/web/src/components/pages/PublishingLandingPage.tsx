@@ -172,7 +172,7 @@ export default function PublishingLandingPage({ type: propType }: { type?: Publi
             {user?.role === 'developer' && (
               <button
                 onClick={() => { setSuggestSuccess(false); setShowSuggest(true) }}
-                className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-text-primary rounded-xl text-sm font-medium transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-text-primary rounded-xl text-base font-medium transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 게임 제안하기
@@ -197,7 +197,7 @@ export default function PublishingLandingPage({ type: propType }: { type?: Publi
               <button
                 key={tab._id}
                 onClick={() => setActiveTab(tab._id)}
-                className={`px-5 py-3.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                className={`px-5 py-3.5 text-base font-medium whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === tab._id
                     ? 'border-cyan-500 text-cyan-400'
                     : 'border-transparent text-text-secondary hover:text-text-primary'

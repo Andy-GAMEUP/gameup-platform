@@ -209,7 +209,7 @@ export default function LoginPage() {
                   key={type}
                   type="button"
                   onClick={() => fillTestAccount(type)}
-                  className="py-2 px-3 rounded-lg border border-line text-text-secondary hover:border-accent-muted hover:text-accent text-xs font-medium transition-colors"
+                  className="py-2 px-3 rounded-lg border border-line text-text-secondary hover:border-accent-muted hover:text-accent text-base font-medium transition-colors"
                 >
                   {type === 'admin' ? '관리자' : type === 'developer' ? '개발자' : type === 'partner' ? '파트너' : '플레이어'}
                 </button>
@@ -235,7 +235,7 @@ export default function LoginPage() {
                   key={type}
                   type="button"
                   onClick={() => fillTestAccount(type)}
-                  className="py-2 px-3 rounded-lg border border-line text-text-secondary hover:border-accent-muted hover:text-accent text-xs font-medium transition-colors"
+                  className="py-2 px-3 rounded-lg border border-line text-text-secondary hover:border-accent-muted hover:text-accent text-base font-medium transition-colors"
                 >
                   {label}
                 </button>

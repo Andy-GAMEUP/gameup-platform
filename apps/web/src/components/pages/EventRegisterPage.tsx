@@ -150,7 +150,7 @@ export default function EventRegisterPage() {
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-2xl mx-auto">
           {/* Back */}
-          <button onClick={() => router.back()} className="flex items-center gap-2 text-text-secondary hover:text-text-primary text-sm mb-6 transition-colors">
+          <button onClick={() => router.back()} className="flex items-center gap-2 text-text-secondary hover:text-text-primary text-base mb-6 transition-colors">
             <ArrowLeft className="w-4 h-4" /> 뒤로가기
           </button>
 
@@ -252,7 +252,7 @@ export default function EventRegisterPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-accent hover:bg-accent-hover disabled:bg-green-800 disabled:cursor-not-allowed text-text-primary font-semibold py-3.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-lg"
+                className="w-full bg-accent hover:bg-accent-hover disabled:bg-green-800 disabled:cursor-not-allowed text-text-primary font-semibold py-3.5 rounded-lg transition-colors flex items-center justify-center gap-2 text-base"
               >
                 {submitting ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> 신청 중...</>

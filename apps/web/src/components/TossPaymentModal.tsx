@@ -118,14 +118,14 @@ export default function TossPaymentModal({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-3 border border-line hover:bg-bg-tertiary rounded-lg text-sm transition-colors"
+              className="flex-1 py-3 border border-line hover:bg-bg-tertiary rounded-lg text-base transition-colors"
             >
               취소
             </button>
             <button
               onClick={handlePayment}
               disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary disabled:cursor-not-allowed rounded-lg font-semibold text-sm transition-colors"
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent hover:bg-accent-hover disabled:bg-bg-tertiary disabled:cursor-not-allowed rounded-lg font-semibold text-base transition-colors"
             >
               {loading ? (
                 <><Loader className="w-4 h-4 animate-spin" /> 처리 중...</>

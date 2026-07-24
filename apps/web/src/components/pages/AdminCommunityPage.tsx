@@ -66,8 +66,8 @@ function ConfirmModal({ msg, onConfirm, onCancel, danger = true }: {
       <div className="bg-bg-secondary border border-line rounded-xl w-full max-w-sm p-5 shadow-2xl">
         <p className="text-text-primary text-sm mb-4">{msg}</p>
         <div className="flex justify-end gap-3">
-          <button onClick={onCancel} className="px-3 py-1.5 text-sm text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">취소</button>
-          <button onClick={onConfirm} className={`px-3 py-1.5 text-sm text-white rounded-lg ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>확인</button>
+          <button onClick={onCancel} className="px-3 py-1.5 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary">취소</button>
+          <button onClick={onConfirm} className={`px-3 py-1.5 text-base text-white rounded-lg ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>확인</button>
         </div>
       </div>
     </div>
@@ -357,8 +357,8 @@ function BannerSection({
               </div>
             </div>
             <div className="flex justify-end gap-2 px-5 py-4 border-t border-line">
-              <button onClick={cancelEdit} className="px-4 py-1.5 border border-line text-text-secondary hover:bg-bg-tertiary rounded-lg text-sm transition-colors">취소</button>
-              <button onClick={saveEdit} className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors">저장</button>
+              <button onClick={cancelEdit} className="px-4 py-1.5 border border-line text-text-secondary hover:bg-bg-tertiary rounded-lg text-base transition-colors">취소</button>
+              <button onClick={saveEdit} className="px-4 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium transition-colors">저장</button>
             </div>
           </div>
         </div>
@@ -410,9 +410,9 @@ function BannerSection({
               </div>
             </div>
             <div className="flex justify-end gap-2 px-5 py-4 border-t border-line">
-              <button onClick={handleCancelAdd} className="px-4 py-1.5 border border-line text-text-secondary hover:bg-bg-tertiary rounded-lg text-sm transition-colors">취소</button>
+              <button onClick={handleCancelAdd} className="px-4 py-1.5 border border-line text-text-secondary hover:bg-bg-tertiary rounded-lg text-base transition-colors">취소</button>
               <button onClick={onAdd} disabled={uploading || !formFile || (!!gameSelector && !formLinkUrl)}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors">
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium disabled:opacity-50 transition-colors">
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} 등록
               </button>
             </div>
@@ -427,7 +427,7 @@ function BannerSection({
         </div>
         {banners.length < 5 && (
           <button onClick={onToggleAddForm}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium transition-colors">
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium transition-colors">
             <Plus className="w-4 h-4" /> 배너 추가
           </button>
         )}
@@ -444,13 +444,13 @@ function BannerSection({
             <span className="text-xs text-text-muted mr-1">운영 기간</span>
             {([1, 7, 30] as const).map(p => (
               <button key={p} onClick={() => setStatPeriod(p)}
-                className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${statPeriod === p ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-muted hover:text-text-primary'}`}>
+                className={`px-2.5 py-0.5 rounded-full text-base font-medium transition-colors ${statPeriod === p ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-muted hover:text-text-primary'}`}>
                 {p === 1 ? '오늘' : `${p}일`}
               </button>
             ))}
             <div className="relative ml-1" ref={customRef}>
               <button onClick={() => setCustomOpen(o => !o)}
-                className={`px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors ${statPeriod === null ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-muted hover:text-text-primary'}`}>
+                className={`px-2.5 py-0.5 rounded-full text-base font-medium transition-colors ${statPeriod === null ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-muted hover:text-text-primary'}`}>
                 {statPeriod === null && customFrom && customTo ? `${customFrom.slice(5)} ~ ${customTo.slice(5)}` : '직접 설정'}
               </button>
               {customOpen && (
@@ -470,7 +470,7 @@ function BannerSection({
                   <button
                     onClick={() => { if (customFrom && customTo) { setStatPeriod(null); setCustomOpen(false) } }}
                     disabled={!customFrom || !customTo}
-                    className="mt-1 px-3 py-1 rounded-lg text-xs font-medium bg-accent text-white disabled:opacity-40 disabled:cursor-not-allowed">
+                    className="mt-1 px-3 py-1 rounded-lg text-base font-medium bg-accent text-white disabled:opacity-40 disabled:cursor-not-allowed">
                     적용
                   </button>
                 </div>
@@ -836,7 +836,7 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
       <div className="flex gap-1 border-b border-line">
         {BANNER_TABS.map(t => (
           <button key={t.key} onClick={() => setBannerTab(t.key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-base font-medium border-b-2 transition-colors ${
               bannerTab === t.key
                 ? 'border-accent text-accent'
                 : 'border-transparent text-text-muted hover:text-text-primary'
@@ -1055,9 +1055,9 @@ function AnnouncementForm({
       </div>
 
       <div className="flex justify-end gap-2">
-        <button onClick={onCancel} className="px-4 py-2 border border-line rounded-lg text-sm text-text-secondary hover:bg-bg-tertiary">취소</button>
+        <button onClick={onCancel} className="px-4 py-2 border border-line rounded-lg text-base text-text-secondary hover:bg-bg-tertiary">취소</button>
         <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium disabled:opacity-50">
+          className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium disabled:opacity-50">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           저장
         </button>
@@ -1131,7 +1131,7 @@ function AnnouncementsTab({ showToast }: { showToast: (msg: string, ok?: boolean
         <div className="flex gap-2">
           {['', 'notice', 'event', 'maintenance', 'update'].map(t => (
             <button key={t} onClick={() => setTypeFilter(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-base font-medium transition-colors ${
                 typeFilter === t ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'
               }`}>
               {t === '' ? '전체' : TYPE_LABELS[t]?.label}
@@ -1139,7 +1139,7 @@ function AnnouncementsTab({ showToast }: { showToast: (msg: string, ok?: boolean
           ))}
         </div>
         <button onClick={() => { setCreating(true); setEditing(null) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium">
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium">
           <Plus className="w-4 h-4" /> 공지 작성
         </button>
       </div>
@@ -1271,7 +1271,7 @@ function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
             <div className="flex flex-wrap gap-2">
               {CHANNELS.map(ch => (
                 <button key={ch.value} onClick={() => setChannel(ch.value)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${channel === ch.value ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'}`}>
+                  className={`px-3 py-1.5 rounded-lg text-base font-medium transition-colors ${channel === ch.value ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'}`}>
                   {ch.label}
                 </button>
               ))}
@@ -1313,7 +1313,7 @@ function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-text-secondary text-sm font-medium">링크 (최대 10개)</label>
-              {links.length < 10 && <button onClick={() => setShowLinkInput(true)} className="text-accent text-xs hover:underline flex items-center gap-1"><Link2 className="w-3 h-3" /> 추가</button>}
+              {links.length < 10 && <button onClick={() => setShowLinkInput(true)} className="text-accent text-base hover:underline flex items-center gap-1"><Link2 className="w-3 h-3" /> 추가</button>}
             </div>
             {links.map((l, i) => (
               <div key={i} className="flex items-center gap-2 bg-bg-tertiary rounded-lg px-3 py-1.5 text-sm mb-1">
@@ -1326,7 +1326,7 @@ function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
               <div className="flex gap-2">
                 <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="URL" className="flex-1 bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none" />
                 <input type="text" value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="라벨" className="w-28 bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none" />
-                <button onClick={handleAddLink} className="px-3 py-1.5 bg-accent text-white rounded-lg text-sm">추가</button>
+                <button onClick={handleAddLink} className="px-3 py-1.5 bg-accent text-white rounded-lg text-base">추가</button>
                 <button onClick={() => { setShowLinkInput(false); setLinkUrl(''); setLinkLabel('') }}><X className="w-4 h-4 text-text-muted" /></button>
               </div>
             )}
@@ -1356,9 +1356,9 @@ function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
         <div className="p-5 border-t border-line flex items-center justify-between flex-shrink-0">
           <p className="text-text-muted text-xs">관리자 계정으로 게시됩니다</p>
           <div className="flex gap-3">
-            <button onClick={onClose} className="px-4 py-2 border border-line rounded-lg text-sm text-text-secondary hover:bg-bg-tertiary">취소</button>
+            <button onClick={onClose} className="px-4 py-2 border border-line rounded-lg text-base text-text-secondary hover:bg-bg-tertiary">취소</button>
             <button onClick={handleSubmit} disabled={submitting || !title.trim() || !content.trim()}
-              className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium disabled:opacity-50">
+              className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium disabled:opacity-50">
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenSquare className="w-4 h-4" />} 게시하기
             </button>
           </div>
@@ -1575,12 +1575,12 @@ export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: 
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       {post.status === 'hidden' ? (
                         <button onClick={() => handleAction(post, 'restore')}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
                           <ShieldCheck className="w-3 h-3" /> 복구
                         </button>
                       ) : (
                         <button onClick={() => handleAction(post, 'hide')}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40 transition-colors">
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40 transition-colors">
                           <EyeOff className="w-3 h-3" /> 숨김
                         </button>
                       )}
@@ -1589,7 +1589,7 @@ export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: 
                     {/* 삭제 */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       <button onClick={() => handleAction(post, 'delete')}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
                         <Trash2 className="w-3 h-3" /> 삭제
                       </button>
                     </td>
@@ -1680,7 +1680,7 @@ function ReviewsTab({ showToast }: { showToast: (msg: string, ok?: boolean) => v
       <div className="flex items-center justify-between">
         <span className="text-text-muted text-sm">총 <span className="text-text-primary font-semibold">{total}</span>개</span>
         <button onClick={() => setShowWriteModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-sm font-medium">
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium">
           <PenSquare className="w-4 h-4" /> 콘텐츠 작성
         </button>
       </div>
@@ -1727,11 +1727,11 @@ function ReviewsTab({ showToast }: { showToast: (msg: string, ok?: boolean) => v
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button onClick={() => handleBlock(r)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${r.isBlocked ? 'bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40' : 'bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40'}`}>
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base border transition-colors ${r.isBlocked ? 'bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40' : 'bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40'}`}>
                       {r.isBlocked ? <><ShieldCheck className="w-3 h-3" /> 해제</> : <><ShieldOff className="w-3 h-3" /> 차단</>}
                     </button>
                     <button onClick={() => handleDelete(r)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
                       <Trash2 className="w-3 h-3" /> 삭제
                     </button>
                   </div>
@@ -1945,12 +1945,12 @@ export function ReportedCommentsTab({ showToast }: { showToast: (msg: string, ok
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       {comment.status === 'hidden' ? (
                         <button onClick={() => handleAction(comment, 'restore')}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
                           <ShieldCheck className="w-3 h-3" /> 복구
                         </button>
                       ) : (
                         <button onClick={() => handleAction(comment, 'hide')}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40 transition-colors">
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40 transition-colors">
                           <EyeOff className="w-3 h-3" /> 숨김
                         </button>
                       )}
@@ -1958,7 +1958,7 @@ export function ReportedCommentsTab({ showToast }: { showToast: (msg: string, ok
 
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       <button onClick={() => handleAction(comment, 'delete')}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
                         <Trash2 className="w-3 h-3" /> 삭제
                       </button>
                     </td>
@@ -2103,7 +2103,7 @@ export function DeletedArchiveTab({ showToast }: { showToast: (msg: string, ok?:
           const Icon = t.icon
           return (
             <button key={t.key} onClick={() => setSubTab(t.key)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 text-base font-medium border-b-2 transition-colors ${
                 subTab === t.key ? 'border-accent text-accent' : 'border-transparent text-text-muted hover:text-text-primary'
               }`}>
               <Icon className="w-4 h-4" />{t.label}
@@ -2170,7 +2170,7 @@ export function DeletedArchiveTab({ showToast }: { showToast: (msg: string, ok?:
                       </td>
                       <td className="px-4 py-3 text-center whitespace-nowrap">
                         <button onClick={() => handleRestorePost(post)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
                           <ShieldCheck className="w-3 h-3" /> 복구
                         </button>
                       </td>
@@ -2252,7 +2252,7 @@ export function DeletedArchiveTab({ showToast }: { showToast: (msg: string, ok?:
                       </td>
                       <td className="px-4 py-3 text-center whitespace-nowrap">
                         <button onClick={() => handleRestoreComment(comment)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
                           <ShieldCheck className="w-3 h-3" /> 복구
                         </button>
                       </td>

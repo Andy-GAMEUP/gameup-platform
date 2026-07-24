@@ -53,3 +53,15 @@ for r in data.get('workflow_runs', []):
 - **플랫폼 비즈니스 규칙은 반드시 `docs/platform-rules.md`를 먼저 확인한다**
 - 규칙이 변경되거나 새로운 프로세스가 추가되면 **작업 완료 후 `docs/platform-rules.md`를 업데이트한다**
 - 규칙 변경 예시: 회원 가입/승인 흐름, 파트너 등록 절차, 권한 체계, 상태값 변경 등
+
+## 게시물 작성용 입력 필드 동일 적용 규칙
+
+- **`docs/content-editor-consistency-rule.md`를 반드시 확인한다**
+- 이 문서에 나열된 "동일 그룹" 입력 필드(리치 텍스트 에디터) 중 하나를 수정/기능 추가하면, 사용자가 명시적으로 다르게 하라고 하지 않는 한 **묻지 않고 나머지 전부에도 동일하게 적용**한다
+- 새로운 게시물류 입력 필드를 추가하면 이 문서의 목록도 함께 업데이트한다
+
+## 확인 팝업 통일 규칙
+
+- **`docs/confirm-modal-consistency-rule.md`를 반드시 확인한다**
+- 삭제/종료/복원/승인 등 사용자 확인이 필요한 모든 동작은 브라우저 기본 `window.confirm()`이 아니라 `apps/web/src/components/ConfirmModal.tsx`로 통일한다
+- 관리자/개발자/유저 포털 구분 없이 전부 동일하게 적용하며, 새로 확인 팝업을 추가할 때도 `window.confirm()`을 쓰지 않는다

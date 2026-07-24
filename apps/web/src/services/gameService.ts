@@ -14,7 +14,7 @@ export interface RecentGameAnnouncement {
 }
 
 export const gameService = {
-  getAllGames: async (params?: { genre?: string; search?: string; sort?: string; page?: number; limit?: number; serviceType?: string; featuredNew?: string }) => {
+  getAllGames: async (params?: { genre?: string; search?: string; sort?: string; page?: number; limit?: number; serviceType?: string; featuredNew?: string; developerId?: string }) => {
     const response = await apiClient.get<{ games: Game[]; pagination?: { page: number; limit: number; total: number; pages: number } }>('/games', { params })
     return response.data
   },

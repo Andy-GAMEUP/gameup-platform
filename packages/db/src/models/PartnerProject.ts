@@ -42,7 +42,7 @@ const partnerProjectSchema = new Schema<IPartnerProject>(
   {
     ownerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     title: { type: String, required: true, maxlength: 200 },
-    description: { type: String, default: '', maxlength: 2000 },
+    description: { type: String, default: '', maxlength: 10000 },
     detailedDescription: { type: String, default: '', maxlength: 10000 },
     category: {
       type: String,

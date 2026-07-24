@@ -112,7 +112,7 @@ export default function TesterManagementPage() {
         <div className="flex items-center justify-between p-6 border-b border-line">
           <h2 className="text-lg font-semibold">테스터 목록 ({filtered.length})</h2>
           <button onClick={handleExportCSV}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-line rounded-md hover:bg-bg-tertiary transition-colors">
+            className="flex items-center gap-2 px-3 py-2 text-base border border-line rounded-md hover:bg-bg-tertiary transition-colors">
             <Download className="w-4 h-4" /> CSV 내보내기
           </button>
         </div>
@@ -162,17 +162,17 @@ export default function TesterManagementPage() {
                       {tester.status === '대기중' && (
                         <>
                           <button onClick={() => updateStatus(tester.id, '승인됨')}
-                            className="flex items-center gap-1 px-2 py-1.5 text-xs bg-accent hover:bg-accent-hover rounded-md transition-colors">
+                            className="flex items-center gap-1 px-2 py-1.5 text-base bg-accent hover:bg-accent-hover rounded-md transition-colors">
                             <UserCheck className="w-3 h-3" /> 승인
                           </button>
                           <button onClick={() => updateStatus(tester.id, '거절됨')}
-                            className="flex items-center gap-1 px-2 py-1.5 text-xs border border-red-500/50 text-red-400 hover:bg-red-500/10 rounded-md transition-colors">
+                            className="flex items-center gap-1 px-2 py-1.5 text-base border border-red-500/50 text-red-400 hover:bg-red-500/10 rounded-md transition-colors">
                             <UserX className="w-3 h-3" /> 거절
                           </button>
                         </>
                       )}
                       {tester.status === '승인됨' && (
-                        <button className="px-2 py-1.5 text-xs border border-line rounded-md hover:bg-bg-tertiary transition-colors">
+                        <button className="px-2 py-1.5 text-base border border-line rounded-md hover:bg-bg-tertiary transition-colors">
                           상세보기
                         </button>
                       )}

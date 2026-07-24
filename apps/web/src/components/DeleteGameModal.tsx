@@ -76,10 +76,10 @@ export default function DeleteGameModal({ gameId, gameTitle, onClose, onDeleted 
           )}
 
           <div className="flex items-center justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} disabled={loading} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary rounded-md border border-line">
+            <button type="button" onClick={onClose} disabled={loading} className="px-4 py-2 text-base text-text-secondary hover:text-text-primary rounded-md border border-line">
               취소
             </button>
-            <button type="submit" disabled={loading} className="px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50">
+            <button type="submit" disabled={loading} className="px-4 py-2 text-base font-semibold text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50">
               {loading ? '삭제 중...' : '영구 삭제'}
             </button>
           </div>

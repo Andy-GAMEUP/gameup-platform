@@ -61,7 +61,7 @@ export default function NewUsersTrendChart({ data }: { data: DailyPoint[] }) {
                 <button
                   key={m.key}
                   onClick={() => toggle(m.key)}
-                  className={`px-3 py-1.5 text-xs transition-colors ${
+                  className={`px-3 py-1.5 text-base transition-colors ${
                     active.has(m.key) ? 'font-semibold' : 'bg-bg-tertiary text-text-secondary hover:bg-bg-secondary'
                   }`}
                   style={active.has(m.key) ? { backgroundColor: m.color + '22', color: m.color } : {}}
@@ -78,7 +78,7 @@ export default function NewUsersTrendChart({ data }: { data: DailyPoint[] }) {
                 <button
                   key={m.key}
                   onClick={() => toggle(m.key)}
-                  className={`px-3 py-1.5 text-xs transition-colors ${
+                  className={`px-3 py-1.5 text-base transition-colors ${
                     active.has(m.key) ? 'font-semibold' : 'bg-bg-tertiary text-text-secondary hover:bg-bg-secondary'
                   }`}
                   style={active.has(m.key) ? { backgroundColor: m.color + '22', color: m.color } : {}}

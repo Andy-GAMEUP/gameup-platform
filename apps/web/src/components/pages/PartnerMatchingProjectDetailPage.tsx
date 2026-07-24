@@ -6,10 +6,11 @@ import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import partnerMatchingService, { PartnerProjectItem, ProjectInquiryItem } from '@/services/partnerMatchingService'
 import Navbar from '@/components/Navbar'
+import ConfirmModal from '@/components/ConfirmModal'
 import { useAuth } from '@/lib/useAuth'
 import {
   Pencil, Trash2, Wallet, CalendarDays, Users, Tag, Wrench,
-  Clock, FileText, ListChecks, MessageCircle, Milestone, CheckCircle2, ArrowLeft,
+  Clock, FileText, ListChecks, MessageCircle, Milestone, CheckCircle2, ArrowLeft, Sparkles,
 } from 'lucide-react'
 
 const statusLabel: Record<string, { text: string; color: string }> = {
@@ -32,19 +33,16 @@ export default function PartnerMatchingProjectDetailPage() {
   const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({
-    applicantName: '',
-    email: '',
-    phone: '',
-    experience: '',
-    proposedBudget: '',
-    portfolioUrl: '',
-    proposal: '',
+    title: '',
+    content: '',
   })
   const [inquiryContent, setInquiryContent] = useState('')
   const [inquirySecret, setInquirySecret] = useState(false)
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyContent, setReplyContent] = useState('')
   const [replySecret, setReplySecret] = useState(false)
+  const [showDeleteProjectConfirm, setShowDeleteProjectConfirm] = useState(false)
+  const [deleteInquiryId, setDeleteInquiryId] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['partnerProject', id],
@@ -54,6 +52,7 @@ export default function PartnerMatchingProjectDetailPage() {
 
   const project: PartnerProjectItem | null = data?.project || null
   const partnerChannelId: string | null = data?.partnerChannelId || null
+  const partnerChannelPublic: boolean = !!data?.partnerChannelPublic
   const isOwner = user && project && project.ownerId?._id === (user as any).id
 
   const applyMutation = useMutation({
@@ -73,7 +72,7 @@ export default function PartnerMatchingProjectDetailPage() {
   })
 
   const handleDelete = () => {
-    if (confirm('프로젝트를 삭제하시겠습니까? 삭제 후에는 되돌릴 수 없습니다.')) deleteMutation.mutate()
+    setShowDeleteProjectConfirm(true)
   }
 
   const { data: inquiriesData } = useQuery({
@@ -161,15 +160,15 @@ export default function PartnerMatchingProjectDetailPage() {
           {user && (
             <button
               onClick={() => { setReplyingTo(replyingTo === q._id ? null : q._id); setReplyContent('') }}
-              className="text-xs text-accent hover:underline"
+              className="text-base text-accent hover:underline"
             >
               답글
             </button>
           )}
           {canDelete && (
             <button
-              onClick={() => { if (confirm('삭제하시겠습니까?')) deleteInquiryMutation.mutate(q._id) }}
-              className="text-xs text-text-muted hover:text-red-400"
+              onClick={() => setDeleteInquiryId(q._id)}
+              className="text-base text-text-muted hover:text-red-400"
             >
               삭제
             </button>
@@ -177,7 +176,7 @@ export default function PartnerMatchingProjectDetailPage() {
           {isOwner && (
             <button
               onClick={() => hideInquiryMutation.mutate(q._id)}
-              className="text-xs text-text-muted hover:text-accent"
+              className="text-base text-text-muted hover:text-accent"
             >
               {q.isHidden ? '숨김 해제' : '숨기기'}
             </button>
@@ -203,7 +202,7 @@ export default function PartnerMatchingProjectDetailPage() {
               <button
                 type="submit"
                 disabled={inquiryMutation.isPending}
-                className="bg-accent hover:bg-accent-hover text-text-primary px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                className="bg-accent hover:bg-accent-hover text-text-primary px-4 py-2 rounded-lg text-base font-medium transition-colors disabled:opacity-50"
               >
                 등록
               </button>
@@ -275,7 +274,7 @@ export default function PartnerMatchingProjectDetailPage() {
                 </span>
                 <div>
                   <div className="flex items-center gap-2">
-                    {partnerChannelId ? (
+                    {partnerChannelId && partnerChannelPublic ? (
                       <a
                         href={`/partner/${partnerChannelId}`}
                         target="_blank"
@@ -369,7 +368,7 @@ export default function PartnerMatchingProjectDetailPage() {
                     <button
                       type="submit"
                       disabled={inquiryMutation.isPending}
-                      className="bg-accent hover:bg-accent-hover text-text-primary px-5 py-2.5 rounded-xl text-sm font-medium shadow-sm hover:shadow-md transition-all disabled:opacity-50"
+                      className="bg-accent hover:bg-accent-hover text-text-primary px-5 py-2.5 rounded-xl text-base font-medium shadow-sm hover:shadow-md transition-all disabled:opacity-50"
                     >
                       등록
                     </button>
@@ -529,88 +528,46 @@ export default function PartnerMatchingProjectDetailPage() {
                 <h2 className="text-xl font-semibold text-text-primary">프로젝트 지원하기</h2>
                 <p className="text-sm text-text-secondary mt-1">{project.title}</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="text-text-secondary hover:text-text-primary text-2xl">×</button>
+              <button onClick={() => setShowModal(false)} className="text-text-secondary hover:text-text-primary text-base">×</button>
             </div>
             <div className="p-6">
+              <div className="flex items-start gap-3 bg-gradient-to-br from-accent/10 to-accent/[0.03] border border-accent/20 rounded-xl px-4 py-3.5 mb-6">
+                <div className="w-8 h-8 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-4 h-4 text-accent" />
+                </div>
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  <span className="text-text-primary font-medium">소개, 회사 연혁, 보유 기술, 포트폴리오</span>를 채워두고{' '}
+                  <span className="text-text-primary font-medium">채널을 공개</span>로 설정해두면 담당자가 프로필을 확인하기 쉬워져 매칭 확률이 올라가요.
+                </p>
+              </div>
+
               <form
                 onSubmit={(e) => { e.preventDefault(); applyMutation.mutate() }}
                 className="space-y-6"
               >
                 <div>
-                  <h3 className="font-semibold text-text-primary text-lg mb-4">지원자 정보</h3>
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-text-secondary mb-1">이름 / 회사명</label>
-                      <input
-                        required
-                        value={formData.applicantName}
-                        onChange={(e) => setFormData({ ...formData, applicantName: e.target.value })}
-                        className="w-full bg-bg-secondary border border-line text-text-primary rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent"
-                        placeholder="이름 또는 회사명"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-text-secondary mb-1">이메일</label>
-                      <input
-                        required
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full bg-bg-secondary border border-line text-text-primary rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent"
-                        placeholder="your@email.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-text-secondary mb-1">연락처</label>
-                      <input
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full bg-bg-secondary border border-line text-text-primary rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent"
-                        placeholder="010-0000-0000"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-text-secondary mb-1">경력</label>
-                      <input
-                        value={formData.experience}
-                        onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-                        className="w-full bg-bg-secondary border border-line text-text-primary rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent"
-                        placeholder="예: 5년"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
                   <h3 className="font-semibold text-text-primary text-lg mb-4">제안 내용</h3>
                   <div className="space-y-4">
+                    {project.budgetMin && project.budgetMax && (
+                      <p className="text-xs text-text-muted">예산 범위: {project.budgetMin} - {project.budgetMax}</p>
+                    )}
                     <div>
-                      <label className="block text-sm text-text-secondary mb-1">제안 금액</label>
+                      <label className="block text-sm text-text-secondary mb-1">제목</label>
                       <input
-                        value={formData.proposedBudget}
-                        onChange={(e) => setFormData({ ...formData, proposedBudget: e.target.value })}
+                        required
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         className="w-full bg-bg-secondary border border-line text-text-primary rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent"
-                        placeholder="예: 7,500만원"
-                      />
-                      {project.budgetMin && project.budgetMax && (
-                        <p className="text-xs text-text-muted mt-1">예산 범위: {project.budgetMin} - {project.budgetMax}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm text-text-secondary mb-1">포트폴리오 URL</label>
-                      <input
-                        value={formData.portfolioUrl}
-                        onChange={(e) => setFormData({ ...formData, portfolioUrl: e.target.value })}
-                        className="w-full bg-bg-secondary border border-line text-text-primary rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent"
-                        placeholder="https://your-portfolio.com"
+                        placeholder="지원서 제목을 입력해주세요"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-text-secondary mb-1">제안서</label>
+                      <label className="block text-sm text-text-secondary mb-1">내용</label>
                       <textarea
+                        required
                         rows={6}
-                        value={formData.proposal}
-                        onChange={(e) => setFormData({ ...formData, proposal: e.target.value })}
+                        value={formData.content}
+                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                         className="w-full bg-bg-secondary border border-line text-text-primary rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent resize-none"
                         placeholder="프로젝트에 대한 이해도, 수행 계획, 관련 경험을 작성해주세요."
                       />
@@ -639,6 +596,33 @@ export default function PartnerMatchingProjectDetailPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showDeleteProjectConfirm}
+        title="프로젝트 삭제"
+        message="프로젝트를 삭제하시겠습니까? 삭제 후에는 되돌릴 수 없습니다."
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          setShowDeleteProjectConfirm(false)
+          deleteMutation.mutate()
+        }}
+        onCancel={() => setShowDeleteProjectConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteInquiryId}
+        title="문의 삭제"
+        message="삭제하시겠습니까?"
+        confirmLabel="삭제"
+        danger
+        onConfirm={() => {
+          if (!deleteInquiryId) return
+          deleteInquiryMutation.mutate(deleteInquiryId)
+          setDeleteInquiryId(null)
+        }}
+        onCancel={() => setDeleteInquiryId(null)}
+      />
 
     </div>
   )

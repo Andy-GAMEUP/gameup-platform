@@ -133,7 +133,7 @@ export default function AdminMyPage() {
         <div className="flex gap-2 flex-wrap">
           {TABS.map(({ key, label, icon }) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-base font-medium whitespace-nowrap transition-colors ${
                 tab === key ? 'bg-accent text-text-inverse' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
               }`}>
               {icon}{label}
@@ -148,7 +148,7 @@ export default function AdminMyPage() {
               <h2 className="text-lg font-semibold">사용자명</h2>
               {!usernameEditing && (
                 <button onClick={() => setUsernameEditing(true)}
-                  className="flex items-center gap-1.5 text-sm text-accent hover:text-accent-hover transition-colors">
+                  className="flex items-center gap-1.5 text-base text-accent hover:text-accent-hover transition-colors">
                   <Edit2 className="w-4 h-4" />편집
                 </button>
               )}

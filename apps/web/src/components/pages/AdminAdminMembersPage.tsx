@@ -129,7 +129,7 @@ export default function AdminAdminMembersPage() {
           <div className="flex items-center gap-3 bg-bg-tertiary/50 border border-line rounded-xl px-4 py-3">
             <span className="text-text-secondary text-sm font-medium">{selected.size}명 선택됨</span>
             <button onClick={() => openModal('notify')}
-              className="px-3 py-1.5 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg text-xs hover:bg-blue-600/30 transition-colors">
+              className="px-3 py-1.5 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg text-base hover:bg-blue-600/30 transition-colors">
               알림 발송
             </button>
           </div>
@@ -175,7 +175,7 @@ export default function AdminAdminMembersPage() {
                       <td className="px-4 py-3">
                         <button
                           onClick={() => setRevokeModal({ open: true, member: m })}
-                          className="px-2 py-1 bg-accent-light hover:bg-accent-light/80 text-accent-text text-xs rounded transition-colors border border-accent-muted"
+                          className="px-2 py-1 bg-accent-light hover:bg-accent-light/80 text-accent-text text-base rounded transition-colors border border-accent-muted"
                         >
                           권한 해제
                         </button>
@@ -191,20 +191,20 @@ export default function AdminAdminMembersPage() {
         {totalPages > 1 && (
           <div className="flex justify-center gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
+              className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
               이전
             </button>
             {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
               const p = Math.max(1, Math.min(page - 3, totalPages - 6)) + i
               return p <= totalPages ? (
                 <button key={p} onClick={() => setPage(p)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>
+                  className={`px-3 py-1.5 text-base rounded-lg transition-colors ${page === p ? 'bg-red-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>
                   {p}
                 </button>
               ) : null
             })}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="px-3 py-1.5 text-sm rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
+              className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40 transition-colors">
               다음
             </button>
           </div>
@@ -227,11 +227,11 @@ export default function AdminAdminMembersPage() {
               className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent resize-none" />
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal({ open: false, type: null })}
-                className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-sm transition-colors">
+                className="flex-1 px-4 py-2.5 bg-bg-tertiary hover:bg-bg-hover text-text-primary rounded-xl text-base transition-colors">
                 취소
               </button>
               <button onClick={submitModal} disabled={submitting}
-                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-base transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 발송
               </button>
