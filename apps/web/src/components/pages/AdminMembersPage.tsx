@@ -45,6 +45,7 @@ export default function AdminMembersPage() {
   const [counts, setCounts] = useState<{ total: number; developer: number; partner: number; admin: number; corporate: number; individual: number }>({ total: 0, developer: 0, partner: 0, admin: 0, corporate: 0, individual: 0 })
   const [submitting, setSubmitting] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  const [categoryTarget, setCategoryTarget] = useState<{ id: string; name: string; next: 'developer' | 'partner' } | null>(null)
   const limit = 15
 
   const loadCounts = useCallback(async () => {
@@ -98,6 +99,19 @@ export default function AdminMembersPage() {
     setSubmitting(true)
     try {
       await adminService.approveUser(userId, { approvalStatus: 'approved' })
+      loadUsers()
+      loadCounts()
+    } catch {
+      alert('처리 실패')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleChangeCategory = async (userId: string, category: 'developer' | 'partner') => {
+    setSubmitting(true)
+    try {
+      await adminService.updateUserDetail(userId, { companyInfo: { companyCategory: category } })
       loadUsers()
       loadCounts()
     } catch {
@@ -209,7 +223,15 @@ export default function AdminMembersPage() {
                           {user.companyInfo?.companyName || '-'}
                         </td>
                         <td className="px-4 py-3 text-text-secondary border-r border-line/20">
-                          {isDeveloper ? '개발사' : '파트너'}
+                          <div className="flex items-center gap-1.5">
+                            <span>{isDeveloper ? '개발사' : '파트너'}</span>
+                            <button
+                              onClick={() => setCategoryTarget({ id: user._id, name: user.companyInfo?.companyName || user.username, next: isDeveloper ? 'partner' : 'developer' })}
+                              disabled={submitting}
+                              className="px-2 py-0.5 rounded-md text-xs font-medium bg-bg-tertiary hover:bg-line-light border border-line text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap disabled:opacity-50">
+                              변경
+                            </button>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-text-secondary border-r border-line/20">
                           {user.contactPerson?.phone || '-'}
@@ -288,6 +310,19 @@ export default function AdminMembersPage() {
           setDeleteConfirmId(null)
         }}
         onCancel={() => setDeleteConfirmId(null)}
+      />
+
+      <ConfirmModal
+        isOpen={!!categoryTarget}
+        title="기업 유형 변경"
+        message={categoryTarget ? `'${categoryTarget.name}'의 기업 유형을 '${categoryTarget.next === 'developer' ? '개발사' : '파트너'}'(으)로 변경하시겠습니까?` : ''}
+        confirmLabel="변경"
+        onConfirm={() => {
+          if (!categoryTarget) return
+          handleChangeCategory(categoryTarget.id, categoryTarget.next)
+          setCategoryTarget(null)
+        }}
+        onCancel={() => setCategoryTarget(null)}
       />
     </AdminLayout>
   )

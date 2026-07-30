@@ -201,7 +201,11 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     if (isPartner !== undefined) update.isPartner = isPartner
     if (profileImage !== undefined) update.profileImage = profileImage
     if (bio !== undefined) update.bio = bio
-    if (companyInfo !== undefined) update.companyInfo = companyInfo
+    if (companyInfo !== undefined) {
+      for (const [key, value] of Object.entries(companyInfo)) {
+        update[`companyInfo.${key}`] = value
+      }
+    }
     if (contactPerson !== undefined) update.contactPerson = contactPerson
     if (company !== undefined) update['companyInfo.companyName'] = company.name
     if (contact !== undefined) update.contactPerson = contact
