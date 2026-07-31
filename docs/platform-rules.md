@@ -215,6 +215,12 @@ approvalStatus=pending (가입 대기) → /register/pending 화면으로 이동
 - 팀원 계정은 수정 불가 (대표 계정 본인만 가능)
 - **가입/재신청과 달리 이 수정 화면에서는 최소 선택 개수 제한이 없다** (전체 해제하여 빈 배열로 저장 가능)
 
+#### 기업 유형(companyCategory) 관리자 수정
+
+- 가입 시 선택한 `companyCategory`(개발사/파트너)가 잘못 분류된 경우, **어드민(normal 이상) > 회원관리 > 기업회원** 목록의 "기업 유형" 컬럼에서 "변경" 버튼으로 되돌릴 수 있다 (`PATCH /api/admin/users-enhanced/:id`)
+- 이 API는 전달된 `companyInfo` 필드만 병합 적용하므로, 회사명·사업자번호·사업 형태 등 다른 기업 정보는 유지된다
+- 개발사 ↔ 파트너 전환은 접근 가능한 기능이 바뀌는 중요한 변경이므로 `ConfirmModal` 확인 팝업을 거친다
+
 #### 회사 단일 계정 원칙
 
 - **하나의 회사에 하나의 대표 기업회원 계정만** 허용
@@ -626,19 +632,35 @@ approvalStatus=pending
   - `매칭보류`: 모집은 종료되었지만 지원자가 아직 결정되지 않은 상태 (기존 `완료`를 대체 — 내부 DB 값은 `unmatched`를 그대로 사용)
   - 기존 `초안(draft)` / `취소(cancelled)`는 폐지됨 — 프로젝트 등록 시 바로 `모집중`으로 생성되며(임시저장 없음), 취소가 필요한 경우는 상태 변경이 아닌 **삭제**로 처리
 
-**자동 상태 전환** (2026-07-06 추가)
-- 프로젝트 소유자가 지원자를 **승인(approved)** 처리하는 즉시 → 프로젝트 상태 자동으로 `매칭성공` 전환하고, 같은 프로젝트의 승인되지 않은 나머지 지원서는 전부 자동으로 `거절(rejected)` 처리 (`updateApplicationStatus`, `partnerProjectController.ts`)
-- `매칭성공` 상태에서 그 승인을 취소(거절/보류/검토중으로 재변경)했을 때, 해당 프로젝트에 승인된 지원자가 더 이상 없으면 → 마감일이 남아있으면 `모집중`, 마감일이 지났으면 `매칭보류`로 자동 복구 (`updateApplicationStatus`, `partnerProjectController.ts`)
-- 매시간 배치 작업(`apps/api/src/jobs/closeExpiredProjects.ts`, 서버 시작 시 1회 + 이후 1시간마다)이 `모집중` 상태이면서 `applicationDeadline`이 지난 프로젝트를 검사 → 승인된 지원자가 있으면 `매칭성공`, 없으면 `매칭보류`로 자동 전환
-- `매칭보류` 상태의 프로젝트를 소유자가 `applicationDeadline`을 미래 날짜로 수정하면 → 상태가 `모집중`으로 자동 전환 (`updateProject`, `partnerProjectController.ts`). `매칭성공`은 이미 지원자가 승인된 상태이므로 마감일을 바꿔도 전환되지 않음
+**지원서 상태값과 최종 결정** (2026-07-24 도입, 2026-07-27 전면 개편 — 승인 2단계 폐지)
+- 지원서 상태값: `pending(검토중)` / `approved(협의 중, 레거시)` / `on-hold(보류중)` / `rejected(거절)` / `confirmed(확정)` 5가지
+- **승인(approved) 단계는 수동 승인 버튼으로는 폐지됨** — 예전에는 지원자를 먼저 "승인"해야 메시지를 보내고 대화 후 확정할 수 있었지만(2026-07-24 도입), 이 중간 단계를 없애고 **pending 상태에서 바로 메시지 발신 → 확정**이 가능하도록 단순화함(2026-07-27)
+- **첫 메시지 발신 시 pending → approved 자동 전환(2026-07-27 추가)** — `sendApplicationMessage`에서 지원서 상태가 아직 `pending`이면 메시지 생성과 함께 자동으로 `approved`("협의 중")로 바뀜. 수동 승인 버튼은 없지만, 대화가 시작됐다는 사실 자체가 "협의 중" 상태를 나타냄. 이미 `on-hold`/`rejected`/`confirmed`인 지원서는 건드리지 않음
+- **거절(rejected)과 확정(confirmed)은 둘 다 영구적인 최종 결정** — 한 번 거절되거나 확정되면 어떤 상태로도 다시 바꿀 수 없음(`updateApplicationStatus`가 대상 지원서가 이미 `rejected` 또는 `confirmed`면 무조건 400 응답). 지원자 목록 화면에서도 해당 행의 확정/거절 버튼이 영구 비활성화됨
+- **확정(confirmed)**: 지원자 목록에 별도 "확정" 컬럼은 없음 — "협의 하기" 버튼으로 여는 메시지 팝업(`MessageComposeModal`) 안의 "매칭 확정" 버튼으로 처리(§9.7 참고). 그 지원자와 주고받은 메시지가 하나라도 있어야 활성화됨(승인 단계가 없어졌으므로 "대화가 있었는지"가 확정 가능 조건). 클릭 시 `ConfirmModal`로 재확인 후 처리
+- **확정(confirmed) 처리 시 자동 처리** (`updateApplicationStatus`, `partnerProjectController.ts`):
+  - 같은 프로젝트의 아직 최종 결정(거절/확정) 안 된 다른 지원서 전부 자동으로 `거절(rejected)` 처리
+  - 프로젝트 상태 자동으로 `매칭성공`으로 전환 (확정이 영구적이므로 이후 다시 `모집중`/`매칭보류`로 되돌아가지 않음)
+- 매시간 배치 작업(`apps/api/src/jobs/closeExpiredProjects.ts`, 서버 시작 시 1회 + 이후 1시간마다)이 `모집중` 상태이면서 `applicationDeadline`이 지난 프로젝트를 검사 → **확정된** 지원자가 있으면 `매칭성공`, 없으면 `매칭보류`로 자동 전환
+- `매칭보류` 상태의 프로젝트를 소유자가 `applicationDeadline`을 미래 날짜로 수정하면 → 상태가 `모집중`으로 자동 전환 (`updateProject`, `partnerProjectController.ts`). `매칭성공`은 이미 지원자가 확정된 상태이므로 마감일을 바꿔도 전환되지 않음
 
-**마감 후 승인/거절 제한** (2026-07-07 추가)
-- `applicationDeadline`이 지난 프로젝트는 아직 결정되지 않은(현재 상태가 `approved`가 아닌) 지원서를 새로 승인/거절할 수 없음 — 지원자 목록 화면(`ProjectsApplicantsView.tsx`)의 승인/거절 버튼이 비활성화되고, API(`updateApplicationStatus`)도 동일 조건으로 400 응답 처리
-- 단, 이미 `매칭성공`된 지원서의 승인을 취소(거절/보류/검토중으로 재변경)하는 것은 마감 여부와 무관하게 계속 허용 — 위 자동 복구 로직(`매칭보류`/`모집중` 전환)이 계속 동작해야 하기 때문
+**마감 후 거절/확정 제한** (2026-07-07 도입, 2026-07-27 승인 폐지 반영해 갱신)
+- `applicationDeadline`이 지난 프로젝트는 아직 확정되지 않은 지원서를 새로 거절할 수 없음 — 지원자 목록 화면(`ProjectsApplicantsView.tsx`)의 거절 버튼이 비활성화되고, API(`updateApplicationStatus`)도 동일 조건으로 400 응답 처리
+- **확정(confirmed) 처리 자체는 마감 여부와 무관하게 항상 허용** — 모집은 마감됐어도 이미 대화해둔 후보들 중 최종 1곳을 고르는 절차이기 때문
+- **마감된 프로젝트의 미결(pending/approved) 지원 건은 지원자 목록의 "진행 상태" 컬럼(구 "결정")이 상태 배지 대신 "마감"으로 표시되고, "협의 하기" 버튼도 비활성화됨**(프론트 전용 표시 변경 — API 차단은 아님) — 이미 `확정`/`거절`로 최종 결정된 건은 그 결과를 그대로 보여줘야 하므로 이 표시 변경에서 제외됨
+
+**지원 취소 및 재지원** (2026-07-27 추가)
+- 지원자 본인은 본인 채널의 **내가 한 지원** 탭에서 "취소" 버튼으로 자신의 지원서를 언제든 취소할 수 있음(단, `confirmed` 상태는 취소 불가) — 취소 시 지원서 자체가 삭제되고(`DELETE /partner/applications/:appId`) 프로젝트 `applicantCount`가 차감됨
+- 지원서 존재 여부(상태 무관, 거절된 것 포함)만으로 재지원을 막기 때문에(`{projectId, applicantId}` unique index), **거절당한 지원자가 같은 프로젝트에 다시 지원하려면 먼저 본인이 그 지원서를 "취소"해야 함** — 취소 후에는 제한 없이 재지원 가능
+- 프로젝트 상세 페이지는 로그인 사용자의 지원 여부(`hasApplied`)를 `GET /partner/projects/:id` 응답에 함께 내려주며, 이미 지원 중이면 "지원하기" 버튼이 "지원완료"로 비활성화됨
 
 **지원서 제목/내용 열람** (2026-07-24 추가)
 - 지원 시 applicant가 작성한 제목/내용은 프로젝트 소유자의 **채널 관리 > 프로젝트 활동 > 지원자 목록**(`ProjectsApplicantsView.tsx`)에서 "지원서" 컬럼의 "보기" 버튼으로 확인 가능 (관리자 화면 `/admin/partner-topics`에서는 기존부터 노출)
 - 지원자 본인의 **내가 한 지원** 화면(`ProjectsApplicationsView.tsx`)에는 아직 제목/내용이 노출되지 않음 — 필요 시 추후 추가
+
+**지원 기업명 → 파트너 채널 링크(2026-07-27 추가)**
+- 지원자 목록의 "지원 기업명"에 해당 지원자가 **승인된(status=approved) 파트너 채널**을 갖고 있으면 클릭 시 새 탭에서 그 회사의 `/partner/:id` 채널 페이지로 이동. 채널이 없거나 미승인이면 그냥 텍스트(링크 아님)
+- `getMyProjectApplicants`(`GET /partner/projects/applicants/me`)가 지원자 userId로 `Partner`를 조회해 `applicantId.partnerChannelId`를 붙여서 내려줌
 
 **관리자 권한 제한** (2026-07-06 변경)
 - 상태(매칭) 전환은 위 자동 로직으로만 이루어지며, **관리자는 프로젝트 상태를 수동으로 변경할 수 없음** — 관리자 페이지의 "관리" 컬럼(상태 변경 드롭다운 + 삭제 버튼)은 폐지되고 **"바로보기"**(새 창으로 프로젝트 상세 페이지 열람)로 대체됨
@@ -663,21 +685,47 @@ approvalStatus=pending
 - Partner 모델에 확장 필드 추가: `displayNameOverride`, `coverImage`, `website`, `tags`, `keywords`, `hourlyRate`, `location`, `isVerified`, `rating`, `reviewCount`, `portfolio[]`, `history[]`, `skills[]`, `contactEmail`, `contactPhone`, `representativeGameId`
 - 폐지된 필드: `activityPlan`(활동 계획), `availability`(활동 가능 여부) — 정리 스크립트(`apps/api/src/scripts/cleanup-partner-experience-fields.ts`)로 구필드 제거
 - 공개 프로필은 `/partner/:id` 하위 탭으로 재구성: **파트너 홈**(`/partner/:id`) / **회사 연혁**(`/history`) / **보유 기술**(`/skills`) / **개발 게임**(`/games`, 개발사 유형만 노출) / **포트폴리오**(`/portfolio`) / **등록 프로젝트**(`/posts`)
-- 소유자 전용 관리 기능은 `/partner/:id/manage` 하위로 통합: **프로젝트 활동**(`/manage/projects`, 지원자 목록 포함) / **받은 메시지**(`/manage/messages`, 메시지 휴지통 포함) / **팀원 관리**(`/manage/team`) — 소유자가 아니면 접근 불가
+- 소유자 전용 관리 기능은 `/partner/:id/manage` 하위로 통합: **프로젝트 활동**(`/manage/projects`, **지원자 목록 / 내가 한 지원** 2탭) / **팀원 관리**(`/manage/team`) — 소유자가 아니면 접근 불가
+- **"등록 프로젝트" 탭과 "받은 메시지" 탭은 폐지됨 (2026-07-27, §9.7 참고)** — 등록한 프로젝트는 공개 프로필의 **등록 프로젝트**(`/partner/:id/posts`) 탭에서 보고, 메시지는 별도 편지함 화면 없이 지원자 목록·내가 한 지원의 **"협의 하기"** 버튼으로만 주고받는다
 - 기존 `/plan`(활동계획), `/topics`(토픽), `/team`·`/projects`·`/projects/applicants`·`/projects/applications`(구 경로) 라우트는 전부 폐지되고 위 신규 구조로 대체됨
 - 독립 운영되던 `/minihome-manage` 화면은 폐지되고 파트너 프로필 관리로 완전히 흡수됨
 
 ### 9.7 파트너 쪽지(메시지)
 
-> 파트너 라운지 채널 간 1:1 쪽지 기능. 채널 상세에서 "연락하기"로 시작되며, 소유자는 **채널 관리 > 받은 메시지**에서 확인.
+> 파트너 채널 간 1:1 쪽지 기능. **2026-07-27 전면 개편**: 승인(approved) 게이트를 없애고, 메시지 발신/수신·히스토리 열람·매칭 확정을 전부 지원자 목록·내가 한 지원의 **"협의 하기"** 버튼 하나(`MessageComposeModal`)로 통합. 별도의 "받은 메시지" 편지함 탭 자체가 폐지됨(9.6절 참고).
 
-- 데이터 모델: `PartnerMessage`(개별 메시지, `rootId`로 대화를 묶음) + `PartnerMessageThread`(대화별 상태 문서, `rootId` 기준 1개)
-- 새 "연락하기"는 매번 자기 자신을 `rootId`로 갖는 새 대화로 생성됨 — 같은 상대와 이미 종료/삭제된 대화가 있어도 항상 새로 도달 가능하며, 받은 메시지함에는 대화(rootId)별로 별도 카드가 쌓임 (같은 상대와 여러 개의 독립된 대화 가능)
-- 대화 상태는 3단계: `open`(정상) / `closed`(종료) / `deleted`(완전 삭제)
-  - **종료**: 종료한 사람의 메시지 휴지통으로 이동. 상대방은 계속 받은 메시지함에서 보이지만 답장은 차단되고 "상대방이 대화를 종료하여 답장할 수 없습니다" 안내 표시
-  - **복원**: 종료한 본인만, `closed` 상태에서만 가능
-  - **완전 삭제**: 되돌릴 수 없음. 종료한 본인이 삭제하면 양쪽 모두 영구적으로 답장 불가 상태가 됨. 종료하지 않은 쪽(차단당한 쪽)이 삭제하면 본인 화면에서만 사라지는 개인적 삭제이며 상대방 상태에는 영향 없음
-- 본인 채널로는 메시지를 보낼 수 없음
+**메시지 발신 조건 (2026-07-27 변경)**
+- 지원서 상태와 무관하게(`pending`/`rejected` 포함) 프로젝트 소유자와 지원자는 언제든 서로 메시지를 보낼 수 있음 — 과거의 "매칭승인/확정 상태에서만 발신 가능" 제한(2026-07-24 도입)은 폐지됨
+- 발신 위치: 소유자는 **채널 관리 > 프로젝트 활동 > 지원자 목록**의 "협의 하기" 컬럼, 지원자는 본인 채널의 **내가 한 지원** 탭의 "협의 하기" 컬럼 — 둘 다 클릭 시 공용 `MessageComposeModal`(작성 + 히스토리 보기 토글)이 뜨며, `ProjectApplication._id` 기준으로 상대를 특정해 발신(`POST /partner/applications/:appId/message`). 히스토리 조회(`GET /partner/applications/:appId/messages`)도 같은 지원 건 기준 — 같은 회사와 다른 프로젝트에서 나눈 무관한 대화가 섞이지 않도록 상대방(counterpart) 기준이 아니라 일부러 지원 건 기준으로 스코프함
+- 버튼은 이미 대화가 있었는지 여부와 무관하게 항상 새 메시지 작성 모달을 띄움(예전의 "대화 중" 링크/받은 메시지 탭으로의 자동 이동은 폐지) — 이전 대화 확인은 모달 안의 "히스토리 보기" 토글로 함
+- 파트너 찾기(`/partner/directory`) 목록의 "연락하기" 버튼 및 파트너 채널 아무 곳에나 보낼 수 있던 범용 발신 API(`POST /partner/:partnerId/messages`)는 이미 폐지된 상태(2026-07-24)이며 그대로 유지
+- 본인에게는 메시지를 보낼 수 없음 (프로젝트 소유자가 자기 프로젝트에 지원하는 경우는 애초에 발생하지 않음)
+- **이메일/전화번호 등 연락처 포함 메시지는 차단됨(2026-07-27 추가)** — `containsContactInfo`(`apps/api/src/utils/contactInfoFilter.ts`)가 이메일 형식 또는 전화번호 형식(구분자 있는/없는 9~12자리 숫자열)을 감지하면 400으로 거부. `sendApplicationMessage`와 (더 이상 프론트에서 안 쓰지만 남아있는) `replyToPartnerMessage` 둘 다 적용. 메시지 작성 입력창 placeholder에도 "이메일 주소, 전화 번호 등을 보내지 못할 수 있습니다." 안내 문구 표시
+- **지원자는 먼저 대화를 시작할 수 없음(2026-07-27 추가)** — 프로젝트 소유자와 지원자 사이에 주고받은 메시지가 하나도 없으면 지원자 쪽 발신은 403으로 차단됨(`sendApplicationMessage`, 이 지원 건뿐 아니라 두 사람 사이 전체 메시지 기준). 소유자가 먼저 연락한 뒤에만 지원자가 답할 수 있음. 프론트에서는 "내가 한 지원" 탭의 협의 하기 버튼이 대화가 없을 땐 클릭 불가한 "기다리는 중"(시계 아이콘)으로 표시되고, 소유자 쪽은 이 제한이 없어 "협의 시작" 버튼이 항상 활성화됨
+- **거절된 지원 건은 지원자 쪽에서 더 이상 협의 불가(2026-07-27 추가)** — `application.status === 'rejected'`면 지원자 쪽 발신은 403으로 차단(`sendApplicationMessage`). "내가 한 지원" 탭에서 협의 하기 버튼이 X 아이콘의 "거절됨"(빨간 톤, 클릭 불가)으로 바뀜. 소유자 쪽은 이 제한이 없어 거절 후에도 계속 메시지를 보낼 수 있음(예: 정중한 안내 메시지)
+
+**협의 하기 버튼의 우편 아이콘 & 안읽음 배지 (2026-07-27 추가)**
+- "협의 하기" 버튼은 텍스트 대신 그 상대와의 대화 방향에 따라 3가지 우편 아이콘 중 하나를 보여줌: 대화 없음(`Mail`) / 내가 마지막으로 보내고 아직 답장 없음(`MailCheck`) / 상대가 마지막으로 보냄(`MailOpen`) — `mailButtonState.ts`의 `getMailButtonState`로 계산
+- **안읽음 배지(작은 빨간 점)는 이제 이 우편 아이콘 위(오른쪽 상단)에만 표시됨** — 상대가 보낸 최신 메시지를 아직 "본 것"으로 표시하지 않았을 때만 뜸. 예전에 받은 메시지 탭 카드마다 뜨던 "NEW" 배지는 폐지됨(대신 아래 참고)
+- 협의 하기 버튼을 클릭해 모달을 열면(또는 그 지원 건을 거절/확정 처리하면) 그 상대의 안읽음 상태가 즉시 "본 것"으로 처리됨(`markMessageSeen`, `ProjectsApplicantsView.tsx`/`ProjectsApplicationsView.tsx`) — `localStorage` 키(`partnerMessageCardSeen:{partnerId}`)에 기록되므로 지원자 목록/내가 한 지원 등 같은 상대를 표시하는 다른 화면에도 즉시 반영됨
+
+**"받은 메시지" 편지함 탭 자체가 폐지됨 (2026-07-27 변경)**
+- 전용 편지함 화면(`ReceivedMessagesSection.tsx`)이 삭제되어, 메시지 열람은 오직 "협의 하기" 버튼으로 여는 `MessageComposeModal` 안(작성 / 히스토리 보기 두 화면)에서만 이뤄짐 — 답장 작성, 프로필 보기 등 편지함 화면에 있던 다른 기능은 없음
+- **매칭 확정도 이 모달 안에 있음** — 지원자 목록 테이블에 별도 "확정" 컬럼은 없고, 협의 하기 버튼을 눌러 뜨는 모달의 작성 화면 하단 왼쪽에 "매칭 확정" 버튼이 있음. 그 지원자와 주고받은 메시지가 하나라도 있어야 활성화됨(9.5절 참고). **프로젝트를 등록한 소유자(파트너) 쪽에만 노출** — 지원자 본인의 "내가 한 지원" 화면의 협의 하기 팝업에는 이 버튼이 뜨지 않음(`MessageComposeModal`의 `confirmMatch` prop을 소유자 쪽 화면에서만 넘김)
+
+**매칭 확정 시 연락처 상호 공개 (2026-07-27 추가)**
+- 매칭 확정(confirmed) 순간, 지원자 목록에서 "매칭 확정"을 누른 소유자에게는 그 지원자의 회사명/이메일/연락처를 담은 "매칭이 확정됐습니다. 연락해 보세요" 팝업이 자동으로 뜸 — 값은 지원 시점에 지원서(`ProjectApplication.applicantName/email/phone`)에 스냅샷으로 저장돼 있던 걸 그대로 사용(추가 조회 없음)
+- 확정된 지원 건은 지원자 목록/내가 한 지원 양쪽 모두 "협의 하기" 버튼이 연락처 아이콘(`Contact`)의 "연락처 열람" 버튼으로 바뀌어, 이후 언제든 다시 눌러서 상대 연락처를 볼 수 있음
+- **지원자 쪽에서 보는 프로젝트 소유자의 이메일/연락처는 확정 전에는 절대 노출되지 않음** — `getMyApplications`(`GET /partner/applications/me`)가 지원서 상태가 `confirmed`가 아니면 응답에서 `projectId.ownerId.email`/`companyInfo.phone`/`contactPerson`을 서버에서 지워서 내려보냄. 반대 방향(지원자의 연락처를 소유자가 보는 것)은 지원 시점에 이미 지원서에 스냅샷된 정보라 예전부터 상태와 무관하게 노출되어 있었음(변경 없음)
+- "내가 한 지원"에서 매칭이 확정되면 프로젝트명 옆에 "매칭을 축하드립니다!" 배지(2줄, NEW 배지와 같은 스타일)가 뜨고, 한 번 보면 다시 안 뜸(`partnerApplicationConfirmedSeen:{partnerId}` localStorage 키로 seen 처리)
+
+**데이터 모델 및 안읽음 계산**
+- 데이터 모델: `PartnerMessage`(개별 메시지, `rootId`로 대화를 묶음) + `PartnerMessageThread`(대화별 상태 문서, `rootId` 기준 1개) — "협의 하기"로 메시지를 보낼 때마다 매번 새 `rootId`(자기참조)로 독립된 대화가 시작됨
+- 편지함 UI는 없어졌지만 `GET /partner/messages/received`(`getReceivedMessages`, `isOutgoing`으로 내가 보낸 것도 구분해서 반환)는 여전히 호출됨 — 그 상대와 주고받은 **모든** 메시지(여러 rootId 통합, 발신 방향 무관)를 받아와 두 가지 계산에만 씀:
+  1. `mailButtonState.ts`의 `getMailButtonState`가 상대별 마지막 발신자를 판단해 "협의 하기" 버튼의 우편 아이콘(Mail/MailCheck/MailOpen) 결정
+  2. 지원자 목록·내가 한 지원 탭과 "프로젝트 활동" 사이드바 뱃지의 안읽음 점(`hasUnreadFromApplicants`/`hasUnreadFromOwners`/`hasUnreadMessage`) 계산 — 상대가 보낸 메시지 중 아직 "본 것"(`partnerMessageCardSeen:{partnerId}` localStorage)으로 표시 안 된 게 있으면 켜짐. **상대방이 보낸** 메시지만 기준으로 계산됨(내가 보낸 메시지는 스스로에게 안읽음을 띄우지 않음)
+- 대화(rootId) 상태 값(`open`/`closed`/`deleted`)은 스키마에 남아있지만, 이를 바꾸는 "대화 종료/복원/완전삭제" 기능은 UI에서 폐지됨 — 지금은 도달할 화면이 없어 사실상 모든 대화가 `open` 상태로만 존재함
+- (레거시, 정리 대상) 대화 종료/복원/완전삭제 API(`POST /partner/messages/thread/:rootId/close|restore|delete`, 프론트 `partnerService.closeMessageThread`/`restoreMessageThread`/`deleteMessageThread`)와 예전 답장 API(`replyToMessage`, `POST /partner/messages/:messageId/reply`)는 "받은 메시지" 탭이 있던 시절의 기능으로, 백엔드/서비스 레이어에는 그대로 남아있지만 지금은 어떤 화면에서도 호출하지 않는 죽은 코드
 
 ---
 
@@ -700,6 +748,8 @@ approvalStatus=pending
 |------|------|------|
 | 계정 정지 | `system` | 정지 범위, 기간 포함 |
 | 계정 정지 해제 | `system` | 해제 안내 |
+| 파트너 라운지 메시지 수신 (2026-07-27 추가) | `proposal` | 지원 건에 "협의 하기"로 메시지를 보내면 수신자에게 발송 ("파트너 라운지 새 메시지 도착", `sendApplicationMessage`) |
+| 매칭 확정 (2026-07-27 추가) | `proposal` | 프로젝트 소유자가 지원자를 확정 처리하면 그 지원자에게 발송 ("매칭이 확정되었습니다", `updateApplicationStatus`) |
 
 ### 10.3 관리자 수동 알림 발송 권한
 
