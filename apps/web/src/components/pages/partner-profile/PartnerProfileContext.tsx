@@ -20,6 +20,17 @@ export interface PartnerProfileCtxValue {
   isDeveloperCompany: boolean
   developerGames: any[]
   receivedMessages: PartnerMessageItem[]
+  hasUnreadMessage: boolean
+  // hasUnreadMessage를 상대 역할별로 쪼갠 것 — 지원자 목록 탭은 지원자가 보낸 안읽음만,
+  // 내가 한 지원 탭은 프로젝트 소유자가 보낸 안읽음만 봐야 하므로 구분해서 내려준다
+  hasUnreadFromApplicants: boolean
+  hasUnreadFromOwners: boolean
+  // counterpartId -> latest *incoming* (non-outgoing, still-visible) message id — used to tell
+  // whether that counterpart's latest message has been seen yet (messageSeenMap[counterpartId]
+  // matches it or not). Shared by ReceivedMessagesSection and the 협의 하기 mail icon/badge.
+  latestMessageIdByCounterpart: Map<string, string>
+  messageSeenMap: Record<string, string>
+  markMessageSeen: (counterpartId: string) => void
   applicantStatusMutation: UseMutationResult<any, any, { projectId: string; appId: string; status: string }>
 }
 

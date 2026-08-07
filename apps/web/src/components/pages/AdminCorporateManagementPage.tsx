@@ -273,7 +273,7 @@ function PartnerProfileEditModal({
                 <input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="기업명" className={inputCls} />
               </div>
               <div>
-                <label className="text-text-secondary text-xs font-medium block mb-1.5">사업 형태 (회원가입 시 선택)</label>
+                <label className="text-text-secondary text-xs font-medium block mb-1.5">기업 형태 (회원가입 시 선택)</label>
                 <div className="flex flex-wrap gap-2">
                   {(partner.userId?.companyInfo?.companyType || []).filter(t => t !== 'developer').length > 0
                     ? (partner.userId?.companyInfo?.companyType || []).filter(t => t !== 'developer').map(t => (
@@ -281,7 +281,7 @@ function PartnerProfileEditModal({
                           {COMPANY_TYPE_LABELS[t] || t}
                         </span>
                       ))
-                    : <span className="text-text-muted text-xs">등록된 사업 형태 없음</span>}
+                    : <span className="text-text-muted text-xs">등록된 기업 형태 없음</span>}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -830,7 +830,7 @@ export function PartnerManagementContent() {
                   </div>
                 </div>
 
-                {/* 사업 형태 (PartnerMatchingProfilePage 스타일) */}
+                {/* 기업 형태 (PartnerMatchingProfilePage 스타일) */}
                 {(p.userId?.companyInfo?.companyType || []).filter(t => t !== 'developer').length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
                     {(p.userId?.companyInfo?.companyType || []).filter(t => t !== 'developer').map(type => (

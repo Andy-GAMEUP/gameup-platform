@@ -14,9 +14,7 @@ function ConsoleLayoutInner({ children }: { children: React.ReactNode }) {
   const _companyCategory = (user as any)?.companyInfo?.companyCategory || ''
   const _companyType: string[] = (user as any)?.companyInfo?.companyType ?? []
   const _isDeveloperCompany = _companyCategory === 'developer' || (!_companyCategory && _companyType.includes('developer'))
-  const isPartner = user?.memberType === 'corporate'
-    && user?.role !== 'developer'
-    && !_isDeveloperCompany
+  const isPartner = user?.memberType === 'corporate' && !_isDeveloperCompany
 
   useEffect(() => {
     if (isLoading) return

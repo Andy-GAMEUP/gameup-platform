@@ -101,6 +101,9 @@ export interface PartnerMessageItem {
   threadClosedByMe?: boolean
   permanentlyDeletedByMe?: boolean
   counterpartPermanentlyDeleted?: boolean
+  // getReceivedMessages 결과에서만 쓰임 — senderId는 항상 "상대방" 정보로 채워지므로,
+  // 실제로 내가 보낸 메시지인지는 이 필드로 구분한다
+  isOutgoing?: boolean
 }
 
 export interface TopicItem {
@@ -239,8 +242,8 @@ export const partnerService = {
     return res.data
   },
 
-  sendMessage: async (partnerId: string, content: string) => {
-    const res = await apiClient.post(`/partner/${partnerId}/messages`, { content })
+  sendApplicationMessage: async (appId: string, content: string) => {
+    const res = await apiClient.post(`/partner/applications/${appId}/message`, { content })
     return res.data as { message: string; data: PartnerMessageItem }
   },
 
@@ -254,8 +257,8 @@ export const partnerService = {
     return res.data as { message: string; data: PartnerMessageItem }
   },
 
-  getMessageThread: async (rootId: string) => {
-    const res = await apiClient.get(`/partner/messages/thread/${rootId}`)
+  getMessageThreadByApplication: async (appId: string) => {
+    const res = await apiClient.get(`/partner/applications/${appId}/messages`)
     return res.data as { messages: PartnerMessageItem[] }
   },
 

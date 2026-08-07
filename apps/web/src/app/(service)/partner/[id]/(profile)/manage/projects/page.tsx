@@ -1,12 +1,6 @@
-'use client'
-import ProjectsTabNav from '@/components/pages/partner-profile/ProjectsTabNav'
-import ProjectsMyProjectsView from '@/components/pages/partner-profile/ProjectsMyProjectsView'
+import { redirect } from 'next/navigation'
 
-export default function Page() {
-  return (
-    <div className="bg-bg-card border border-line rounded-xl overflow-hidden">
-      <ProjectsTabNav />
-      <ProjectsMyProjectsView />
-    </div>
-  )
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  redirect(`/partner/${id}/manage/projects/applicants`)
 }

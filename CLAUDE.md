@@ -66,6 +66,12 @@ for r in data.get('workflow_runs', []):
 - 삭제/종료/복원/승인 등 사용자 확인이 필요한 모든 동작은 브라우저 기본 `window.confirm()`이 아니라 `apps/web/src/components/ConfirmModal.tsx`로 통일한다
 - 관리자/개발자/유저 포털 구분 없이 전부 동일하게 적용하며, 새로 확인 팝업을 추가할 때도 `window.confirm()`을 쓰지 않는다
 
+## 프로젝트 카드 레이아웃 동일 적용 규칙
+
+- **`docs/project-card-consistency-rule.md`를 반드시 확인한다**
+- 이 문서에 나열된 "동일 그룹"(프로젝트를 카드로 보여주는 화면들) 중 하나의 카드 레이아웃을 수정하면, 사용자가 명시적으로 다르게 하라고 하지 않는 한 **묻지 않고 나머지 전부에도 동일하게 적용**한다
+- 새로 프로젝트 카드를 보여주는 화면을 추가하면 이 문서의 목록도 함께 업데이트한다
+
 ## 쿠폰 서버 (gameup-platform과 무관한 외부 미니 프로젝트)
 
 - `deploy/coupon-server/` — 같은 운영 서버에 격리된 별도 Docker 컨테이너로 떠 있는 쿠폰 발급 서버. gameup-platform 본 서비스(웹/API/DB)와 코드·데이터 전혀 무관

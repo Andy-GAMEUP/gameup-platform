@@ -5,7 +5,7 @@ import {
   getPartnerPost, createPartnerPost, updatePartnerPost, deletePartnerPost, togglePartnerPostLike,
   getTeamMembers, addTeamMember, removeTeamMember, searchGameUsers, toggleProfileVisibility,
   updateMyPartnerProfile, addPartnerGame, updatePartnerGame, removePartnerGame, setPartnerRepresentativeGame,
-  uploadPartnerImages, sendPartnerMessage, getReceivedMessages, replyToPartnerMessage, getMessageThread,
+  uploadPartnerImages, getReceivedMessages, replyToPartnerMessage,
   closeMessageThread, restoreMessageThread, deleteMessageThread,
 } from '../controllers/partnerController'
 import { authenticateToken, optionalAuth } from '../middleware/auth'
@@ -40,12 +40,10 @@ router.get('/partner/:partnerId/team', authenticateToken, getTeamMembers)
 router.post('/partner/:partnerId/team', authenticateToken, addTeamMember)
 router.delete('/partner/:partnerId/team/:memberId', authenticateToken, removeTeamMember)
 router.get('/partner/messages/received', authenticateToken, getReceivedMessages)
-router.get('/partner/messages/thread/:rootId', authenticateToken, getMessageThread)
 router.post('/partner/messages/:messageId/reply', authenticateToken, replyToPartnerMessage)
 router.post('/partner/messages/thread/:rootId/close', authenticateToken, closeMessageThread)
 router.post('/partner/messages/thread/:rootId/restore', authenticateToken, restoreMessageThread)
 router.post('/partner/messages/thread/:rootId/delete', authenticateToken, deleteMessageThread)
-router.post('/partner/:partnerId/messages', authenticateToken, sendPartnerMessage)
 router.get('/partner/:partnerId', optionalAuth, getPartnerChannel)
 
 export default router

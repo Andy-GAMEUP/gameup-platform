@@ -11,6 +11,7 @@ import {
   getProjectApplicants,
   getMyProjectApplicants,
   updateApplicationStatus,
+  cancelApplication,
   getMyApplications,
   getMyProjects,
   getProjectsByUser,
@@ -20,6 +21,8 @@ import {
   createProjectInquiry,
   deleteProjectInquiry,
   hideProjectInquiry,
+  sendApplicationMessage,
+  getMessageThreadByApplication,
 } from '../controllers/partnerProjectController'
 
 const router = Router()
@@ -37,10 +40,13 @@ router.get('/partner/projects/applicants/me', authenticateToken, getMyProjectApp
 // 지원 관련
 router.get('/partner/applications/me', authenticateToken, getMyApplications)
 router.get('/partner/applications/user/:userId/stats', getApplicationStatsByUser)
+router.post('/partner/applications/:appId/message', authenticateToken, sendApplicationMessage)
+router.get('/partner/applications/:appId/messages', authenticateToken, getMessageThreadByApplication)
+router.delete('/partner/applications/:appId', authenticateToken, cancelApplication)
 
 // 프로젝트 CRUD
 router.post('/partner/projects', authenticateToken, createProject)
-router.get('/partner/projects/:id', getProjectById)
+router.get('/partner/projects/:id', optionalAuth, getProjectById)
 router.put('/partner/projects/:id', authenticateToken, updateProject)
 router.delete('/partner/projects/:id', authenticateToken, deleteProject)
 

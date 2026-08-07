@@ -1,4 +1,5 @@
 import { Response } from 'express'
+import mongoose from 'mongoose'
 import { PartnerModel as Partner, PartnerReviewModel as PartnerReview, UserModel as User } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 
@@ -13,7 +14,7 @@ const DEVELOPER_CONDITION = {
 // 파트너 프로필 목록 (Partner/내채널 기반)
 export const getPartnerProfiles = async (req: AuthRequest, res: Response) => {
   try {
-    const { search, companyType, tab, page = 1, limit = 12 } = req.query
+    const { search, companyType, tab, page = 1, limit = 12, sort } = req.query
 
     const filter: Record<string, unknown> = { status: 'approved', isProfilePublic: true }
 
@@ -28,11 +29,13 @@ export const getPartnerProfiles = async (req: AuthRequest, res: Response) => {
       filter.isVerified = true
     }
 
-    // 사업 형태(User.companyInfo.companyType) / 탭 필터는 User 조회 후 userId 교집합으로 적용
+    // 기업 형태(User.companyInfo.companyType) / 탭 필터는 User 조회 후 userId 교집합으로 적용
     let userIdFilter: string[] | null = null
 
     if (companyType && companyType !== 'all') {
-      const matchedUsers = await User.find({ 'companyInfo.companyType': companyType }).select('_id')
+      // 다중 선택 시 콤마로 구분된 값이 넘어옴 — 선택된 기업 형태 중 하나라도 포함되면 매치
+      const types = String(companyType).split(',').filter(Boolean)
+      const matchedUsers = await User.find({ 'companyInfo.companyType': { $in: types } }).select('_id')
       userIdFilter = matchedUsers.map(u => String(u._id))
     }
 
@@ -51,11 +54,36 @@ export const getPartnerProfiles = async (req: AuthRequest, res: Response) => {
     const limitNum = Math.min(50, Math.max(1, Number(limit)))
     const skip = (pageNum - 1) * limitNum
 
-    const profiles = await Partner.find(filter)
-      .populate('userId', 'username memberType companyInfo.companyName companyInfo.companyCategory companyInfo.companyType')
-      .sort({ isVerified: -1, rating: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum)
+    const sortParam = String(sort || 'default')
+    const populateOpts = { path: 'userId', select: 'username memberType companyInfo.companyName companyInfo.companyCategory companyInfo.companyType' }
+
+    let profiles
+    if (sortParam === 'portfolio') {
+      // 배열 길이로 정렬해야 해서 find().sort()로는 안 되고 aggregate가 필요함
+      const matchFilter: Record<string, unknown> = { ...filter }
+      if (matchFilter.userId && typeof matchFilter.userId === 'object' && '$in' in (matchFilter.userId as Record<string, unknown>)) {
+        const ids = (matchFilter.userId as { $in: string[] }).$in
+        matchFilter.userId = { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) }
+      }
+      profiles = await Partner.aggregate([
+        { $match: matchFilter },
+        { $addFields: { portfolioCount: { $size: { $ifNull: ['$portfolio', []] } } } },
+        { $sort: { portfolioCount: -1, rating: -1 } },
+        { $skip: skip },
+        { $limit: limitNum },
+      ])
+      await Partner.populate(profiles, populateOpts)
+    } else {
+      const sortObj: Record<string, 1 | -1> =
+        sortParam === 'rating' ? { rating: -1, reviewCount: -1 } :
+        sortParam === 'recent' ? { updatedAt: -1 } :
+        { isVerified: -1, rating: -1, createdAt: -1 }
+      profiles = await Partner.find(filter)
+        .populate(populateOpts)
+        .sort(sortObj)
+        .skip(skip)
+        .limit(limitNum)
+    }
 
     const total = await Partner.countDocuments(filter)
 

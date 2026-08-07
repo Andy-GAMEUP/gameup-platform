@@ -86,7 +86,7 @@ export default function IntroSection() {
           {isOwnProfile && (
             <div>
               <p className="text-sm font-medium text-text-secondary mb-2">
-                사업 형태 <span className="text-text-muted font-normal">(복수 선택 가능)</span>
+                기업 형태 <span className="text-text-muted font-normal">(복수 선택 가능)</span>
               </p>
               <div className="flex flex-wrap gap-2">
                 {COMPANY_TYPE_OPTIONS.map(({ value: v, label }) => {

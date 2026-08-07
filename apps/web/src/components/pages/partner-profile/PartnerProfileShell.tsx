@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/useAuth'
 import { partnerService } from '@/services/partnerService'
 import { partnerMatchingService } from '@/services/partnerMatchingService'
 import { gameService } from '@/services/gameService'
-import { AlertTriangle, Globe, EyeOff, Loader2, Briefcase, UserPlus, Mail, Trash2 } from 'lucide-react'
+import { AlertTriangle, Globe, EyeOff, Loader2 } from 'lucide-react'
 import { PartnerProfileContext } from './PartnerProfileContext'
 import { PartnerData } from './constants'
 import ConfirmModal from '@/components/ConfirmModal'
@@ -118,9 +118,9 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
   }
   const [manageSeen, setManageSeen] = useState<Record<string, number>>({})
 
-  // "받은 메시지" unread tracking mirrors ReceivedMessagesSection's per-conversation (rootId)
-  // logic (shares the same localStorage key) rather than a raw message count, so the sidebar
-  // badge reflects the exact same "unread conversation" truth as the card-level NEW badge
+  // "받은 메시지" unread tracking mirrors ReceivedMessagesSection's per-company (counterpart)
+  // card logic (shares the same localStorage key) rather than a raw message count, so the
+  // sidebar badge reflects the exact same "unread company" truth as the card-level NEW badge
   const [messageSeenMap, setMessageSeenMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -136,17 +136,55 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
     return () => window.removeEventListener('partnerMessageSeenChange', load)
   }, [isOwnProfile, id])
 
-  const latestMessageIdByRoot = new Map<string, string>()
+  const latestMessageIdByCounterpart = new Map<string, string>()
   for (const m of receivedMessages) {
-    const rootId = (m as any).rootId || m._id
-    if (!rootId || latestMessageIdByRoot.has(rootId)) continue
-    latestMessageIdByRoot.set(rootId, m._id)
+    const cid = (m as any).senderId?._id
+    if (!cid || latestMessageIdByCounterpart.has(cid)) continue
+    // 내가 보낸 메시지(답장 대기 중)는 안읽음 배지 대상이 아님 — 상대방이 보낸 것만 카운트
+    if ((m as any).isOutgoing) continue
+    // 내가 종료했거나 완전삭제한 대화는 카드에서도 숨겨지므로 안읽음 배지 계산에서도 제외
+    if ((m as any).threadStatus && (m as any).threadStatus !== 'open' && (m as any).threadClosedByMe) continue
+    if ((m as any).permanentlyDeletedByMe) continue
+    latestMessageIdByCounterpart.set(cid, m._id)
   }
-  // no entry yet (never opened) counts as unseen too, so a brand-new conversation's very
+  // no entry yet (never opened) counts as unseen too, so a brand-new counterpart's very
   // first message lights up the sidebar badge just like any other unread conversation
-  const hasUnreadMessage = Array.from(latestMessageIdByRoot.entries()).some(
-    ([rootId, latestId]) => messageSeenMap[rootId] !== latestId
+  const unreadCounterpartIds = Array.from(latestMessageIdByCounterpart.entries())
+    .filter(([counterpartId, latestId]) => messageSeenMap[counterpartId] !== latestId)
+    .map(([counterpartId]) => counterpartId)
+  const hasUnreadMessage = unreadCounterpartIds.length > 0
+
+  // 지원자 목록/내가 한 지원 탭의 안읽음 점은 "누구에게서" 왔는지로 갈라야 한다 — 안 그러면
+  // 지원자한테 온 메시지가 내가 한 지원 탭에도 뜨는 식으로 잘못 표시된다. 거절된 지원 건은
+  // 더 이상 검토할 게 없으므로, 그 상대의 다른 진행 중인 지원 건이 없다면 안읽음 대상에서 뺀다
+  const applicantCounterpartIds = new Set(
+    myProjectApplicants
+      .filter((app: any) => app.status !== 'rejected')
+      .map((app: any) => app.applicantId?._id || app.applicantId)
+      .filter(Boolean)
   )
+  const ownerCounterpartIds = new Set(
+    myApplications
+      .filter((app: any) => app.status !== 'rejected')
+      .map((app: any) => {
+        const project = typeof app.projectId === 'object' ? app.projectId : null
+        return project?.ownerId?._id || (typeof project?.ownerId === 'string' ? project.ownerId : null)
+      })
+      .filter(Boolean)
+  )
+  const hasUnreadFromApplicants = unreadCounterpartIds.some((cid) => applicantCounterpartIds.has(cid))
+  const hasUnreadFromOwners = unreadCounterpartIds.some((cid) => ownerCounterpartIds.has(cid))
+
+  // shared "mark this counterpart's latest message as seen" — used by ReceivedMessagesSection's
+  // history/버리기 actions and by the 협의 하기 mail icon/badge in the applicant list views
+  const markMessageSeen = (counterpartId: string) => {
+    const latestId = latestMessageIdByCounterpart.get(counterpartId)
+    if (!latestId || messageSeenMap[counterpartId] === latestId) return
+    const next = { ...messageSeenMap, [counterpartId]: latestId }
+    setMessageSeenMap(next)
+    try { localStorage.setItem(`partnerMessageCardSeen:${id}`, JSON.stringify(next)) } catch {}
+    window.dispatchEvent(new Event('partnerMessageSeenChange'))
+  }
 
   // establishes a baseline the first time each tab's data becomes available, so pre-existing
   // items are never flagged as "new" — this must NOT re-run just because a count changes,
@@ -259,25 +297,15 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
 
   const manageChildren: any[] = [
     {
-      key: 'manageProjects', label: '프로젝트 활동', href: projectsBase, icon: Briefcase,
-      isNew: manageCounts.manageProjects > (manageSeen.manageProjects ?? manageCounts.manageProjects),
+      key: 'manageProjects', label: '등록 프로젝트 지원 관리', href: projectsBase,
+      // 지원자 목록/내가 한 지원의 협의 하기 우편 아이콘에 안읽음 메시지가 있을 때도 이 항목이 NEW로 표시됨
+      isNew: manageCounts.manageProjects > (manageSeen.manageProjects ?? manageCounts.manageProjects) || hasUnreadMessage,
     },
     {
-      key: 'manageMessages', label: '받은 메시지', href: `${manageBase}/messages`, icon: Mail,
-      isNew: hasUnreadMessage,
-      children: [
-        { key: 'manageMessagesTrash', label: '메시지 휴지통', href: `${manageBase}/messages/trash`, icon: Trash2 },
-      ],
-    },
-    {
-      key: 'manageTeam', label: '팀원 관리', href: `${manageBase}/team`, icon: UserPlus,
+      key: 'manageTeam', label: '팀원 관리', href: `${manageBase}/team`,
       isNew: manageCounts.manageTeam > (manageSeen.manageTeam ?? manageCounts.manageTeam),
     },
   ]
-  // "채널 관리" itself lights up whenever any child (at any depth) has its own NEW badge,
-  // so an unread item doesn't go unnoticed behind a collapsed parent tab
-  const hasNewDescendant = (items: any[]): boolean =>
-    items.some((item) => item.isNew || (item.children && hasNewDescendant(item.children)))
 
   const navItems: any[] = [
     { key: 'home', label: '파트너 홈', href: base },
@@ -286,17 +314,17 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
     ...(isDeveloperCompany ? [{ key: 'devGames', label: '개발 게임', href: `${base}/games`, count: developerGames.length }] : []),
     { key: 'portfolio', label: '포트폴리오', href: `${base}/portfolio`, count: partner.portfolio?.length || 0 },
     { key: 'posts', label: '등록 프로젝트', href: `${base}/posts`, count: userProjects.length },
-    ...(isOwnProfile ? [{
-      key: 'manage', label: '채널 관리', href: manageBase, isNew: hasNewDescendant(manageChildren),
-      children: manageChildren,
-    }] : []),
+    ...(isOwnProfile ? manageChildren : []),
   ]
 
   const isItemActive = (href: string) => (href === base ? pathname === base : pathname === href || pathname?.startsWith(`${href}/`))
 
   const renderNavTree = (items: any[], depth = 0): React.ReactNode =>
     items.map((item) => {
-      const active = isItemActive(item.href)
+      const active = isItemActive(item.href) ||
+        (item.activeExtraPrefixes as string[] | undefined)?.some(
+          (prefix) => pathname === prefix || pathname?.startsWith(`${prefix}/`)
+        )
       const Icon = item.icon
       return (
         <div key={item.key} className={depth === 0 ? 'border-b border-line/40 last:border-b-0' : ''}>
@@ -429,6 +457,12 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
             isDeveloperCompany,
             developerGames,
             receivedMessages,
+            hasUnreadMessage,
+            hasUnreadFromApplicants,
+            hasUnreadFromOwners,
+            latestMessageIdByCounterpart,
+            messageSeenMap,
+            markMessageSeen,
             applicantStatusMutation,
           }}>
             {children}

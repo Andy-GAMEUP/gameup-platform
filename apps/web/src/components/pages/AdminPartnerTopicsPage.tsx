@@ -59,7 +59,7 @@ const CATEGORIES = [
 const STATUS_OPTIONS = [
   { value: 'all', label: '전체' },
   { value: 'recruiting', label: '모집중' },
-  { value: 'matched', label: '매칭성공' },
+  { value: 'matched', label: '매칭 완료' },
   { value: 'unmatched', label: '매칭보류' },
 ]
 
@@ -73,7 +73,7 @@ const SORT_OPTIONS = [
 const statusBadge = (status: string) => {
   const map: Record<string, { text: string; label: string }> = {
     recruiting: { text: 'text-green-700', label: '모집중' },
-    matched: { text: 'text-blue-700', label: '매칭성공' },
+    matched: { text: 'text-blue-700', label: '매칭 완료' },
     unmatched: { text: 'text-amber-700', label: '매칭보류' },
   }
   const s = map[status] || map.recruiting
@@ -305,12 +305,13 @@ export default function AdminPartnerTopicsPage() {
                               <span className="text-text-muted text-xs">({app.applicantId.companyInfo.companyName})</span>
                             )}
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              app.status === 'confirmed' ? 'bg-emerald-100 text-emerald-700' :
                               app.status === 'approved' ? 'bg-green-100 text-green-700' :
                               app.status === 'rejected' ? 'bg-red-100 text-red-600' :
                               app.status === 'on-hold' ? 'bg-amber-100 text-amber-700' :
                               'bg-gray-100 text-gray-600'
                             }`}>
-                              {app.status === 'pending' ? '검토중' : app.status === 'approved' ? '승인' : app.status === 'on-hold' ? '보류' : '거절'}
+                              {app.status === 'pending' ? '검토중' : app.status === 'confirmed' ? '확정' : app.status === 'approved' ? '승인' : app.status === 'on-hold' ? '보류' : '거절'}
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-3 text-xs text-text-muted mt-1">

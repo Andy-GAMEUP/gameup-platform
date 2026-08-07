@@ -1,7 +1,34 @@
 import mongoose from 'mongoose'
 import { Response } from 'express'
 import { AuthRequest } from '../middleware/auth'
-import { PartnerModel as Partner, PartnerPostModel as PartnerPost, TopicGroupModel as TopicGroup, UserModel as User, MiniHomeGameModel as MiniHomeGame, PartnerMessageModel as PartnerMessage, PartnerMessageThreadModel as PartnerMessageThread } from '@gameup/db'
+import { containsContactInfo } from '../utils/contactInfoFilter'
+import {
+  PartnerModel as Partner, PartnerPostModel as PartnerPost, TopicGroupModel as TopicGroup, UserModel as User,
+  MiniHomeGameModel as MiniHomeGame, PartnerMessageModel as PartnerMessage, PartnerMessageThreadModel as PartnerMessageThread,
+  NotificationModel, PartnerProjectModel as PartnerProject, PartnerProjectApplicationModel as ProjectApplication,
+} from '@gameup/db'
+
+// 알림 수신자의 지원자 목록(프로젝트 소유자) 또는 내가한 지원(지원자) 화면으로 바로 이동할 수
+// 있는 링크 — 답장은 어느 지원 건에 대한 대화인지 메시지 자체에 남아있지 않으므로, 두 사람
+// 사이에 실제로 어떤 프로젝트의 지원 건이 있는지로 수신자의 역할(소유자/지원자)을 추론한다.
+// 받는 사람이 자기 소유 파트너 채널이 없으면 알림에 링크를 달지 않는다
+async function projectManageLinkUrl(recipientUserId: string, counterpartUserId: string) {
+  const recipientPartner = await Partner.findOne({ userId: recipientUserId }).select('_id').lean()
+  if (!recipientPartner) return ''
+  const ownerProjectIds = (await PartnerProject.find({ ownerId: recipientUserId }).select('_id').lean()).map((p) => p._id)
+  const isRecipientOwner = ownerProjectIds.length > 0
+    && await ProjectApplication.exists({ applicantId: counterpartUserId, projectId: { $in: ownerProjectIds } })
+  return `/partner/${recipientPartner._id}/manage/projects/${isRecipientOwner ? 'applicants' : 'applications'}`
+}
+
+// 메시지 알림에 표시할 발신자 쪽 회사 이름 — 파트너 채널의 대표 이름 우선, 없으면 계정에
+// 등록된 회사명, 그마저 없으면 유저명으로 대체
+async function getCompanyDisplayName(userId: string) {
+  const partner = await Partner.findOne({ userId, status: 'approved' }).select('displayNameOverride').lean()
+  if (partner?.displayNameOverride) return partner.displayNameOverride
+  const user = await User.findById(userId).select('companyInfo.companyName username').lean()
+  return user?.companyInfo?.companyName || user?.username || '상대방'
+}
 
 // the (unordered) pair of participants in a conversation, normalized so both resolve to the
 // same value regardless of who is the caller
@@ -603,46 +630,6 @@ export const addTeamMember = async (req: AuthRequest, res: Response) => {
   }
 }
 
-// ── 파트너 채널에 메시지 보내기 ───────────────────────────────────
-export const sendPartnerMessage = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.id
-    const { partnerId } = req.params
-    const { content } = req.body
-
-    if (!content?.trim()) {
-      return res.status(400).json({ message: '메시지 내용을 입력해주세요' })
-    }
-
-    const partner = await Partner.findOne({ _id: partnerId, status: 'approved' })
-    if (!partner) {
-      return res.status(404).json({ message: '파트너를 찾을 수 없습니다' })
-    }
-    if (String(partner.userId) === String(userId)) {
-      return res.status(400).json({ message: '본인 채널에는 메시지를 보낼 수 없습니다' })
-    }
-
-    // every "연락하기" starts a brand new conversation with its own rootId (self-referencing) —
-    // this is what makes it show up as its own card instead of folding into any earlier
-    // conversation with the same counterpart, and it can never inherit a stale closed/deleted
-    // state since no thread doc can exist yet for a rootId that didn't exist until now
-    const messageId = new mongoose.Types.ObjectId()
-    const message = await PartnerMessage.create({
-      _id: messageId,
-      rootId: messageId,
-      partnerId,
-      senderId: userId,
-      recipientUserId: partner.userId,
-      content: content.trim(),
-    })
-    await message.populate('senderId', 'username profileImage')
-
-    res.status(201).json({ message: '메시지를 보냈습니다', data: message })
-  } catch {
-    res.status(500).json({ message: '메시지 전송 실패' })
-  }
-}
-
 // ── 메시지 답장 ───────────────────────────────────────────────────
 export const replyToPartnerMessage = async (req: AuthRequest, res: Response) => {
   try {
@@ -652,6 +639,9 @@ export const replyToPartnerMessage = async (req: AuthRequest, res: Response) => 
 
     if (!content?.trim()) {
       return res.status(400).json({ message: '메시지 내용을 입력해주세요' })
+    }
+    if (containsContactInfo(content)) {
+      return res.status(400).json({ message: '이메일 주소, 전화번호 등 연락처는 메시지에 포함할 수 없습니다' })
     }
 
     const original = await PartnerMessage.findById(messageId)
@@ -674,9 +664,19 @@ export const replyToPartnerMessage = async (req: AuthRequest, res: Response) => 
       recipientUserId: original.senderId,
       parentId: original._id,
       rootId,
+      applicationId: original.applicationId,
       content: content.trim(),
     })
     await reply.populate('senderId', 'username profileImage')
+
+    const senderCompanyName = await getCompanyDisplayName(userId)
+    await NotificationModel.create({
+      userId: original.senderId,
+      type: 'proposal',
+      title: '파트너 라운지 새 메시지 도착',
+      content: `[${senderCompanyName}] 메시지를 확인하세요`,
+      linkUrl: await projectManageLinkUrl(String(original.senderId), userId),
+    }).catch(() => {})
 
     res.status(201).json({ message: '답장을 보냈습니다', data: reply })
   } catch {
@@ -684,21 +684,29 @@ export const replyToPartnerMessage = async (req: AuthRequest, res: Response) => 
   }
 }
 
-// ── 내가 받은 메시지 목록 ─────────────────────────────────────────
+// ── 내 메시지함(내가 받았거나, 아직 답장은 없어도 내가 먼저 보낸 대화 포함) ──
+// 응답의 `senderId` 필드는 실제 발신자가 아니라 항상 "상대방"의 정보로 채워지고(내가 보낸
+// 메시지든 받은 메시지든 카드/그룹핑 로직이 상대방 기준으로 동작해야 하므로), 실제 방향은
+// `isOutgoing`으로 별도 표시한다
 export const getReceivedMessages = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user!.id
 
-    const messages = await PartnerMessage.find({ recipientUserId: userId })
+    const messages = await PartnerMessage.find({ $or: [{ senderId: userId }, { recipientUserId: userId }] })
       .populate('senderId', 'username profileImage companyInfo')
+      .populate('recipientUserId', 'username profileImage companyInfo')
       .sort({ createdAt: -1 })
 
-    const senderIds = [...new Set(messages.map((m) => String((m.senderId as any)?._id || m.senderId)))]
-    const senderPartners = await Partner.find({ userId: { $in: senderIds }, status: 'approved' })
+    const counterpartIds = [...new Set(messages.map((m) => {
+      const senderIdStr = String((m.senderId as any)?._id || m.senderId)
+      const isOutgoing = senderIdStr === String(userId)
+      return isOutgoing ? String((m.recipientUserId as any)?._id || m.recipientUserId) : senderIdStr
+    }))]
+    const counterpartPartners = await Partner.find({ userId: { $in: counterpartIds }, status: 'approved' })
       .select('_id userId displayNameOverride')
       .lean()
-    const senderPartnerMap = new Map(
-      senderPartners.map((p) => [String(p.userId), { channelId: String(p._id), displayName: p.displayNameOverride }])
+    const counterpartPartnerMap = new Map(
+      counterpartPartners.map((p) => [String(p.userId), { channelId: String(p._id), displayName: p.displayNameOverride }])
     )
 
     // one card per conversation (rootId), not per counterpart — the same two people can have
@@ -719,10 +727,19 @@ export const getReceivedMessages = async (req: AuthRequest, res: Response) => {
 
     const result = messages.map((m) => {
       const obj: any = m.toObject()
-      const senderIdStr = String(obj.senderId?._id || obj.senderId)
-      const senderPartner = senderPartnerMap.get(senderIdStr)
-      obj.senderId.partnerChannelId = senderPartner?.channelId || null
-      obj.senderId.companyName = senderPartner?.displayName || obj.senderId?.companyInfo?.companyName || null
+      const rawSenderIdStr = String(obj.senderId?._id || obj.senderId)
+      const isOutgoing = rawSenderIdStr === String(userId)
+      const counterpartUser = isOutgoing ? obj.recipientUserId : obj.senderId
+      const counterpartIdStr = String(counterpartUser?._id || counterpartUser)
+      const counterpartPartner = counterpartPartnerMap.get(counterpartIdStr)
+      if (counterpartUser && typeof counterpartUser === 'object') {
+        counterpartUser.partnerChannelId = counterpartPartner?.channelId || null
+        counterpartUser.companyName = counterpartPartner?.displayName || counterpartUser?.companyInfo?.companyName || null
+      }
+      // 프론트의 카드/그룹핑 로직은 방향과 무관하게 상대방 기준으로 동작하므로,
+      // senderId를 항상 "상대방" 정보로 덮어쓴다
+      obj.senderId = counterpartUser
+      obj.isOutgoing = isOutgoing
       const rootId = String(obj.rootId || obj._id)
       obj.rootId = rootId
       const thread = threadMap.get(rootId)
@@ -736,33 +753,6 @@ export const getReceivedMessages = async (req: AuthRequest, res: Response) => {
     res.json({ messages: result })
   } catch {
     res.status(500).json({ message: '메시지 목록 조회 실패' })
-  }
-}
-
-// ── 특정 대화(rootId)의 메시지 스레드 ────────────────────────────────
-export const getMessageThread = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.user!.id
-    const { rootId } = req.params
-
-    const messages = await PartnerMessage.find({ $or: [{ rootId }, { _id: rootId }] })
-      .populate('senderId', 'username profileImage')
-      .sort({ createdAt: 1 })
-
-    if (messages.length === 0) {
-      return res.status(404).json({ message: '대화를 찾을 수 없습니다' })
-    }
-    const isParticipant = messages.some((m) => {
-      const senderIdStr = String((m.senderId as any)?._id || m.senderId)
-      return senderIdStr === String(userId) || String(m.recipientUserId) === String(userId)
-    })
-    if (!isParticipant) {
-      return res.status(403).json({ message: '이 대화를 조회할 권한이 없습니다' })
-    }
-
-    res.json({ messages })
-  } catch {
-    res.status(500).json({ message: '메시지 스레드 조회 실패' })
   }
 }
 

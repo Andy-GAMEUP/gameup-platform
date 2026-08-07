@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import partnerMatchingService, { PartnerProjectItem, ProjectInquiryItem } from '@/services/partnerMatchingService'
@@ -15,7 +15,7 @@ import {
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   recruiting: { text: '모집중', color: 'bg-green-500/20 text-green-400' },
-  matched: { text: '매칭성공', color: 'bg-blue-500/20 text-blue-400' },
+  matched: { text: '매칭 완료', color: 'bg-blue-500/20 text-blue-400' },
   unmatched: { text: '매칭보류', color: 'bg-amber-500/20 text-amber-400' },
 }
 
@@ -28,7 +28,11 @@ const formatUnit = (value: string | undefined, unit: string) => {
 export default function PartnerMatchingProjectDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const id = params?.id as string
+  const fromChannelId = searchParams.get('from') === 'channel' ? searchParams.get('channelId') : null
+  const backHref = fromChannelId ? `/partner/${fromChannelId}/posts` : '/partner/projects'
+  const backLabel = fromChannelId ? '내 채널 등록 프로젝트로' : '프로젝트 목록으로'
   const { user } = useAuth()
   const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
@@ -53,6 +57,7 @@ export default function PartnerMatchingProjectDetailPage() {
   const project: PartnerProjectItem | null = data?.project || null
   const partnerChannelId: string | null = data?.partnerChannelId || null
   const partnerChannelPublic: boolean = !!data?.partnerChannelPublic
+  const hasApplied: boolean = !!data?.hasApplied
   const isOwner = user && project && project.ownerId?._id === (user as any).id
 
   const applyMutation = useMutation({
@@ -67,7 +72,7 @@ export default function PartnerMatchingProjectDetailPage() {
     mutationFn: () => partnerMatchingService.deleteProject(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partnerProjects'] })
-      router.push('/partner/projects')
+      router.push(backHref)
     },
   })
 
@@ -239,9 +244,9 @@ export default function PartnerMatchingProjectDetailPage() {
       {/* Header */}
       <div className="border-b border-line bg-gradient-to-b from-accent-light/40 to-transparent">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Link href="/partner/projects" className="group inline-flex items-center gap-1.5 text-accent hover:text-accent-hover mb-4 text-sm font-medium transition-colors">
+          <Link href={backHref} className="group inline-flex items-center gap-1.5 text-accent hover:text-accent-hover mb-4 text-sm font-medium transition-colors">
             <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-            프로젝트 목록으로
+            {backLabel}
           </Link>
           <div className="flex flex-wrap justify-between items-end gap-4 mt-4">
             <div className="flex-1">
@@ -490,9 +495,11 @@ export default function PartnerMatchingProjectDetailPage() {
             {!isOwner && project.status === 'recruiting' && (
               <button
                 onClick={() => setShowModal(true)}
-                className="w-full bg-gradient-to-r from-accent to-accent-hover text-text-primary py-3 rounded-2xl font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+                disabled={hasApplied}
+                title={hasApplied ? '이미 지원한 프로젝트입니다. 취소하려면 파트너라운지 > 내가 한 지원에서 지원 취소를 눌러주세요.' : undefined}
+                className="w-full bg-gradient-to-r from-accent to-accent-hover text-text-primary py-3 rounded-2xl font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
-                지원하기
+                {hasApplied ? '지원완료' : '지원하기'}
               </button>
             )}
 
@@ -528,7 +535,7 @@ export default function PartnerMatchingProjectDetailPage() {
                 <h2 className="text-xl font-semibold text-text-primary">프로젝트 지원하기</h2>
                 <p className="text-sm text-text-secondary mt-1">{project.title}</p>
               </div>
-              <button onClick={() => setShowModal(false)} className="text-text-secondary hover:text-text-primary text-base">×</button>
+              <button onClick={() => { setShowModal(false); applyMutation.reset() }} className="text-text-secondary hover:text-text-primary text-base">×</button>
             </div>
             <div className="p-6">
               <div className="flex items-start gap-3 bg-gradient-to-br from-accent/10 to-accent/[0.03] border border-accent/20 rounded-xl px-4 py-3.5 mb-6">
@@ -575,10 +582,16 @@ export default function PartnerMatchingProjectDetailPage() {
                   </div>
                 </div>
 
+                {applyMutation.isError && (
+                  <p className="text-danger text-sm">
+                    {(applyMutation.error as any)?.response?.data?.message || '지원서 제출에 실패했습니다'}
+                  </p>
+                )}
+
                 <div className="flex gap-3 pt-4 border-t border-line">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={() => { setShowModal(false); applyMutation.reset() }}
                     className="flex-1 border border-line text-text-secondary py-3 rounded-lg font-medium transition-colors hover:border-line"
                   >
                     취소

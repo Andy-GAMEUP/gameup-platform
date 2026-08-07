@@ -138,7 +138,7 @@ export default function PartnerMatchingMainPage() {
                         project.status === 'matched' ? 'bg-blue-500/20 text-blue-400' :
                         'bg-amber-500/20 text-amber-400'
                       }`}>
-                        {project.status === 'recruiting' ? '모집중' : project.status === 'matched' ? '매칭성공' : '매칭보류'}
+                        {project.status === 'recruiting' ? '모집중' : project.status === 'matched' ? '매칭 완료' : '매칭보류'}
                       </span>
                     </div>
                     <h3 className="text-base font-semibold text-text-primary mb-1.5">{project.title}</h3>

@@ -15,9 +15,9 @@ async function runCloseExpired() {
     let matched = 0
     let unmatched = 0
     for (const project of expired) {
-      const hasApproved = await PartnerProjectApplication.exists({ projectId: project._id, status: 'approved' })
-      await PartnerProject.findByIdAndUpdate(project._id, { status: hasApproved ? 'matched' : 'unmatched' })
-      if (hasApproved) matched++
+      const hasConfirmed = await PartnerProjectApplication.exists({ projectId: project._id, status: 'confirmed' })
+      await PartnerProject.findByIdAndUpdate(project._id, { status: hasConfirmed ? 'matched' : 'unmatched' })
+      if (hasConfirmed) matched++
       else unmatched++
     }
     console.log(`[project-status] 마감된 프로젝트 처리 — 매칭성공 ${matched}건, 매칭보류 ${unmatched}건`)

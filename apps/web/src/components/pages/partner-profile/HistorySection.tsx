@@ -54,18 +54,27 @@ export default function HistorySection() {
       </h2>
 
       {canEdit && (
-        <div className="flex flex-col sm:flex-row gap-2 mb-8 bg-bg-tertiary/50 border border-line/60 rounded-xl p-3">
-          <input value={year} onChange={e => setYear(e.target.value)} placeholder="연도 (예: 2017)"
-            className="sm:w-28 bg-bg-card border border-line rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent" />
-          <input value={month} onChange={e => setMonth(e.target.value)} placeholder="월 (예: 05)"
-            className="sm:w-20 bg-bg-card border border-line rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent" />
+        <form onSubmit={e => { e.preventDefault(); addItem() }}
+          className="flex flex-col sm:flex-row gap-2 mb-8 bg-bg-tertiary/50 border border-line/60 rounded-xl p-3">
+          <div className="relative sm:w-28">
+            <input value={year} onChange={e => setYear(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+              placeholder="연도 (예: 2017)" inputMode="numeric"
+              className="w-full bg-bg-card border border-line rounded-lg pl-3 pr-7 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent" />
+            {year && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">년</span>}
+          </div>
+          <div className="relative sm:w-20">
+            <input value={month} onChange={e => setMonth(e.target.value.replace(/[^0-9]/g, '').slice(0, 2))}
+              placeholder="월 (예: 05)" inputMode="numeric"
+              className="w-full bg-bg-card border border-line rounded-lg pl-3 pr-7 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent" />
+            {month && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">월</span>}
+          </div>
           <input value={description} onChange={e => setDescription(e.target.value)} placeholder="연혁 내용을 입력해주세요"
             className="flex-1 bg-bg-card border border-line rounded-lg px-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent" />
-          <button onClick={addItem} disabled={saveMutation.isPending}
+          <button type="submit" disabled={saveMutation.isPending}
             className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-primary px-4 py-2 rounded-lg text-sm font-medium inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
             {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} 추가
           </button>
-        </div>
+        </form>
       )}
 
       {groups.length === 0 ? (
@@ -80,18 +89,18 @@ export default function HistorySection() {
             {groups.map(group => (
               <div key={group.year} className="relative pl-7">
                 <span className="absolute left-0 top-1 w-[11px] h-[11px] rounded-full bg-accent ring-4 ring-accent/15" />
-                <div className="text-accent font-bold text-base mb-2.5 tracking-tight">{group.year}</div>
+                <div className="text-accent font-bold text-base mb-2.5 tracking-tight">{group.year.padStart(4, '0')}년</div>
                 <div className="space-y-2.5">
                   {group.entries.map((item, i) => (
                     <div key={item._id || i} className="group flex items-start gap-3">
                       <span className="mt-0.5 flex-shrink-0 w-11 text-center text-xs font-medium text-text-muted bg-bg-tertiary rounded-md px-1.5 py-0.5">
-                        {item.month || '-'}
+                        {item.month ? `${item.month}월` : '-'}
                       </span>
-                      <span className="flex-1 text-sm text-text-secondary leading-relaxed break-words">{item.description}</span>
+                      <span className="text-sm text-text-secondary leading-relaxed break-words">{item.description}</span>
                       {canEdit && (
-                        <button onClick={() => removeItem(item)}
-                          className="flex-shrink-0 text-text-muted hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity">
-                          <X className="w-3.5 h-3.5" />
+                        <button onClick={() => removeItem(item)} title="삭제"
+                          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-danger/10 border border-danger/20 text-danger opacity-0 group-hover:opacity-100 hover:bg-danger/20 transition-colors">
+                          <X className="w-4 h-4" strokeWidth={2.5} />
                         </button>
                       )}
                     </div>

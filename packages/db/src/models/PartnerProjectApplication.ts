@@ -11,7 +11,7 @@ export interface IPartnerProjectApplication extends Document {
   title: string
   content: string
   attachments: string[]
-  status: 'pending' | 'approved' | 'on-hold' | 'rejected'
+  status: 'pending' | 'approved' | 'on-hold' | 'rejected' | 'confirmed'
   createdAt: Date
   updatedAt: Date
 }
@@ -30,7 +30,7 @@ const partnerProjectApplicationSchema = new Schema<IPartnerProjectApplication>(
     attachments: [{ type: String }],
     status: {
       type: String,
-      enum: ['pending', 'approved', 'on-hold', 'rejected'],
+      enum: ['pending', 'approved', 'on-hold', 'rejected', 'confirmed'],
       default: 'pending',
     },
   },

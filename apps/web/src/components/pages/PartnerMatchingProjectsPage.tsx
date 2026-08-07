@@ -23,7 +23,7 @@ const categoryOptions = [
 
 const statusLabel: Record<string, { text: string; badge: string; border: string }> = {
   recruiting: { text: '모집중',   badge: 'bg-emerald-100 text-emerald-700 font-semibold', border: 'border-l-emerald-400' },
-  matched:    { text: '매칭성공', badge: 'bg-blue-100 text-blue-700 font-semibold',       border: 'border-l-blue-500' },
+  matched:    { text: '매칭 완료', badge: 'bg-blue-100 text-blue-700 font-semibold',       border: 'border-l-blue-500' },
   unmatched:  { text: '매칭보류', badge: 'bg-amber-100 text-amber-700 font-semibold',     border: 'border-l-amber-400' },
 }
 
@@ -282,28 +282,32 @@ export default function PartnerMatchingProjectsPage() {
 
               return (
                 <Link key={project._id} href={`/partner/projects/${project._id}`}
-                  className="group bg-bg-secondary border border-line rounded-2xl p-5 hover:border-accent/40 hover:shadow-lg transition-all flex flex-col gap-3">
+                  className="group relative overflow-hidden bg-bg-secondary border border-line rounded-2xl p-5 hover:border-accent/50 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 flex flex-col gap-4">
 
-                  {/* Row 1: 프로젝트명 + 모집중 배지 */}
-                  <div className="flex items-start justify-between gap-4">
-                    <h2 className="text-text-primary font-semibold text-sm leading-snug line-clamp-2 group-hover:text-accent transition-colors">
-                      {project.title}
-                    </h2>
-                    <span className={`flex-shrink-0 text-sm font-semibold px-4 py-2 rounded-xl ${status.badge}`}>
+                  {/* 호버 시 살짝 드러나는 상단 액센트 라인 */}
+                  <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+
+                  {/* Row 1: 회사 아바타 + 회사명/프로젝트명 + 상태 */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent/25 to-accent/5 border border-accent/20 flex items-center justify-center text-accent font-bold text-sm flex-shrink-0">
+                        {companyName?.[0]?.toUpperCase() || '?'}
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="text-text-primary font-semibold text-[15px] leading-snug truncate group-hover:text-accent transition-colors">
+                          {project.title}
+                        </h2>
+                        <p className="text-text-muted text-xs truncate">{companyName}</p>
+                      </div>
+                    </div>
+                    <span className={`flex-shrink-0 inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full ${status.badge}`}>
+                      <span className="w-2 h-2 rounded-full bg-current" />
                       {status.text}
                     </span>
                   </div>
 
-                  {/* Row 2: 로고 + 회사명 */}
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-gradient-to-br from-accent/30 to-accent/10 border border-accent/20 flex items-center justify-center text-accent font-bold text-xs flex-shrink-0">
-                      {companyName?.[0]?.toUpperCase() || '?'}
-                    </div>
-                    <p className="text-text-muted text-xs truncate">{companyName}</p>
-                  </div>
-
-                  {/* Row 3: 금액 + 마감일 */}
-                  <div className="flex items-center gap-3 flex-wrap text-xs text-text-muted pl-8">
+                  {/* Row 2: 금액 + 마감일 + 지원자 */}
+                  <div className="flex items-center gap-3 flex-wrap text-xs text-text-muted pl-[46px]">
                     {(project.budget || project.budgetMin) && (
                       <span className="flex items-center gap-1">
                         <Wallet className="w-3 h-3" />
@@ -315,39 +319,25 @@ export default function PartnerMatchingProjectsPage() {
                         <Clock className="w-3 h-3" /> {deadline} 마감
                       </span>
                     )}
-                  </div>
-
-                  {/* Row 4: 지원자 */}
-                  <div className="pl-8">
-                    <span className="flex items-center gap-1 text-xs text-text-muted">
+                    <span className="flex items-center gap-1">
                       <Users className="w-3 h-3" />
                       {project.applicantCount}명 지원
                     </span>
                   </div>
 
-                  {/* Row 5: 카테고리 + 스킬 + 지원자 + 지원하기 */}
-                  <div className="mt-auto pt-3 border-t border-line/40 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                      <span className="bg-bg-tertiary border border-line text-text-muted px-2 py-0.5 rounded-full text-xs flex-shrink-0">
-                        {project.category}
+                  {/* Row 3: 카테고리 + 스킬 태그 */}
+                  <div className="mt-auto pt-3 border-t border-line/40 flex items-center gap-1.5 flex-wrap min-w-0">
+                    <span className="bg-bg-tertiary border border-line text-text-muted px-2.5 py-1 rounded-full text-xs flex-shrink-0">
+                      {project.category}
+                    </span>
+                    {project.requiredSkills?.slice(0, 4).map((skill, i) => (
+                      <span key={i} className="bg-accent/10 text-accent border border-accent/20 px-2.5 py-1 rounded-full text-xs font-medium flex-shrink-0">
+                        {skill}
                       </span>
-                      {project.requiredSkills?.slice(0, 3).map((skill, i) => (
-                        <span key={i} className="bg-accent/10 text-accent border border-accent/20 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0">
-                          {skill}
-                        </span>
-                      ))}
-                      {(project.requiredSkills?.length || 0) > 3 && (
-                        <span className="text-text-muted text-xs">+{project.requiredSkills.length - 3}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="flex items-center gap-1.5 text-sm font-semibold text-accent border-2 border-accent/40 px-4 py-2.5 rounded-xl group-hover:bg-accent group-hover:text-text-primary group-hover:border-accent transition-all whitespace-nowrap">
-                        지원하기
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </span>
-                    </div>
+                    ))}
+                    {(project.requiredSkills?.length || 0) > 4 && (
+                      <span className="text-text-muted text-xs">+{project.requiredSkills.length - 4}</span>
+                    )}
                   </div>
                 </Link>
               )

@@ -1,26 +1,10 @@
-export const PROJECT_STATUS_LABELS: Record<string, string> = {
-  recruiting: '모집중', matched: '매칭성공', unmatched: '매칭보류',
-}
-export const PROJECT_STATUS_COLORS: Record<string, string> = {
-  recruiting: 'text-emerald-600',
-  matched: 'text-blue-600',
-  unmatched: 'text-amber-600',
-}
-export const OPERATION_STATUS_LABELS: Record<string, string> = {
-  active: '진행 중', closed: '마감',
-}
-export const OPERATION_STATUS_COLORS: Record<string, string> = {
-  active: 'bg-violet-600 text-white border-violet-600',
-  closed: 'bg-slate-100 text-slate-400 border-slate-200',
-}
 export const APPLICATION_STATUS_LABELS: Record<string, string> = {
-  pending: '검토중', approved: '승인됨', rejected: '거절됨', 'on-hold': '보류중',
+  pending: '검토중', approved: '협의 중', rejected: '거절됨', 'on-hold': '보류중', confirmed: '확정',
 }
-export const APPLICATION_STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-700 border-amber-200',
-  approved: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  rejected: 'bg-red-100 text-red-700 border-red-200',
-  'on-hold': 'bg-gray-100 text-gray-600 border-gray-200',
+// 진행 상태 컬럼용 — 배지(배경/테두리) 없이 텍스트 색상만
+export const APPLICATION_STATUS_TEXT_COLORS: Record<string, string> = {
+  pending: 'text-amber-600', approved: 'text-emerald-600', rejected: 'text-red-500',
+  'on-hold': 'text-text-muted', confirmed: 'text-teal-600',
 }
 
 export const COMPANY_TYPE_LABELS: Record<string, string> = {
@@ -29,7 +13,7 @@ export const COMPANY_TYPE_LABELS: Record<string, string> = {
   development: '개발', original_art: '원화', other: '기타',
 }
 
-// 사업 형태 편집 시 선택 가능한 옵션 (developer는 하위 호환용 플래그일 뿐 선택 항목이 아님)
+// 기업 형태 편집 시 선택 가능한 옵션 (developer는 하위 호환용 플래그일 뿐 선택 항목이 아님)
 export const COMPANY_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: 'publisher', label: '퍼블리셔' },
   { value: 'game_solution', label: '게임솔루션' },

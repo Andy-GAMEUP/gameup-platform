@@ -145,6 +145,7 @@ export const partnerMatchingService = {
     tab?: string
     page?: number
     limit?: number
+    sort?: string
   }) => {
     const res = await apiClient.get('/partner/profiles', { params })
     return res.data
@@ -245,6 +246,11 @@ export const partnerMatchingService = {
 
   getMyApplications: async () => {
     const res = await apiClient.get('/partner/applications/me')
+    return res.data
+  },
+
+  cancelApplication: async (appId: string) => {
+    const res = await apiClient.delete(`/partner/applications/${appId}`)
     return res.data
   },
 
