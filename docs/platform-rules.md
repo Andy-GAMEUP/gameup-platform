@@ -290,6 +290,13 @@ approvalStatus=pending (가입 대기) → /register/pending 화면으로 이동
 - 게시글 작성자·댓글·쪽지 상대방 등 **다른 사용자에게 보이는** 아바타는 아직 이 기능이 적용되지 않았다 (별도 백엔드 작업 필요)
 - 세션에 반영된 최신 프로필 정보를 재조회하려면 `useAuth().updateUser()`가 내부적으로 NextAuth `update({})`를 호출한다 — 인자 없이 `update()`만 호출하면 `auth.ts`의 `trigger==='update'` 분기(백엔드 프로필 재조회)가 실행되지 않아 변경 사항이 세션에 반영되지 않으니 주의
 
+#### ⚠️ `User` 문서 `.save()` 시 레거시 데이터로 인한 500 에러 주의
+
+- production DB의 일부 기업회원 계정은 `companyInfo.companyType` 배열에 스키마 enum에 없는 레거시 값(예: `"개발사"`, 정상 값은 `publisher`/`game_solution`/`game_service`/`operations`/`qa`/`marketing`/`development`/`original_art`/`other`)이 남아있다
+- `User.findById()`로 문서 전체를 읽어 필드 하나만 바꾸고 `.save()`하면, Mongoose가 문서 전체를 재검증하면서 이 레거시 enum 값 때문에 **ValidationError → 500 "서버 오류가 발생했습니다"**가 발생한다 (해당 계정만 영향, 정상 데이터를 가진 계정은 문제없음)
+- 아바타 업로드(`uploadAvatar`)와 비밀번호 변경(`changePassword`)에서 실제로 이 문제가 발견되어 `findByIdAndUpdate`(부분 업데이트, 전체 재검증 안 함) 방식으로 수정했다 (2026-08-07)
+- **`User` 문서를 수정하는 새 코드를 작성할 때는 `findById` + `.save()` 대신 `findByIdAndUpdate`를 사용해야 한다.** `adminController.ts`, `adminUserController.ts`, `gameShopController.ts`, `oauthController.ts` 등에 아직 `findById`+`.save()` 패턴이 남아있어 같은 계정(레거시 `companyType`을 가진 기업회원)에 대해 밴 처리, 포인트 지급/차감, OAuth 연동 등을 시도하면 동일한 500 에러가 날 수 있다 — 아직 수정되지 않았으니 관련 기능에서 오류 제보가 오면 우선 이 원인부터 의심할 것
+
 ---
 
 ## 3. 관리자 등급별 권한

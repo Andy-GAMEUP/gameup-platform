@@ -279,7 +279,7 @@ export const uploadAvatar = async (req: AuthRequest, res: Response) => {
     const file = req.file as Express.Multer.File | undefined
     if (!file) return res.status(400).json({ message: '이미지 파일을 첨부해주세요' })
 
-    const user = await User.findById(req.user.id)
+    const user = await User.findById(req.user.id).select('profileImage')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
 
     if (user.profileImage?.startsWith('/uploads/')) {
@@ -287,13 +287,13 @@ export const uploadAvatar = async (req: AuthRequest, res: Response) => {
       if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath)
     }
 
-    user.profileImage = `/uploads/avatars/${file.filename}`
-    await user.save()
+    const newProfileImage = `/uploads/avatars/${file.filename}`
+    await User.findByIdAndUpdate(req.user.id, { profileImage: newProfileImage })
 
     res.json({
       success: true,
       message: '프로필 이미지가 변경되었습니다',
-      profileImage: user.profileImage,
+      profileImage: newProfileImage,
     })
   } catch (error) {
     console.error('Avatar upload error:', error)
@@ -314,7 +314,7 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: '새 비밀번호는 8자 이상이어야 합니다' })
     }
 
-    const user = await User.findById(req.user.id)
+    const user = await User.findById(req.user.id).select('password')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
 
     const isValid = await comparePassword(currentPassword, user.password!)
@@ -322,8 +322,8 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다' })
     }
 
-    user.password = await hashPassword(newPassword)
-    await user.save()
+    const hashedPassword = await hashPassword(newPassword)
+    await User.findByIdAndUpdate(req.user.id, { password: hashedPassword })
 
     res.json({ success: true, message: '비밀번호가 변경되었습니다' })
   } catch (error) {
