@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Gamepad2, Building2, Phone, Code2, Handshake, Loader2, AlertCircle, ChevronLeft } from 'lucide-react'
+import { Gamepad2, Building2, Phone, Code2, Handshake, Loader2, AlertCircle, ChevronLeft, FileDigit } from 'lucide-react'
 import { useAuth } from '@/lib/useAuth'
 import { authService } from '@/services/authService'
 
@@ -29,6 +29,7 @@ export default function ReapplyPage() {
   const [companyName, setCompanyName] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [companyType, setCompanyType] = useState<CompanyType[]>([])
+  const [businessNumber, setBusinessNumber] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [serverError, setServerError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -41,6 +42,7 @@ export default function ReapplyPage() {
     if (info?.companyName) setCompanyName(info.companyName)
     if (info?.companyCategory) setCompanyCategory(info.companyCategory)
     if (info?.companyType?.length) setCompanyType(info.companyType.filter((t: string) => t !== 'developer'))
+    if (info?.businessNumber) setBusinessNumber(info.businessNumber)
     const phone = (user as any)?.contactPerson?.phone
     if (phone) setContactPhone(phone)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -49,8 +51,10 @@ export default function ReapplyPage() {
   const validate = () => {
     const e: Record<string, string> = {}
     if (!companyName.trim()) e.companyName = '회사명을 입력해주세요'
+    if (!businessNumber.trim()) e.businessNumber = '사업자 등록번호를 입력해주세요'
+    else if (!/^\d{3}-\d{2}-\d{5}$/.test(businessNumber)) e.businessNumber = '올바른 형식으로 입력해주세요 (예: 123-45-67890)'
     if (!contactPhone.trim()) e.contactPhone = '대표 연락처를 입력해주세요'
-    if (companyType.length === 0) e.companyType = '사업 형태를 하나 이상 선택해주세요'
+    if (companyType.length === 0) e.companyType = '기업 형태를 하나 이상 선택해주세요'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -60,13 +64,24 @@ export default function ReapplyPage() {
     setLoading(true)
     setServerError('')
     try {
-      await authService.reapplyCorporate({ companyName, companyCategory, companyType, contactPhone })
+      await authService.reapplyCorporate({ companyName, companyCategory, companyType, contactPhone, businessNumber })
       router.push('/register/pending')
     } catch (err: any) {
       setServerError(err?.response?.data?.message || '재신청에 실패했습니다. 다시 시도해주세요.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleBusinessNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 10)
+    const formatted = digits.length > 5
+      ? `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`
+      : digits.length > 3
+        ? `${digits.slice(0, 3)}-${digits.slice(3)}`
+        : digits
+    setBusinessNumber(formatted)
+    setErrors(prev => ({ ...prev, businessNumber: '' }))
   }
 
   const toggleType = (value: CompanyType) => {
@@ -144,6 +159,23 @@ export default function ReapplyPage() {
             {errors.companyName && <p className="mt-1 text-xs text-danger">{errors.companyName}</p>}
           </div>
 
+          {/* 사업자 등록번호 */}
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">사업자 등록번호 <span className="text-red-400">*</span></label>
+            <div className="relative">
+              <FileDigit className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+              <input
+                type="text"
+                inputMode="numeric"
+                value={businessNumber}
+                onChange={handleBusinessNumberChange}
+                placeholder="123-45-67890"
+                className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.businessNumber ? 'border-red-500' : 'border-line'}`}
+              />
+            </div>
+            {errors.businessNumber && <p className="mt-1 text-xs text-danger">{errors.businessNumber}</p>}
+          </div>
+
           {/* 대표 연락처 */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">대표 연락처</label>
@@ -160,10 +192,10 @@ export default function ReapplyPage() {
             {errors.contactPhone && <p className="mt-1 text-xs text-danger">{errors.contactPhone}</p>}
           </div>
 
-          {/* 사업 형태 */}
+          {/* 기업 형태 */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              사업 형태 <span className="text-red-400">*</span>{' '}
+              기업 형태 <span className="text-red-400">*</span>{' '}
               <span className="text-text-muted font-normal">(복수 선택 가능)</span>
             </label>
             <div className="flex flex-wrap gap-2">

@@ -211,10 +211,15 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
           {/* User Info */}
           <div className="p-4 border-t border-line">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-sm font-bold text-text-inverse">
-                  {(user?.companyInfo?.companyName || user?.username || '?').charAt(0).toUpperCase()}
-                </span>
+              <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {user?.profileImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-sm font-bold text-text-inverse">
+                    {(user?.companyInfo?.companyName || user?.username || '?').charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
               {sidebarOpen && (
                 <div className="flex-1 overflow-hidden">
@@ -260,8 +265,15 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                   onClick={() => setProfileOpen(!profileOpen)}
                   className="flex items-center gap-2 text-text-muted hover:text-text-primary"
                 >
-                  <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
-                    <span className="text-xs font-bold text-text-inverse">개</span>
+                  <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center overflow-hidden">
+                    {user?.profileImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-bold text-text-inverse">
+                        {(user?.companyInfo?.companyName || user?.username || '?').charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   <ChevronDown className="w-4 h-4" />
                 </button>

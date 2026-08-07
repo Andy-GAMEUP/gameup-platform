@@ -281,10 +281,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               onClick={() => setProfileOpen(!profileOpen)}
               className="flex items-center gap-2 text-text-muted hover:text-text-primary"
             >
-              <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
-                <span className="text-xs font-bold text-text-inverse">
-                  {(user?.username || 'A').charAt(0).toUpperCase()}
-                </span>
+              <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center overflow-hidden">
+                {user?.profileImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-text-inverse">
+                    {(user?.username || 'A').charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
               <ChevronDown className="w-4 h-4" />
             </button>

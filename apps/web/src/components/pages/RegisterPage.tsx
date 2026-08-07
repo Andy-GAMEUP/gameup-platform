@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Mail, Lock, User, AlertCircle, Loader2, Code2, Gamepad,
-  Building2, UserCircle, Phone, ChevronLeft, ChevronRight, Check, Handshake,
+  Building2, UserCircle, Phone, ChevronLeft, ChevronRight, Check, Handshake, FileDigit,
 } from 'lucide-react'
 import { useAuth } from '@/lib/useAuth'
 import Image from 'next/image'
@@ -29,6 +29,7 @@ export default function RegisterPage() {
     companyName: '',
     companyCategory: 'developer' as CompanyCategory,
     companyType: [] as CompanyType[],
+    businessNumber: '',
     contactName: '',
     contactPhone: '',
     contactEmail: '',
@@ -80,6 +81,18 @@ export default function RegisterPage() {
     setServerError('')
   }
 
+  const handleBusinessNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 10)
+    const formatted = digits.length > 5
+      ? `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`
+      : digits.length > 3
+        ? `${digits.slice(0, 3)}-${digits.slice(3)}`
+        : digits
+    setCompanyData(prev => ({ ...prev, businessNumber: formatted }))
+    setErrors(prev => ({ ...prev, businessNumber: '' }))
+    setServerError('')
+  }
+
   const validateStep3 = () => {
     const newErrors: { [key: string]: string } = {}
     if (!formData.email) newErrors.email = '이메일을 입력해주세요'
@@ -103,8 +116,10 @@ export default function RegisterPage() {
     else if (formData.password.length < 6) newErrors.password = '최소 6자 이상 입력해주세요'
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = '비밀번호가 일치하지 않습니다'
     if (!companyData.companyName) newErrors.companyName = '회사명을 입력해주세요'
+    if (!companyData.businessNumber) newErrors.businessNumber = '사업자 등록번호를 입력해주세요'
+    else if (!/^\d{3}-\d{2}-\d{5}$/.test(companyData.businessNumber)) newErrors.businessNumber = '올바른 형식으로 입력해주세요 (예: 123-45-67890)'
     if (!companyData.contactPhone) newErrors.contactPhone = '연락처를 입력해주세요'
-    if (companyData.companyType.length === 0) newErrors.companyType = '사업 형태를 하나 이상 선택해주세요'
+    if (companyData.companyType.length === 0) newErrors.companyType = '기업 형태를 하나 이상 선택해주세요'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -146,6 +161,7 @@ export default function RegisterPage() {
           companyName: companyData.companyName,
           companyCategory: companyData.companyCategory,
           companyType: companyData.companyType,
+          businessNumber: companyData.businessNumber,
         }
         registerData.contactPerson = {
           name: formData.username,
@@ -519,6 +535,15 @@ export default function RegisterPage() {
                     {errors.companyName && <p className="mt-1 text-xs text-danger">{errors.companyName}</p>}
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">사업자 등록번호 <span className="text-red-400">*</span></label>
+                    <div className="relative">
+                      <FileDigit className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                      <input type="text" inputMode="numeric" value={companyData.businessNumber} onChange={handleBusinessNumberChange} placeholder="123-45-67890"
+                        className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.businessNumber ? 'border-red-500' : 'border-line'}`} />
+                    </div>
+                    {errors.businessNumber && <p className="mt-1 text-xs text-danger">{errors.businessNumber}</p>}
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-text-secondary mb-2">대표 연락처</label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
@@ -528,7 +553,7 @@ export default function RegisterPage() {
                     {errors.contactPhone && <p className="mt-1 text-xs text-danger">{errors.contactPhone}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-2">사업 형태 <span className="text-red-400">*</span> <span className="text-text-muted font-normal">(복수 선택 가능)</span></label>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">기업 형태 <span className="text-red-400">*</span> <span className="text-text-muted font-normal">(복수 선택 가능)</span></label>
                     <div className="flex flex-wrap gap-2">
                       {([
                         { value: 'publisher',     label: '퍼블리셔' },

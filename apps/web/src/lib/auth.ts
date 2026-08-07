@@ -32,6 +32,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           memberType: data.user.memberType || 'individual',
           approvalStatus: data.user.approvalStatus || 'pending',
           companyInfo: data.user.companyInfo || null,
+          contactPerson: data.user.contactPerson || null,
           image: data.user.profileImage || null,
           level: data.user.level || 1,
           activityScore: data.user.activityScore || 0,
@@ -86,6 +87,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.memberType = (user as any).memberType || 'individual'
         token.approvalStatus = (user as any).approvalStatus || 'pending'
         token.companyInfo = (user as any).companyInfo || null
+        token.contactPerson = (user as any).contactPerson || null
+        token.profileImage = (user as any).image || null
         token.username = (user as any).username || user.name || ''
         token.level = (user as any).level || 1
         token.activityScore = (user as any).activityScore || 0
@@ -106,6 +109,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             const u = data.user ?? data
             token.approvalStatus = u.approvalStatus ?? token.approvalStatus
             token.companyInfo = u.companyInfo ?? token.companyInfo
+            token.contactPerson = u.contactPerson ?? token.contactPerson
+            token.profileImage = u.profileImage ?? token.profileImage
             token.memberType = u.memberType ?? token.memberType
             token.role = u.role ?? token.role
             token.username = u.username ?? token.username
@@ -122,6 +127,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         ;(session.user as any).memberType = token.memberType
         ;(session.user as any).approvalStatus = token.approvalStatus
         ;(session.user as any).companyInfo = token.companyInfo
+        ;(session.user as any).contactPerson = token.contactPerson
+        ;(session.user as any).profileImage = token.profileImage
         ;(session.user as any).username = token.username
         ;(session.user as any).level = token.level
         ;(session.user as any).activityScore = token.activityScore

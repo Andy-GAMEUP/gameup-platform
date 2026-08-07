@@ -1,6 +1,6 @@
 # GameUp 플랫폼 운영 규칙
 
-> 작성일: 2026-06-19 / 최종 수정: 2026-07-24  
+> 작성일: 2026-06-19 / 최종 수정: 2026-08-07  
 > 이 문서는 코드에서 실제 동작하는 규칙을 정리한 것입니다. 플랫폼에 참여하는 개발자·관리자·파트너 모두를 위한 기준입니다.
 
 ---
@@ -174,12 +174,12 @@ approvalStatus=review
 기업 회원 (memberType=corporate)
 ├── 개발사 (companyCategory=developer)   ← 게임 개발 주체, 개발자 센터 접근 가능
 └── 파트너 (companyCategory=partner)    ← 게임 서비스 관련사, 파트너 라운지 전용
-    └── 사업 형태 (companyType, 복수 선택)
+    └── 기업 형태 (companyType, 복수 선택)
         퍼블리셔 / 게임솔루션 / 게임서비스 / 운영 / QA / 마케팅 / 개발 / 원화 / 기타
 ```
 
 - `companyCategory` = **상위 개념** (개발사 vs 파트너 구분)
-- `companyType` = **하위 개념** (사업 형태, 복수 선택 가능)
+- `companyType` = **하위 개념** (기업 형태, 복수 선택 가능)
 - 가입 시 `companyCategory`와 `companyType` 모두 **필수**
 - 개발사는 게임 등록/관리 가능 (개발자 센터), 파트너는 파트너 라운지 전용
 
@@ -188,7 +188,7 @@ approvalStatus=review
 #### 가입 및 승인
 
 ```
-기업회원 가입 (회사명, 기업 구분(개발사/파트너), 사업 형태, 연락처 입력)
+기업회원 가입 (회사명, 기업 구분(개발사/파트너), 기업 형태, 연락처, 사업자 등록번호 입력)
   ↓
 approvalStatus=pending (가입 대기) → /register/pending 화면으로 이동
   ↓
@@ -202,15 +202,22 @@ approvalStatus=pending (가입 대기) → /register/pending 화면으로 이동
 - **거절(rejected) 기능 없음**: 관리자는 승인 또는 계정 삭제만 가능
 - 승인된 회원(`approvalStatus=approved`)은 관리자가 삭제 불가 (버튼 비활성화)
 
+#### 사업자 등록번호 입력 (2026-08-07 도입)
+
+- 기업회원 **가입** 및 **재신청(`reapply`)** 시 사업자 등록번호(`123-45-67890` 형식, 숫자 10자리) 입력은 **필수**이며, `companyInfo.businessNumber`에 저장된다
+- 파일 첨부가 아닌 **텍스트 입력**이며, 입력 시 자동으로 `-` 구분자가 붙는다
+- 관리자 **회원관리 > 기업회원** 목록(`/admin/users-enhanced/corporate`, `AdminCorporateMembersPage`)의 "사업자등록번호" 컬럼에서 확인 가능
+- 가입 승인 대기 목록(`/admin/members/new_account`, `AdminMembersPage`)에도 "기업 유형" 오른쪽에 동일하게 "사업자등록번호" 컬럼이 노출된다
+
 #### 미승인 기업회원 접근 제한
 
 - `approvalStatus=pending` 상태의 기업회원은 `/register/pending`, `/login`, `/terms` 외 모든 페이지 접근 불가
 - 접근 시도 시 `/register/pending`으로 자동 리다이렉트
 - `/register/pending` 페이지에서 "홈으로 돌아가기" 클릭 시 **로그아웃** 후 홈으로 이동
 
-#### 사업 형태(companyType) 수정
+#### 기업 형태(companyType) 수정
 
-- 승인된 기업회원 대표 계정은 **파트너 라운지 프로필 > 소개 수정** 화면에서 `사업 형태`를 언제든 재설정할 수 있다 (`PATCH /api/users/company-type`)
+- 승인된 기업회원 대표 계정은 **파트너 라운지 프로필 > 소개 수정** 화면에서 `기업 형태`를 언제든 재설정할 수 있다 (`PATCH /api/users/company-type`)
 - 재신청(`reapply`)과 달리 `approvalStatus`를 변경하지 않으며, `companyInfo.companyType`만 갱신된다
 - 팀원 계정은 수정 불가 (대표 계정 본인만 가능)
 - **가입/재신청과 달리 이 수정 화면에서는 최소 선택 개수 제한이 없다** (전체 해제하여 빈 배열로 저장 가능)
@@ -218,7 +225,7 @@ approvalStatus=pending (가입 대기) → /register/pending 화면으로 이동
 #### 기업 유형(companyCategory) 관리자 수정
 
 - 가입 시 선택한 `companyCategory`(개발사/파트너)가 잘못 분류된 경우, **어드민(normal 이상) > 회원관리 > 기업회원** 목록의 "기업 유형" 컬럼에서 "변경" 버튼으로 되돌릴 수 있다 (`PATCH /api/admin/users-enhanced/:id`)
-- 이 API는 전달된 `companyInfo` 필드만 병합 적용하므로, 회사명·사업자번호·사업 형태 등 다른 기업 정보는 유지된다
+- 이 API는 전달된 `companyInfo` 필드만 병합 적용하므로, 회사명·사업자번호·기업 형태 등 다른 기업 정보는 유지된다
 - 개발사 ↔ 파트너 전환은 접근 가능한 기능이 바뀌는 중요한 변경이므로 `ConfirmModal` 확인 팝업을 거친다
 
 #### 회사 단일 계정 원칙
@@ -265,6 +272,23 @@ approvalStatus=pending (가입 대기) → /register/pending 화면으로 이동
 - 지원 제공자: `kakao`, `naver`
 - 계정 연동/해제 가능
 - 같은 계정에 여러 OAuth 제공자 연결 가능
+
+### 2.7 마이페이지 (`/my`) (2026-08-07 개편)
+
+- **개발사/파트너 기업회원은 완전히 동일한 컴포넌트**(`CorporateMyPage.tsx`)를 사용한다. `MyPageRouter`는 기업회원(`memberType=corporate`)이면 개발사/파트너 구분 없이 이 컴포넌트로 라우팅하며, 역할 배지("개발사"/"파트너사")만 `companyInfo.companyCategory`로 자동 판별해 다르게 표시한다
+- 탭 구분 없이 한 화면에 **회사 정보(읽기 전용) → 사용자명 → 비밀번호 변경 → 계정 삭제** 순서로 표시된다
+  - 회사 정보에는 실제로 가입 시 입력받는 값만 노출한다: 회사명, 사업자등록번호, 대표 연락처, 담당자 이메일. 그 외 임직원 수/회사 전화번호/홈페이지/회사소개 등은 가입 절차에서 입력받지 않는 필드라 표시하지 않는다
+  - 회사 정보는 수정 불가(관리자만 변경 가능)이며 별도 안내 문구 없이 값만 표시한다
+- 관리자(`AdminMyPage`)·유저(`PlayerMyPage`) 마이페이지도 프로필 헤더 카드를 같은 디자인 톤(어두운 그라디언트 + 블러 블롭 + 프로스티드 글라스 배지, 역할별 색상만 다름: 개발사/파트너=보라, 관리자=빨강/주황, 유저=시안/블루)으로 통일했다
+
+#### 프로필 아바타 업로드
+
+- 기업회원 마이페이지의 "사용자명" 카드 왼쪽에서 프로필 사진을 업로드할 수 있다 (`POST /api/users/avatar`, JPG/PNG/GIF/WEBP, 최대 2MB, `User.profileImage`에 저장)
+- 업로드 시 기존 이미지 파일은 서버에서 삭제 후 교체된다
+- 프로필 사진이 설정된 계정은 **본인이 보는 화면 전체**(`Navbar`, `AdminLayout`, `DeveloperLayout` 사이드바/헤더, 개발사·파트너·관리자·유저 마이페이지 헤더)에서 글자 아바타 대신 실제 사진이 표시된다
+- 소셜 로그인(카카오/네이버) 계정은 가입 시 제공자의 프로필 사진이 `profileImage`로 자동 설정된다
+- 게시글 작성자·댓글·쪽지 상대방 등 **다른 사용자에게 보이는** 아바타는 아직 이 기능이 적용되지 않았다 (별도 백엔드 작업 필요)
+- 세션에 반영된 최신 프로필 정보를 재조회하려면 `useAuth().updateUser()`가 내부적으로 NextAuth `update({})`를 호출한다 — 인자 없이 `update()`만 호출하면 `auth.ts`의 `trigger==='update'` 분기(백엔드 프로필 재조회)가 실행되지 않아 변경 사항이 세션에 반영되지 않으니 주의
 
 ---
 

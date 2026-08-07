@@ -21,6 +21,7 @@ interface PendingUser {
     companyCategory?: 'developer' | 'partner'
     companyType?: string[]
     approvalStatus?: string
+    businessNumber?: string
   }
   contactPerson?: { name?: string; phone?: string; email?: string }
   isActive: boolean
@@ -199,6 +200,7 @@ export default function AdminMembersPage() {
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">이메일</th>
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">회사명</th>
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">기업 유형</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">사업자등록번호</th>
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">대표 연락처</th>
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">가입일</th>
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">기업 정보</th>
@@ -208,7 +210,7 @@ export default function AdminMembersPage() {
                 </thead>
                 <tbody className="divide-y divide-line/50">
                   {users.length === 0 ? (
-                    <tr><td colSpan={10} className="text-center py-12 text-text-muted">데이터가 없습니다</td></tr>
+                    <tr><td colSpan={11} className="text-center py-12 text-text-muted">데이터가 없습니다</td></tr>
                   ) : users.map((user, idx) => {
                     const _cat = user.companyInfo?.companyCategory
                     const isDeveloper = _cat === 'developer' || (!_cat && user.companyInfo?.companyType?.includes('developer'))
@@ -232,6 +234,9 @@ export default function AdminMembersPage() {
                               변경
                             </button>
                           </div>
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">
+                          {user.companyInfo?.businessNumber || '-'}
                         </td>
                         <td className="px-4 py-3 text-text-secondary border-r border-line/20">
                           {user.contactPerson?.phone || '-'}

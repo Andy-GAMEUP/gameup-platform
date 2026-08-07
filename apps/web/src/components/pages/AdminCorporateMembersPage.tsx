@@ -17,6 +17,7 @@ interface CorporateMember {
     companyType?: string[]
     approvalStatus?: string
     rejectedReason?: string
+    businessNumber?: string
   }
   contactPerson?: {
     name?: string
@@ -255,6 +256,7 @@ export default function AdminCorporateMembersPage() {
                     <th className="text-left text-text-secondary font-medium px-4 py-3">닉네임</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3">이메일</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3">회사명</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3">사업자등록번호</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3">기업유형</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3">승인상태</th>
                     <th className="text-right text-text-secondary font-medium px-4 py-3">포인트</th>
@@ -266,7 +268,7 @@ export default function AdminCorporateMembersPage() {
                 </thead>
                 <tbody className="divide-y divide-line">
                   {data.length === 0 ? (
-                    <tr><td colSpan={12} className="text-center text-text-secondary py-12">데이터가 없습니다</td></tr>
+                    <tr><td colSpan={13} className="text-center text-text-secondary py-12">데이터가 없습니다</td></tr>
                   ) : data.map((m, i) => {
                     const approval = m.companyInfo?.approvalStatus || 'pending'
                     const approvalLabel = approval === 'approved' ? '승인' : approval === 'rejected' ? '거절' : '대기'
@@ -280,6 +282,7 @@ export default function AdminCorporateMembersPage() {
                       <td className="text-text-primary px-4 py-3 font-medium">{m.nickname || m.username}</td>
                       <td className="text-text-secondary px-4 py-3">{m.email}</td>
                       <td className="text-text-secondary px-4 py-3">{m.companyInfo?.companyName || m.companyName || '-'}</td>
+                      <td className="text-text-secondary px-4 py-3 text-xs">{m.companyInfo?.businessNumber || '-'}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {m.companyInfo?.companyType?.map((t: string) => (

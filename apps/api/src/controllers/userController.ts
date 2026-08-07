@@ -1,7 +1,11 @@
 import { Response } from 'express'
+import fs from 'fs'
+import path from 'path'
 import { UserModel as User, ScrapModel as Scrap, PlayerActivityModel as PlayerActivity, ReviewModel as Review, UserDeletionLogModel } from '@gameup/db'
 import { hashPassword, comparePassword, generateToken } from '../services/authService'
 import { AuthRequest } from '../middleware/auth'
+
+const BUSINESS_NUMBER_REGEX = /^\d{3}-\d{2}-\d{5}$/
 
 export const register = async (req: AuthRequest, res: Response) => {
   try {
@@ -28,10 +32,13 @@ export const register = async (req: AuthRequest, res: Response) => {
         return res.status(400).json({ message: '기업 유형(개발사/파트너)을 선택해주세요' })
       }
       if (!companyInfo?.companyType || companyInfo.companyType.length === 0) {
-        return res.status(400).json({ message: '사업 형태를 선택해주세요' })
+        return res.status(400).json({ message: '기업 형태를 선택해주세요' })
       }
       if (!contactPerson?.phone) {
         return res.status(400).json({ message: '담당자 연락처는 필수입니다' })
+      }
+      if (!companyInfo?.businessNumber || !BUSINESS_NUMBER_REGEX.test(companyInfo.businessNumber)) {
+        return res.status(400).json({ message: '사업자 등록번호를 올바른 형식(123-45-67890)으로 입력해주세요' })
       }
     }
 
@@ -74,6 +81,7 @@ export const register = async (req: AuthRequest, res: Response) => {
         companyName: companyInfo.companyName,
         companyCategory: companyInfo.companyCategory,
         companyType: companyInfo.companyType,
+        businessNumber: companyInfo.businessNumber,
         isApproved: false,
         approvalStatus: 'pending',
       }
@@ -164,6 +172,7 @@ export const login = async (req: AuthRequest, res: Response) => {
         memberType: user.memberType || 'individual',
         approvalStatus: user.approvalStatus || 'pending',
         companyInfo: user.companyInfo,
+        contactPerson: user.contactPerson,
         level: user.level || 1,
         activityScore: user.activityScore || 0,
         profileImage: user.profileImage || null,
@@ -263,6 +272,35 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
   }
 }
 
+export const uploadAvatar = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+
+    const file = req.file as Express.Multer.File | undefined
+    if (!file) return res.status(400).json({ message: '이미지 파일을 첨부해주세요' })
+
+    const user = await User.findById(req.user.id)
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+
+    if (user.profileImage?.startsWith('/uploads/')) {
+      const oldPath = path.join(process.cwd(), user.profileImage.slice(1))
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath)
+    }
+
+    user.profileImage = `/uploads/avatars/${file.filename}`
+    await user.save()
+
+    res.json({
+      success: true,
+      message: '프로필 이미지가 변경되었습니다',
+      profileImage: user.profileImage,
+    })
+  } catch (error) {
+    console.error('Avatar upload error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
 export const changePassword = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
@@ -338,12 +376,15 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
 
 export const reapplyCorporate = async (req: AuthRequest, res: Response) => {
   try {
-    const { companyName, companyCategory, companyType, contactPhone } = req.body
+    const { companyName, companyCategory, companyType, contactPhone, businessNumber } = req.body
 
     if (!companyName) return res.status(400).json({ message: '회사명은 필수입니다' })
     if (!companyCategory) return res.status(400).json({ message: '기업 유형을 선택해주세요' })
-    if (!companyType || companyType.length === 0) return res.status(400).json({ message: '사업 형태를 하나 이상 선택해주세요' })
+    if (!companyType || companyType.length === 0) return res.status(400).json({ message: '기업 형태를 하나 이상 선택해주세요' })
     if (!contactPhone) return res.status(400).json({ message: '대표 연락처는 필수입니다' })
+    if (!businessNumber || !BUSINESS_NUMBER_REGEX.test(businessNumber)) {
+      return res.status(400).json({ message: '사업자 등록번호를 올바른 형식(123-45-67890)으로 입력해주세요' })
+    }
 
     const user = await User.findById(req.user!.id).select('memberType companyInfo')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
@@ -358,6 +399,7 @@ export const reapplyCorporate = async (req: AuthRequest, res: Response) => {
         'companyInfo.companyName': companyName,
         'companyInfo.companyCategory': companyCategory,
         'companyInfo.companyType': companyType,
+        'companyInfo.businessNumber': businessNumber,
         'companyInfo.approvalStatus': 'pending',
         'companyInfo.isApproved': false,
         'contactPerson.phone': contactPhone,
@@ -375,13 +417,13 @@ export const updateCompanyType = async (req: AuthRequest, res: Response) => {
     const { companyType } = req.body
 
     if (!Array.isArray(companyType)) {
-      return res.status(400).json({ message: '사업 형태 값이 올바르지 않습니다' })
+      return res.status(400).json({ message: '기업 형태 값이 올바르지 않습니다' })
     }
 
     const user = await User.findById(req.user!.id).select('memberType companyInfo')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
     if (user.memberType !== 'corporate') {
-      return res.status(400).json({ message: '기업회원만 사업 형태를 수정할 수 있습니다' })
+      return res.status(400).json({ message: '기업회원만 기업 형태를 수정할 수 있습니다' })
     }
 
     await User.findByIdAndUpdate(req.user!.id, {

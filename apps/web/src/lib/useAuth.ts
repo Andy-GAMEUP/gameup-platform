@@ -11,7 +11,7 @@ async function refreshToken(): Promise<void> {
 }
 
 export function useAuth() {
-  const { data: session, status } = useSession()
+  const { data: session, status, update } = useSession()
   const router = useRouter()
 
   const accessToken = (session?.user as any)?.accessToken as string | undefined
@@ -31,6 +31,8 @@ export function useAuth() {
     memberType: ((session.user as any).memberType ?? 'individual') as 'individual' | 'corporate',
     approvalStatus: ((session.user as any).approvalStatus ?? 'pending') as 'pending' | 'approved' | 'rejected',
     companyInfo: (session.user as any).companyInfo as any,
+    contactPerson: (session.user as any).contactPerson as any,
+    profileImage: (session.user as any).profileImage as string | null,
     level: ((session.user as any).level ?? 1) as number,
     activityScore: ((session.user as any).activityScore ?? 0) as number,
     bio: undefined as string | undefined,
@@ -71,7 +73,11 @@ export function useAuth() {
       localStorage.removeItem('token')
       signOut({ callbackUrl: '/' })
     },
-    updateUser: (_partial: Record<string, any>) => {
+    updateUser: async (_partial: Record<string, any>) => {
+      // update()를 인자 없이 호출하면 트리거 없는 단순 재조회만 발생해
+      // auth.ts jwt 콜백의 trigger==='update' 분기(프로필 재조회)가 실행되지 않는다.
+      // 빈 객체라도 넘겨야 실제로 서버에서 최신 프로필을 다시 가져온다.
+      await update({})
       router.refresh()
     },
     loginWithKakao: () => signIn('kakao', { callbackUrl: '/' }),

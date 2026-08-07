@@ -313,48 +313,55 @@ export default function PlayerMyPage() {
       <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
 
         {/* 프로필 헤더 */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 border border-line rounded-2xl p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0">
-              {user?.username?.[0]?.toUpperCase() || '?'}
+        <div className="relative overflow-hidden bg-gradient-to-br from-cyan-950 via-slate-900 to-blue-950 border border-white/10 rounded-2xl p-6 shadow-xl">
+          <div className="absolute -top-20 -right-16 w-64 h-64 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-12 w-56 h-56 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
+            <div className="w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-cyan-900/50 ring-2 ring-white/20 flex-shrink-0 overflow-hidden">
+              {user?.profileImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+              ) : (
+                user?.username?.[0]?.toUpperCase() || '?'
+              )}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-text-primary">{user?.username}</h1>
+                <h1 className="text-xl font-bold text-white">{user?.username}</h1>
                 <LevelBadge level={(user as any)?.level} size="md" />
               </div>
-              <p className="text-text-secondary text-sm">{user?.email}</p>
-              <p className="text-text-secondary text-xs mt-0.5">활동점수: <span className="text-emerald-400 font-medium">{((user as any)?.activityScore || 0).toLocaleString()}</span>P</p>
+              <p className="text-cyan-200/70 text-sm">{user?.email}</p>
+              <p className="text-cyan-200/70 text-xs mt-0.5">활동점수: <span className="text-emerald-300 font-medium">{((user as any)?.activityScore || 0).toLocaleString()}</span>P</p>
               {(user as any)?.bio && (
-                <p className="text-text-secondary text-sm mt-1">{(user as any).bio}</p>
+                <p className="text-cyan-100/80 text-sm mt-1">{(user as any).bio}</p>
               )}
               <div className="flex flex-wrap items-center gap-2 mt-2">
-                <span className="bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs px-2 py-0.5 rounded">베타 테스터</span>
+                <span className="bg-white/10 backdrop-blur-sm text-cyan-200 border border-white/20 text-xs px-2.5 py-1 rounded-full font-medium">베타 테스터</span>
                 {((user as any)?.favoriteGenres || []).map((g: string) => (
-                  <span key={g} className="bg-bg-tertiary text-text-secondary text-xs px-2 py-0.5 rounded">{g}</span>
+                  <span key={g} className="bg-white/5 backdrop-blur-sm text-cyan-100/70 border border-white/10 text-xs px-2.5 py-1 rounded-full">{g}</span>
                 ))}
               </div>
             </div>
             <div className="grid grid-cols-5 gap-4 text-center w-full sm:w-auto">
               <div>
-                <p className="text-2xl font-bold text-cyan-400">{activityStats.playCount}</p>
-                <p className="text-text-muted text-xs mt-0.5">플레이</p>
+                <p className="text-2xl font-bold text-cyan-300">{activityStats.playCount}</p>
+                <p className="text-white/50 text-xs mt-0.5">플레이</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-purple-400">{activityStats.reviewCount}</p>
-                <p className="text-text-muted text-xs mt-0.5">리뷰</p>
+                <p className="text-2xl font-bold text-purple-300">{activityStats.reviewCount}</p>
+                <p className="text-white/50 text-xs mt-0.5">리뷰</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-pink-400">{activityStats.favoriteCount}</p>
-                <p className="text-text-muted text-xs mt-0.5">즐겨찾기</p>
+                <p className="text-2xl font-bold text-pink-300">{activityStats.favoriteCount}</p>
+                <p className="text-white/50 text-xs mt-0.5">즐겨찾기</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-emerald-400">{followStats.followerCount}</p>
-                <p className="text-text-muted text-xs mt-0.5">팔로워</p>
+                <p className="text-2xl font-bold text-emerald-300">{followStats.followerCount}</p>
+                <p className="text-white/50 text-xs mt-0.5">팔로워</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-sky-400">{followStats.followingCount}</p>
-                <p className="text-text-muted text-xs mt-0.5">팔로잉</p>
+                <p className="text-2xl font-bold text-sky-300">{followStats.followingCount}</p>
+                <p className="text-white/50 text-xs mt-0.5">팔로잉</p>
               </div>
             </div>
           </div>
@@ -656,11 +663,18 @@ export default function PlayerMyPage() {
               <div className="space-y-5">
                 {/* 아바타 */}
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0">
-                    {user?.username?.[0]?.toUpperCase() || '?'}
+                  <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0 overflow-hidden">
+                    {user?.profileImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      user?.username?.[0]?.toUpperCase() || '?'
+                    )}
                   </div>
                   <div>
-                    <p className="text-sm text-text-secondary">프로필 아이콘은 사용자명 첫 글자로 자동 생성됩니다</p>
+                    <p className="text-sm text-text-secondary">
+                      {user?.profileImage ? '소셜 로그인 계정의 프로필 사진입니다' : '프로필 아이콘은 사용자명 첫 글자로 자동 생성됩니다'}
+                    </p>
                   </div>
                 </div>
 

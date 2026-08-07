@@ -20,9 +20,9 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
 }
 
 const ADMIN_LEVEL_LABELS: Record<string, { label: string; cls: string }> = {
-  super:   { label: '최고 관리자', cls: 'bg-red-600/20 text-red-300 border border-red-500/30' },
-  normal:  { label: '일반 관리자', cls: 'bg-orange-600/20 text-orange-300 border border-orange-500/30' },
-  monitor: { label: '모니터',     cls: 'bg-blue-600/20 text-blue-300 border border-blue-500/30' },
+  super:   { label: '최고 관리자', cls: 'text-red-200' },
+  normal:  { label: '일반 관리자', cls: 'text-amber-200' },
+  monitor: { label: '모니터',     cls: 'text-blue-200' },
 }
 
 export default function AdminMyPage() {
@@ -108,22 +108,30 @@ export default function AdminMyPage() {
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
 
         {/* 프로필 헤더 */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 border border-line rounded-2xl p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-orange-600 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0">
-              {(user?.username || '?')[0].toUpperCase()}
+        <div className="relative overflow-hidden bg-gradient-to-br from-red-950 via-slate-900 to-orange-950 border border-white/10 rounded-2xl p-6 shadow-xl">
+          <div className="absolute -top-20 -right-16 w-64 h-64 bg-red-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -left-12 w-56 h-56 bg-orange-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
+            <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-orange-500 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-red-900/50 ring-2 ring-white/20 flex-shrink-0 overflow-hidden">
+              {user?.profileImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+              ) : (
+                (user?.username || '?')[0].toUpperCase()
+              )}
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold text-text-primary">{user?.username}</h1>
+                <h1 className="text-xl font-bold text-white">{user?.username}</h1>
                 {levelInfo && (
-                  <span className={`text-xs px-2 py-0.5 rounded ${levelInfo.cls}`}>{levelInfo.label}</span>
+                  <span className={`bg-white/10 backdrop-blur-sm border border-white/20 text-xs px-2.5 py-1 rounded-full font-medium ${levelInfo.cls}`}>{levelInfo.label}</span>
                 )}
               </div>
-              <p className="text-text-secondary text-sm mt-1">{user?.email}</p>
+              <p className="text-red-200/70 text-sm mt-1">{user?.email}</p>
               <div className="flex items-center gap-2 mt-2">
-                <Shield className="w-4 h-4 text-red-400" />
-                <span className="text-xs text-text-muted">관리자 계정</span>
+                <span className="inline-flex items-center gap-1 bg-white/10 backdrop-blur-sm text-red-200 border border-white/20 text-xs px-2.5 py-1 rounded-full font-medium">
+                  <Shield className="w-3 h-3" />관리자 계정
+                </span>
               </div>
             </div>
           </div>

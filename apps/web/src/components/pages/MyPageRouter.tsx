@@ -4,8 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 import { Loader2 } from 'lucide-react'
 import PlayerMyPage from './PlayerMyPage'
-import PartnerMyPage from './PartnerMyPage'
-import DeveloperMyPage from './DeveloperMyPage'
+import CorporateMyPage from './CorporateMyPage'
 import AdminMyPage from './AdminMyPage'
 
 export default function MyPageRouter() {
@@ -26,11 +25,7 @@ export default function MyPageRouter() {
   if (user.role === 'admin') return <AdminMyPage />
 
   if (user.role === 'developer' && user.memberType === 'corporate') {
-    const companyCategory: string = (user as any)?.companyInfo?.companyCategory || ''
-    const companyType: string[] = (user as any)?.companyInfo?.companyType || []
-    const isDeveloperCompany = companyCategory === 'developer' || (!companyCategory && companyType.includes('developer'))
-    if (isDeveloperCompany) return <DeveloperMyPage />
-    return <PartnerMyPage />
+    return <CorporateMyPage />
   }
 
   return <PlayerMyPage />

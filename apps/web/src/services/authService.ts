@@ -50,6 +50,15 @@ export const authService = {
     return response.data
   },
 
+  uploadAvatar: async (file: File) => {
+    const formData = new FormData()
+    formData.append('avatar', file)
+    const response = await apiClient.post('/users/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
+
   changePassword: async (data: { currentPassword: string; newPassword: string }) => {
     const response = await apiClient.patch('/users/password', data)
     return response.data
@@ -65,6 +74,7 @@ export const authService = {
     companyCategory: string
     companyType: string[]
     contactPhone: string
+    businessNumber: string
   }) => {
     const response = await apiClient.patch('/users/reapply', data)
     return response.data

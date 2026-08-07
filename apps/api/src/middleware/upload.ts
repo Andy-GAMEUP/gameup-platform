@@ -21,6 +21,7 @@ ensureDir(path.join(UPLOAD_BASE, 'certs'))
 ensureDir(path.join(UPLOAD_BASE, 'shop-items'))
 ensureDir(path.join(UPLOAD_BASE, 'videos'))
 ensureDir(path.join(UPLOAD_BASE, 'partner'))
+ensureDir(path.join(UPLOAD_BASE, 'avatars'))
 
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
@@ -40,6 +41,8 @@ const storage = multer.diskStorage({
       cb(null, path.join(UPLOAD_BASE, 'screenshots'))
     } else if (file.fieldname === 'videoFile') {
       cb(null, path.join(UPLOAD_BASE, 'videos'))
+    } else if (file.fieldname === 'avatar') {
+      cb(null, path.join(UPLOAD_BASE, 'avatars'))
     } else if (file.fieldname === 'shopItemImage' || file.fieldname === 'shopCurrencyIcon' || file.fieldname === 'specialItemImage' || file.fieldname === 'currencyIcon' || file.fieldname === 'capcoinIcon') {
       cb(null, path.join(UPLOAD_BASE, 'shop-items'))
     } else {
@@ -63,7 +66,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     } else {
       cb(new Error('게임 파일은 HTML 또는 ZIP 형식만 가능합니다'))
     }
-  } else if (['thumbnail','bannerImage','communityImages','partnerImages','screenshot','shopItemImage','shopCurrencyIcon'].includes(file.fieldname)) {
+  } else if (['thumbnail','bannerImage','communityImages','partnerImages','screenshot','shopItemImage','shopCurrencyIcon','avatar'].includes(file.fieldname)) {
     const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     const allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     const ext = path.extname(file.originalname).toLowerCase()
@@ -193,3 +196,10 @@ export const partnerUpload = multer({
     files: 5
   }
 }).array('partnerImages', 5)
+
+// 프로필 아바타 업로드 (1장, 2MB)
+export const avatarUpload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 2 * 1024 * 1024, files: 1 }
+}).single('avatar')

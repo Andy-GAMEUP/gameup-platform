@@ -213,8 +213,13 @@ export default function Navbar() {
                     onClick={() => setProfileMenuOpen((v) => !v)}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-tertiary hover:bg-line-light transition-colors"
                   >
-                    <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-text-inverse text-sm font-bold">
-                      {user.username[0].toUpperCase()}
+                    <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-text-inverse text-sm font-bold overflow-hidden">
+                      {user.profileImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        user.username[0].toUpperCase()
+                      )}
                     </div>
                     <span className="text-sm text-text-primary">{user.username}</span>
                   </button>
