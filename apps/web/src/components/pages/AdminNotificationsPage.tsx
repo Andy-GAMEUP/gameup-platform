@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import notificationService, { AppNotification } from '@/services/notificationService'
+import { formatDate } from '@/lib/formatDate'
 
 const TYPES = ['system', 'notice', 'publishing', 'comment', 'follow', 'proposal']
 
@@ -164,7 +165,7 @@ function HistoryTab() {
                     <td className="py-3 pr-4 text-text-primary max-w-[200px] truncate">{n.title}</td>
                     <td className="py-3 pr-4 text-text-secondary max-w-[250px] truncate">{n.content}</td>
                     <td className="py-3 text-text-muted text-xs whitespace-nowrap">
-                      {new Date(n.createdAt).toLocaleDateString('ko-KR')}
+                      {formatDate(n.createdAt)}
                     </td>
                   </tr>
                 ))

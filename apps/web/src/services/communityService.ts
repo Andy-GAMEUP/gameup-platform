@@ -5,18 +5,15 @@ export interface PostSummary {
   _id: string
   title: string
   content: string
-  author: { _id: string; username: string; role: string; level?: number }
+  author: { _id: string; username: string; role: string; level?: number; profileImage?: string }
   gameId?: { _id: string; title: string; serviceType?: string }
   channel: string
   images: string[]
   videoUrl?: string
   thumbnailIndex: number
-  links: { url: string; label?: string }[]
   tags: string[]
   likes: string[]
   likeCount: number
-  bookmarks: string[]
-  bookmarkCount: number
   views: number
   commentCount: number
   status: string
@@ -40,15 +37,15 @@ export interface HotGame {
 export interface CommentItem {
   _id: string
   postId: string
-  author: { _id: string; username: string; role: string; level?: number }
+  author: { _id: string; username: string; role: string; level?: number; profileImage?: string } | null
   content: string
   parentId: string | null
   likes: string[]
   likeCount: number
-  isOfficial: boolean
   status: string
+  isDeleted?: boolean
+  deletedBy?: string | null
   createdAt: string
-  replies?: CommentItem[]
 }
 
 const communityService = {
@@ -68,7 +65,7 @@ const communityService = {
   createPost: async (data: {
     title: string; content: string; channel?: string
     gameId?: string; images?: string[]; videoUrl?: string; thumbnailIndex?: number
-    links?: { url: string; label?: string }[]; tags?: string[]
+    tags?: string[]
   }) => {
     const res = await apiClient.post('/community/posts', data)
     return res.data.post as PostSummary
@@ -77,7 +74,7 @@ const communityService = {
   updatePost: async (id: string, data: Partial<{
     title: string; content: string; channel: string
     images: string[]; videoUrl: string; thumbnailIndex: number
-    links: { url: string; label?: string }[]; tags: string[]
+    tags: string[]
   }>) => {
     const res = await apiClient.put(`/community/posts/${id}`, data)
     return res.data.post as PostSummary
@@ -93,19 +90,9 @@ const communityService = {
     return res.data as { liked: boolean; likeCount: number }
   },
 
-  toggleBookmark: async (id: string) => {
-    const res = await apiClient.post(`/community/posts/${id}/bookmark`)
-    return res.data as { bookmarked: boolean; bookmarkCount: number }
-  },
-
   reportPost: async (id: string, reason: string) => {
     const res = await apiClient.post(`/community/posts/${id}/report`, { reason })
     return res.data
-  },
-
-  getMyBookmarks: async (page = 1, limit = 10) => {
-    const res = await apiClient.get('/community/my/bookmarks', { params: { page, limit } })
-    return res.data as { posts: PostSummary[]; total: number }
   },
 
   getStats: async () => {
@@ -154,6 +141,11 @@ const communityService = {
   deleteComment: async (id: string) => {
     const res = await apiClient.delete(`/community/comments/${id}`)
     return res.data
+  },
+
+  restoreComment: async (id: string) => {
+    const res = await apiClient.post(`/community/comments/${id}/restore`)
+    return res.data.comment as CommentItem
   },
 
   toggleCommentLike: async (id: string) => {

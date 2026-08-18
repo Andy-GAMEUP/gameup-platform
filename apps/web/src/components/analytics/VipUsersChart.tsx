@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { Calendar } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 type VipTier = 'Diamond' | 'Gold' | 'Silver' | 'Bronze'
 
@@ -334,7 +335,7 @@ export default function VipUsersChart({ selectedRank, from, to }: { selectedRank
               <tbody className="divide-y divide-line/40">
                 {sortedHistory.slice(0, 50).map((h, i) => (
                   <tr key={i} className="hover:bg-bg-tertiary transition-colors">
-                    <td className="px-4 py-2.5 text-text-muted">{h.date}</td>
+                    <td className="px-4 py-2.5 text-text-muted">{formatDate(h.date)}</td>
                     <td className="px-4 py-2.5 text-text-primary">{h.item}</td>
                     <td className="px-4 py-2.5 text-right font-semibold text-accent">₩{h.amount.toLocaleString()}</td>
                     <td className="px-4 py-2.5 text-right text-text-muted">{h.time}</td>

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import ConfirmModal from '@/components/ConfirmModal'
 import adminService, { Announcement } from '@/services/adminService'
+import { formatDate } from '@/lib/formatDate'
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   notice: { label: '공지', color: 'text-blue-400' },
@@ -160,7 +161,7 @@ export default function AdminAnnouncementsPage() {
                         <span className="text-text-muted text-xs">미게시</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-text-muted text-xs">{new Date(a.createdAt).toLocaleDateString('ko-KR')}</td>
+                    <td className="px-4 py-3 text-text-muted text-xs">{formatDate(a.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         <button onClick={() => openEdit(a)} className="text-base bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded hover:bg-blue-600/40 transition-colors">편집</button>

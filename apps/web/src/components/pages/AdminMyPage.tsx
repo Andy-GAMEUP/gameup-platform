@@ -1,12 +1,10 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/useAuth'
 import { authService } from '@/services/authService'
-import { Loader2, Lock, Edit2, Shield, Check, X, Eye, EyeOff } from 'lucide-react'
-
-type Tab = 'profile' | 'security'
+import { Loader2, Lock, Edit2, Shield, Check, X, Eye, EyeOff, User, Camera } from 'lucide-react'
 
 function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   return (
@@ -28,7 +26,6 @@ const ADMIN_LEVEL_LABELS: Record<string, { label: string; cls: string }> = {
 export default function AdminMyPage() {
   const { user, isAuthenticated, isLoading, updateUser } = useAuth()
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('profile')
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -64,6 +61,28 @@ export default function AdminMyPage() {
     }
   }
 
+  // ── 프로필 이미지 변경 ──
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) { showToast('이미지 파일만 업로드 가능합니다', 'error'); e.target.value = ''; return }
+    if (file.size > 2 * 1024 * 1024) { showToast('2MB 이하의 이미지만 업로드 가능합니다', 'error'); e.target.value = ''; return }
+    setAvatarUploading(true)
+    try {
+      await authService.uploadAvatar(file)
+      await updateUser({})
+      showToast('프로필 이미지가 변경되었습니다')
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || '업로드 실패', 'error')
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ''
+    }
+  }
+
   // ── 비밀번호 변경 ──
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
   const [pwSaving, setPwSaving] = useState(false)
@@ -94,11 +113,6 @@ export default function AdminMyPage() {
 
   const adminLevel = user?.adminLevel as string | null
   const levelInfo = adminLevel ? ADMIN_LEVEL_LABELS[adminLevel] : null
-
-  const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'profile',  label: '프로필 편집', icon: <Edit2 className="w-4 h-4" /> },
-    { key: 'security', label: '보안 설정',   icon: <Lock className="w-4 h-4" /> },
-  ]
 
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary">
@@ -137,60 +151,73 @@ export default function AdminMyPage() {
           </div>
         </div>
 
-        {/* 탭 */}
-        <div className="flex gap-2 flex-wrap">
-          {TABS.map(({ key, label, icon }) => (
-            <button key={key} onClick={() => setTab(key)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-base font-medium whitespace-nowrap transition-colors ${
-                tab === key ? 'bg-accent text-text-inverse' : 'text-text-secondary hover:text-text-primary hover:bg-bg-tertiary'
-              }`}>
-              {icon}{label}
-            </button>
-          ))}
+        {/* 사용자명 */}
+        <div className="bg-bg-secondary border border-line rounded-2xl p-6">
+            <div className="flex items-start gap-5">
+              {/* 프로필 이미지 */}
+              <div className="relative flex-shrink-0">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-red-400 to-orange-500 flex items-center justify-center text-2xl font-bold text-white">
+                  {user?.profileImage ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    (user?.username || '?')[0].toUpperCase()
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  title="프로필 이미지 변경"
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent hover:bg-accent-hover text-text-inverse flex items-center justify-center border-2 border-bg-secondary transition-colors disabled:opacity-50"
+                >
+                  {avatarUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+                </button>
+                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+              </div>
+
+              <div className="flex-1 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <User className="w-5 h-5" />사용자명
+                  </h2>
+                  {!usernameEditing && (
+                    <button onClick={() => setUsernameEditing(true)}
+                      className="flex items-center gap-1.5 text-base text-accent hover:text-accent-hover transition-colors">
+                      <Edit2 className="w-4 h-4" />편집
+                    </button>
+                  )}
+                </div>
+                {usernameEditing ? (
+                  <>
+                    <input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                    <div className="flex gap-2">
+                      <button onClick={handleSaveUsername} disabled={usernameSaving}
+                        className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-inverse font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
+                        {usernameSaving && <Loader2 className="w-4 h-4 animate-spin" />}저장
+                      </button>
+                      <button onClick={() => { setUsernameEditing(false); setUsername(user?.username || '') }}
+                        className="px-6 py-2.5 rounded-lg border border-line text-text-secondary hover:text-text-primary transition-colors">
+                        취소
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-text-primary">{user?.username}</p>
+                )}
+              </div>
+            </div>
         </div>
 
-        {/* 프로필 편집 탭 */}
-        {tab === 'profile' && (
-          <div className="bg-bg-secondary border border-line rounded-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">사용자명</h2>
-              {!usernameEditing && (
-                <button onClick={() => setUsernameEditing(true)}
-                  className="flex items-center gap-1.5 text-base text-accent hover:text-accent-hover transition-colors">
-                  <Edit2 className="w-4 h-4" />편집
-                </button>
-              )}
-            </div>
-            {usernameEditing ? (
-              <>
-                <input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                />
-                <div className="flex gap-2">
-                  <button onClick={handleSaveUsername} disabled={usernameSaving}
-                    className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-inverse font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
-                    {usernameSaving && <Loader2 className="w-4 h-4 animate-spin" />}저장
-                  </button>
-                  <button onClick={() => { setUsernameEditing(false); setUsername(user?.username || '') }}
-                    className="px-6 py-2.5 rounded-lg border border-line text-text-secondary hover:text-text-primary transition-colors">
-                    취소
-                  </button>
-                </div>
-              </>
-            ) : (
-              <p className="text-text-primary">{user?.username}</p>
-            )}
-          </div>
-        )}
-
-        {/* 보안 설정 탭 */}
-        {tab === 'security' && (
-          <div className="bg-bg-secondary border border-line rounded-2xl p-6 space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Lock className="w-5 h-5" />비밀번호 변경
-            </h2>
+        {/* 비밀번호 변경 */}
+        <div className="bg-bg-secondary border border-line rounded-2xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Lock className="w-5 h-5" />비밀번호 변경
+          </h2>
             {(['current', 'newPw', 'confirm'] as const).map((field) => {
               const labels = { current: '현재 비밀번호', newPw: '새 비밀번호', confirm: '새 비밀번호 확인' }
               const keys = { current: 'currentPassword', newPw: 'newPassword', confirm: 'confirmPassword' } as const
@@ -212,12 +239,11 @@ export default function AdminMyPage() {
                 </div>
               )
             })}
-            <button onClick={handleChangePassword} disabled={pwSaving}
-              className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-inverse font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
-              {pwSaving && <Loader2 className="w-4 h-4 animate-spin" />}비밀번호 변경
-            </button>
-          </div>
-        )}
+          <button onClick={handleChangePassword} disabled={pwSaving}
+            className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-inverse font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
+            {pwSaving && <Loader2 className="w-4 h-4 animate-spin" />}비밀번호 변경
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { Loader2, ArrowLeft, Download, CheckCircle, Circle, ExternalLink } from 'lucide-react'
 import supportService, { GameApplication } from '@/services/supportService'
+import { formatDate } from '@/lib/formatDate'
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
   return (
@@ -58,7 +59,6 @@ export default function SupportGameDetailPage() {
 
   const score = game.score ?? { gameplay: 0, design: 0, sound: 0, business: 0, total: 0 }
   const hasScore = score.total > 0
-  const formatDate = (d: string) => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
 
   return (
     <div className="min-h-screen bg-bg-primary">

@@ -9,10 +9,8 @@ export interface IPost extends Document {
   images: string[]
   videoUrl?: string
   thumbnailIndex: number
-  links: { url: string; label?: string }[]
   tags: string[]
   likes: mongoose.Types.ObjectId[]
-  bookmarks: mongoose.Types.ObjectId[]
   views: number
   commentCount: number
   status: 'active' | 'hidden' | 'deleted'
@@ -42,10 +40,8 @@ const postSchema = new Schema<IPost>(
     images: [{ type: String }],
     videoUrl: { type: String, default: '' },
     thumbnailIndex: { type: Number, default: 0 },
-    links: [{ url: String, label: String }],
     tags: [{ type: String }],
     likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-    bookmarks: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     views: { type: Number, default: 0 },
     commentCount: { type: Number, default: 0 },
     status: { type: String, enum: ['active', 'hidden', 'deleted'], default: 'active' },

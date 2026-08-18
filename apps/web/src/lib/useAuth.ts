@@ -35,6 +35,7 @@ export function useAuth() {
     profileImage: (session.user as any).profileImage as string | null,
     level: ((session.user as any).level ?? 1) as number,
     activityScore: ((session.user as any).activityScore ?? 0) as number,
+    bookmarkedTabs: ((session.user as any).bookmarkedTabs ?? []) as { key: string; label: string; channel?: string; gameId?: string }[],
     bio: undefined as string | undefined,
     favoriteGenres: undefined as string[] | undefined,
   } : null

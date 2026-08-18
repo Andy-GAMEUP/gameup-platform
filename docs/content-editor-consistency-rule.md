@@ -18,8 +18,11 @@
 | 내채널 소개 | `apps/web/src/components/pages/partner-profile/IntroSection.tsx` | 소개 (`introduction`) |
 | 내채널 활동 계획 | `apps/web/src/components/pages/partner-profile/PlanSection.tsx` | 활동 계획 (`activityPlan`) |
 | 내채널 포트폴리오 항목 | `apps/web/src/components/pages/partner-profile/PortfolioSection.tsx` | 항목별 설명 (`description`) |
+| 게임 관리 - 공지 작성 / 관리자 - 플랫폼 공지 작성 | `apps/web/src/components/community/AnnouncementManager.tsx` (공용 컴포넌트, `GameDetailManagementPage.tsx`와 `AdminCommunityPage.tsx`의 "공지사항" 탭이 함께 씀) | 공지사항 내용 (`AnnouncementFormValue.content`) |
 
-이미지 업로드는 전부 `partnerService.uploadImages()` / `communityService.uploadImages()` 처럼 각 도메인의 업로드 API를 통해 `/uploads/<도메인>/` 아래 저장하는 방식을 따른다 (커뮤니티는 `communityService`, 파트너 관련은 전부 `partnerService.uploadImages` 재사용).
+이미지 업로드는 전부 `partnerService.uploadImages()` / `communityService.uploadImages()` 처럼 각 도메인의 업로드 API를 통해 `/uploads/<도메인>/` 아래 저장하는 방식을 따른다 (커뮤니티는 `communityService`, 파트너 관련은 전부 `partnerService.uploadImages` 재사용, 게임 공지는 `gameService.uploadAnnouncementImages`를 통해 `/uploads/game-announcements/` 아래 저장).
+
+콘텐츠를 화면에 표시할 때도 `dangerouslySetInnerHTML`로 렌더링하며, `CommunityPostPage.tsx`의 본문 렌더링에 쓰인 것과 동일한 prose 스타일 클래스(`[&_h2]:...`, `[&_img]:...` 등)를 그대로 재사용한다. 목록/카드에서 미리보기 텍스트만 필요할 때는 `content.replace(/<[^>]*>/g, '')`로 태그를 제거한 뒤 자른다 (`PostCard.tsx`, `GameDetailManagementPage.tsx` 참고).
 
 ## 이 그룹에서 제외되는 것 (의도적 제외)
 

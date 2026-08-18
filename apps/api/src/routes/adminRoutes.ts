@@ -7,10 +7,14 @@ import {
   getGameMetrics,
   getAllReviews, blockReview, deleteReview,
   getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement,
-  getPublicAnnouncements, getPublicAnnouncementById
+  getPublicAnnouncements, getPublicAnnouncementById,
+  toggleAnnouncementLike, reportAnnouncement,
+  getReportedAnnouncements,
+  getDeletedAnnouncements, restoreAnnouncement, permanentlyDeleteAnnouncement,
+  restoreGameAnnouncement, permanentlyDeleteGameAnnouncement
 } from '../controllers/adminController'
 import { getCommunityBanners, getAllCommunityBanners, uploadCommunityBanner, updateCommunityBanner, deleteCommunityBanner, trackBannerEvent } from '../controllers/communityBannerController'
-import { getReportedPosts, adminUpdatePostStatus, getReportedComments, adminUpdateCommentStatus, getDeletedPosts, getDeletedComments, getReportedUsers } from '../controllers/communityController'
+import { getReportedPosts, adminUpdatePostStatus, getReportedComments, adminUpdateCommentStatus, getDeletedPosts, getDeletedComments, getReportedUsers, permanentlyDeletePost } from '../controllers/communityController'
 import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
 import { uploadFields } from '../middleware/upload'
 
@@ -23,6 +27,10 @@ router.post('/community/banners/:id/track', trackBannerEvent)
 // 공개 공지사항 (인증 불필요)
 router.get('/announcements/public', getPublicAnnouncements)
 router.get('/announcements/public/:id', getPublicAnnouncementById)
+
+// 공지사항 좋아요/북마크/신고 (로그인만 하면 가능, 관리자 전용 아님)
+router.post('/announcements/public/:id/like', authenticateToken, toggleAnnouncementLike)
+router.post('/announcements/public/:id/report', authenticateToken, reportAnnouncement)
 
 // 이하 모두 관리자 전용
 router.use(authenticateToken, requireAdmin)
@@ -64,13 +72,20 @@ router.post('/games/:gameId/shop-review/approve', requireAdminLevel('super', 'no
 router.post('/games/:gameId/shop-review/reject', requireAdminLevel('super', 'normal'), rejectShopReview)
 router.delete('/reviews/:id', requireAdminLevel('super'), deleteReview)
 router.delete('/announcements/:id', requireAdminLevel('super'), deleteAnnouncement)
+router.get('/community/deleted-announcements', getDeletedAnnouncements)
+router.patch('/community/deleted-announcements/platform/:id/restore', requireAdminLevel('super'), restoreAnnouncement)
+router.delete('/community/deleted-announcements/platform/:id', requireAdminLevel('super'), permanentlyDeleteAnnouncement)
+router.patch('/community/deleted-announcements/game/:id/restore', requireAdminLevel('super'), restoreGameAnnouncement)
+router.delete('/community/deleted-announcements/game/:id', requireAdminLevel('super'), permanentlyDeleteGameAnnouncement)
 
 // 신고된 커뮤니티 게시글/댓글 (모든 관리자)
 router.get('/community/reported-posts', getReportedPosts)
+router.get('/community/reported-announcements', getReportedAnnouncements)
 router.patch('/community/posts/:id/status', requireAdminLevel('super', 'normal'), adminUpdatePostStatus)
 router.get('/community/reported-comments', getReportedComments)
 router.patch('/community/comments/:id/action', requireAdminLevel('super', 'normal'), adminUpdateCommentStatus)
 router.get('/community/deleted-posts', getDeletedPosts)
+router.delete('/community/deleted-posts/:id', permanentlyDeletePost)
 router.get('/community/deleted-comments', getDeletedComments)
 router.get('/community/reported-users', getReportedUsers)
 

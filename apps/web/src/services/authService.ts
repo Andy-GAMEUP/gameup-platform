@@ -64,6 +64,11 @@ export const authService = {
     return response.data
   },
 
+  toggleBookmarkedTab: async (data: { key: string; label: string; channel?: string; gameId?: string }) => {
+    const response = await apiClient.post('/users/bookmarked-tabs/toggle', data)
+    return response.data as { success: boolean; bookmarked: boolean; bookmarkedTabs: { key: string; label: string; channel?: string; gameId?: string }[] }
+  },
+
   deleteAccount: async (data: { password: string }) => {
     const response = await apiClient.delete('/users/account', { data })
     return response.data

@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import ConfirmModal from '@/components/ConfirmModal'
 import adminService from '@/services/adminService'
 import { Trash2, Loader2, Search, RotateCcw } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 interface DeletionLog {
   _id: string
@@ -136,7 +137,7 @@ export default function AdminDeletedMembersPage() {
                       <td className="px-4 py-3 text-text-primary font-medium border-r border-line/20">{log.username}</td>
                       <td className="px-4 py-3 text-text-secondary border-r border-line/20">{log.email}</td>
                       <td className="px-4 py-3 text-text-secondary border-r border-line/20">
-                        {new Date(log.deletedAt).toLocaleDateString('ko-KR')}
+                        {formatDate(log.deletedAt)}
                       </td>
                       <td className="px-4 py-3 border-r border-line/20">
                         <button

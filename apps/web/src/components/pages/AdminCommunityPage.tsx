@@ -3,16 +3,18 @@ import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
-import adminService, { CommunityBanner, ReportedPost, ReportedComment } from '@/services/adminService'
+import adminService, { CommunityBanner, ReportedPost, ReportedComment, ReportedAnnouncement, ReportReason, DeletedAnnouncement } from '@/services/adminService'
 import communityService from '@/services/communityService'
+import AnnouncementManager, { AnnouncementFormValue } from '@/components/community/AnnouncementManager'
 import {
   Search, ShieldOff, ShieldCheck, Trash2, ChevronLeft, ChevronRight, ChevronDown,
-  Loader2, AlertCircle, CheckCircle, MessageSquare, PenSquare, X,
-  ImagePlus, Link2, Hash, Image as ImageIcon, Megaphone, Upload,
-  Plus, Eye, EyeOff, Pin, Bell, BellOff, Edit2, LayoutDashboard, Flag, ExternalLink, ThumbsUp, MessageCircle, ArrowUpDown, ArrowUp, ArrowDown,
-  BarChart2,
+  Loader2, AlertCircle, AlertTriangle, CheckCircle, MessageSquare, PenSquare, X,
+  ImagePlus, Hash, Image as ImageIcon, Megaphone, Upload,
+  Plus, Eye, EyeOff, Pin, Bell, BellOff, Edit2, LayoutDashboard, ExternalLink, ThumbsUp, MessageCircle, ArrowUpDown, ArrowUp, ArrowDown,
+  BarChart2, Star,
 } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from 'recharts'
+import { formatDate } from '@/lib/formatDate'
 
 // ────────── 타입 ──────────
 
@@ -25,6 +27,8 @@ interface Announcement {
   isPinned: boolean
   isPublished: boolean
   targetRole: 'all' | 'developer' | 'player'
+  images?: string[]
+  thumbnailIndex?: number
   publishedAt?: string
   expiresAt?: string
   createdAt: string
@@ -200,7 +204,6 @@ function BannerSection({
   onEdit: (id: string, data: { title: string; linkUrl: string; file?: File }) => void
   gameSelector?: boolean
 }) {
-  const fmt = (d: string) => new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
   const [statPeriod, setStatPeriod] = useState<1 | 7 | 30 | null>(7)
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
@@ -519,8 +522,8 @@ function BannerSection({
                         : <span className="text-text-muted">-</span>
                     }
                   </td>
-                  <td className="py-3 px-3 text-text-muted text-xs">{fmt(b.createdAt)}</td>
-                  <td className="py-3 px-3 text-text-muted text-xs">{fmt(b.updatedAt)}</td>
+                  <td className="py-3 px-3 text-text-muted text-xs">{formatDate(b.createdAt)}</td>
+                  <td className="py-3 px-3 text-text-muted text-xs">{formatDate(b.updatedAt)}</td>
                   {(() => { const s = getStats(b); return (<>
                     <td className="py-3 px-3 text-right text-xs text-text-secondary">{s.impressions.toLocaleString()}</td>
                     <td className="py-3 px-3 text-right text-xs text-text-secondary">{s.clicks.toLocaleString()}</td>
@@ -948,166 +951,45 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
 
 // ────────── 탭 2: 공지사항 관리 ──────────
 
-const TYPE_LABELS: Record<string, { label: string; cls: string }> = {
-  notice:      { label: '공지',  cls: 'bg-blue-500/10 text-blue-400 border border-blue-500/30' },
-  event:       { label: '이벤트', cls: 'bg-purple-500/10 text-purple-400 border border-purple-500/30' },
-  maintenance: { label: '점검',  cls: 'bg-orange-500/10 text-orange-400 border border-orange-500/30' },
-  update:      { label: '업데이트', cls: 'bg-green-500/10 text-green-400 border border-green-500/30' },
-}
+const ANNOUNCEMENT_TYPE_OPTIONS = [
+  { value: 'notice', label: '공지' },
+  { value: 'event', label: '이벤트' },
+  { value: 'maintenance', label: '점검' },
+  { value: 'update', label: '업데이트' },
+]
 
-const PRIORITY_LABELS: Record<string, { label: string; cls: string }> = {
-  urgent: { label: '긴급', cls: 'bg-red-500/10 text-red-400 border border-red-500/30' },
-  high:   { label: '높음', cls: 'bg-orange-500/10 text-orange-400 border border-orange-500/30' },
-  normal: { label: '보통', cls: 'bg-bg-tertiary text-text-muted border border-line' },
-  low:    { label: '낮음', cls: 'bg-bg-tertiary text-text-muted border border-line' },
-}
-
-function AnnouncementForm({
-  initial, onSave, onCancel
-}: {
-  initial?: Partial<Announcement>
-  onSave: (data: Partial<Announcement>) => Promise<void>
-  onCancel: () => void
-}) {
-  const [form, setForm] = useState<Partial<Announcement>>({
-    title: '', content: '', type: 'notice', priority: 'normal',
-    targetRole: 'all', isPinned: false, isPublished: true,
-    ...initial,
-  })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-
-  const set = (k: keyof Announcement, v: unknown) => setForm(p => ({ ...p, [k]: v }))
-
-  const handleSave = async () => {
-    if (!form.title?.trim()) { setError('제목을 입력하세요'); return }
-    if (!form.content?.trim()) { setError('내용을 입력하세요'); return }
-    setSaving(true); setError('')
-    try { await onSave(form) } catch { setError('저장에 실패했습니다') }
-    finally { setSaving(false) }
-  }
-
-  return (
-    <div className="bg-bg-secondary border border-line rounded-xl p-5 space-y-4">
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div>
-          <label className="text-xs text-text-muted mb-1 block">유형</label>
-          <select value={form.type} onChange={e => set('type', e.target.value)}
-            className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none">
-            <option value="notice">공지</option>
-            <option value="event">이벤트</option>
-            <option value="maintenance">점검</option>
-            <option value="update">업데이트</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-text-muted mb-1 block">우선순위</label>
-          <select value={form.priority} onChange={e => set('priority', e.target.value)}
-            className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none">
-            <option value="urgent">긴급</option>
-            <option value="high">높음</option>
-            <option value="normal">보통</option>
-            <option value="low">낮음</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-text-muted mb-1 block">대상</label>
-          <select value={form.targetRole} onChange={e => set('targetRole', e.target.value)}
-            className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none">
-            <option value="all">전체</option>
-            <option value="developer">개발자</option>
-            <option value="player">플레이어</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-text-muted mb-1 block">만료일 (선택)</label>
-          <input type="date" value={form.expiresAt ? form.expiresAt.slice(0, 10) : ''}
-            onChange={e => set('expiresAt', e.target.value || undefined)}
-            className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none" />
-        </div>
-      </div>
-
-      <div>
-        <label className="text-xs text-text-muted mb-1 block">제목 *</label>
-        <input value={form.title || ''} onChange={e => set('title', e.target.value)} maxLength={200}
-          placeholder="공지 제목"
-          className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
-      </div>
-
-      <div>
-        <label className="text-xs text-text-muted mb-1 block">내용 *</label>
-        <textarea value={form.content || ''} onChange={e => set('content', e.target.value)} rows={5}
-          placeholder="공지 내용을 입력하세요..."
-          className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent resize-none" />
-      </div>
-
-      <div className="flex items-center gap-4">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={!!form.isPinned} onChange={e => set('isPinned', e.target.checked)} className="rounded" />
-          <span className="text-sm text-text-secondary">상단 고정</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={!!form.isPublished} onChange={e => set('isPublished', e.target.checked)} className="rounded" />
-          <span className="text-sm text-text-secondary">즉시 게시</span>
-        </label>
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <button onClick={onCancel} className="px-4 py-2 border border-line rounded-lg text-base text-text-secondary hover:bg-bg-tertiary">취소</button>
-        <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium disabled:opacity-50">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          저장
-        </button>
-      </div>
-    </div>
-  )
-}
+const ANNOUNCEMENT_PRIORITY_OPTIONS = [
+  { value: 'urgent', label: '긴급' },
+  { value: 'high', label: '높음' },
+  { value: 'normal', label: '보통' },
+  { value: 'low', label: '낮음' },
+]
 
 function AnnouncementsTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
   const [items, setItems] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
-  const [creating, setCreating] = useState(false)
-  const [editing, setEditing] = useState<Announcement | null>(null)
   const [confirm, setConfirm] = useState<{ msg: string; onConfirm: () => void } | null>(null)
-  const [typeFilter, setTypeFilter] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await adminService.getAnnouncements({ limit: 50, type: typeFilter || undefined })
+      const data = await adminService.getAnnouncements({ limit: 50 })
       setItems(data.announcements || [])
     } catch { showToast('불러오기 실패', false) }
     finally { setLoading(false) }
-  }, [typeFilter, showToast])
+  }, [showToast])
 
   useEffect(() => { load() }, [load])
 
-  const handleCreate = async (form: Partial<Announcement>) => {
-    await adminService.createAnnouncement(form)
+  const handleCreate = async (data: AnnouncementFormValue) => {
+    await adminService.createAnnouncement(data as Partial<Announcement>)
     showToast('공지가 등록되었습니다')
-    setCreating(false)
     load()
   }
 
-  const handleUpdate = async (form: Partial<Announcement>) => {
-    if (!editing) return
-    await adminService.updateAnnouncement(editing._id, form)
+  const handleUpdate = async (id: string, data: AnnouncementFormValue) => {
+    await adminService.updateAnnouncement(id, data as Partial<Announcement>)
     showToast('수정되었습니다')
-    setEditing(null)
-    load()
-  }
-
-  const handleTogglePublish = async (item: Announcement) => {
-    await adminService.updateAnnouncement(item._id, { isPublished: !item.isPublished })
-    showToast(item.isPublished ? '비게시로 변경됨' : '게시됨')
-    load()
-  }
-
-  const handleTogglePin = async (item: Announcement) => {
-    await adminService.updateAnnouncement(item._id, { isPinned: !item.isPinned })
     load()
   }
 
@@ -1125,79 +1007,20 @@ function AnnouncementsTab({ showToast }: { showToast: (msg: string, ok?: boolean
 
   return (
     <div className="space-y-4">
-      {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
-
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2">
-          {['', 'notice', 'event', 'maintenance', 'update'].map(t => (
-            <button key={t} onClick={() => setTypeFilter(t)}
-              className={`px-3 py-1.5 rounded-lg text-base font-medium transition-colors ${
-                typeFilter === t ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'
-              }`}>
-              {t === '' ? '전체' : TYPE_LABELS[t]?.label}
-            </button>
-          ))}
-        </div>
-        <button onClick={() => { setCreating(true); setEditing(null) }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium">
-          <Plus className="w-4 h-4" /> 공지 작성
-        </button>
-      </div>
-
-      {creating && <AnnouncementForm onSave={handleCreate} onCancel={() => setCreating(false)} />}
-
-      {loading ? (
-        <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
-      ) : items.length === 0 ? (
-        <div className="text-center py-16 text-text-muted text-sm">등록된 공지사항이 없습니다</div>
-      ) : (
-        <div className="space-y-2">
-          {items.map(item => (
-            <div key={item._id}>
-              {editing?._id === item._id ? (
-                <AnnouncementForm initial={item} onSave={handleUpdate} onCancel={() => setEditing(null)} />
-              ) : (
-                <div className={`bg-bg-secondary border rounded-xl p-4 ${item.isPinned ? 'border-accent/40' : 'border-line'}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center flex-wrap gap-1.5 mb-1">
-                        {item.isPinned && <Pin className="w-3.5 h-3.5 text-accent" />}
-                        <span className={`text-xs px-1.5 py-0.5 rounded border ${TYPE_LABELS[item.type]?.cls}`}>{TYPE_LABELS[item.type]?.label}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded border ${PRIORITY_LABELS[item.priority]?.cls}`}>{PRIORITY_LABELS[item.priority]?.label}</span>
-                        <span className="text-xs text-text-muted">{item.targetRole === 'all' ? '전체' : item.targetRole === 'developer' ? '개발자' : '플레이어'}</span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${item.isPublished ? 'bg-green-500/10 text-green-400' : 'bg-bg-tertiary text-text-muted'}`}>
-                          {item.isPublished ? '게시중' : '미게시'}
-                        </span>
-                      </div>
-                      <p className="text-text-primary font-medium text-sm">{item.title}</p>
-                      <p className="text-text-muted text-xs mt-0.5 line-clamp-1">{item.content}</p>
-                      <p className="text-text-muted text-xs mt-1">{new Date(item.createdAt).toLocaleDateString('ko-KR')}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <button onClick={() => handleTogglePin(item)} title={item.isPinned ? '고정 해제' : '상단 고정'}
-                        className={`p-1.5 rounded-lg transition-colors ${item.isPinned ? 'text-accent bg-accent/10' : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'}`}>
-                        <Pin className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleTogglePublish(item)} title={item.isPublished ? '비게시' : '게시'}
-                        className={`p-1.5 rounded-lg transition-colors ${item.isPublished ? 'text-green-400 bg-green-500/10' : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'}`}>
-                        {item.isPublished ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                      </button>
-                      <button onClick={() => { setEditing(item); setCreating(false) }}
-                        className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleDelete(item)}
-                        className="p-1.5 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {confirm && <ConfirmModal msg={confirm.msg} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
+      <AnnouncementManager
+        items={items}
+        loading={loading}
+        typeOptions={ANNOUNCEMENT_TYPE_OPTIONS}
+        priorityOptions={ANNOUNCEMENT_PRIORITY_OPTIONS}
+        onCreate={handleCreate}
+        onUpdate={handleUpdate}
+        onDelete={handleDelete}
+        uploadImages={async (files) => {
+          const result = await communityService.uploadImages(files)
+          return result.images
+        }}
+      />
     </div>
   )
 }
@@ -1211,14 +1034,10 @@ function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
-  const [links, setLinks] = useState<{ url: string; label: string }[]>([])
   const [images, setImages] = useState<string[]>([])
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [showLinkInput, setShowLinkInput] = useState(false)
-  const [linkUrl, setLinkUrl] = useState('')
-  const [linkLabel, setLinkLabel] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1240,18 +1059,12 @@ function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
     setTagInput('')
   }
 
-  const handleAddLink = () => {
-    if (!linkUrl.trim() || links.length >= 10) return
-    setLinks(prev => [...prev, { url: linkUrl.trim(), label: linkLabel.trim() || linkUrl.trim() }])
-    setLinkUrl(''); setLinkLabel(''); setShowLinkInput(false)
-  }
-
   const handleSubmit = async () => {
     if (!title.trim()) { setError('제목을 입력해주세요'); return }
     if (!content.trim()) { setError('내용을 입력해주세요'); return }
     setSubmitting(true); setError('')
     try {
-      await communityService.createPost({ title: title.trim(), content: content.trim(), channel, images, videoUrl: videoUrl.trim() || undefined, links: links.length > 0 ? links : undefined, tags: tags.length > 0 ? tags : undefined })
+      await communityService.createPost({ title: title.trim(), content: content.trim(), channel, images, videoUrl: videoUrl.trim() || undefined, tags: tags.length > 0 ? tags : undefined })
       onSuccess()
     } catch { setError('게시글 작성에 실패했습니다') }
     finally { setSubmitting(false) }
@@ -1311,27 +1124,6 @@ function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
               className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
           </div>
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-text-secondary text-sm font-medium">링크 (최대 10개)</label>
-              {links.length < 10 && <button onClick={() => setShowLinkInput(true)} className="text-accent text-base hover:underline flex items-center gap-1"><Link2 className="w-3 h-3" /> 추가</button>}
-            </div>
-            {links.map((l, i) => (
-              <div key={i} className="flex items-center gap-2 bg-bg-tertiary rounded-lg px-3 py-1.5 text-sm mb-1">
-                <Link2 className="w-3.5 h-3.5 text-text-muted" />
-                <span className="text-accent truncate flex-1">{l.label}</span>
-                <button onClick={() => setLinks(prev => prev.filter((_, j) => j !== i))}><X className="w-3.5 h-3.5 text-text-muted" /></button>
-              </div>
-            ))}
-            {showLinkInput && (
-              <div className="flex gap-2">
-                <input type="url" value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="URL" className="flex-1 bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none" />
-                <input type="text" value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="라벨" className="w-28 bg-bg-tertiary border border-line rounded-lg px-3 py-1.5 text-sm text-text-primary focus:outline-none" />
-                <button onClick={handleAddLink} className="px-3 py-1.5 bg-accent text-white rounded-lg text-base">추가</button>
-                <button onClick={() => { setShowLinkInput(false); setLinkUrl(''); setLinkLabel('') }}><X className="w-4 h-4 text-text-muted" /></button>
-              </div>
-            )}
-          </div>
-          <div>
             <label className="text-text-secondary text-sm font-medium mb-1.5 block">태그 (최대 10개)</label>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -1373,9 +1165,38 @@ function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
 type SortField = 'reportCount' | 'title' | 'author' | 'createdAt' | 'views' | 'likes' | 'commentCount'
 type SortDir = 'asc' | 'desc'
 
+const REPORT_CATEGORY_FIXED: Record<string, string> = {
+  notice: '공지',
+  free: '자유게시판',
+  'new-game-intro': '신작게임소개',
+}
+
+function reportedPostCategory(post: ReportedPost): string {
+  if (REPORT_CATEGORY_FIXED[post.channel]) return REPORT_CATEGORY_FIXED[post.channel]
+  return post.gameId?.title ?? (CHANNELS.find(c => c.value === post.channel)?.label ?? post.channel)
+}
+
+interface MergedReportRow {
+  key: string
+  kind: 'post' | 'announcement'
+  _id: string
+  title: string
+  category: string
+  status: 'active' | 'hidden' | 'deleted' | 'notice'
+  author: string | null
+  reportCount: number
+  views: number
+  likeCount: number
+  commentCount: number
+  createdAt: string
+  viewPath: string
+  reports: ReportReason[]
+  post?: ReportedPost
+}
+
 export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
-  const [reported, setReported] = useState<ReportedPost[]>([])
-  const [total, setTotal] = useState(0)
+  const [posts, setPosts] = useState<ReportedPost[]>([])
+  const [announcements, setAnnouncements] = useState<ReportedAnnouncement[]>([])
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -1384,9 +1205,9 @@ export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: 
   const [loading, setLoading] = useState(true)
   const [actionId, setActionId] = useState<string | null>(null)
   const [confirm, setConfirm] = useState<any>(null)
+  const [reasonRow, setReasonRow] = useState<MergedReportRow | null>(null)
 
   const LIMIT = 10
-  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -1398,31 +1219,60 @@ export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: 
     return sortDir === 'asc' ? <ArrowUp className="w-3 h-3 text-accent" /> : <ArrowDown className="w-3 h-3 text-accent" />
   }
 
-  const sorted = [...reported].filter(p => !statusFilter || p.status === statusFilter).sort((a, b) => {
+  const merged: MergedReportRow[] = [
+    ...posts.map((p): MergedReportRow => ({
+      key: `post-${p._id}`, kind: 'post', _id: p._id, title: p.title, category: reportedPostCategory(p),
+      status: p.status, author: p.author?.username ?? null, reportCount: p.reportCount, views: p.views ?? 0,
+      likeCount: p.likes?.length ?? 0, commentCount: p.commentCount ?? 0, createdAt: p.createdAt,
+      viewPath: `/community/${p._id}`, post: p,
+      reports: (p.reports || []).map(r => ({
+        reason: r.reason, createdAt: r.createdAt,
+        username: (typeof r.userId === 'object' ? r.userId?.username : null) ?? null,
+      })),
+    })),
+    ...announcements.map((a): MergedReportRow => ({
+      key: `ann-${a._id}`, kind: 'announcement', _id: a._id, title: a.title, category: a.category,
+      status: 'notice', author: null, reportCount: a.reportCount, views: a.views ?? 0,
+      likeCount: a.likeCount ?? 0, commentCount: 0, createdAt: a.createdAt, viewPath: a.viewPath,
+      reports: a.reports || [],
+    })),
+  ]
+
+  const filtered = merged.filter(r => (!statusFilter || r.status === statusFilter) && (!search || r.title.toLowerCase().includes(search.toLowerCase())))
+
+  const sorted = [...filtered].sort((a, b) => {
     let av: number | string = 0, bv: number | string = 0
     if (sortField === 'reportCount') { av = a.reportCount; bv = b.reportCount }
     else if (sortField === 'title') { av = a.title; bv = b.title }
-    else if (sortField === 'author') { av = a.author?.username ?? ''; bv = b.author?.username ?? '' }
+    else if (sortField === 'author') { av = a.author ?? ''; bv = b.author ?? '' }
     else if (sortField === 'createdAt') { av = a.createdAt; bv = b.createdAt }
-    else if (sortField === 'views') { av = a.views ?? 0; bv = b.views ?? 0 }
-    else if (sortField === 'likes') { av = a.likes?.length ?? 0; bv = b.likes?.length ?? 0 }
-    else if (sortField === 'commentCount') { av = a.commentCount ?? 0; bv = b.commentCount ?? 0 }
+    else if (sortField === 'views') { av = a.views; bv = b.views }
+    else if (sortField === 'likes') { av = a.likeCount; bv = b.likeCount }
+    else if (sortField === 'commentCount') { av = a.commentCount; bv = b.commentCount }
     if (av < bv) return sortDir === 'asc' ? -1 : 1
     if (av > bv) return sortDir === 'asc' ? 1 : -1
     return 0
   })
 
+  const total = sorted.length
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
+  const paged = sorted.slice((page - 1) * LIMIT, page * LIMIT)
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await adminService.getReportedPosts({ page, limit: LIMIT, search: search || undefined })
-      setReported(data.posts || [])
-      setTotal(data.total || 0)
+      const [postData, annData] = await Promise.all([
+        adminService.getReportedPosts({ page: 1, limit: 500 }),
+        adminService.getReportedAnnouncements(),
+      ])
+      setPosts(postData.posts || [])
+      setAnnouncements(annData.announcements || [])
     } catch { showToast('신고 목록 불러오기 실패', false) }
     finally { setLoading(false) }
-  }, [page, search, showToast])
+  }, [showToast])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => { setPage(1) }, [search, statusFilter])
 
   const handleAction = (post: ReportedPost, action: 'hide' | 'delete' | 'restore') => {
     const labels = { hide: '숨김', delete: '삭제', restore: '복구' }
@@ -1443,14 +1293,44 @@ export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: 
   }
 
   const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-    active: { label: '배포 중', cls: 'bg-green-500/10 text-green-400 border-green-500/30' },
-    hidden: { label: '숨김', cls: 'bg-orange-500/10 text-orange-400 border-orange-500/30' },
-    deleted: { label: '삭제', cls: 'bg-red-500/10 text-red-400 border-red-500/30' },
+    active: { label: '배포 중', cls: 'text-text-primary' },
+    hidden: { label: '숨김', cls: 'text-text-primary' },
+    deleted: { label: '삭제', cls: 'text-text-primary' },
+    notice: { label: '공지', cls: 'text-text-primary' },
   }
 
   return (
     <div className="space-y-4">
       {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
+
+      {reasonRow && (
+        <div className="fixed inset-0 bg-bg-overlay z-50 flex items-center justify-center p-4" onClick={() => setReasonRow(null)}>
+          <div className="bg-bg-card border border-line rounded-xl w-full max-w-md p-6 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-4">
+              <AlertTriangle className="w-5 h-5 text-red-400" />
+              <h3 className="text-text-primary font-bold">신고 사유 — {reasonRow.title}</h3>
+            </div>
+            {reasonRow.reports.length === 0 ? (
+              <p className="text-text-muted text-sm">신고 사유가 기록되어 있지 않습니다</p>
+            ) : (
+              <ul className="space-y-3">
+                {reasonRow.reports.map((r, i) => (
+                  <li key={i} className="bg-bg-secondary border border-line rounded-lg p-3">
+                    <p className="text-text-primary text-sm whitespace-pre-wrap break-words">{r.reason}</p>
+                    <p className="text-text-muted text-xs mt-1.5">
+                      {r.username ?? '알 수 없음'} · {new Date(r.createdAt).toLocaleString('ko-KR')}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <button onClick={() => setReasonRow(null)}
+              className="mt-5 w-full px-4 py-2 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
@@ -1461,29 +1341,29 @@ export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: 
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
           <option value="">전체 상태</option>
-          <option value="active">정상</option>
+          <option value="active">배포 중</option>
           <option value="hidden">숨김</option>
+          <option value="notice">공지</option>
         </select>
         <span className="text-text-muted text-sm flex-shrink-0">총 <span className="text-text-primary font-semibold">{total}</span>건</span>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
-      ) : reported.length === 0 ? (
-        <div className="text-center py-16 text-text-muted">신고된 게시글이 없습니다</div>
+      ) : paged.length === 0 ? (
+        <div className="text-center py-16 text-text-muted">신고된 콘텐츠가 없습니다</div>
       ) : (
         <div className="rounded-xl border border-line overflow-hidden">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide">
-                <th className="w-1 px-0" />
+              <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide divide-x divide-line">
                 <th className="px-4 py-3 text-left whitespace-nowrap">상태</th>
                 <th className="px-4 py-3 text-left">
                   <button onClick={() => handleSort('title')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                     제목 <SortIcon field="title" />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-left whitespace-nowrap">탭</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">카테고리</th>
                 <th className="px-4 py-3 text-left whitespace-nowrap">
                   <button onClick={() => handleSort('author')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                     작성자 <SortIcon field="author" />
@@ -1496,22 +1376,7 @@ export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: 
                 </th>
                 <th className="px-4 py-3 text-center whitespace-nowrap">
                   <button onClick={() => handleSort('reportCount')} className="flex items-center gap-1 mx-auto hover:text-text-primary transition-colors">
-                    <Flag className="w-3.5 h-3.5" /> <SortIcon field="reportCount" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-center whitespace-nowrap">
-                  <button onClick={() => handleSort('views')} className="flex items-center gap-1 mx-auto hover:text-text-primary transition-colors">
-                    <Eye className="w-3.5 h-3.5" /> <SortIcon field="views" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-center whitespace-nowrap">
-                  <button onClick={() => handleSort('likes')} className="flex items-center gap-1 mx-auto hover:text-text-primary transition-colors">
-                    <ThumbsUp className="w-3.5 h-3.5" /> <SortIcon field="likes" />
-                  </button>
-                </th>
-                <th className="px-4 py-3 text-center whitespace-nowrap">
-                  <button onClick={() => handleSort('commentCount')} className="flex items-center gap-1 mx-auto hover:text-text-primary transition-colors">
-                    <MessageCircle className="w-3.5 h-3.5" /> <SortIcon field="commentCount" />
+                    <AlertTriangle className="w-3.5 h-3.5" /> <SortIcon field="reportCount" />
                   </button>
                 </th>
                 <th className="px-4 py-3 text-center whitespace-nowrap">게시물보기</th>
@@ -1520,78 +1385,75 @@ export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: 
               </tr>
             </thead>
             <tbody>
-              {sorted.map(post => {
-                const st = STATUS_LABEL[post.status] || STATUS_LABEL.active
-                const ch = CHANNELS.find(c => c.value === post.channel)
+              {paged.map(row => {
+                const st = STATUS_LABEL[row.status] || STATUS_LABEL.active
+                const isPost = row.kind === 'post'
                 return (
-                  <tr key={post._id} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors ${actionId === post._id ? 'opacity-50 pointer-events-none' : ''}`}>
-                    {/* 위험도 바 */}
-                    <td className={`w-1 p-0 ${post.reportCount >= 5 ? 'bg-red-500' : post.reportCount >= 3 ? 'bg-orange-400' : ''}`} />
-
+                  <tr key={row.key} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors divide-x divide-line ${actionId === row._id ? 'opacity-50 pointer-events-none' : ''}`}>
                     {/* 상태 */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-xs px-2 py-1 rounded-full border font-semibold ${st.cls}`}>{st.label}</span>
+                      <span className={`text-xs font-semibold ${st.cls}`}>{st.label}</span>
                     </td>
 
                     {/* 제목 */}
                     <td className="px-4 py-3 max-w-xs">
-                      <p className="text-text-primary font-semibold text-sm truncate">{post.title}</p>
+                      <p className="text-text-primary font-semibold text-sm truncate">{row.title}</p>
                     </td>
 
-                    {/* 등록 탭 위치 */}
+                    {/* 카테고리 */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-xs text-text-secondary bg-bg-tertiary border border-line px-2 py-0.5 rounded-md">
-                        {ch ? ch.label : post.channel}
-                      </span>
+                      <span className="text-xs text-text-secondary">{row.category}</span>
                     </td>
 
                     {/* 작성자 */}
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text-secondary font-medium">{post.author?.username ?? '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-text-secondary font-medium">{row.author ?? '—'}</td>
 
                     {/* 날짜 */}
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{new Date(post.createdAt).toLocaleDateString('ko-KR')}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{formatDate(row.createdAt)}</td>
 
-                    {/* 신고 수 */}
+                    {/* 신고 수 (클릭하면 사유 모달) */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
-                      <span className="inline-flex items-center gap-0.5 text-sm font-bold text-red-400 justify-center">
-                        <Flag className="w-3.5 h-3.5" />{post.reportCount}
-                      </span>
+                      <button onClick={() => setReasonRow(row)} title="신고 사유 보기"
+                        className="inline-flex items-center gap-0.5 text-sm font-bold text-red-400 justify-center hover:underline">
+                        <AlertTriangle className="w-3.5 h-3.5" />{row.reportCount}
+                      </button>
                     </td>
-
-                    {/* 통계 */}
-                    <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.views ?? 0}</td>
-                    <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.likes?.length ?? 0}</td>
-                    <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.commentCount ?? 0}</td>
 
                     {/* 게시물보기 */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
-                      <Link href={`/community/${post._id}`} target="_blank"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
-                        <ExternalLink className="w-3 h-3" /> 게시물보기
+                      <Link href={row.viewPath} target="_blank" title="게시물보기"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-line text-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors">
+                        <ExternalLink className="w-4 h-4" />
                       </Link>
                     </td>
 
-                    {/* 숨김/복구 */}
+                    {/* 숨김/복구 (게시글만) */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
-                      {post.status === 'hidden' ? (
-                        <button onClick={() => handleAction(post, 'restore')}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
-                          <ShieldCheck className="w-3 h-3" /> 복구
+                      {!isPost ? (
+                        <span className="text-text-muted">—</span>
+                      ) : row.status === 'hidden' ? (
+                        <button onClick={() => handleAction(row.post!, 'restore')} title="복구"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-line text-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors">
+                          <Eye className="w-4 h-4" />
                         </button>
                       ) : (
-                        <button onClick={() => handleAction(post, 'hide')}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40 transition-colors">
-                          <EyeOff className="w-3 h-3" /> 숨김
+                        <button onClick={() => handleAction(row.post!, 'hide')} title="숨김"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-line text-text-secondary hover:text-amber-500 hover:bg-amber-500/10 transition-colors">
+                          <EyeOff className="w-4 h-4" />
                         </button>
                       )}
                     </td>
 
-                    {/* 삭제 */}
+                    {/* 삭제 (게시글만) */}
                     <td className="px-4 py-3 text-center whitespace-nowrap">
-                      <button onClick={() => handleAction(post, 'delete')}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
-                        <Trash2 className="w-3 h-3" /> 삭제
-                      </button>
+                      {!isPost ? (
+                        <span className="text-text-muted">—</span>
+                      ) : (
+                        <button onClick={() => handleAction(row.post!, 'delete')} title="삭제"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-line text-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )
@@ -1723,7 +1585,7 @@ function ReviewsTab({ showToast }: { showToast: (msg: string, ok?: boolean) => v
                     </div>
                     <p className={`text-sm font-semibold mb-0.5 ${r.isBlocked ? 'line-through text-text-muted' : 'text-text-primary'}`}>{r.title}</p>
                     <p className={`text-xs line-clamp-2 ${r.isBlocked ? 'text-text-muted' : 'text-text-secondary'}`}>{r.content}</p>
-                    <p className="text-text-muted text-xs mt-1">{new Date(r.createdAt).toLocaleDateString('ko-KR')} · 도움됨 {r.helpfulCount || 0}</p>
+                    <p className="text-text-muted text-xs mt-1">{formatDate(r.createdAt)} · 도움됨 {r.helpfulCount || 0}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button onClick={() => handleBlock(r)}
@@ -1831,9 +1693,9 @@ export function ReportedCommentsTab({ showToast }: { showToast: (msg: string, ok
   }
 
   const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
-    active: { label: '배포 중', cls: 'bg-green-500/10 text-green-400 border-green-500/30' },
-    hidden: { label: '숨김',   cls: 'bg-orange-500/10 text-orange-400 border-orange-500/30' },
-    deleted: { label: '삭제',  cls: 'bg-red-500/10 text-red-400 border-red-500/30' },
+    active: { label: '배포 중', cls: 'text-text-primary' },
+    hidden: { label: '숨김',   cls: 'text-text-primary' },
+    deleted: { label: '삭제',  cls: 'text-text-primary' },
   }
 
   const CHANNELS = [
@@ -1871,12 +1733,11 @@ export function ReportedCommentsTab({ showToast }: { showToast: (msg: string, ok
         <div className="rounded-xl border border-line overflow-hidden">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide">
-                <th className="w-1 px-0" />
+              <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide divide-x divide-line">
                 <th className="px-4 py-3 text-left whitespace-nowrap">상태</th>
                 <th className="px-4 py-3 text-left">댓글 내용</th>
                 <th className="px-4 py-3 text-left whitespace-nowrap">게시글</th>
-                <th className="px-4 py-3 text-left whitespace-nowrap">탭</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">카테고리</th>
                 <th className="px-4 py-3 text-left whitespace-nowrap">
                   <button onClick={() => handleSort('author')} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                     작성자 <SortIcon field="author" />
@@ -1889,7 +1750,7 @@ export function ReportedCommentsTab({ showToast }: { showToast: (msg: string, ok
                 </th>
                 <th className="px-4 py-3 text-center whitespace-nowrap">
                   <button onClick={() => handleSort('reportCount')} className="flex items-center gap-1 mx-auto hover:text-text-primary transition-colors">
-                    <Flag className="w-3.5 h-3.5" /> <SortIcon field="reportCount" />
+                    <AlertTriangle className="w-3.5 h-3.5" /> <SortIcon field="reportCount" />
                   </button>
                 </th>
                 <th className="px-4 py-3 text-center whitespace-nowrap">게시물보기</th>
@@ -1902,11 +1763,9 @@ export function ReportedCommentsTab({ showToast }: { showToast: (msg: string, ok
                 const st = STATUS_LABEL[comment.status] || STATUS_LABEL.active
                 const ch = CHANNELS.find(c => c.value === comment.postId?.channel)
                 return (
-                  <tr key={comment._id} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors ${actionId === comment._id ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <td className={`w-1 p-0 ${comment.reportCount >= 5 ? 'bg-red-500' : comment.reportCount >= 3 ? 'bg-orange-400' : ''}`} />
-
+                  <tr key={comment._id} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors divide-x divide-line ${actionId === comment._id ? 'opacity-50 pointer-events-none' : ''}`}>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-xs px-2 py-1 rounded-full border font-semibold ${st.cls}`}>{st.label}</span>
+                      <span className={`text-xs font-semibold ${st.cls}`}>{st.label}</span>
                     </td>
 
                     <td className="px-4 py-3 max-w-xs">
@@ -1918,48 +1777,46 @@ export function ReportedCommentsTab({ showToast }: { showToast: (msg: string, ok
                     </td>
 
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="text-xs text-text-secondary bg-bg-tertiary border border-line px-2 py-0.5 rounded-md">
-                        {ch ? ch.label : (comment.postId?.channel ?? '—')}
-                      </span>
+                      <span className="text-xs text-text-secondary">{ch ? ch.label : (comment.postId?.channel ?? '—')}</span>
                     </td>
 
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-text-secondary font-medium">{comment.author?.username ?? '—'}</td>
 
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{new Date(comment.createdAt).toLocaleDateString('ko-KR')}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{formatDate(comment.createdAt)}</td>
 
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       <span className="inline-flex items-center gap-0.5 text-sm font-bold text-red-400 justify-center">
-                        <Flag className="w-3.5 h-3.5" />{comment.reportCount}
+                        <AlertTriangle className="w-3.5 h-3.5" />{comment.reportCount}
                       </span>
                     </td>
 
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       {comment.postId && (
-                        <Link href={`/community/${comment.postId._id}`} target="_blank"
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors">
-                          <ExternalLink className="w-3 h-3" /> 게시물보기
+                        <Link href={`/community/${comment.postId._id}`} target="_blank" title="게시물보기"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-line text-text-secondary hover:text-sky-500 hover:bg-sky-500/10 transition-colors">
+                          <ExternalLink className="w-4 h-4" />
                         </Link>
                       )}
                     </td>
 
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       {comment.status === 'hidden' ? (
-                        <button onClick={() => handleAction(comment, 'restore')}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
-                          <ShieldCheck className="w-3 h-3" /> 복구
+                        <button onClick={() => handleAction(comment, 'restore')} title="복구"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-line text-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors">
+                          <Eye className="w-4 h-4" />
                         </button>
                       ) : (
-                        <button onClick={() => handleAction(comment, 'hide')}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40 transition-colors">
-                          <EyeOff className="w-3 h-3" /> 숨김
+                        <button onClick={() => handleAction(comment, 'hide')} title="숨김"
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-line text-text-secondary hover:text-amber-500 hover:bg-amber-500/10 transition-colors">
+                          <EyeOff className="w-4 h-4" />
                         </button>
                       )}
                     </td>
 
                     <td className="px-4 py-3 text-center whitespace-nowrap">
-                      <button onClick={() => handleAction(comment, 'delete')}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
-                        <Trash2 className="w-3 h-3" /> 삭제
+                      <button onClick={() => handleAction(comment, 'delete')} title="댓글 삭제"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-line text-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors">
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
 
@@ -1990,291 +1847,184 @@ export function ReportedCommentsTab({ showToast }: { showToast: (msg: string, ok
 
 // ────────── 신고센터: 삭제 보관함 탭 ──────────
 
-function DeletedCountdown({ deletedAt }: { deletedAt?: string }) {
-  if (!deletedAt) return <span className="text-text-muted text-xs">—</span>
-  const deleted = new Date(deletedAt)
-  const now = new Date()
-  const daysSince = Math.floor((now.getTime() - deleted.getTime()) / (1000 * 60 * 60 * 24))
-  const daysLeft = 30 - daysSince
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-xs text-text-secondary">{daysSince}일 경과</span>
-      <span className={`text-xs font-semibold ${daysLeft <= 7 ? 'text-red-400' : daysLeft <= 14 ? 'text-orange-400' : 'text-text-muted'}`}>
-        D-{Math.max(0, daysLeft)}
-      </span>
-    </div>
-  )
+interface MergedDeletedRow {
+  key: string
+  kind: 'post' | 'announcement'
+  annKind?: 'platform' | 'game'
+  _id: string
+  title: string
+  category: string
+  author: string | null
+  reportCount: number
+  views: number
+  likeCount: number
+  commentCount: number
+  createdAt: string
+  deletedAt: string
+  viewPath: string
 }
 
 export function DeletedArchiveTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
-  const [subTab, setSubTab] = useState<'posts' | 'comments'>('posts')
-  const [confirm, setConfirm] = useState<any>(null)
-  const [actionId, setActionId] = useState<string | null>(null)
-
-  // ── 게시글 ──
   const [posts, setPosts] = useState<ReportedPost[]>([])
-  const [postsTotal, setPostsTotal] = useState(0)
-  const [postsPage, setPostsPage] = useState(1)
-  const [postsSearch, setPostsSearch] = useState('')
-  const [postsLoading, setPostsLoading] = useState(true)
+  const [announcements, setAnnouncements] = useState<DeletedAnnouncement[]>([])
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [actionId, setActionId] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<any>(null)
   const LIMIT = 10
-  const postsTotalPages = Math.max(1, Math.ceil(postsTotal / LIMIT))
 
-  const loadPosts = useCallback(async () => {
-    setPostsLoading(true)
+  const load = useCallback(async () => {
+    setLoading(true)
     try {
-      const data = await adminService.getDeletedPosts({ page: postsPage, limit: LIMIT, search: postsSearch || undefined })
-      setPosts(data.posts || [])
-      setPostsTotal(data.total || 0)
+      const [postData, annData] = await Promise.all([
+        adminService.getDeletedPosts({ page: 1, limit: 500 }),
+        adminService.getDeletedAnnouncements(),
+      ])
+      setPosts(postData.posts || [])
+      setAnnouncements(annData.announcements || [])
     } catch { showToast('불러오기 실패', false) }
-    finally { setPostsLoading(false) }
-  }, [postsPage, postsSearch, showToast])
+    finally { setLoading(false) }
+  }, [showToast])
 
-  useEffect(() => { if (subTab === 'posts') loadPosts() }, [subTab, loadPosts])
-
-  const handleRestorePost = (post: ReportedPost) => {
-    setConfirm({
-      msg: `"${post.title}" 게시글을 신고 상태로 복구하시겠습니까?`,
-      danger: false,
-      onConfirm: async () => {
-        setConfirm(null); setActionId(post._id)
-        try {
-          await adminService.updatePostStatus(post._id, { status: 'active' })
-          showToast('복구되었습니다')
-          loadPosts()
-        } catch { showToast('복구 실패', false) }
-        finally { setActionId(null) }
-      },
-    })
-  }
-
-  // ── 댓글 ──
-  const [comments, setComments] = useState<ReportedComment[]>([])
-  const [commentsTotal, setCommentsTotal] = useState(0)
-  const [commentsPage, setCommentsPage] = useState(1)
-  const [commentsSearch, setCommentsSearch] = useState('')
-  const [commentsLoading, setCommentsLoading] = useState(true)
-  const commentsTotalPages = Math.max(1, Math.ceil(commentsTotal / LIMIT))
-
-  const loadComments = useCallback(async () => {
-    setCommentsLoading(true)
-    try {
-      const data = await adminService.getDeletedComments({ page: commentsPage, limit: LIMIT, search: commentsSearch || undefined })
-      setComments(data.comments || [])
-      setCommentsTotal(data.total || 0)
-    } catch { showToast('불러오기 실패', false) }
-    finally { setCommentsLoading(false) }
-  }, [commentsPage, commentsSearch, showToast])
-
-  useEffect(() => { if (subTab === 'comments') loadComments() }, [subTab, loadComments])
-
-  const handleRestoreComment = (comment: ReportedComment) => {
-    setConfirm({
-      msg: '이 댓글을 신고 상태로 복구하시겠습니까?',
-      danger: false,
-      onConfirm: async () => {
-        setConfirm(null); setActionId(comment._id)
-        try {
-          await adminService.adminCommentAction(comment._id, { action: 'restore' })
-          showToast('복구되었습니다')
-          loadComments()
-        } catch { showToast('복구 실패', false) }
-        finally { setActionId(null) }
-      },
-    })
-  }
+  useEffect(() => { load() }, [load])
+  useEffect(() => { setPage(1) }, [search])
 
   const CHANNELS_MAP: Record<string, string> = {
     'notice': '공지사항', 'new-game-intro': '신작게임소개',
     'beta-game': '베타게임', 'live-game': '라이브게임', 'free': '자유게시판',
   }
 
-  const SUB_TABS = [
-    { key: 'posts' as const,    label: '게시글', icon: MessageSquare },
-    { key: 'comments' as const, label: '댓글',   icon: MessageCircle },
+  const merged: MergedDeletedRow[] = [
+    ...posts.map((p): MergedDeletedRow => ({
+      key: `post-${p._id}`, kind: 'post', _id: p._id, title: p.title,
+      category: `${CHANNELS_MAP[p.channel] ?? p.channel}${p.gameId?.title ? ` > ${p.gameId.title}` : ''}`,
+      author: p.author?.username ?? null, reportCount: p.reportCount, views: p.views ?? 0,
+      likeCount: p.likes?.length ?? 0, commentCount: p.commentCount ?? 0, createdAt: p.createdAt,
+      deletedAt: p.deletedAt ?? p.createdAt, viewPath: `/community/${p._id}`,
+    })),
+    ...announcements.map((a): MergedDeletedRow => ({
+      key: `ann-${a._id}`, kind: 'announcement', annKind: a.kind, _id: a._id, title: a.title,
+      category: a.category, author: null, reportCount: a.reportCount, views: a.views ?? 0,
+      likeCount: a.likeCount ?? 0, commentCount: 0, createdAt: a.createdAt,
+      deletedAt: a.deletedAt, viewPath: a.viewPath,
+    })),
   ]
+
+  const filtered = merged.filter(r => !search || r.title.toLowerCase().includes(search.toLowerCase()))
+  const sorted = [...filtered].sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime())
+  const total = sorted.length
+  const totalPages = Math.max(1, Math.ceil(total / LIMIT))
+  const paged = sorted.slice((page - 1) * LIMIT, page * LIMIT)
+
+  const handleRestore = (row: MergedDeletedRow) => {
+    setConfirm({
+      msg: `"${row.title}"을(를) 복구하시겠습니까?`,
+      danger: false,
+      onConfirm: async () => {
+        setConfirm(null); setActionId(row._id)
+        try {
+          if (row.kind === 'post') await adminService.updatePostStatus(row._id, { status: 'active' })
+          else await adminService.restoreAnnouncement(row.annKind!, row._id)
+          showToast('복구되었습니다')
+          load()
+        } catch { showToast('복구 실패', false) }
+        finally { setActionId(null) }
+      },
+    })
+  }
+
+  const handlePermanentDelete = (row: MergedDeletedRow) => {
+    setConfirm({
+      msg: `"${row.title}"을(를) 완전히 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`,
+      danger: true,
+      onConfirm: async () => {
+        setConfirm(null); setActionId(row._id)
+        try {
+          if (row.kind === 'post') await adminService.permanentlyDeletePost(row._id)
+          else await adminService.permanentlyDeleteAnnouncement(row.annKind!, row._id)
+          showToast('완전히 삭제되었습니다')
+          load()
+        } catch { showToast('완전 삭제 실패', false) }
+        finally { setActionId(null) }
+      },
+    })
+  }
 
   return (
     <div className="space-y-4">
       {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
-      {/* 서브 탭 */}
-      <div className="flex gap-1 border-b border-line">
-        {SUB_TABS.map(t => {
-          const Icon = t.icon
-          return (
-            <button key={t.key} onClick={() => setSubTab(t.key)}
-              className={`flex items-center gap-2 px-4 py-2 text-base font-medium border-b-2 transition-colors ${
-                subTab === t.key ? 'border-accent text-accent' : 'border-transparent text-text-muted hover:text-text-primary'
-              }`}>
-              <Icon className="w-4 h-4" />{t.label}
-            </button>
-          )
-        })}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="제목 검색..."
+            className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
+        </div>
+        <span className="text-text-muted text-sm flex-shrink-0">총 <span className="text-text-primary font-semibold">{total}</span>건</span>
       </div>
-
-      {/* 게시글 목록 */}
-      {subTab === 'posts' && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-              <input value={postsSearch} onChange={e => { setPostsSearch(e.target.value); setPostsPage(1) }} placeholder="제목·내용 검색..."
-                className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
-            </div>
-            <span className="text-text-muted text-sm flex-shrink-0">총 <span className="text-text-primary font-semibold">{postsTotal}</span>건</span>
-          </div>
-          {postsLoading ? (
-            <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
-          ) : posts.length === 0 ? (
-            <div className="text-center py-16 text-text-muted">삭제된 게시글이 없습니다</div>
-          ) : (
-            <div className="rounded-xl border border-line overflow-hidden">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide">
-                    <th className="px-4 py-3 text-left">제목</th>
-                    <th className="px-4 py-3 text-left whitespace-nowrap">탭</th>
-                    <th className="px-4 py-3 text-left whitespace-nowrap">작성자</th>
-                    <th className="px-4 py-3 text-left whitespace-nowrap">삭제일</th>
-                    <th className="px-4 py-3 text-center whitespace-nowrap"><Eye className="w-3.5 h-3.5 mx-auto" /></th>
-                    <th className="px-4 py-3 text-center whitespace-nowrap"><ThumbsUp className="w-3.5 h-3.5 mx-auto" /></th>
-                    <th className="px-4 py-3 text-center whitespace-nowrap"><MessageCircle className="w-3.5 h-3.5 mx-auto" /></th>
-                    <th className="px-4 py-3 text-center whitespace-nowrap"><Flag className="w-3.5 h-3.5 mx-auto" /></th>
-                    <th className="px-4 py-3 text-center whitespace-nowrap">삭제 카운트</th>
-                    <th className="px-4 py-3 text-center whitespace-nowrap">복구</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {posts.map(post => (
-                    <tr key={post._id} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors ${actionId === post._id ? 'opacity-50 pointer-events-none' : ''}`}>
-                      <td className="px-4 py-3 max-w-xs">
-                        <p className="text-text-primary font-semibold text-sm truncate">{post.title}</p>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-xs text-text-secondary bg-bg-tertiary border border-line px-2 py-0.5 rounded-md">
-                          {CHANNELS_MAP[post.channel] ?? post.channel}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-text-secondary font-medium">{post.author?.username ?? '—'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{new Date(post.createdAt).toLocaleDateString('ko-KR')}</td>
-                      <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.views ?? 0}</td>
-                      <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.likes?.length ?? 0}</td>
-                      <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{post.commentCount ?? 0}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-0.5 text-sm font-bold text-red-400 justify-center">
-                          <Flag className="w-3.5 h-3.5" />{post.reportCount}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <DeletedCountdown deletedAt={post.deletedAt} />
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <button onClick={() => handleRestorePost(post)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
-                          <ShieldCheck className="w-3 h-3" /> 복구
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {postsTotalPages > 1 && (
-            <div className="flex justify-center items-center gap-2">
-              <button onClick={() => setPostsPage(p => Math.max(1, p - 1))} disabled={postsPage === 1}
-                className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
-                <ChevronLeft className="w-4 h-4 text-text-primary" />
-              </button>
-              <span className="text-text-secondary text-sm">{postsPage} / {postsTotalPages}</span>
-              <button onClick={() => setPostsPage(p => Math.min(postsTotalPages, p + 1))} disabled={postsPage === postsTotalPages}
-                className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
-                <ChevronRight className="w-4 h-4 text-text-primary" />
-              </button>
-            </div>
-          )}
+      {loading ? (
+        <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
+      ) : paged.length === 0 ? (
+        <div className="text-center py-16 text-text-muted">삭제된 게시물이 없습니다</div>
+      ) : (
+        <div className="rounded-xl border border-line overflow-hidden">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide divide-x divide-line">
+                <th className="px-4 py-3 text-left">제목</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">위치</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">작성자</th>
+                <th className="px-4 py-3 text-left whitespace-nowrap">삭제일</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap"><Eye className="w-3.5 h-3.5 mx-auto" /></th>
+                <th className="px-4 py-3 text-center whitespace-nowrap"><ThumbsUp className="w-3.5 h-3.5 mx-auto" /></th>
+                <th className="px-4 py-3 text-center whitespace-nowrap"><MessageCircle className="w-3.5 h-3.5 mx-auto" /></th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">신고</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">완전 삭제</th>
+                <th className="px-4 py-3 text-center whitespace-nowrap">복구</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paged.map(row => (
+                <tr key={row.key} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors divide-x divide-line ${actionId === row._id ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <td className="px-4 py-3 max-w-xs">
+                    <p className="text-text-primary font-semibold text-sm truncate">{row.title}</p>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap"><span className="text-sm text-text-secondary">{row.category}</span></td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-text-secondary font-medium">{row.author ?? '—'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{formatDate(row.deletedAt)}</td>
+                  <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{row.views}</td>
+                  <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{row.likeCount}</td>
+                  <td className="px-4 py-3 text-center text-sm text-text-secondary font-medium">{row.commentCount}</td>
+                  <td className="px-4 py-3 text-center text-sm font-bold text-red-400">{row.reportCount}</td>
+                  <td className="px-4 py-3 text-center whitespace-nowrap">
+                    <button onClick={() => handlePermanentDelete(row)} title="완전 삭제"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-line text-text-secondary hover:text-rose-500 hover:bg-rose-500/10 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-center whitespace-nowrap">
+                    <button onClick={() => handleRestore(row)} title="복구"
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-line text-text-secondary hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors">
+                      <ShieldCheck className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-
-      {/* 댓글 목록 */}
-      {subTab === 'comments' && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-              <input value={commentsSearch} onChange={e => { setCommentsSearch(e.target.value); setCommentsPage(1) }} placeholder="댓글 내용 검색..."
-                className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
-            </div>
-            <span className="text-text-muted text-sm flex-shrink-0">총 <span className="text-text-primary font-semibold">{commentsTotal}</span>건</span>
-          </div>
-          {commentsLoading ? (
-            <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
-          ) : comments.length === 0 ? (
-            <div className="text-center py-16 text-text-muted">삭제된 댓글이 없습니다</div>
-          ) : (
-            <div className="rounded-xl border border-line overflow-hidden">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-bg-tertiary text-xs text-text-secondary font-semibold uppercase tracking-wide">
-                    <th className="px-4 py-3 text-left">댓글 내용</th>
-                    <th className="px-4 py-3 text-left whitespace-nowrap">게시글</th>
-                    <th className="px-4 py-3 text-left whitespace-nowrap">탭</th>
-                    <th className="px-4 py-3 text-left whitespace-nowrap">작성자</th>
-                    <th className="px-4 py-3 text-left whitespace-nowrap">삭제일</th>
-                    <th className="px-4 py-3 text-center whitespace-nowrap"><Flag className="w-3.5 h-3.5 mx-auto" /></th>
-                    <th className="px-4 py-3 text-center whitespace-nowrap">삭제 카운트</th>
-                    <th className="px-4 py-3 text-center whitespace-nowrap">복구</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comments.map(comment => (
-                    <tr key={comment._id} className={`border-t border-line bg-bg-secondary hover:bg-bg-tertiary transition-colors ${actionId === comment._id ? 'opacity-50 pointer-events-none' : ''}`}>
-                      <td className="px-4 py-3 max-w-xs">
-                        <p className="text-text-primary font-semibold text-sm truncate">{comment.content}</p>
-                      </td>
-                      <td className="px-4 py-3 max-w-[160px]">
-                        <p className="text-text-secondary text-sm truncate">{comment.postId?.title ?? '—'}</p>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className="text-xs text-text-secondary bg-bg-tertiary border border-line px-2 py-0.5 rounded-md">
-                          {CHANNELS_MAP[comment.postId?.channel ?? ''] ?? (comment.postId?.channel ?? '—')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-text-secondary font-medium">{comment.author?.username ?? '—'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-xs text-text-secondary">{new Date(comment.createdAt).toLocaleDateString('ko-KR')}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="inline-flex items-center gap-0.5 text-sm font-bold text-red-400 justify-center">
-                          <Flag className="w-3.5 h-3.5" />{comment.reportCount}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <DeletedCountdown deletedAt={comment.deletedAt} />
-                      </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
-                        <button onClick={() => handleRestoreComment(comment)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base font-medium border bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40 transition-colors">
-                          <ShieldCheck className="w-3 h-3" /> 복구
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {commentsTotalPages > 1 && (
-            <div className="flex justify-center items-center gap-2">
-              <button onClick={() => setCommentsPage(p => Math.max(1, p - 1))} disabled={commentsPage === 1}
-                className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
-                <ChevronLeft className="w-4 h-4 text-text-primary" />
-              </button>
-              <span className="text-text-secondary text-sm">{commentsPage} / {commentsTotalPages}</span>
-              <button onClick={() => setCommentsPage(p => Math.min(commentsTotalPages, p + 1))} disabled={commentsPage === commentsTotalPages}
-                className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
-                <ChevronRight className="w-4 h-4 text-text-primary" />
-              </button>
-            </div>
-          )}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2">
+          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+            className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+            <ChevronLeft className="w-4 h-4 text-text-primary" />
+          </button>
+          <span className="text-text-secondary text-sm">{page} / {totalPages}</span>
+          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+            className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
+            <ChevronRight className="w-4 h-4 text-text-primary" />
+          </button>
         </div>
       )}
     </div>

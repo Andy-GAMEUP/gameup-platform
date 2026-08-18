@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Eye, Plus, Search, Star, RefreshCw, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import { gameService } from '@/services/gameService'
 import DeleteGameModal from '@/components/DeleteGameModal'
+import { formatDate } from '@/lib/formatDate'
 
 interface Game {
   _id: string
@@ -243,7 +244,7 @@ export default function GamesManagementPage() {
   const formatEndDate = (game: Game): string => {
     // 베타: betaEndDate 표시, 그 외: '유지'
     if ((game.serviceType === 'beta' || game.status === 'beta') && game.betaEndDate) {
-      return new Date(game.betaEndDate).toLocaleDateString('ko-KR')
+      return formatDate(game.betaEndDate)
     }
     return '유지'
   }

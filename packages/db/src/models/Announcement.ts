@@ -12,6 +12,12 @@ export interface IAnnouncement extends Document {
   expiresAt?: Date
   targetRole: 'all' | 'developer' | 'player'
   views: number
+  images: string[]
+  thumbnailIndex: number
+  deletedAt?: Date
+  likes: mongoose.Types.ObjectId[]
+  reportCount: number
+  reports: { userId: mongoose.Types.ObjectId; reason: string; createdAt: Date }[]
   createdAt: Date
   updatedAt: Date
 }
@@ -64,7 +70,17 @@ const announcementSchema = new Schema<IAnnouncement>(
     views: {
       type: Number,
       default: 0
-    }
+    },
+    images: [{ type: String }],
+    thumbnailIndex: { type: Number, default: 0 },
+    deletedAt: { type: Date, default: null },
+    likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    reportCount: { type: Number, default: 0 },
+    reports: [{
+      userId: { type: Schema.Types.ObjectId, ref: 'User' },
+      reason: String,
+      createdAt: { type: Date, default: Date.now }
+    }]
   },
   {
     timestamps: true

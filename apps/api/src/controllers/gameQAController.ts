@@ -14,8 +14,8 @@ export const getGameQAs = async (req: AuthRequest, res: Response) => {
     const filter = { gameId, isPublic: true }
     const total = await GameQAModel.countDocuments(filter)
     const qas = await GameQAModel.find(filter)
-      .populate('userId', 'username')
-      .populate('developerId', 'username')
+      .populate('userId', 'username profileImage')
+      .populate('developerId', 'username profileImage')
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
@@ -48,8 +48,8 @@ export const createGameQA = async (req: AuthRequest, res: Response) => {
     })
 
     const populated = await GameQAModel.findById(qa._id)
-      .populate('userId', 'username')
-      .populate('developerId', 'username')
+      .populate('userId', 'username profileImage')
+      .populate('developerId', 'username profileImage')
 
     // 개발자에게 알림 전송
     await NotificationModel.create({
@@ -126,8 +126,8 @@ export const answerGameQA = async (req: AuthRequest, res: Response) => {
     }).catch(() => {})
 
     const populated = await GameQAModel.findById(qaId)
-      .populate('userId', 'username')
-      .populate('developerId', 'username')
+      .populate('userId', 'username profileImage')
+      .populate('developerId', 'username profileImage')
       .populate('gameId', 'title')
 
     res.json({ success: true, qa: populated })
@@ -148,7 +148,7 @@ export const getMyQAs = async (req: AuthRequest, res: Response) => {
     const total = await GameQAModel.countDocuments(filter)
     const qas = await GameQAModel.find(filter)
       .populate('gameId', 'title thumbnail')
-      .populate('developerId', 'username')
+      .populate('developerId', 'username profileImage')
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)

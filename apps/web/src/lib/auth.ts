@@ -36,6 +36,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           image: data.user.profileImage || null,
           level: data.user.level || 1,
           activityScore: data.user.activityScore || 0,
+          bookmarkedTabs: data.user.bookmarkedTabs || [],
           accessToken: data.token,
         }
       },
@@ -92,6 +93,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.username = (user as any).username || user.name || ''
         token.level = (user as any).level || 1
         token.activityScore = (user as any).activityScore || 0
+        token.bookmarkedTabs = (user as any).bookmarkedTabs || []
         token.accessToken = (user as any).accessToken || ''
         return token
       }
@@ -114,6 +116,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.memberType = u.memberType ?? token.memberType
             token.role = u.role ?? token.role
             token.username = u.username ?? token.username
+            token.bookmarkedTabs = u.bookmarkedTabs ?? token.bookmarkedTabs
           }
         } catch { /* 실패해도 기존 토큰 유지 */ }
       }
@@ -132,6 +135,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         ;(session.user as any).username = token.username
         ;(session.user as any).level = token.level
         ;(session.user as any).activityScore = token.activityScore
+        ;(session.user as any).bookmarkedTabs = token.bookmarkedTabs
         ;(session.user as any).accessToken = token.accessToken
       }
       return session

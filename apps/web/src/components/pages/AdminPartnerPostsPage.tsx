@@ -8,6 +8,7 @@ import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ChevronLeft, Loader2, GripVertical, Trash2 } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 interface SortablePostRowProps {
   post: PartnerPostItem
@@ -45,7 +46,7 @@ function SortablePostRow({ post, index, onDelete, saving }: SortablePostRowProps
       <td className="px-3 py-3 text-text-secondary text-sm">{post.likeCount ?? 0}</td>
       <td className="px-3 py-3 text-text-secondary text-sm">{post.commentCount ?? 0}</td>
       <td className="px-3 py-3 text-text-secondary text-sm">
-        {new Date(post.createdAt).toLocaleDateString('ko-KR')}
+        {formatDate(post.createdAt)}
       </td>
       <td className="px-3 py-3">
         <button

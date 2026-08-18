@@ -22,6 +22,7 @@ ensureDir(path.join(UPLOAD_BASE, 'shop-items'))
 ensureDir(path.join(UPLOAD_BASE, 'videos'))
 ensureDir(path.join(UPLOAD_BASE, 'partner'))
 ensureDir(path.join(UPLOAD_BASE, 'avatars'))
+ensureDir(path.join(UPLOAD_BASE, 'game-announcements'))
 
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
@@ -43,6 +44,8 @@ const storage = multer.diskStorage({
       cb(null, path.join(UPLOAD_BASE, 'videos'))
     } else if (file.fieldname === 'avatar') {
       cb(null, path.join(UPLOAD_BASE, 'avatars'))
+    } else if (file.fieldname === 'announcementImages') {
+      cb(null, path.join(UPLOAD_BASE, 'game-announcements'))
     } else if (file.fieldname === 'shopItemImage' || file.fieldname === 'shopCurrencyIcon' || file.fieldname === 'specialItemImage' || file.fieldname === 'currencyIcon' || file.fieldname === 'capcoinIcon') {
       cb(null, path.join(UPLOAD_BASE, 'shop-items'))
     } else {
@@ -66,7 +69,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     } else {
       cb(new Error('게임 파일은 HTML 또는 ZIP 형식만 가능합니다'))
     }
-  } else if (['thumbnail','bannerImage','communityImages','partnerImages','screenshot','shopItemImage','shopCurrencyIcon','avatar'].includes(file.fieldname)) {
+  } else if (['thumbnail','bannerImage','communityImages','partnerImages','announcementImages','screenshot','shopItemImage','shopCurrencyIcon','avatar'].includes(file.fieldname)) {
     const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     const allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     const ext = path.extname(file.originalname).toLowerCase()
@@ -203,3 +206,13 @@ export const avatarUpload = multer({
   fileFilter,
   limits: { fileSize: 2 * 1024 * 1024, files: 1 }
 }).single('avatar')
+
+// 게임 공지사항 본문 이미지 업로드 (최대 5장, 5MB/장)
+export const gameAnnouncementUpload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB per file
+    files: 5
+  }
+}).array('announcementImages', 5)

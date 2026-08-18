@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Gift, Check, X, Eye, ToggleLeft, ToggleRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import adminService from '../../services/adminService'
 import ConfirmModal from '@/components/ConfirmModal'
+import { formatDate } from '@/lib/formatDate'
 
 interface GamePointPolicy {
   _id: string
@@ -235,8 +236,8 @@ export default function AdminGamePointPoliciesPage() {
                       </div>
                       {(policy.startDate || policy.endDate || policy.estimatedDailyUsage || policy.developerNote) && (
                         <div className="flex items-center gap-3 text-xs text-text-muted mt-1 flex-wrap">
-                          {policy.startDate && <span>시작: {new Date(policy.startDate).toLocaleDateString()}</span>}
-                          {policy.endDate && <span>종료: {new Date(policy.endDate).toLocaleDateString()}</span>}
+                          {policy.startDate && <span>시작: {formatDate(policy.startDate)}</span>}
+                          {policy.endDate && <span>종료: {formatDate(policy.endDate)}</span>}
                           {policy.estimatedDailyUsage ? <span>예상 일일: {policy.estimatedDailyUsage}P</span> : null}
                           {policy.developerNote && <span className="text-yellow-400">메모: {policy.developerNote}</span>}
                         </div>
@@ -345,8 +346,8 @@ export default function AdminGamePointPoliciesPage() {
                 <div><span className="text-text-secondary">기본 금액:</span> <span className="font-medium">{detailModal.amount}P</span></div>
                 <div><span className="text-text-secondary">배율:</span> <span className="font-medium">x{detailModal.multiplier}</span></div>
                 <div><span className="text-text-secondary">일일 한도:</span> <span className="font-medium">{detailModal.dailyLimit ?? '무제한'}</span></div>
-                <div><span className="text-text-secondary">시작일:</span> <span className="font-medium">{detailModal.startDate ? new Date(detailModal.startDate).toLocaleDateString() : '없음'}</span></div>
-                <div><span className="text-text-secondary">종료일:</span> <span className="font-medium">{detailModal.endDate ? new Date(detailModal.endDate).toLocaleDateString() : '없음'}</span></div>
+                <div><span className="text-text-secondary">시작일:</span> <span className="font-medium">{detailModal.startDate ? formatDate(detailModal.startDate) : '없음'}</span></div>
+                <div><span className="text-text-secondary">종료일:</span> <span className="font-medium">{detailModal.endDate ? formatDate(detailModal.endDate) : '없음'}</span></div>
                 <div><span className="text-text-secondary">예상 일일 사용:</span> <span className="font-medium">{detailModal.estimatedDailyUsage || 0}P</span></div>
               </div>
               {detailModal.developerNote && (

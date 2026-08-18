@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import AdminLayout from '@/components/AdminLayout'
 import adminService, { AdminUser } from '@/services/adminService'
+import { formatDate } from '@/lib/formatDate'
 
 const ROLE_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   admin: { label: '관리자', color: 'text-accent-text', bg: 'bg-accent-light border-accent-muted' },
@@ -144,7 +145,7 @@ export default function AdminUsersPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-text-muted text-xs">{user.banReason || '-'}</td>
-                    <td className="px-4 py-3 text-text-muted text-xs">{new Date(user.createdAt).toLocaleDateString('ko-KR')}</td>
+                    <td className="px-4 py-3 text-text-muted text-xs">{formatDate(user.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
                         <button onClick={() => openModal(user, 'role')} className="text-base bg-purple-600/20 text-purple-400 border border-purple-500/30 px-2 py-1 rounded hover:bg-purple-600/40 transition-colors">역할</button>

@@ -4,10 +4,14 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react'
 import adminService, { PublicAnnouncement } from '@/services/adminService'
+import communityService, { PostSummary } from '@/services/communityService'
+import { communityTabHref, postBackNav } from '@/components/community/PostCard'
+import NoticeTypeBadge from '@/components/NoticeTypeBadge'
 import { gameService } from '@/services/gameService'
 import { Game } from '@gameup/types'
+import { formatDate } from '@/lib/formatDate'
 
 const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
 
@@ -339,16 +343,6 @@ function HorizontalBannerSection({ title, banners }: { title: string; banners: a
 
 // ────────── 공지 컬럼 ──────────
 
-const NOTICE_TYPE_LABEL: Record<string, string> = {
-  notice: '공지', event: '이벤트', maintenance: '점검', update: '업데이트'
-}
-const NOTICE_TYPE_COLOR: Record<string, string> = {
-  notice: 'bg-blue-500/20 text-blue-400',
-  event: 'bg-purple-500/20 text-purple-400',
-  maintenance: 'bg-yellow-500/20 text-yellow-400',
-  update: 'bg-green-500/20 text-green-400',
-}
-
 function NoticeColumn({ notices }: { notices: PublicAnnouncement[] }) {
   return (
     <div className="flex flex-col h-full">
@@ -362,18 +356,57 @@ function NoticeColumn({ notices }: { notices: PublicAnnouncement[] }) {
         {notices.map(n => (
           <Link
             key={n._id}
-            href={`/community/announcement/${n._id}`}
+            href={`/community/announcement/${n._id}?from=${encodeURIComponent('게임업 공지')}&fromHref=${encodeURIComponent(communityTabHref('notice-platform'))}`}
             className="flex flex-col gap-1 p-2 rounded-lg hover:bg-bg-tertiary transition-colors group"
           >
             <div className="flex items-center gap-2">
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${NOTICE_TYPE_COLOR[n.type] || 'bg-bg-tertiary text-text-muted'}`}>
-                {NOTICE_TYPE_LABEL[n.type] || n.type}
-              </span>
-              <p className="text-sm text-text-primary group-hover:text-accent transition-colors truncate">{n.title}</p>
+              <NoticeTypeBadge type={n.type} className="flex-shrink-0" />
+              <p className="text-text-primary text-[14.72px] font-medium group-hover:text-accent transition-colors truncate">{n.title}</p>
             </div>
-            <p className="text-xs text-text-muted">{new Date(n.createdAt).toLocaleDateString('ko-KR')}</p>
+            <div className="flex items-center">
+              <div className="flex-1" />
+              <span className="text-xs text-text-muted tabular-nums">{formatDate(n.createdAt)}</span>
+            </div>
           </Link>
         ))}
+      </div>
+    </div>
+  )
+}
+
+// ────────── 핫글 순위 컬럼 ──────────
+
+function HotPostsColumn({ posts }: { posts: (PostSummary & { likeCount: number })[] }) {
+  return (
+    <div className="flex flex-col h-full accent-violet">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-text-primary font-semibold text-[22px]">커뮤니티 인기글</span>
+        <div className="flex-1 h-px bg-line" />
+        <Link href="/community?sort=popular" className="text-xs text-text-muted hover:text-accent transition-colors">더보기</Link>
+      </div>
+      <div className="flex-1 overflow-y-auto flex flex-col gap-2">
+        {posts.length === 0 && <p className="text-xs text-text-muted py-4 text-center">인기글이 없습니다</p>}
+        {posts.map((p, i) => {
+          const nav = postBackNav(p)
+          return (
+          <Link
+            key={p._id}
+            href={`/community/${p._id}?from=${encodeURIComponent(nav.label)}&fromHref=${encodeURIComponent(nav.href)}`}
+            className="group flex items-center gap-3 p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
+          >
+            <span className="text-accent text-2xl font-extrabold flex-shrink-0 w-6 text-center leading-none">{i + 1}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-text-primary text-[14.72px] font-medium truncate group-hover:text-accent transition-colors">{p.title}</span>
+              </div>
+              <div className="flex items-center gap-2 mt-1.5 text-xs text-text-muted">
+                <span className="truncate">{nav.label}</span>
+                <span className="flex items-center gap-1 text-accent font-semibold flex-shrink-0"><MessageSquare className="w-3 h-3" />{p.commentCount ?? 0}</span>
+              </div>
+            </div>
+          </Link>
+          )
+        })}
       </div>
     </div>
   )
@@ -451,6 +484,7 @@ export default function MainPage() {
   const [recGames, setRecGames] = useState<Game[]>([])
   const [eventBanners, setEventBanners] = useState<any[]>([])
   const [notices, setNotices] = useState<PublicAnnouncement[]>([])
+  const [hotPosts, setHotPosts] = useState<(PostSummary & { likeCount: number })[]>([])
   const [newGameBanners, setNewGameBanners] = useState<any[]>([])
   const [betaRanking, setBetaRanking] = useState<Game[]>([])
   const [liveRanking, setLiveRanking] = useState<Game[]>([])
@@ -478,7 +512,10 @@ export default function MainPage() {
       })
       .catch(() => {})
     adminService.getPublicAnnouncements()
-      .then(data => setNotices((data.announcements || []).slice(0, 8)))
+      .then(data => setNotices((data.announcements || []).slice(0, 5)))
+      .catch(() => {})
+    communityService.getStats()
+      .then(data => setHotPosts((data.hotPosts || []).slice(0, 5)))
       .catch(() => {})
     adminService.getNewGameBanners()
       .then(data => setNewGameBanners(data.banners || []))
@@ -521,8 +558,13 @@ export default function MainPage() {
               <GameColumn title="라이브게임" games={liveRanking} serviceType="live" badge="(순위 책정 더미)" />
             </div>
           </div>
-          <div style={{ width: '20%' }} className="bg-bg-card border border-line rounded-2xl p-4 flex flex-col">
-            <NoticeColumn notices={notices} />
+          <div style={{ width: '20%' }} className="flex flex-col gap-6">
+            <div className="bg-bg-card border border-line rounded-2xl p-4 flex flex-col">
+              <NoticeColumn notices={notices} />
+            </div>
+            <div className="bg-bg-card border border-line rounded-2xl p-4 flex flex-col">
+              <HotPostsColumn posts={hotPosts} />
+            </div>
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@ import apiClient from './api'
 
 export interface Review {
   _id: string
-  userId: { _id: string; username: string }
+  userId: { _id: string; username: string; role?: string; level?: number; profileImage?: string }
   gameId: string
   rating: number
   title: string

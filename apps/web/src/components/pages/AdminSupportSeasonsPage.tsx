@@ -6,6 +6,7 @@ import supportService, { Season } from '@/services/supportService'
 import {
   Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, Eye, EyeOff,
 } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 const STATUS_LABELS: Record<Season['status'], string> = {
   draft: '준비중',
@@ -84,9 +85,9 @@ function SeasonRow({
             <span className="text-text-primary font-medium text-sm truncate">{season.title}</span>
           </div>
           <p className="text-text-muted text-xs">
-            모집: {season.recruitingStartDate ? new Date(season.recruitingStartDate).toLocaleDateString('ko-KR') : '-'}
+            모집: {season.recruitingStartDate ? formatDate(season.recruitingStartDate) : '-'}
             {' ~ '}
-            {season.recruitingEndDate ? new Date(season.recruitingEndDate).toLocaleDateString('ko-KR') : '-'}
+            {season.recruitingEndDate ? formatDate(season.recruitingEndDate) : '-'}
           </p>
         </div>
 

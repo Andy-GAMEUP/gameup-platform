@@ -7,6 +7,7 @@ import { RefreshCw, Save, ArrowLeft, Plus, X, Upload, Globe, Send } from 'lucide
 import { gameService } from '@/services/gameService'
 import { FORM_GENRES } from '@/constants/game'
 import ConfirmModal from '@/components/ConfirmModal'
+import { formatDate } from '@/lib/formatDate'
 
 interface GameData {
   _id: string
@@ -285,7 +286,7 @@ export default function GameEditPage() {
                 {approvalLabel[game.approvalStatus] || game.approvalStatus}
               </span>
               <span className="text-xs text-text-muted">
-                등록일: {new Date(game.createdAt).toLocaleDateString('ko-KR')}
+                등록일: {formatDate(game.createdAt)}
               </span>
             </div>
           </div>
@@ -674,7 +675,7 @@ export default function GameEditPage() {
             { label: '플레이 수', value: (game.playCount || 0).toLocaleString() },
             { label: '평점', value: game.rating > 0 ? game.rating.toFixed(1) : '-' },
             { label: '승인 상태', value: approvalLabel[game.approvalStatus] || game.approvalStatus },
-            { label: '등록일', value: new Date(game.createdAt).toLocaleDateString('ko-KR') },
+            { label: '등록일', value: formatDate(game.createdAt) },
           ].map(s => (
             <div key={s.label} className="text-center p-3 bg-bg-tertiary/50 rounded-lg">
               <div className="text-xl font-bold text-text-primary mb-1">{s.value}</div>

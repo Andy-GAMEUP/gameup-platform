@@ -7,6 +7,7 @@ import {
   Users,
   ChevronLeft, ChevronRight, Eye, ArrowUpDown,
 } from 'lucide-react'
+import { formatDate as formatDateShared } from '@/lib/formatDate'
 
 // ────────── 타입 ──────────
 
@@ -134,7 +135,7 @@ export default function AdminPartnerTopicsPage() {
 
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setCurrentPage(1); loadProjects() }
 
-  const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString('ko-KR') : '-'
+  const formatDate = (d?: string) => d ? formatDateShared(d) : '-'
   const formatBudget = (p: ProjectItem) => {
     if (p.budget) return p.budget
     if (p.budgetMin && p.budgetMax) return `${p.budgetMin} ~ ${p.budgetMax}`

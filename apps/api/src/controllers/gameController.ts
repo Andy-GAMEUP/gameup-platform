@@ -105,7 +105,7 @@ export const getGameById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     }
 
-    const game = await Game.findById(id).populate('developerId', 'username email companyInfo')
+    const game = await Game.findById(id).populate('developerId', 'username email companyInfo profileImage')
 
     if (!game) {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })

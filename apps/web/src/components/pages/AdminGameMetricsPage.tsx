@@ -10,6 +10,7 @@ import {
   CheckCircle, XCircle, Archive, RotateCcw, Pause, AlertTriangle,
   ChevronRight, Calendar
 } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 const FEEDBACK_LABELS: Record<string, string> = {
   general: '일반 의견', bug: '버그 리포트', suggestion: '개선 건의', praise: '칭찬'
@@ -262,7 +263,7 @@ export default function AdminGameMetricsPage() {
                 <span className={`text-xs px-2 py-0.5 rounded-full ${statusBadge.cls}`}>{statusBadge.label}</span>
               </div>
               <p className="text-text-muted text-sm mt-0.5">
-                {game.genre} · 개발자: <span className="text-text-secondary">{(game.developerId as any)?.username}</span> · 등록 {new Date(game.createdAt).toLocaleDateString('ko-KR')}
+                {game.genre} · 개발자: <span className="text-text-secondary">{(game.developerId as any)?.username}</span> · 등록 {formatDate(game.createdAt)}
               </p>
             </div>
           </div>
@@ -560,7 +561,7 @@ export default function AdminGameMetricsPage() {
                         <p className="text-text-primary text-sm font-medium mb-1">{r.title}</p>
                         <p className="text-text-secondary text-xs leading-relaxed">{r.content}</p>
                         <div className="flex items-center gap-3 mt-2">
-                          <span className="text-text-muted text-xs">{new Date(r.createdAt).toLocaleDateString('ko-KR')}</span>
+                          <span className="text-text-muted text-xs">{formatDate(r.createdAt)}</span>
                           {r.helpfulCount > 0 && (
                             <span className="text-accent text-xs flex items-center gap-1">
                               <ThumbsUp className="w-3 h-3" /> {r.helpfulCount}명 도움됨
@@ -656,7 +657,7 @@ export default function AdminGameMetricsPage() {
                         <div>
                           <p className="text-text-primary text-sm font-medium">{r.title}</p>
                           <p className="text-text-secondary text-xs mt-0.5">{r.content?.slice(0, 120)}{r.content?.length > 120 ? '...' : ''}</p>
-                          <p className="text-text-muted text-xs mt-1">by {r.userId?.username} · {new Date(r.createdAt).toLocaleDateString('ko-KR')}</p>
+                          <p className="text-text-muted text-xs mt-1">by {r.userId?.username} · {formatDate(r.createdAt)}</p>
                         </div>
                       </div>
                     ))}

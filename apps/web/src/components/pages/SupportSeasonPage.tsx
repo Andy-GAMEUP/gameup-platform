@@ -7,6 +7,7 @@ import { Loader2, ChevronDown, Gamepad2, ArrowLeft } from 'lucide-react'
 import supportService, { Season, GameApplication } from '@/services/supportService'
 import { useAuth } from '@/lib/useAuth'
 import GameApplyModal from '@/components/GameApplyModal'
+import { formatDate as formatDateShared } from '@/lib/formatDate'
 
 const STATUS_CONFIG = {
   draft: { label: '준비중', cls: 'bg-bg-tertiary text-text-secondary border-line' },
@@ -90,10 +91,7 @@ export default function SupportSeasonPage() {
       .catch(() => {})
   }, [])
 
-  const formatDate = (d: string | null) => {
-    if (!d) return '-'
-    return new Date(d).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
-  }
+  const formatDate = (d: string | null) => d ? formatDateShared(d) : '-'
 
   if (loading) {
     return (

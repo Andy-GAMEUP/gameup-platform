@@ -5,6 +5,7 @@ import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
 import adminService from '@/services/adminService'
 import { Loader2, ArrowLeft, Save, Pencil, X, FileText } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 interface RecentPost {
   _id: string
@@ -330,7 +331,7 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
             </div>
             <div className="bg-bg-tertiary/50 rounded-xl p-4">
               <p className="text-text-secondary text-xs mb-1">가입일</p>
-              <p className="text-text-primary text-sm">{detail.joinDate ? new Date(detail.joinDate).toLocaleDateString('ko-KR') : '-'}</p>
+              <p className="text-text-primary text-sm">{detail.joinDate ? formatDate(detail.joinDate) : '-'}</p>
             </div>
             <div className="bg-bg-tertiary/50 rounded-xl p-4">
               <p className="text-text-secondary text-xs mb-1">최근 로그인</p>
@@ -360,7 +361,7 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
                     조회 {post.views} · 댓글 {post.commentCount}
                   </span>
                   <span className="text-text-muted text-xs flex-shrink-0">
-                    {new Date(post.createdAt).toLocaleDateString('ko-KR')}
+                    {formatDate(post.createdAt)}
                   </span>
                 </Link>
               ))}

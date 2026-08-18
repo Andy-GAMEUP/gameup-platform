@@ -21,6 +21,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Plus, Pencil, Trash2, GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 type TabType = 'solutions' | 'subscriptions'
 
@@ -355,7 +356,7 @@ function SubscriptionRow({ sub, onStatusUpdate, onConfirm, onDelete }: {
             {STATUS_LABELS[sub.status] ?? sub.status}
           </span>
         </td>
-        <td className="px-4 py-3 text-text-secondary text-xs">{new Date(sub.createdAt).toLocaleDateString('ko-KR')}</td>
+        <td className="px-4 py-3 text-text-secondary text-xs">{formatDate(sub.createdAt)}</td>
         <td className="px-4 py-3">
           <button onClick={() => setExpanded(p => !p)} className="text-text-secondary hover:text-text-primary">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}

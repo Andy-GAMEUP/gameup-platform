@@ -4,15 +4,17 @@ import { getDeveloperOverview, getDeveloperDaily, getGameAnalytics, exportGameAn
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/gameMediaController'
 import { getGameShopItems, getPublicGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem, reorderGameShopItems, updateShopCurrencyIcon, updateShopCurrencyName, submitShopReview, addAdditionalCurrency, updateAdditionalCurrency, deleteAdditionalCurrency, purchaseWithCapcoin, copyGameShopItem } from '../controllers/gameShopController'
-import { getGameAnnouncements, createGameAnnouncement, deleteGameAnnouncement, getRecentGameAnnouncements, getGameAnnouncementById, getPublicGameAnnouncements } from '../controllers/gameAnnouncementController'
+import { getGameAnnouncements, createGameAnnouncement, updateGameAnnouncement, deleteGameAnnouncement, getRecentGameAnnouncements, getGameAnnouncementById, getPublicGameAnnouncements, uploadGameAnnouncementImages, toggleGameAnnouncementLike, reportGameAnnouncement } from '../controllers/gameAnnouncementController'
 import { authenticateToken, requireRole, optionalAuth } from '../middleware/auth'
-import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload, additionalCurrencyIconUpload, mediaUpload } from '../middleware/upload'
+import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload, additionalCurrencyIconUpload, mediaUpload, gameAnnouncementUpload } from '../middleware/upload'
 
 const router = Router()
 
 router.get('/', getAllGames)
 router.get('/announcements/recent', getRecentGameAnnouncements)
 router.get('/announcements/:announcementId', getGameAnnouncementById)
+router.post('/announcements/:announcementId/like', authenticateToken, toggleGameAnnouncementLike)
+router.post('/announcements/:announcementId/report', authenticateToken, reportGameAnnouncement)
 router.get('/my', authenticateToken, requireRole('developer', 'admin'), getMyGames)
 router.get('/developer/stats', authenticateToken, requireRole('developer', 'admin'), getDeveloperStats)
 
@@ -79,6 +81,8 @@ router.delete('/:gameId/currencies/:currencyId', authenticateToken, requireRole(
 router.get('/:gameId/announcements/public', getPublicGameAnnouncements)
 router.get('/:gameId/announcements', authenticateToken, requireRole('developer', 'admin'), getGameAnnouncements)
 router.post('/:gameId/announcements', authenticateToken, requireRole('developer', 'admin'), createGameAnnouncement)
+router.post('/:gameId/announcements/upload-images', authenticateToken, requireRole('developer', 'admin'), gameAnnouncementUpload, uploadGameAnnouncementImages)
+router.patch('/:gameId/announcements/:announcementId', authenticateToken, requireRole('developer', 'admin'), updateGameAnnouncement)
 router.delete('/:gameId/announcements/:announcementId', authenticateToken, requireRole('developer', 'admin'), deleteGameAnnouncement)
 
 export default router

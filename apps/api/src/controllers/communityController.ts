@@ -31,13 +31,13 @@ export const getPosts = async (req: Request, res: Response) => {
     }
 
     let sortObj: Record<string, 1 | -1> = { isPinned: -1, createdAt: -1 }
-    if (sort === 'popular') sortObj = { isPinned: -1, hotScore: -1 }
+    if (sort === 'views') sortObj = { isPinned: -1, views: -1, createdAt: -1 }
     else if (sort === 'trending') sortObj = { isPinned: -1, hotScore: -1, createdAt: -1 }
     else if (sort === 'most_liked') sortObj = { isPinned: -1, 'likes.length': -1, createdAt: -1 }
 
     const total = await Post.countDocuments(filter)
     const posts = await Post.find(filter)
-      .populate('author', 'username role level')
+      .populate('author', 'username role level profileImage')
       .populate('gameId', 'title serviceType')
       .sort(sortObj)
       .skip((Number(page) - 1) * limitNum)
@@ -47,7 +47,6 @@ export const getPosts = async (req: Request, res: Response) => {
     const postList = posts.map((p) => ({
       ...p.toObject(),
       likeCount: p.likes.length,
-      bookmarkCount: p.bookmarks.length
     }))
 
     res.json({ posts: postList, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
@@ -63,9 +62,9 @@ export const getPost = async (req: Request, res: Response) => {
       { _id: id, status: 'active' },
       { $inc: { views: 1 } },
       { new: true }
-    ).populate('author', 'username role level').populate('gameId', 'title serviceType')
+    ).populate('author', 'username role level profileImage').populate('gameId', 'title serviceType')
     if (!post) return res.status(404).json({ message: '게시글을 찾을 수 없습니다' })
-    const updated = { ...post.toObject(), likeCount: post.likes.length, bookmarkCount: post.bookmarks.length }
+    const updated = { ...post.toObject(), likeCount: post.likes.length }
     res.json({ post: updated })
   } catch {
     res.status(500).json({ message: '게시글 조회 실패' })
@@ -86,16 +85,21 @@ async function isCommunityBanned(userId: string, scope: 'posts' | 'comments'): P
 
 export const createPost = async (req: AuthRequest, res: Response) => {
   try {
-    const { title, content, channel, gameId, images, links, tags, videoUrl, thumbnailIndex } = req.body
+    const { title, content, channel, gameId, images, tags, videoUrl, thumbnailIndex } = req.body
     if (!title?.trim() || !content?.trim()) {
       return res.status(400).json({ message: '제목과 내용을 입력해주세요' })
+    }
+    if ((channel === 'beta-game' || channel === 'live-game') && !gameId) {
+      return res.status(400).json({ message: '게임을 선택해주세요' })
+    }
+    if (channel === 'new-game-intro' && (!images || images.length === 0)) {
+      return res.status(400).json({ message: '이미지를 최소 1장 첨부해주세요' })
     }
     const ban = await isCommunityBanned(req.user!.id, 'posts')
     if (ban.banned) {
       const until = ban.until ? ` (${ban.until.toLocaleDateString('ko-KR')}까지)` : ' (영구)'
       return res.status(403).json({ message: `게시글 작성이 제한되었습니다${until}`, banned: true })
     }
-    const validLinks = (links || []).filter((l: { url: string }) => /^https?:\/\//i.test(l.url))
     const validVideoUrl = videoUrl && /^https?:\/\//i.test(videoUrl) ? videoUrl.trim() : ''
     const post = await Post.create({
       title: title.trim(),
@@ -106,10 +110,9 @@ export const createPost = async (req: AuthRequest, res: Response) => {
       images: images || [],
       videoUrl: validVideoUrl,
       thumbnailIndex: thumbnailIndex || 0,
-      links: validLinks,
       tags: tags || []
     })
-    const populated = await Post.findById(post._id).populate('author', 'username role level')
+    const populated = await Post.findById(post._id).populate('author', 'username role level profileImage')
 
     // 포인트 적립: 게시물 작성
     grantPoints(req.user!.id, 'post_write', '게시물 작성 포인트', post._id.toString()).catch(() => {})
@@ -123,7 +126,7 @@ export const createPost = async (req: AuthRequest, res: Response) => {
 export const updatePost = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
-    const { title, content, channel, images, links, tags, videoUrl, thumbnailIndex } = req.body
+    const { title, content, channel, images, tags, videoUrl, thumbnailIndex } = req.body
     const post = await Post.findById(id)
     if (!post) return res.status(404).json({ message: '게시글을 찾을 수 없습니다' })
     if (post.author.toString() !== req.user!.id && req.user!.role !== 'admin') {
@@ -133,12 +136,11 @@ export const updatePost = async (req: AuthRequest, res: Response) => {
     if (content) post.content = content.trim()
     if (channel) post.channel = channel
     if (images !== undefined) post.images = images
-    if (links !== undefined) post.links = links.filter((l: { url: string }) => /^https?:\/\//i.test(l.url))
     if (tags !== undefined) post.tags = tags
     if (videoUrl !== undefined) post.videoUrl = videoUrl && /^https?:\/\//i.test(videoUrl) ? videoUrl.trim() : ''
     if (thumbnailIndex !== undefined) post.thumbnailIndex = thumbnailIndex
     await post.save()
-    const populated = await Post.findById(id).populate('author', 'username role level')
+    const populated = await Post.findById(id).populate('author', 'username role level profileImage')
     res.json({ success: true, post: populated })
   } catch {
     res.status(500).json({ message: '게시글 수정 실패' })
@@ -154,6 +156,7 @@ export const deletePost = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: '삭제 권한이 없습니다' })
     }
     post.status = 'deleted'
+    post.deletedAt = new Date()
     await post.save()
 
     // 포인트 차감: 게시물 삭제
@@ -197,24 +200,6 @@ export const toggleLike = async (req: AuthRequest, res: Response) => {
   }
 }
 
-export const toggleBookmark = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params
-    const userId = new mongoose.Types.ObjectId(req.user!.id)
-    const existing = await Post.findOne({ _id: id, status: 'active', bookmarks: userId })
-    const isBookmarked = !!existing
-    const updated = await Post.findOneAndUpdate(
-      { _id: id, status: 'active' },
-      isBookmarked ? { $pull: { bookmarks: userId } } : { $addToSet: { bookmarks: userId } },
-      { new: true }
-    )
-    if (!updated) return res.status(404).json({ message: '게시글을 찾을 수 없습니다' })
-    res.json({ bookmarked: !isBookmarked, bookmarkCount: updated.bookmarks.length })
-  } catch {
-    res.status(500).json({ message: '즐겨찾기 처리 실패' })
-  }
-}
-
 export const reportPost = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
@@ -242,50 +227,14 @@ export const reportPost = async (req: AuthRequest, res: Response) => {
   }
 }
 
-export const getMyBookmarks = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = new mongoose.Types.ObjectId(req.user!.id)
-    const { page = 1, limit = 10 } = req.query
-    const total = await Post.countDocuments({ bookmarks: userId, status: 'active' })
-    const posts = await Post.find({ bookmarks: userId, status: 'active' })
-      .populate('author', 'username role level')
-      .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit))
-      .select('-reports')
-    res.json({ posts: posts.map(p => ({ ...p.toObject(), likeCount: p.likes.length, bookmarkCount: p.bookmarks.length })), total })
-  } catch {
-    res.status(500).json({ message: '즐겨찾기 목록 조회 실패' })
-  }
-}
-
 export const getComments = async (req: Request, res: Response) => {
   try {
     const { postId } = req.params
     const allComments = await Comment.find({ postId })
-      .populate('author', 'username role level')
+      .populate('author', 'username role level profileImage')
       .sort({ createdAt: 1 })
 
-    const rootComments: typeof allComments = []
-    const replyMap = new Map<string, typeof allComments>()
-
-    for (const c of allComments) {
-      if (!c.parentId) {
-        rootComments.push(c)
-      } else if (c.status === 'active') {
-        const parentKey = c.parentId.toString()
-        if (!replyMap.has(parentKey)) replyMap.set(parentKey, [])
-        replyMap.get(parentKey)!.push(c)
-      }
-    }
-
-    // isOfficial 우선 정렬
-    rootComments.sort((a, b) => {
-      if (a.isOfficial !== b.isOfficial) return a.isOfficial ? -1 : 1
-      return a.createdAt.getTime() - b.createdAt.getTime()
-    })
-
-    const tree = rootComments.map((c) => {
+    const comments = allComments.map((c) => {
       const obj: Record<string, any> = c.toObject()
       if (c.status === 'hidden') {
         obj.content = '[신고에 의해서 숨겨진 댓글입니다.]'
@@ -296,14 +245,9 @@ export const getComments = async (req: Request, res: Response) => {
         obj.author = null
         obj.isDeleted = true
       }
-      const replies = replyMap.get(c._id.toString()) || []
-      return {
-        ...obj,
-        likeCount: c.likes.length,
-        replies: replies.map((r) => ({ ...r.toObject(), likeCount: r.likes.length }))
-      }
+      return { ...obj, likeCount: c.likes.length }
     })
-    res.json({ comments: tree })
+    res.json({ comments })
   } catch {
     res.status(500).json({ message: '댓글 목록 조회 실패' })
   }
@@ -321,13 +265,11 @@ export const createComment = async (req: AuthRequest, res: Response) => {
     }
     const post = await Post.findOne({ _id: postId, status: 'active' })
     if (!post) return res.status(404).json({ message: '게시글을 찾을 수 없습니다' })
-    const isOfficial = ['admin', 'developer'].includes(req.user!.role)
     const comment = await Comment.create({
       postId,
       author: req.user!.id,
       content: content.trim(),
       parentId: parentId || null,
-      isOfficial
     })
     const updatedPost = await Post.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } }, { new: true })
     if (updatedPost) {
@@ -336,7 +278,7 @@ export const createComment = async (req: AuthRequest, res: Response) => {
       updatedPost.isHot = newHot > 5
       await updatedPost.save()
     }
-    const populated = await Comment.findById(comment._id).populate('author', 'username role level')
+    const populated = await Comment.findById(comment._id).populate('author', 'username role level profileImage')
 
     // 포인트 적립: 댓글 작성
     grantPoints(req.user!.id, 'comment_write', '댓글 작성 포인트', comment._id.toString()).catch(() => {})
@@ -354,12 +296,13 @@ export const updateComment = async (req: AuthRequest, res: Response) => {
     if (!content?.trim()) return res.status(400).json({ message: '내용을 입력해주세요' })
     const comment = await Comment.findById(id)
     if (!comment) return res.status(404).json({ message: '댓글을 찾을 수 없습니다' })
+    if (comment.status !== 'active') return res.status(404).json({ message: '삭제되었거나 숨겨진 댓글입니다' })
     if (comment.author.toString() !== req.user!.id && req.user!.role !== 'admin') {
       return res.status(403).json({ message: '수정 권한이 없습니다' })
     }
     comment.content = content.trim()
     await comment.save()
-    const populated = await Comment.findById(id).populate('author', 'username role level')
+    const populated = await Comment.findById(id).populate('author', 'username role level profileImage')
     res.json({ success: true, comment: { ...populated!.toObject(), likeCount: comment.likes.length } })
   } catch {
     res.status(500).json({ message: '댓글 수정 실패' })
@@ -371,10 +314,18 @@ export const deleteComment = async (req: AuthRequest, res: Response) => {
     const { id } = req.params
     const comment = await Comment.findById(id)
     if (!comment) return res.status(404).json({ message: '댓글을 찾을 수 없습니다' })
-    if (comment.author.toString() !== req.user!.id && req.user!.role !== 'admin') {
+    if (comment.status === 'deleted') return res.status(404).json({ message: '이미 삭제된 댓글입니다' })
+
+    const post = await Post.findById(comment.postId).select('author')
+    const isCommentAuthor = comment.author.toString() === req.user!.id
+    const isPostAuthor = !!post && post.author.toString() === req.user!.id
+    if (!isCommentAuthor && !isPostAuthor && req.user!.role !== 'admin') {
       return res.status(403).json({ message: '삭제 권한이 없습니다' })
     }
+
     comment.status = 'deleted'
+    comment.deletedAt = new Date()
+    comment.deletedBy = new mongoose.Types.ObjectId(req.user!.id)
     await comment.save()
     await Post.findByIdAndUpdate(comment.postId, { $inc: { commentCount: -1 } })
 
@@ -384,6 +335,29 @@ export const deleteComment = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, message: '댓글이 삭제되었습니다' })
   } catch {
     res.status(500).json({ message: '댓글 삭제 실패' })
+  }
+}
+
+export const restoreComment = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const comment = await Comment.findById(id)
+    if (!comment) return res.status(404).json({ message: '댓글을 찾을 수 없습니다' })
+    if (comment.status !== 'deleted') return res.status(404).json({ message: '삭제된 댓글이 아닙니다' })
+    if (!comment.deletedBy || comment.deletedBy.toString() !== req.user!.id) {
+      return res.status(403).json({ message: '삭제한 사람만 복구할 수 있습니다' })
+    }
+
+    comment.status = 'active'
+    comment.deletedAt = undefined
+    comment.deletedBy = undefined
+    await comment.save()
+    await Post.findByIdAndUpdate(comment.postId, { $inc: { commentCount: 1 } })
+
+    const populated = await Comment.findById(id).populate('author', 'username role level profileImage')
+    res.json({ success: true, comment: { ...populated!.toObject(), likeCount: comment.likes.length } })
+  } catch {
+    res.status(500).json({ message: '댓글 복구 실패' })
   }
 }
 
@@ -457,6 +431,7 @@ export const getReportedPosts = async (req: AuthRequest, res: Response) => {
     const total = await Post.countDocuments(filter)
     const posts = await Post.find(filter)
       .populate('author', 'username email role')
+      .populate('reports.userId', 'username')
       .sort({ reportCount: -1, createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
@@ -501,7 +476,7 @@ export const adminUpdatePostStatus = async (req: AuthRequest, res: Response) => 
 export const getDeletedPosts = async (req: AuthRequest, res: Response) => {
   try {
     const { page = 1, limit = 20, search } = req.query
-    const filter: Record<string, unknown> = { status: 'deleted', deletedByReport: true }
+    const filter: Record<string, unknown> = { status: 'deleted' }
     if (search) filter.$or = [
       { title: { $regex: search, $options: 'i' } },
       { content: { $regex: search, $options: 'i' } },
@@ -509,12 +484,29 @@ export const getDeletedPosts = async (req: AuthRequest, res: Response) => {
     const total = await Post.countDocuments(filter)
     const posts = await Post.find(filter)
       .populate('author', 'username email role')
+      .populate('gameId', 'title')
       .sort({ updatedAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
     res.json({ posts, total })
   } catch {
     res.status(500).json({ message: '삭제된 게시글 목록 조회 실패' })
+  }
+}
+
+export const permanentlyDeletePost = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const post = await Post.findById(id)
+    if (!post) return res.status(404).json({ message: '게시글을 찾을 수 없습니다' })
+    if (post.status !== 'deleted') return res.status(400).json({ message: '삭제된 게시글만 완전 삭제할 수 있습니다' })
+
+    await Comment.deleteMany({ postId: id })
+    await post.deleteOne()
+
+    res.json({ success: true, message: '완전히 삭제되었습니다' })
+  } catch {
+    res.status(500).json({ message: '완전 삭제 실패' })
   }
 }
 
@@ -682,8 +674,9 @@ export const getCommunityStats = async (_req: Request, res: Response) => {
       Comment.countDocuments({ status: 'active' }),
       Post.find({ status: 'active', isTempSave: { $ne: true } })
         .sort({ hotScore: -1 }).limit(5)
-        .populate('author', 'username')
-        .select('title hotScore commentCount likes channel createdAt'),
+        .populate('author', 'username role level profileImage')
+        .select('title content hotScore commentCount likes channel createdAt views images thumbnailIndex isPinned isHot gameId')
+        .populate('gameId', 'title serviceType'),
       // 인기 게임 커뮤니티: gameId별 게시글 수 집계
       Post.aggregate([
         { $match: { status: 'active', isTempSave: { $ne: true }, gameId: { $ne: null } } },

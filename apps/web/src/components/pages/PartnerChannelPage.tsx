@@ -8,6 +8,7 @@ import partnerService, { PartnerPostItem } from '@/services/partnerService'
 import { useAuth } from '@/lib/useAuth'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Clock, ThumbsUp, Eye, MessageSquare, Plus, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Globe, EyeOff } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 export default function PartnerChannelPage() {
   const { id: partnerId } = useParams<{ id: string }>()
@@ -247,7 +248,7 @@ function PostCard({ post, partnerId }: { post: PartnerPostItem; partnerId: strin
         <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{post.views}</span>
         <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" />{post.likeCount}</span>
         <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{post.commentCount}</span>
-        <span className="ml-auto">{new Date(post.createdAt).toLocaleDateString('ko-KR')}</span>
+        <span className="ml-auto">{formatDate(post.createdAt)}</span>
       </div>
     </Link>
   )

@@ -18,7 +18,7 @@ export interface PartnerProfile {
 export interface PartnerPostItem {
   _id: string
   partnerId: { _id: string; userId: { _id: string; username: string; role: string } } | string
-  author: { _id: string; username: string; role: string }
+  author: { _id: string; username: string; role: string; profileImage?: string }
   title: string
   content: string
   topicGroup: string

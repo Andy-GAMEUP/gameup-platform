@@ -10,6 +10,12 @@ export interface IGameAnnouncement extends Document {
   sendPush: boolean
   recipients: number
   views: number
+  images: string[]
+  thumbnailIndex: number
+  deletedAt?: Date
+  likes: Types.ObjectId[]
+  reportCount: number
+  reports: { userId: Types.ObjectId; reason: string; createdAt: Date }[]
   startDate?: Date
   endDate?: Date
   createdAt: Date
@@ -27,6 +33,16 @@ const GameAnnouncementSchema = new Schema<IGameAnnouncement>(
     sendPush: { type: Boolean, default: false },
     recipients: { type: Number, default: 0 },
     views: { type: Number, default: 0 },
+    images: [{ type: String }],
+    thumbnailIndex: { type: Number, default: 0 },
+    deletedAt: { type: Date, default: null },
+    likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    reportCount: { type: Number, default: 0 },
+    reports: [{
+      userId: { type: Schema.Types.ObjectId, ref: 'User' },
+      reason: String,
+      createdAt: { type: Date, default: Date.now }
+    }],
     startDate: { type: Date },
     endDate: { type: Date },
   },

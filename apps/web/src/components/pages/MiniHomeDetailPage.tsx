@@ -11,7 +11,7 @@ import {
   Gamepad2, Newspaper, TrendingUp, Globe, Building2
 } from 'lucide-react'
 import ProposalModal from '@/components/ProposalModal'
-import LevelBadge from '@/components/LevelBadge'
+import OfficialBadge from '@/components/OfficialBadge'
 import ConfirmModal from '@/components/ConfirmModal'
 
 const TABS = [
@@ -22,6 +22,7 @@ const TABS = [
 ]
 
 import { FORM_GENRES as GENRES } from '@/constants/game'
+import { formatDate } from '@/lib/formatDate'
 
 export default function MiniHomeDetailPage() {
   const params = useParams()
@@ -104,7 +105,7 @@ export default function MiniHomeDetailPage() {
           <div className="relative z-10 pb-2 flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-text-primary text-2xl font-bold">{minihome.companyName}</h1>
-              <LevelBadge level={minihome.userId?.level} size="md" />
+              <OfficialBadge />
             </div>
             <p className="text-text-secondary text-sm">{minihome.userId?.username}</p>
           </div>
@@ -454,7 +455,7 @@ function NewsItem({ news }: { news: MiniHomeNews }) {
             </button>
           )}
         </div>
-        <p className="text-text-muted text-xs flex-shrink-0">{new Date(news.createdAt).toLocaleDateString('ko-KR')}</p>
+        <p className="text-text-muted text-xs flex-shrink-0">{formatDate(news.createdAt)}</p>
       </div>
     </div>
   )
@@ -495,7 +496,7 @@ function ProposalItem({ proposal, onRefresh }: { proposal: Proposal; onRefresh: 
           )}
           <p className="text-text-secondary text-sm mt-2 leading-relaxed line-clamp-3">{proposal.content}</p>
         </div>
-        <p className="text-text-muted text-xs flex-shrink-0">{new Date(proposal.createdAt).toLocaleDateString('ko-KR')}</p>
+        <p className="text-text-muted text-xs flex-shrink-0">{formatDate(proposal.createdAt)}</p>
       </div>
       {proposal.status === 'pending' && (
         <div className="flex gap-2">

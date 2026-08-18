@@ -11,6 +11,7 @@ import { partnerService } from '@/services/partnerService'
 import MessageComposeModal from '@/components/MessageComposeModal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { getMailButtonState, MAIL_BUTTON_CONFIG } from './mailButtonState'
+import { formatDate } from '@/lib/formatDate'
 
 const DECISION_LABELS: Record<string, string> = {
   pending: '검토중', approved: '협의 중', rejected: '거절', 'on-hold': '보류중', confirmed: '확정',
@@ -387,7 +388,7 @@ export default function ProjectsApplicantsView() {
                       )}
                     </td>
                     <td className="px-3 py-3 text-text-muted text-xs whitespace-nowrap border-r border-line/40">
-                      {new Date(app.createdAt).toLocaleDateString('ko-KR')}
+                      {formatDate(app.createdAt)}
                     </td>
                     <td className="px-3 py-3 text-center border-r border-line/40">
                       <button

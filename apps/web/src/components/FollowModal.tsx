@@ -1,8 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { X, Loader2, Shield, Wrench } from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
 import playerService, { FollowUser } from '@/services/playerService'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 
 interface FollowModalProps {
   userId: string
@@ -12,18 +14,19 @@ interface FollowModalProps {
 }
 
 function RoleBadge({ role }: { role: string }) {
-  if (role === 'admin') return <span className="flex items-center gap-0.5 text-purple-400 text-xs font-semibold"><Shield className="w-3 h-3" />관리자</span>
-  if (role === 'developer') return <span className="flex items-center gap-0.5 text-cyan-400 text-xs font-semibold"><Wrench className="w-3 h-3" />개발사</span>
+  if (role === 'admin') return <AdminBadge />
+  if (role === 'developer') return <OfficialBadge />
   return null
 }
 
 function UserAvatar({ user }: { user: FollowUser }) {
-  const bg = user.role === 'admin' ? 'bg-purple-600' : user.role === 'developer' ? 'bg-cyan-600' : 'bg-bg-tertiary'
+  const bg = user.role === 'admin' ? 'bg-purple-600' : user.role === 'developer' ? 'bg-cyan-600' : 'bg-accent'
+  const textColor = user.role === 'admin' || user.role === 'developer' ? 'text-text-primary' : 'text-text-inverse'
   if (user.profileImage) {
     return <Image src={user.profileImage} alt={user.username} width={40} height={40} className="w-10 h-10 rounded-full object-cover flex-shrink-0" unoptimized />
   }
   return (
-    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-text-primary flex-shrink-0 ${bg}`}>
+    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${textColor} flex-shrink-0 ${bg}`}>
       {user.username[0]?.toUpperCase()}
     </div>
   )

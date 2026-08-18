@@ -5,6 +5,7 @@ import AdminLayout from '@/components/AdminLayout'
 import ConfirmModal from '@/components/ConfirmModal'
 import adminService from '@/services/adminService'
 import { Building2, Loader2, X, Search, UserCheck } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -241,7 +242,7 @@ export default function AdminMembersPage() {
                         <td className="px-4 py-3 text-text-secondary border-r border-line/20">
                           {user.contactPerson?.phone || '-'}
                         </td>
-                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">{new Date(user.createdAt).toLocaleDateString('ko-KR')}</td>
+                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">{formatDate(user.createdAt)}</td>
                         <td className="px-4 py-3 border-r border-line/20">
                           <Link href={user.partnerId ? `/partner/${user.partnerId}` : `/admin/users-enhanced/${user._id}`}
                             className="px-3 py-1 rounded-md text-xs font-medium bg-bg-tertiary hover:bg-line-light border border-line text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap flex items-center gap-1 w-fit">

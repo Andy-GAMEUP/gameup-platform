@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Wallet, ChevronLeft, ChevronRight, Plus, Minus } from 'lucide-react'
 import adminService from '../../services/adminService'
+import { formatDate } from '@/lib/formatDate'
 
 interface DeveloperBalance {
   _id: string
@@ -82,7 +83,7 @@ export default function AdminDeveloperBalancesPage() {
                   <td className="p-3 text-right font-bold text-accent">{b.balance.toLocaleString()}P</td>
                   <td className="p-3 text-right text-green-400">{b.totalPurchased.toLocaleString()}P</td>
                   <td className="p-3 text-right text-red-400">{b.totalUsed.toLocaleString()}P</td>
-                  <td className="p-3 text-right text-text-muted">{b.lastPurchasedAt ? new Date(b.lastPurchasedAt).toLocaleDateString() : '-'}</td>
+                  <td className="p-3 text-right text-text-muted">{b.lastPurchasedAt ? formatDate(b.lastPurchasedAt) : '-'}</td>
                   <td className="p-3 text-center">
                     <button
                       onClick={() => { setAdjustModal(b); setAdjustForm({ amount: '', type: 'admin_grant', description: '' }) }}

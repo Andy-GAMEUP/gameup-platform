@@ -3,11 +3,10 @@ import { useState, useMemo } from 'react'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { DailyPoint } from '@/services/analyticsService'
 import { DUMMY_NEW_USERS_DAILY } from './newUsersDummy'
+import { formatDate as fmt } from '@/lib/formatDate'
 
 type SortKey = 'date' | 'dau' | 'payingUsers' | 'paymentCount' | 'pur' | 'revenue' | 'arpu' | 'arppu' | 'd1'
 type SortDir = 'asc' | 'desc'
-
-const fmt = (d: Date) => `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`
 
 const SortIcon = ({ k, sortKey, sortDir }: { k: SortKey; sortKey: SortKey; sortDir: SortDir }) => {
   if (sortKey !== k) return <ChevronsUpDown className="inline w-3 h-3 ml-0.5 opacity-30" />

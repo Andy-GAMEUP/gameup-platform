@@ -7,6 +7,7 @@ import supportService, { Season, GameApplication } from '@/services/supportServi
 import {
   Loader2, ChevronDown, ChevronUp, Save, Trash2, Plus,
 } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 const APP_STATUS_LABELS: Record<GameApplication['status'], string> = {
   pending: '대기중',
@@ -166,7 +167,7 @@ function ApplicationRow({
             <span className="text-text-primary font-medium text-sm truncate">{app.gameName}</span>
           </div>
           <p className="text-text-muted text-xs">
-            {app.userId?.username} · {app.genre} · {new Date(app.createdAt).toLocaleDateString('ko-KR')}
+            {app.userId?.username} · {app.genre} · {formatDate(app.createdAt)}
             {app.score?.total > 0 && ` · 점수: ${app.score.total}`}
           </p>
         </div>

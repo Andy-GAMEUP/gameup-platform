@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { playerService, ScrapItem } from '@/services/playerService'
+import { formatDate } from '@/lib/formatDate'
 
 type FilterType = 'all' | 'game' | 'community'
 
@@ -26,10 +27,6 @@ function getTargetHref(scrap: ScrapItem): string {
   if (scrap.targetType === 'game') return `/games/${scrap.targetId}`
   if (scrap.targetType === 'community') return `/community/${scrap.targetId}`
   return '#'
-}
-
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
 const TABS: { label: string; value: FilterType }[] = [

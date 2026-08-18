@@ -12,10 +12,11 @@ import { FILTER_GENRES } from '@/constants/game'
 import MiniHomeManagementPage from '@/components/pages/MiniHomeManagementPage'
 import {
   User, Heart, Activity as ActivityIcon, Star, Award,
-  Edit2, Lock, Trash2, Check, X, Loader2, ChevronRight, Eye, EyeOff, HelpCircle, Building2
+  Edit2, Lock, Trash2, Check, X, Loader2, ChevronRight, Eye, EyeOff, HelpCircle, Building2, Camera
 } from 'lucide-react'
 import LevelBadge from '@/components/LevelBadge'
 import LevelProgressCard from '@/components/LevelProgressCard'
+import { formatDate } from '@/lib/formatDate'
 
 const ACTIVITY_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
   play:      { label: '게임 플레이',  icon: '🎮', color: 'text-cyan-400'   },
@@ -213,6 +214,28 @@ export default function PlayerMyPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.username, (user as any)?.bio])
+
+  // ── 프로필 이미지 변경 ──
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) { showToast('이미지 파일만 업로드 가능합니다', 'error'); e.target.value = ''; return }
+    if (file.size > 2 * 1024 * 1024) { showToast('2MB 이하의 이미지만 업로드 가능합니다', 'error'); e.target.value = ''; return }
+    setAvatarUploading(true)
+    try {
+      await authService.uploadAvatar(file)
+      await updateUser({})
+      showToast('프로필 이미지가 변경되었습니다')
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || '업로드 실패', 'error')
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ''
+    }
+  }
 
   const toggleGenre = (g: string) => {
     setProfileForm((prev) => ({
@@ -464,7 +487,7 @@ export default function PlayerMyPage() {
                       )}
                     </div>
                     <span className="text-text-muted text-xs flex-shrink-0">
-                      {new Date(act.createdAt).toLocaleDateString('ko-KR')}
+                      {formatDate(act.createdAt)}
                     </span>
                   </div>
                 )
@@ -591,7 +614,7 @@ export default function PlayerMyPage() {
                         </span>
                       </div>
                       <span className="text-xs text-text-muted">
-                        {new Date(qa.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        {formatDate(qa.createdAt)}
                       </span>
                     </div>
 
@@ -663,17 +686,29 @@ export default function PlayerMyPage() {
               <div className="space-y-5">
                 {/* 아바타 */}
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-2xl font-bold flex-shrink-0 overflow-hidden">
-                    {user?.profileImage ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      user?.username?.[0]?.toUpperCase() || '?'
-                    )}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-2xl font-bold overflow-hidden">
+                      {user?.profileImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        user?.username?.[0]?.toUpperCase() || '?'
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      disabled={avatarUploading}
+                      title="프로필 이미지 변경"
+                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-cyan-600 hover:bg-cyan-700 text-text-inverse flex items-center justify-center border-2 border-bg-secondary transition-colors disabled:opacity-50"
+                    >
+                      {avatarUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+                    </button>
+                    <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                   </div>
                   <div>
                     <p className="text-sm text-text-secondary">
-                      {user?.profileImage ? '소셜 로그인 계정의 프로필 사진입니다' : '프로필 아이콘은 사용자명 첫 글자로 자동 생성됩니다'}
+                      카메라 아이콘을 눌러 프로필 사진을 변경할 수 있습니다
                     </p>
                   </div>
                 </div>
@@ -758,7 +793,7 @@ export default function PlayerMyPage() {
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">가입일</label>
                   <p className="text-text-secondary text-sm">
-                    {user ? new Date((user as any).createdAt || Date.now()).toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric' }) : '-'}
+                    {user ? formatDate((user as any).createdAt || Date.now()) : '-'}
                   </p>
                 </div>
               </div>

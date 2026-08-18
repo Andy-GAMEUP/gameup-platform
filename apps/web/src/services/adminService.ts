@@ -10,10 +10,13 @@ export interface PublicAnnouncement {
   isPinned: boolean
   targetRole: 'all' | 'developer' | 'player'
   views: number
+  images: string[]
+  thumbnailIndex: number
+  likes: string[]
   publishedAt?: string
   expiresAt?: string
   createdAt: string
-  authorId?: { username: string; role: string }
+  authorId?: { username: string; role: string; profileImage?: string }
 }
 
 export interface BannerDailyStat {
@@ -81,6 +84,8 @@ export interface Announcement {
   publishedAt?: string
   expiresAt?: string
   targetRole: 'all' | 'developer' | 'player'
+  images: string[]
+  thumbnailIndex: number
   authorId: { _id: string; username: string }
   createdAt: string
 }
@@ -193,6 +198,12 @@ export interface ReportedUser {
   totalReportCount: number
 }
 
+export interface ReportReason {
+  reason: string
+  createdAt: string
+  username: string | null
+}
+
 export interface ReportedPost {
   _id: string
   title: string
@@ -204,8 +215,39 @@ export interface ReportedPost {
   likes: string[]
   commentCount: number
   author: { _id: string; username: string; email: string; role: string } | null
+  gameId?: { _id: string; title: string } | null
   createdAt: string
   deletedAt?: string
+  reports?: { userId?: { username: string } | string; reason: string; createdAt: string }[]
+}
+
+export interface ReportedAnnouncement {
+  _id: string
+  title: string
+  category: string
+  reportCount: number
+  views: number
+  likeCount: number
+  commentCount: number
+  author: null
+  createdAt: string
+  viewPath: string
+  reports: ReportReason[]
+}
+
+export interface DeletedAnnouncement {
+  _id: string
+  kind: 'platform' | 'game'
+  title: string
+  category: string
+  reportCount: number
+  views: number
+  likeCount: number
+  commentCount: number
+  author: null
+  createdAt: string
+  deletedAt: string
+  viewPath: string
 }
 
 export const adminService = {
@@ -371,6 +413,11 @@ export const adminService = {
     return res.data as { posts: ReportedPost[]; total: number }
   },
 
+  getReportedAnnouncements: async () => {
+    const res = await apiClient.get('/admin/community/reported-announcements')
+    return res.data as { announcements: ReportedAnnouncement[]; total: number }
+  },
+
   updatePostStatus: async (id: string, data: { status: string; clearReports?: boolean; deletedByReport?: boolean }) => {
     const res = await apiClient.patch(`/admin/community/posts/${id}/status`, data)
     return res.data
@@ -391,6 +438,26 @@ export const adminService = {
     return res.data as { posts: ReportedPost[]; total: number }
   },
 
+  permanentlyDeletePost: async (id: string) => {
+    const res = await apiClient.delete(`/admin/community/deleted-posts/${id}`)
+    return res.data
+  },
+
+  getDeletedAnnouncements: async () => {
+    const res = await apiClient.get('/admin/community/deleted-announcements')
+    return res.data as { announcements: DeletedAnnouncement[]; total: number }
+  },
+
+  restoreAnnouncement: async (kind: 'platform' | 'game', id: string) => {
+    const res = await apiClient.patch(`/admin/community/deleted-announcements/${kind}/${id}/restore`)
+    return res.data
+  },
+
+  permanentlyDeleteAnnouncement: async (kind: 'platform' | 'game', id: string) => {
+    const res = await apiClient.delete(`/admin/community/deleted-announcements/${kind}/${id}`)
+    return res.data
+  },
+
   getDeletedComments: async (params?: { page?: number; limit?: number; search?: string }) => {
     const res = await apiClient.get('/admin/community/deleted-comments', { params })
     return res.data as { comments: ReportedComment[]; total: number }
@@ -404,6 +471,16 @@ export const adminService = {
   getPublicAnnouncementById: async (id: string) => {
     const res = await apiClient.get(`/admin/announcements/public/${id}`)
     return res.data as { announcement: PublicAnnouncement }
+  },
+
+  toggleAnnouncementLike: async (id: string) => {
+    const res = await apiClient.post(`/admin/announcements/public/${id}/like`)
+    return res.data as { liked: boolean; likeCount: number }
+  },
+
+  reportAnnouncement: async (id: string, reason: string) => {
+    const res = await apiClient.post(`/admin/announcements/public/${id}/report`, { reason })
+    return res.data as { success: boolean; message: string }
   },
 
   getCommunityBanners: async () => {

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Search, Loader2, AlertCircle, CheckCircle, History } from 'lucide-react'
 import AdminLayout from '@/components/AdminLayout'
 import adminService, { ReportedUser } from '@/services/adminService'
+import { formatDate as formatDateShared } from '@/lib/formatDate'
 
 const HISTORY_META: Record<string, { label: string; cls: string }> = {
   report:  { label: '신고',     cls: 'bg-orange-500/10 text-orange-400 border-orange-500/30' },
@@ -86,9 +87,7 @@ function Toast({ msg, ok }: { msg: string; ok: boolean }) {
 
 
 function formatDate(date?: string) {
-  if (!date) return '-'
-  const d = new Date(date)
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+  return date ? formatDateShared(date) : '-'
 }
 
 function formatRemaining(bannedUntil?: string) {

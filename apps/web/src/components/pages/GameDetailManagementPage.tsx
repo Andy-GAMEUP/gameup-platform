@@ -5,11 +5,13 @@ import { useParams, useSearchParams } from 'next/navigation'
 import {
   ChevronLeft, ChevronDown, Star, Users, MessageSquare, Download, Eye,
   Globe, Upload, Image as ImageIcon, Film,
-  Trash2, Save, AlertCircle, Plus, Edit, Bell, ShoppingBag,
+  Trash2, Save, AlertCircle, Plus, Edit, ShoppingBag,
   DollarSign, Package, Megaphone, Play, Clock, Send, Check,
   Gift, Shield, Zap, Trophy, CreditCard, UserPlus, LogIn, Timer, Settings, BarChart2, X,
 } from 'lucide-react'
 
+import Editor from '@/components/Editor'
+import AnnouncementManager, { AnnouncementFormValue } from '@/components/community/AnnouncementManager'
 import { gameService } from '../../services/gameService'
 import { developerBalanceService } from '../../services/developerBalanceService'
 import DeleteGameModal from '../DeleteGameModal'
@@ -19,11 +21,25 @@ import ConfirmModal from '../ConfirmModal'
 import { RatingClass } from '@gameup/types'
 import { useRouter } from 'next/navigation'
 import { FORM_GENRES } from '@/constants/game'
+import { formatDate } from '@/lib/formatDate'
 
 interface MediaItem { _id: string; type: 'screenshot' | 'video'; title: string; url: string; order: number; createdAt: string }
 interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; paymentType?: 'cash' | 'capcoin'; currencyName?: string; currencyIconUrl?: string; currencyType: string; currencyId?: string; currencyAmount: number; bonusAmount: number; stock: string; sales: number; active: boolean; description: string; imageUrl: string; sortOrder: number; itemId?: string; names?: Record<string, string>; currencyNames?: Record<string, string>; isSpecial?: boolean; specialImageUrl?: string; country?: string; saleStatus?: 'registering' | 'reviewing' | 'on_sale' | 'rejected'; capcoinPrice?: number; capcoinName?: string; capcoinIconUrl?: string }
-interface Announcement { _id: string; title: string; createdAt: string; type: string; priority: string; content: string; sendPush: boolean; recipients: number }
+interface Announcement { _id: string; title: string; createdAt: string; type: string; priority: string; content: string }
 type TabKey = 'main-settings' | 'edit' | 'media' | 'shop' | 'points' | 'dev-settings' | 'announcements'
+
+const ANNOUNCEMENT_TYPE_OPTIONS = [
+  { value: 'notice', label: '공지' },
+  { value: 'update', label: '업데이트' },
+  { value: 'maintenance', label: '점검' },
+  { value: 'event', label: '이벤트' },
+]
+
+const PRIORITY_OPTIONS = [
+  { value: 'high', label: '긴급' },
+  { value: 'normal', label: '일반' },
+  { value: 'low', label: '낮음' },
+]
 
 interface GamePointPolicy {
   _id: string
@@ -66,7 +82,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'shop', label: '상품 등록' },
   { key: 'points', label: '포인트 보상' },
   { key: 'dev-settings', label: '개발자 설정' },
-  { key: 'announcements', label: '공지 & 알림' },
+  { key: 'announcements', label: '공지 작성' },
 ]
 
 const POINT_TYPES = [
@@ -218,7 +234,6 @@ export default function GameDetailManagementPage() {
   const [editCurrencyIconPreview, setEditCurrencyIconPreview] = useState('')
   const [editCapcoinIconFile, setEditCapcoinIconFile] = useState<File | null>(null)
   const [editCapcoinIconPreview, setEditCapcoinIconPreview] = useState('')
-  const [notiModal, setNotiModal] = useState(false)
   const [showDeleteItemConfirm, setShowDeleteItemConfirm] = useState(false)
   const [deleteAnnouncementId, setDeleteAnnouncementId] = useState<string | null>(null)
   const ssFileRef = useRef<HTMLInputElement>(null)
@@ -235,7 +250,6 @@ export default function GameDetailManagementPage() {
   const [editCountry, setEditCountry] = useState('KR')
   const [editNameMap, setEditNameMap] = useState<Record<string, string>>({})
   const [editCurrencyNameMap, setEditCurrencyNameMap] = useState<Record<string, string>>({})
-  const [newNoti, setNewNoti] = useState({ title: '', content: '', type: 'notice', priority: 'normal', sendPush: false })
   const [shopSort, setShopSort] = useState<'default' | 'price_high' | 'price_low' | 'sales_high' | 'sales_low'>('default')
   const [shopPeriod, setShopPeriod] = useState<'all' | 'month' | 'last_month' | '3months'>('all')
 
@@ -832,20 +846,23 @@ export default function GameDetailManagementPage() {
       ...newRegular.map((item, i) => ({ _id: item._id, sortOrder: specialItems.length + i + 1 })),
     ]).catch(() => {})
   }
-  const addAnnouncement = async () => {
-    if (!newNoti.title || !newNoti.content || !gameId) return
-    try {
-      await gameService.createGameAnnouncement(gameId, {
-        title: newNoti.title, content: newNoti.content,
-        type: newNoti.type, priority: newNoti.priority, sendPush: newNoti.sendPush,
-      })
-      setNewNoti({ title: '', content: '', type: 'notice', priority: 'normal', sendPush: false })
-      setNotiModal(false)
-      loadAnnouncements()
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
-      alert(msg)
-    }
+  const addAnnouncement = async (data: AnnouncementFormValue) => {
+    if (!gameId) return
+    await gameService.createGameAnnouncement(gameId, {
+      title: data.title, content: data.content,
+      type: data.type, priority: data.priority,
+      images: data.images, thumbnailIndex: data.thumbnailIndex,
+    })
+    loadAnnouncements()
+  }
+  const updateAnnouncement = async (announcementId: string, data: AnnouncementFormValue) => {
+    if (!gameId) return
+    await gameService.updateGameAnnouncement(gameId, announcementId, {
+      title: data.title, content: data.content,
+      type: data.type, priority: data.priority,
+      images: data.images, thumbnailIndex: data.thumbnailIndex,
+    })
+    loadAnnouncements()
   }
   const handleDeleteAnnouncementClick = (announcementId: string) => {
     if (!gameId) return
@@ -1193,46 +1210,20 @@ export default function GameDetailManagementPage() {
       )}
 
       {activeTab === 'announcements' && (
-        <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div><h2 className="text-xl font-bold">공지사항 및 푸시 알림</h2><p className="text-sm text-text-secondary mt-1">테스터들에게 중요한 소식을 전달하세요</p></div>
-            <button onClick={() => setNotiModal(true)} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base transition-colors">
-              <Megaphone className="w-4 h-4" /> 공지 작성
-            </button>
-          </div>
-          {announcementsLoading ? (
-            <div className="text-center py-8 text-text-secondary">불러오는 중...</div>
-          ) : announcements.length === 0 ? (
-            <div className="text-center py-8 text-text-muted text-sm">등록된 공지사항이 없습니다</div>
-          ) : announcements.map(a => (
-            <div key={a._id} className="p-4 bg-bg-tertiary/30 rounded-lg border border-line flex items-start gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${a.priority === 'high' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                <Megaphone className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h3 className="font-semibold">{a.title}</h3>
-                  {a.priority === 'high' && <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/50">긴급</span>}
-                  {a.sendPush && <span className="text-xs px-1.5 py-0.5 rounded bg-accent-light text-accent border border-accent-muted flex items-center gap-1"><Check className="w-3 h-3" />발송완료</span>}
-                </div>
-                <p className="text-sm text-text-secondary mb-1">{a.content}</p>
-                <div className="flex items-center gap-3 text-xs text-text-secondary">
-                  <span>{new Date(a.createdAt).toLocaleDateString()}</span>
-                  {a.sendPush && <><span>•</span><span className="flex items-center gap-1"><Bell className="w-3 h-3" />{a.recipients.toLocaleString()}명에게 발송</span></>}
-                </div>
-              </div>
-              <button onClick={() => handleDeleteAnnouncementClick(a._id)} className="text-red-400 hover:text-red-300 p-1"><Trash2 className="w-4 h-4" /></button>
-            </div>
-          ))}
-          <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-            <h3 className="font-semibold mb-3">알림 통계</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div><p className="text-sm text-text-secondary mb-1">총 공지</p><p className="text-2xl font-bold">{announcements.length}</p></div>
-              <div><p className="text-sm text-text-secondary mb-1">푸시 발송</p><p className="text-2xl font-bold text-accent">{announcements.filter(a => a.sendPush).length}</p></div>
-              <div><p className="text-sm text-text-secondary mb-1">도달률</p><p className="text-2xl font-bold text-blue-400">98.5%</p></div>
-            </div>
-          </div>
-        </div>
+        <AnnouncementManager
+          items={announcements}
+          loading={announcementsLoading}
+          typeOptions={ANNOUNCEMENT_TYPE_OPTIONS}
+          priorityOptions={PRIORITY_OPTIONS}
+          onCreate={addAnnouncement}
+          onUpdate={updateAnnouncement}
+          onDelete={item => handleDeleteAnnouncementClick(item._id)}
+          uploadImages={async (files) => {
+            if (!gameId) return []
+            const result = await gameService.uploadAnnouncementImages(gameId, files)
+            return result.images
+          }}
+        />
       )}
 
 
@@ -1719,8 +1710,8 @@ export default function GameDetailManagementPage() {
                                   <span className="text-text-secondary">기본: <strong>{existing.amount}P</strong></span>
                                   {existing.multiplier !== 1 && <span className="text-text-secondary">배율: <strong>×{existing.multiplier}</strong></span>}
                                   {existing.dailyLimit && <span className="text-text-secondary">일일 한도: <strong>{existing.dailyLimit}P</strong></span>}
-                                  {existing.startDate && <span className="text-text-muted">시작: {new Date(existing.startDate).toLocaleDateString()}</span>}
-                                  {existing.endDate && <span className="text-text-muted">종료: {new Date(existing.endDate).toLocaleDateString()}</span>}
+                                  {existing.startDate && <span className="text-text-muted">시작: {formatDate(existing.startDate)}</span>}
+                                  {existing.endDate && <span className="text-text-muted">종료: {formatDate(existing.endDate)}</span>}
                                 </>
                               ) : (
                                 <span className="text-text-muted">미설정</span>
@@ -1820,7 +1811,7 @@ export default function GameDetailManagementPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {key.lastUsedAt && <span className="text-xs text-text-muted">마지막 사용: {new Date(key.lastUsedAt).toLocaleDateString()}</span>}
+                      {key.lastUsedAt && <span className="text-xs text-text-muted">마지막 사용: {formatDate(key.lastUsedAt)}</span>}
                       <button onClick={() => handleToggleApiKey(key._id)} className={`px-2 py-1 text-base rounded border ${key.isActive ? 'border-green-500/50 text-green-400' : 'border-gray-500/50 text-gray-400'}`}>
                         {key.isActive ? '활성' : '비활성'}
                       </button>
@@ -2702,46 +2693,6 @@ export default function GameDetailManagementPage() {
               </div>
             </div>
           )}
-        </div>
-      </Modal>
-
-      <Modal open={notiModal} onClose={() => setNotiModal(false)} title="새 공지사항 작성">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>공지 유형 *</label>
-              <select value={newNoti.type} onChange={e => setNewNoti(p => ({ ...p, type: e.target.value }))} className={inputCls}>
-                <option value="notice">일반 공지</option><option value="update">업데이트</option>
-                <option value="maintenance">점검</option><option value="event">이벤트</option>
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>우선순위 *</label>
-              <select value={newNoti.priority} onChange={e => setNewNoti(p => ({ ...p, priority: e.target.value }))} className={inputCls}>
-                <option value="high">긴급</option><option value="normal">일반</option><option value="low">낮음</option>
-              </select>
-            </div>
-          </div>
-          <div><label className={labelCls}>제목 *</label><input placeholder="공지사항 제목" value={newNoti.title} onChange={e => setNewNoti(p => ({ ...p, title: e.target.value }))} className={inputCls} /></div>
-          <div><label className={labelCls}>내용 *</label><textarea placeholder="공지사항 내용을 입력하세요" value={newNoti.content} onChange={e => setNewNoti(p => ({ ...p, content: e.target.value }))} className={`${inputCls} min-h-28 resize-y`} /></div>
-          <div className="p-4 bg-bg-tertiary/50 rounded-lg">
-            <div className="flex items-center gap-3 mb-2">
-              <input type="checkbox" id="sendPush" checked={newNoti.sendPush} onChange={e => setNewNoti(p => ({ ...p, sendPush: e.target.checked }))} className="w-4 h-4 accent-green-500" />
-              <label htmlFor="sendPush" className="text-sm font-semibold">푸시 알림 전송</label>
-            </div>
-            {newNoti.sendPush && (
-              <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded">
-                <Bell className="w-4 h-4 text-blue-400" />
-                <span className="text-sm text-blue-400">{(gameData.testers || 0).toLocaleString()}명의 테스터에게 알림이 전송됩니다</span>
-              </div>
-            )}
-          </div>
-          <div className="flex justify-end gap-3">
-            <button onClick={() => setNotiModal(false)} className="px-4 py-2 border border-line rounded-md text-base hover:bg-bg-tertiary">취소</button>
-            <button onClick={addAnnouncement} className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base">
-              <Send className="w-4 h-4" />{newNoti.sendPush ? '발송 및 등록' : '등록'}
-            </button>
-          </div>
         </div>
       </Modal>
       </div>{/* 탭 콘텐츠 wrapper end */}

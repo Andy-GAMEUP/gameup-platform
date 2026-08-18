@@ -8,7 +8,7 @@ import { gameService } from '@/services/gameService'
 import Editor from '@/components/Editor'
 import { useAuth } from '@/lib/useAuth'
 import {
-  Plus, Trash2, Link as LinkIcon, Loader2, ArrowLeft, Save,
+  Loader2, ArrowLeft, Save,
   ImageIcon, FlaskConical, Gamepad2, MessageCircle, Sparkles,
   X, ChevronDown, ChevronRight, Search, Star,
 } from 'lucide-react'
@@ -60,14 +60,16 @@ export default function CommunityWritePage() {
   const isEdit = !!id
 
   const initChannel = searchParams.get('channel') || 'free'
-  const initGameId  = searchParams.get('gameId') || null
+  // 게임 선택 UI는 베타게임/라이브게임 채널에만 있으므로, 다른 채널로 진입할 때는 gameId를 무시한다
+  const initGameId  = (initChannel === 'beta-game' || initChannel === 'live-game')
+    ? (searchParams.get('gameId') || null)
+    : null
 
   const [title, setTitle]           = useState('')
   const [content, setContent]       = useState('')
   const [channel, setChannel]       = useState(initChannel)
   const [selectedGameId, setSelectedGameId] = useState<string | null>(initGameId)
   const [tags, setTags]             = useState<string[]>([])
-  const [links, setLinks]           = useState<{ url: string; label: string }[]>([])
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [thumbnailIndex, setThumbnailIndex] = useState(0)
   const [chanSearch, setChanSearch] = useState('')
@@ -108,7 +110,6 @@ export default function CommunityWritePage() {
         if (ch === 'beta-game' || ch === 'live-game') setExpandedChan(ch)
         if (p.gameId?._id) setSelectedGameId(p.gameId._id)
         setTags(p.tags || [])
-        setLinks(p.links?.map(l => ({ url: l.url, label: l.label || '' })) || [])
         if (p.images?.length) {
           setUploadedImages(p.images.map(img => img.startsWith('http') ? img : `${UPLOADS_URL}${img}`))
           setThumbnailIndex(p.thumbnailIndex || 0)
@@ -130,11 +131,16 @@ export default function CommunityWritePage() {
   const handleSubmit = async () => {
     if (!title.trim()) { setError('제목을 입력해주세요'); return }
     if (!content || content === '<p></p>') { setError('내용을 입력해주세요'); return }
+    if ((channel === 'beta-game' || channel === 'live-game') && !selectedGameId) {
+      setError('게임을 선택해주세요'); return
+    }
+    if (channel === 'new-game-intro' && uploadedImages.length === 0) {
+      setError('이미지를 최소 1장 첨부해주세요'); return
+    }
     setError(''); setSubmitting(true)
     try {
       const payload: Record<string, unknown> = {
         title: title.trim(), content, channel, tags,
-        links: links.filter(l => l.url.trim()),
         images: uploadedImages,
         thumbnailIndex,
       }
@@ -372,6 +378,9 @@ export default function CommunityWritePage() {
                       <ChevronDown className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </button>
                   )}
+                  {(channel === 'beta-game' || channel === 'live-game') && !selectedGameId && (
+                    <span className="text-red-500 text-xs ml-2">게임을 선택해주세요</span>
+                  )}
 
                   {/* 드롭다운 */}
                   {chanOpen && (
@@ -425,6 +434,10 @@ export default function CommunityWritePage() {
               />
             </div>
 
+            {channel === 'new-game-intro' && uploadedImages.length === 0 && (
+              <p className="text-red-500 text-xs">신작게임소개는 이미지를 최소 1장 첨부해야 게시할 수 있습니다.</p>
+            )}
+
             {/* 썸네일 선택 */}
             {uploadedImages.length > 0 && (
               <div className="bg-bg-card border border-line rounded-2xl p-4">
@@ -459,36 +472,22 @@ export default function CommunityWritePage() {
 
             {/* 선택 옵션들 */}
             <div className="space-y-2">
-              <ExpandSection label="링크" icon={LinkIcon} count={links.length}>
-                <div className="space-y-2 mt-2">
-                  {links.map((l, i) => (
-                    <div key={i} className="flex gap-2">
-                      <input value={l.url} onChange={e => setLinks(links.map((x, j) => j === i ? { ...x, url: e.target.value } : x))}
-                        placeholder="https://..."
-                        className="flex-1 bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent" />
-                      <input value={l.label} onChange={e => setLinks(links.map((x, j) => j === i ? { ...x, label: e.target.value } : x))}
-                        placeholder="표시 텍스트"
-                        className="w-28 bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent" />
-                      <button onClick={() => setLinks(links.filter((_, j) => j !== i))}
-                        className="p-2 text-text-muted hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  {links.length < 10 && (
-                    <button onClick={() => setLinks([...links, { url: '', label: '' }])}
-                      className="flex items-center gap-1.5 text-base text-text-muted hover:text-accent transition-colors mt-1">
-                      <Plus className="w-4 h-4" /> 링크 추가
-                    </button>
-                  )}
-                </div>
-              </ExpandSection>
-
+              {channel === 'new-game-intro' && (
+                <ExpandSection label="관련 게임" icon={Gamepad2} count={selectedGameId ? 1 : 0}>
+                  <select value={selectedGameId ?? ''} onChange={e => setSelectedGameId(e.target.value || null)}
+                    className="w-full bg-bg-tertiary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent mt-2">
+                    <option value="">선택 안 함</option>
+                    {[...betaGames, ...liveGames].map(g => (
+                      <option key={g._id} value={g._id}>{g.title}</option>
+                    ))}
+                  </select>
+                </ExpandSection>
+              )}
             </div>
 
             {/* 제출 */}
             <div className="flex items-center gap-3 pt-2">
-              <button onClick={handleSubmit} disabled={submitting}
+              <button onClick={handleSubmit} disabled={submitting || ((channel === 'beta-game' || channel === 'live-game') && !selectedGameId) || (channel === 'new-game-intro' && uploadedImages.length === 0)}
                 className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-primary py-3 rounded-xl text-base font-semibold transition-colors">
                 {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                 {isEdit ? '수정 완료' : '게시하기'}

@@ -12,6 +12,7 @@ import {
   Pencil, Trash2, Wallet, CalendarDays, Users, Tag, Wrench,
   Clock, FileText, ListChecks, MessageCircle, Milestone, CheckCircle2, ArrowLeft, Sparkles,
 } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   recruiting: { text: '모집중', color: 'bg-green-500/20 text-green-400' },
@@ -486,7 +487,7 @@ export default function PartnerMatchingProjectDetailPage() {
                 <div>
                   <span className="text-xs text-text-muted block mb-0.5 whitespace-nowrap">지원 마감일</span>
                   <span className="font-semibold text-sm text-red-400">
-                    {project.applicationDeadline ? new Date(project.applicationDeadline).toLocaleDateString('ko-KR') : '-'}
+                    {project.applicationDeadline ? formatDate(project.applicationDeadline) : '-'}
                   </span>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { Search, Download, ChevronDown, LayoutGrid, RefreshCw } from 'lucide-rea
 import Image from 'next/image'
 import { gameService } from '@/services/gameService'
 import { adminService } from '@/services/adminService'
+import { formatDate } from '@/lib/formatDate'
 
 interface DeveloperOption { _id: string; name: string }
 interface GameOption { _id: string; title: string; thumbnail?: string; developerId?: { _id: string; username: string; companyInfo?: { companyName?: string } } }
@@ -456,7 +457,7 @@ export default function AdminPaymentsPage() {
                       </div>
                     </td>
                     <td className="px-3 py-3 text-xs text-text-secondary">
-                      <p>{new Date(p.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}</p>
+                      <p>{formatDate(p.createdAt)}</p>
                       <p>{new Date(p.createdAt).toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
                     </td>
                     <td className="px-3 py-3 font-mono text-xs text-text-muted">{p.pgOrderId || '-'}</td>

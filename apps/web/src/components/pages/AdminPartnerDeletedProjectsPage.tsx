@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import ConfirmModal from '@/components/ConfirmModal'
 import partnerService from '@/services/partnerService'
 import { Trash2, Loader2, Search, RotateCcw } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 interface ProjectDeletionLog {
   _id: string
@@ -122,10 +123,10 @@ export default function AdminPartnerDeletedProjectsPage() {
                       <td className="px-4 py-3 text-text-primary font-medium border-r border-line/20">{log.title}</td>
                       <td className="px-4 py-3 text-text-secondary border-r border-line/20">{log.ownerUsername || '-'}</td>
                       <td className="px-4 py-3 text-text-secondary border-r border-line/20">
-                        {log.createdAt ? new Date(log.createdAt).toLocaleDateString('ko-KR') : '-'}
+                        {log.createdAt ? formatDate(log.createdAt) : '-'}
                       </td>
                       <td className="px-4 py-3 text-text-secondary border-r border-line/20">
-                        {new Date(log.deletedAt).toLocaleDateString('ko-KR')}
+                        {formatDate(log.deletedAt)}
                       </td>
                       <td className="px-4 py-3 border-r border-line/20">
                         <button

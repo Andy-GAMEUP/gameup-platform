@@ -38,6 +38,7 @@ export interface IUser extends Document {
   adminGrantedAt?: Date
   bio?: string
   favoriteGenres?: string[]
+  bookmarkedTabs?: { key: string; label: string; channel?: string; gameId?: mongoose.Types.ObjectId }[]
   isActive: boolean
   bannedAt?: Date
   bannedUntil?: Date
@@ -99,6 +100,15 @@ const userSchema = new Schema<IUser>(
     },
     favoriteGenres: {
       type: [String],
+      default: []
+    },
+    bookmarkedTabs: {
+      type: [{
+        key: { type: String, required: true },
+        label: { type: String, required: true },
+        channel: { type: String },
+        gameId: { type: Schema.Types.ObjectId, ref: 'Game' },
+      }],
       default: []
     },
     isActive: {

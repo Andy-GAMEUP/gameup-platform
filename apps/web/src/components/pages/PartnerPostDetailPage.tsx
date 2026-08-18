@@ -102,9 +102,13 @@ export default function PartnerPostDetailPage() {
           <h1 className="text-text-primary text-xl font-bold mb-4">{post.title}</h1>
 
           <div className="flex items-center gap-3 mb-5 pb-4 border-b border-line">
-            <div className="w-9 h-9 rounded-full bg-cyan-600 flex items-center justify-center text-text-primary font-bold text-sm flex-shrink-0">
-              {(post.author?.username ?? '?')[0].toUpperCase()}
-            </div>
+            {post.author?.profileImage ? (
+              <img src={post.author.profileImage} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-cyan-600 flex items-center justify-center text-text-primary font-bold text-sm flex-shrink-0">
+                {(post.author?.username ?? '?')[0].toUpperCase()}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-text-primary text-sm font-semibold">{post.author?.username}</p>
               <p className="text-text-muted text-xs">{new Date(post.createdAt).toLocaleString('ko-KR')}</p>

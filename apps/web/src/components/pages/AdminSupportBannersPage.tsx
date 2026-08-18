@@ -13,6 +13,7 @@ import {
   Plus, Trash2, Save, Loader2, GripVertical, Eye, EyeOff,
   ChevronDown, ChevronUp,
 } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 const Editor = dynamic(() => import('@/components/Editor'), { ssr: false })
 
@@ -538,7 +539,7 @@ function EventBannersSection() {
                 <h4 className="text-text-primary font-medium text-sm truncate">{banner.title}</h4>
                 {banner.description && <p className="text-text-secondary text-xs truncate">{banner.description}</p>}
                 <p className="text-text-muted text-xs mt-1">
-                  {new Date(banner.createdAt).toLocaleDateString('ko-KR')}
+                  {formatDate(banner.createdAt)}
                   {banner.isActive ? <span className="ml-2 text-accent">활성</span> : <span className="ml-2 text-text-muted">비활성</span>}
                 </p>
               </div>
@@ -652,7 +653,7 @@ function EventRegistrationsSection() {
                   <td className="py-2.5 px-3 text-text-secondary">{r.phone}</td>
                   <td className="py-2.5 px-3 text-text-secondary">{r.eventBanner?.title || '-'}</td>
                   <td className="py-2.5 px-3 text-text-secondary">{r.userId?.username || '-'}</td>
-                  <td className="py-2.5 px-3 text-text-muted">{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
+                  <td className="py-2.5 px-3 text-text-muted">{formatDate(r.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

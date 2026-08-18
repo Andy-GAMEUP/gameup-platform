@@ -4,6 +4,7 @@ import AdminLayout from '@/components/AdminLayout'
 import partnerService, { PartnerApplication } from '@/services/partnerService'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Loader2, X, ExternalLink } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
   approved:  { label: '정상',   cls: 'bg-accent-light text-accent border border-green-500/40' },
@@ -49,7 +50,7 @@ function PartnerDetailModal({
             {partner.approvedAt && (
               <div>
                 <p className="text-text-secondary text-xs uppercase tracking-wider mb-1">승인일</p>
-                <p className="text-text-primary text-sm">{new Date(partner.approvedAt).toLocaleDateString('ko-KR')}</p>
+                <p className="text-text-primary text-sm">{formatDate(partner.approvedAt)}</p>
               </div>
             )}
           </div>
@@ -195,7 +196,7 @@ export default function AdminPartnerManagementPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-text-secondary text-sm">
-                      {p.approvedAt ? new Date(p.approvedAt).toLocaleDateString('ko-KR') : '-'}
+                      {p.approvedAt ? formatDate(p.approvedAt) : '-'}
                     </td>
                      <td className="px-4 py-3">
                        <div className="flex items-center gap-2">

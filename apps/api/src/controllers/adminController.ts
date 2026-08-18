@@ -1,6 +1,7 @@
 import { Response } from 'express'
+import mongoose from 'mongoose'
 import { AuthRequest } from '../middleware/auth'
-import { UserModel as User, GameModel as Game, GameShopItemModel, GameMediaModel, AnnouncementModel as Announcement, ReviewModel as Review, PlayerActivityModel as PlayerActivity, NotificationModel as Notification, PartnerModel, UserDeletionLogModel } from '@gameup/db'
+import { UserModel as User, GameModel as Game, GameShopItemModel, GameMediaModel, AnnouncementModel as Announcement, GameAnnouncementModel, ReviewModel as Review, PlayerActivityModel as PlayerActivity, NotificationModel as Notification, PartnerModel, UserDeletionLogModel } from '@gameup/db'
 import { hashPassword } from '../services/authService'
 
 // ── 플랫폼 전체 통계 ──────────────────────────────────────────────
@@ -642,7 +643,7 @@ export const deleteReview = async (req: AuthRequest, res: Response) => {
 export const getAnnouncements = async (req: AuthRequest, res: Response) => {
   try {
     const { page = 1, limit = 20, type, isPublished } = req.query
-    const filter: Record<string, unknown> = {}
+    const filter: Record<string, unknown> = { deletedAt: null }
     if (type) filter.type = type
     if (isPublished !== undefined) filter.isPublished = isPublished === 'true'
     const total = await Announcement.countDocuments(filter)
@@ -659,17 +660,20 @@ export const getAnnouncements = async (req: AuthRequest, res: Response) => {
 
 export const createAnnouncement = async (req: AuthRequest, res: Response) => {
   try {
-    const { title, content, type, priority, isPinned, isPublished, expiresAt, targetRole } = req.body
+    const { title, content, type, priority, isPinned, isPublished, expiresAt, targetRole, images, thumbnailIndex } = req.body
+    const finalIsPublished = isPublished !== undefined ? isPublished : true
     const announcement = new Announcement({
       title, content,
       type: type || 'notice',
       priority: priority || 'normal',
       authorId: req.user!.id,
       isPinned: isPinned || false,
-      isPublished: isPublished || false,
-      publishedAt: isPublished ? new Date() : undefined,
+      isPublished: finalIsPublished,
+      publishedAt: finalIsPublished ? new Date() : undefined,
       expiresAt: expiresAt ? new Date(expiresAt) : undefined,
-      targetRole: targetRole || 'all'
+      targetRole: targetRole || 'all',
+      images: images || [],
+      thumbnailIndex: thumbnailIndex || 0
     })
     await announcement.save()
     res.status(201).json({ message: '공지사항이 생성되었습니다', announcement })
@@ -694,7 +698,7 @@ export const updateAnnouncement = async (req: AuthRequest, res: Response) => {
 export const deleteAnnouncement = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
-    const announcement = await Announcement.findByIdAndDelete(id)
+    const announcement = await Announcement.findByIdAndUpdate(id, { deletedAt: new Date() })
     if (!announcement) return res.status(404).json({ message: '공지사항을 찾을 수 없습니다' })
     res.json({ message: '공지사항이 삭제되었습니다' })
   } catch {
@@ -702,18 +706,198 @@ export const deleteAnnouncement = async (req: AuthRequest, res: Response) => {
   }
 }
 
+export const restoreAnnouncement = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const announcement = await Announcement.findByIdAndUpdate(id, { deletedAt: null }, { new: true })
+    if (!announcement) return res.status(404).json({ message: '공지사항을 찾을 수 없습니다' })
+    res.json({ message: '복구되었습니다', announcement })
+  } catch {
+    res.status(500).json({ message: '복구 실패' })
+  }
+}
+
+export const permanentlyDeleteAnnouncement = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const announcement = await Announcement.findById(id)
+    if (!announcement) return res.status(404).json({ message: '공지사항을 찾을 수 없습니다' })
+    if (!announcement.deletedAt) return res.status(400).json({ message: '삭제된 공지사항만 완전 삭제할 수 있습니다' })
+    await announcement.deleteOne()
+    res.json({ message: '완전히 삭제되었습니다' })
+  } catch {
+    res.status(500).json({ message: '완전 삭제 실패' })
+  }
+}
+
+export const restoreGameAnnouncement = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const announcement = await GameAnnouncementModel.findByIdAndUpdate(id, { deletedAt: null }, { new: true })
+    if (!announcement) return res.status(404).json({ message: '공지를 찾을 수 없습니다' })
+    res.json({ message: '복구되었습니다', announcement })
+  } catch {
+    res.status(500).json({ message: '복구 실패' })
+  }
+}
+
+export const permanentlyDeleteGameAnnouncement = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const announcement = await GameAnnouncementModel.findById(id)
+    if (!announcement) return res.status(404).json({ message: '공지를 찾을 수 없습니다' })
+    if (!announcement.deletedAt) return res.status(400).json({ message: '삭제된 공지만 완전 삭제할 수 있습니다' })
+    await announcement.deleteOne()
+    res.json({ message: '완전히 삭제되었습니다' })
+  } catch {
+    res.status(500).json({ message: '완전 삭제 실패' })
+  }
+}
+
+// 소프트 삭제된 공지(플랫폼 공지 + 게임 공지) 목록
+export const getDeletedAnnouncements = async (req: AuthRequest, res: Response) => {
+  try {
+    const [platformDocs, gameDocs] = await Promise.all([
+      Announcement.find({ deletedAt: { $ne: null } }).sort({ deletedAt: -1 }).lean(),
+      GameAnnouncementModel.find({ deletedAt: { $ne: null } }).sort({ deletedAt: -1 }).lean(),
+    ])
+    const gameIds = [...new Set(gameDocs.map(a => a.gameId.toString()))]
+    const games = await Game.find({ _id: { $in: gameIds } }).select('_id title').lean()
+    const gameTitleMap = Object.fromEntries(games.map(g => [g._id.toString(), g.title]))
+
+    const merged = [
+      ...platformDocs.map(a => ({
+        _id: a._id,
+        kind: 'platform' as const,
+        title: a.title,
+        category: '공지',
+        reportCount: a.reportCount,
+        views: a.views,
+        likeCount: a.likes?.length ?? 0,
+        commentCount: 0,
+        author: null,
+        createdAt: a.createdAt,
+        deletedAt: a.deletedAt,
+        viewPath: `/community/announcement/${a._id}`,
+      })),
+      ...gameDocs.map(a => ({
+        _id: a._id,
+        kind: 'game' as const,
+        title: a.title,
+        category: gameTitleMap[a.gameId.toString()] ?? '알 수 없는 게임',
+        reportCount: a.reportCount,
+        views: a.views,
+        likeCount: a.likes?.length ?? 0,
+        commentCount: 0,
+        author: null,
+        createdAt: a.createdAt,
+        deletedAt: a.deletedAt,
+        viewPath: `/community/game-announcement/${a._id}`,
+      })),
+    ].sort((x, y) => new Date(y.deletedAt as Date).getTime() - new Date(x.deletedAt as Date).getTime())
+    res.json({ announcements: merged, total: merged.length })
+  } catch {
+    res.status(500).json({ message: '삭제된 공지 목록 조회 실패' })
+  }
+}
+
 export const getPublicAnnouncementById = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const announcement = await Announcement.findOneAndUpdate(
-      { _id: id, isPublished: true },
+      { _id: id, isPublished: true, deletedAt: null },
       { $inc: { views: 1 } },
       { new: true }
-    ).populate('authorId', 'username role')
+    ).populate('authorId', 'username role profileImage')
     if (!announcement) return res.status(404).json({ message: '공지사항을 찾을 수 없습니다' })
     res.json({ announcement })
   } catch {
     res.status(500).json({ message: '공지사항 조회 실패' })
+  }
+}
+
+export const toggleAnnouncementLike = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const userId = new mongoose.Types.ObjectId(req.user!.id)
+    const existing = await Announcement.findOne({ _id: id, likes: userId })
+    const isLiked = !!existing
+    const updated = await Announcement.findByIdAndUpdate(
+      id,
+      isLiked ? { $pull: { likes: userId } } : { $addToSet: { likes: userId } },
+      { new: true }
+    )
+    if (!updated) return res.status(404).json({ message: '공지사항을 찾을 수 없습니다' })
+    res.json({ liked: !isLiked, likeCount: updated.likes.length })
+  } catch {
+    res.status(500).json({ message: '좋아요 처리 실패' })
+  }
+}
+
+export const reportAnnouncement = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const { reason } = req.body
+    if (!reason?.trim()) return res.status(400).json({ message: '신고 사유를 입력해주세요' })
+    const userId = new mongoose.Types.ObjectId(req.user!.id)
+    const announcement = await Announcement.findById(id)
+    if (!announcement) return res.status(404).json({ message: '공지사항을 찾을 수 없습니다' })
+    const alreadyReported = announcement.reports.some((r) => r.userId.equals(userId))
+    if (alreadyReported) return res.status(400).json({ message: '이미 신고한 공지사항입니다' })
+    announcement.reports.push({ userId, reason: reason.trim(), createdAt: new Date() })
+    announcement.reportCount = announcement.reports.length
+    await announcement.save()
+    res.json({ success: true, message: '신고가 접수되었습니다' })
+  } catch {
+    res.status(500).json({ message: '신고 처리 실패' })
+  }
+}
+
+// 신고된 공지(플랫폼 공지 + 게임 공지) 목록 — 읽기 전용 (숨김/삭제 기능 없음)
+export const getReportedAnnouncements = async (req: AuthRequest, res: Response) => {
+  try {
+    const [platformDocs, gameDocs] = await Promise.all([
+      Announcement.find({ reportCount: { $gt: 0 }, deletedAt: null }).populate('reports.userId', 'username').sort({ reportCount: -1, createdAt: -1 }).lean(),
+      GameAnnouncementModel.find({ reportCount: { $gt: 0 }, deletedAt: null }).populate('reports.userId', 'username').sort({ reportCount: -1, createdAt: -1 }).lean(),
+    ])
+    const gameIds = [...new Set(gameDocs.map(a => a.gameId.toString()))]
+    const games = await Game.find({ _id: { $in: gameIds } }).select('_id title').lean()
+    const gameTitleMap = Object.fromEntries(games.map(g => [g._id.toString(), g.title]))
+
+    const mapReports = (reports: { userId: any; reason: string; createdAt: Date }[]) =>
+      (reports || []).map(r => ({ reason: r.reason, createdAt: r.createdAt, username: (r.userId as any)?.username ?? null }))
+
+    const merged = [
+      ...platformDocs.map(a => ({
+        _id: a._id,
+        title: a.title,
+        category: '공지',
+        reportCount: a.reportCount,
+        views: a.views,
+        likeCount: a.likes?.length ?? 0,
+        commentCount: 0,
+        author: null,
+        createdAt: a.createdAt,
+        viewPath: `/community/announcement/${a._id}`,
+        reports: mapReports(a.reports),
+      })),
+      ...gameDocs.map(a => ({
+        _id: a._id,
+        title: a.title,
+        category: gameTitleMap[a.gameId.toString()] ?? '알 수 없는 게임',
+        reportCount: a.reportCount,
+        views: a.views,
+        likeCount: a.likes?.length ?? 0,
+        commentCount: 0,
+        author: null,
+        createdAt: a.createdAt,
+        viewPath: `/community/game-announcement/${a._id}`,
+        reports: mapReports(a.reports),
+      })),
+    ].sort((x, y) => (y.reportCount - x.reportCount) || (new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime()))
+    res.json({ announcements: merged, total: merged.length })
+  } catch {
+    res.status(500).json({ message: '신고 목록 조회 실패' })
   }
 }
 
@@ -722,11 +906,12 @@ export const getPublicAnnouncements = async (req: AuthRequest, res: Response) =>
     const now = new Date()
     const announcements = await Announcement.find({
       isPublished: true,
+      deletedAt: null,
       $or: [{ expiresAt: { $gt: now } }, { expiresAt: { $exists: false } }]
     })
       .populate('authorId', 'username')
       .sort({ isPinned: -1, publishedAt: -1 })
-      .limit(10)
+      .limit(100)
     res.json({ announcements })
   } catch {
     res.status(500).json({ message: '공지사항 조회 실패' })

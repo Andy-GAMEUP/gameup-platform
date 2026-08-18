@@ -176,6 +176,7 @@ export const login = async (req: AuthRequest, res: Response) => {
         level: user.level || 1,
         activityScore: user.activityScore || 0,
         profileImage: user.profileImage || null,
+        bookmarkedTabs: user.bookmarkedTabs || [],
       },
       token
     })
@@ -214,12 +215,41 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
         activityScore: user.activityScore || 0,
         points: user.points || 0,
         profileImage: user.profileImage || null,
+        bookmarkedTabs: user.bookmarkedTabs || [],
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }
     })
   } catch (error) {
     console.error('Get profile error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+export const toggleBookmarkedTab = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+
+    const { key, label, channel, gameId } = req.body
+    if (!key || !label) return res.status(400).json({ message: 'key와 label은 필수입니다' })
+
+    const user = await User.findById(req.user.id)
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+
+    const existingIndex = (user.bookmarkedTabs || []).findIndex(t => t.key === key)
+    let bookmarked: boolean
+    if (existingIndex >= 0) {
+      user.bookmarkedTabs!.splice(existingIndex, 1)
+      bookmarked = false
+    } else {
+      user.bookmarkedTabs = [...(user.bookmarkedTabs || []), { key, label, channel, gameId }]
+      bookmarked = true
+    }
+    await user.save()
+
+    res.json({ success: true, bookmarked, bookmarkedTabs: user.bookmarkedTabs })
+  } catch (error) {
+    console.error('Toggle bookmarked tab error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }
 }

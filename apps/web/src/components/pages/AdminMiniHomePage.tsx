@@ -5,6 +5,7 @@ import AdminLayout from '@/components/AdminLayout'
 import ConfirmModal from '@/components/ConfirmModal'
 import minihomeService, { MiniHome } from '@/services/minihomeService'
 import { ChevronLeft, ChevronRight, Loader2, Search, Trash2, Building2 } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 export default function AdminMiniHomePage() {
   const [minihomes, setMinihomes] = useState<MiniHome[]>([])
@@ -206,7 +207,7 @@ export default function AdminMiniHomePage() {
                           </button>
                         </td>
                         <td className="px-4 py-3 text-text-secondary text-sm">
-                          {new Date(mh.createdAt).toLocaleDateString('ko-KR')}
+                          {formatDate(mh.createdAt)}
                         </td>
                         <td className="px-4 py-3">
                           <button onClick={() => setDeleteTarget(mh)}

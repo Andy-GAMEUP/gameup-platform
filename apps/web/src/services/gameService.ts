@@ -9,8 +9,12 @@ export interface RecentGameAnnouncement {
   content: string
   type: 'notice' | 'update' | 'maintenance' | 'event'
   views: number
+  images: string[]
+  thumbnailIndex: number
+  likes: string[]
   createdAt: string
   game: { _id: string; title: string; thumbnail?: string; serviceType?: string } | null
+  developer: { _id: string; username: string; profileImage?: string } | null
 }
 
 export const gameService = {
@@ -362,9 +366,23 @@ export const gameService = {
     return response.data
   },
 
-  createGameAnnouncement: async (gameId: string, data: { title: string; content: string; type: string; priority: string; sendPush: boolean; startDate?: string; endDate?: string }) => {
+  createGameAnnouncement: async (gameId: string, data: { title: string; content: string; type: string; priority: string; startDate?: string; endDate?: string; images?: string[]; thumbnailIndex?: number }) => {
     const response = await apiClient.post(`/games/${gameId}/announcements`, data)
     return response.data
+  },
+
+  updateGameAnnouncement: async (gameId: string, announcementId: string, data: { title: string; content: string; type: string; priority: string; images?: string[]; thumbnailIndex?: number }) => {
+    const response = await apiClient.patch(`/games/${gameId}/announcements/${announcementId}`, data)
+    return response.data
+  },
+
+  uploadAnnouncementImages: async (gameId: string, files: File[]) => {
+    const formData = new FormData()
+    files.forEach(f => formData.append('announcementImages', f))
+    const response = await apiClient.post(`/games/${gameId}/announcements/upload-images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data as { success: boolean; images: string[] }
   },
 
   deleteGameAnnouncement: async (gameId: string, announcementId: string) => {
@@ -372,8 +390,8 @@ export const gameService = {
     return response.data
   },
 
-  getRecentGameAnnouncements: async (limit = 15, page = 1) => {
-    const response = await apiClient.get('/games/announcements/recent', { params: { limit, page } })
+  getRecentGameAnnouncements: async (limit = 15, page = 1, search?: string, sort?: string) => {
+    const response = await apiClient.get('/games/announcements/recent', { params: { limit, page, search, sort } })
     return response.data as { announcements: RecentGameAnnouncement[]; total: number; page: number; totalPages: number }
   },
 
@@ -385,6 +403,16 @@ export const gameService = {
   getGameAnnouncementById: async (announcementId: string) => {
     const response = await apiClient.get(`/games/announcements/${announcementId}`)
     return response.data as { announcement: RecentGameAnnouncement }
+  },
+
+  toggleGameAnnouncementLike: async (announcementId: string) => {
+    const response = await apiClient.post(`/games/announcements/${announcementId}/like`)
+    return response.data as { liked: boolean; likeCount: number }
+  },
+
+  reportGameAnnouncement: async (announcementId: string, reason: string) => {
+    const response = await apiClient.post(`/games/announcements/${announcementId}/report`, { reason })
+    return response.data as { success: boolean; message: string }
   },
 
   getGamePayments: async (gameId: string, params?: {

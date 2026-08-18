@@ -11,6 +11,7 @@ import partnerMatchingService from '@/services/partnerMatchingService'
 import MessageComposeModal from '@/components/MessageComposeModal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { getMailButtonState, MAIL_BUTTON_CONFIG } from './mailButtonState'
+import { formatDate } from '@/lib/formatDate'
 
 const formatBudget = (value: string | undefined) => {
   if (!value) return '-'
@@ -143,7 +144,7 @@ export default function ProjectsApplicationsView() {
                   {formatBudget(project?.budget)}
                 </td>
                 <td className="px-3 py-3 text-text-muted text-xs whitespace-nowrap border-r border-line/40">
-                  {new Date(app.createdAt).toLocaleDateString('ko-KR')}
+                  {formatDate(app.createdAt)}
                 </td>
                 <td className="px-3 py-3 text-center border-r border-line/40">
                   {app.status === 'confirmed' ? (

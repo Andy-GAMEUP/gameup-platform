@@ -9,20 +9,23 @@ import { gameService } from '@/services/gameService'
 import playerService, { Review } from '@/services/playerService'
 import apiClient from '@/services/api'
 import LevelBadge from '@/components/LevelBadge'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 import GracRatingBadge from '@/components/GracRatingBadge'
 import ConfirmModal from '@/components/ConfirmModal'
 
 interface GameQA {
   _id: string
   gameId: string
-  userId: { _id: string; username: string }
-  developerId: { _id: string; username: string }
+  userId: { _id: string; username: string; profileImage?: string }
+  developerId: { _id: string; username: string; profileImage?: string }
   question: string
   answer?: string
   answeredAt?: string
   createdAt: string
 }
 import TossPaymentModal from '@/components/TossPaymentModal'
+import { formatDate } from '@/lib/formatDate'
 
 const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
 const toAbsUrl = (raw: string) => raw.startsWith('http') ? raw : `${UPLOADS_URL}${raw}`
@@ -671,9 +674,14 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 <div className="bg-bg-secondary border border-line rounded-xl p-5">
                   <p className="text-text-primary font-semibold mb-3" style={{ fontSize: '30px' }}>개발사 정보</p>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-text-primary font-bold">
-                      {((game.developerId as any).username || '?')[0].toUpperCase()}
-                    </div>
+                    {(game.developerId as any).profileImage ? (
+                      <img src={toAbsUrl((game.developerId as any).profileImage)} alt=""
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-text-primary font-bold">
+                        {((game.developerId as any).username || '?')[0].toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <p className="text-text-primary font-medium text-sm">{(game.developerId as any).username}</p>
                       <p className="text-text-muted text-xs">{(game.developerId as any).email}</p>
@@ -801,23 +809,31 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                       <div key={qa._id} className="border border-line rounded-lg overflow-hidden">
                         <div className="bg-bg-tertiary/50 p-4">
                           <div className="flex items-center gap-2 mb-2">
-                            <div className="w-6 h-6 bg-bg-tertiary rounded-full flex items-center justify-center text-[10px] font-bold text-text-primary">
-                              {(qa.userId?.username || '?')[0].toUpperCase()}
-                            </div>
+                            {qa.userId?.profileImage ? (
+                              <img src={toAbsUrl(qa.userId.profileImage)} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center text-[10px] font-bold text-text-inverse">
+                                {(qa.userId?.username || '?')[0].toUpperCase()}
+                              </div>
+                            )}
                             <span className="text-text-primary text-sm font-medium">{qa.userId?.username || '익명'}</span>
-                            <span className="text-text-muted text-xs">{new Date(qa.createdAt).toLocaleDateString('ko-KR')}</span>
+                            <span className="text-text-muted text-xs">{formatDate(qa.createdAt)}</span>
                           </div>
                           <p className="text-text-secondary text-sm">{qa.question}</p>
                         </div>
                         {qa.answer ? (
                           <div className="bg-cyan-900/10 border-t border-cyan-500/20 p-4">
                             <div className="flex items-center gap-2 mb-2">
-                              <div className="w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-[10px] font-bold text-text-primary">
-                                {(qa.developerId?.username || 'D')[0].toUpperCase()}
-                              </div>
+                              {qa.developerId?.profileImage ? (
+                                <img src={toAbsUrl(qa.developerId.profileImage)} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                              ) : (
+                                <div className="w-6 h-6 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-[10px] font-bold text-text-primary">
+                                  {(qa.developerId?.username || 'D')[0].toUpperCase()}
+                                </div>
+                              )}
                               <span className="text-cyan-400 text-sm font-medium">{qa.developerId?.username || '개발사'}</span>
-                              <span className="text-xs bg-cyan-600/20 text-cyan-400 border border-cyan-500/30 px-1.5 py-0.5 rounded">개발사</span>
-                              {qa.answeredAt && <span className="text-text-muted text-xs">{new Date(qa.answeredAt).toLocaleDateString('ko-KR')}</span>}
+                              <OfficialBadge />
+                              {qa.answeredAt && <span className="text-text-muted text-xs">{formatDate(qa.answeredAt)}</span>}
                             </div>
                             <p className="text-text-secondary text-sm">{qa.answer}</p>
                           </div>
@@ -967,17 +983,20 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                     <div key={review._id} className={`rounded-xl p-5 border ${tc.bg}`}>
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-bg-tertiary rounded-full flex items-center justify-center text-sm font-bold text-text-primary">
-                            {(review.userId?.username || '?')[0].toUpperCase()}
-                          </div>
+                          {review.userId?.profileImage ? (
+                            <img src={toAbsUrl(review.userId.profileImage)} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                          ) : (
+                            <div className="w-9 h-9 bg-accent rounded-full flex items-center justify-center text-sm font-bold text-text-inverse">
+                              {(review.userId?.username || '?')[0].toUpperCase()}
+                            </div>
+                          )}
                           <div>
                             <div className="flex items-center gap-2">
                               <span className="text-text-primary text-sm font-medium">{review.userId?.username || '익명'}</span>
-                              <LevelBadge level={(review.userId as any)?.level} />
-                              {(review.userId as any)?.role === 'developer' && <span className="text-xs text-cyan-400 border border-cyan-500/30 px-1 rounded">개발사</span>}
+                              {review.userId?.role === 'developer' ? <OfficialBadge /> : review.userId?.role === 'admin' ? <AdminBadge /> : <LevelBadge level={review.userId?.level} size="xs" />}
                               {review.isVerifiedTester && <span className="text-xs text-cyan-400 border border-cyan-500/30 px-1 rounded">인증 테스터</span>}
                             </div>
-                            <p className="text-text-muted text-xs">{new Date(review.createdAt).toLocaleDateString('ko-KR')}</p>
+                            <p className="text-text-muted text-xs">{formatDate(review.createdAt)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">

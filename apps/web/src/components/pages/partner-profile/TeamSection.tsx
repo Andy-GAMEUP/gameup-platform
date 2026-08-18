@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { UserPlus, X } from 'lucide-react'
 import { partnerService } from '@/services/partnerService'
 import { usePartnerProfileCtx } from './PartnerProfileContext'
+import { formatDate } from '@/lib/formatDate'
 
 export default function TeamSection() {
   const { id, partner, isOwnProfile } = usePartnerProfileCtx()
@@ -138,7 +139,7 @@ export default function TeamSection() {
               </div>
               <div>
                 <p className="text-text-primary text-sm font-medium">{m.userId.username}</p>
-                <p className="text-text-muted text-xs">{new Date(m.addedAt).toLocaleDateString('ko-KR')} 추가됨</p>
+                <p className="text-text-muted text-xs">{formatDate(m.addedAt)} 추가됨</p>
               </div>
             </div>
             <button

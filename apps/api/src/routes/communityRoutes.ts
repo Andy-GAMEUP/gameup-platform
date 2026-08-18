@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import {
   getPosts, getPost, createPost, updatePost, deletePost,
-  toggleLike, toggleBookmark, reportPost, getMyBookmarks,
-  getComments, createComment, updateComment, deleteComment,
+  toggleLike, reportPost,
+  getComments, createComment, updateComment, deleteComment, restoreComment,
   toggleCommentLike, reportComment,
   getReportedPosts, adminUpdatePostStatus, getCommunityStats,
   tempSave, getMyDrafts, uploadCommunityImages
@@ -28,15 +28,14 @@ router.put('/posts/:id', updatePost)
 router.patch('/posts/:id', updatePost)
 router.delete('/posts/:id', deletePost)
 router.post('/posts/:id/like', toggleLike)
-router.post('/posts/:id/bookmark', toggleBookmark)
 router.post('/posts/:id/report', reportPost)
-router.get('/my/bookmarks', getMyBookmarks)
 
 router.post('/posts/:postId/comments', createComment)
 // PUT and PATCH both call updateComment (partial update semantics)
 router.put('/comments/:id', updateComment)
 router.patch('/comments/:id', updateComment)
 router.delete('/comments/:id', deleteComment)
+router.post('/comments/:id/restore', restoreComment)
 router.post('/comments/:id/like', toggleCommentLike)
 router.post('/comments/:id/report', reportComment)
 

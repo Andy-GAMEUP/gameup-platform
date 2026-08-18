@@ -18,6 +18,7 @@ import {
   Plus, Trash2, Save, Loader2, GripVertical, Eye, EyeOff,
   Check, X, ChevronDown, ChevronUp,
 } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 const Editor = dynamic(() => import('@/components/Editor'), { ssr: false })
 
@@ -262,7 +263,7 @@ function SuggestsTab({ type }: { type: PublishingType }) {
                       <span className={`text-xs px-2 py-0.5 rounded border ${st.cls}`}>{st.label}</span>
                     </div>
                     <p className="text-text-secondary text-xs mt-0.5">
-                      {suggest.userId?.username ?? '-'} · {new Date(suggest.createdAt).toLocaleDateString()}
+                      {suggest.userId?.username ?? '-'} · {formatDate(suggest.createdAt)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

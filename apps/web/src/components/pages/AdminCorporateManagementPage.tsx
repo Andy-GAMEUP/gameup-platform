@@ -6,6 +6,7 @@ import adminService from '@/services/adminService'
 import partnerService, { PartnerApplication } from '@/services/partnerService'
 import Image from 'next/image'
 import { Loader2, Search, Building2, X, Check, XCircle, ExternalLink, Ban, Edit3, Eye, EyeOff, FileText, ArrowUpDown, Save, Star, MapPin, Mail, Phone, Globe, ChevronLeft, ChevronRight, Users } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 // ─── Types ──────────────────────────────────────────────────────────
 interface CorporateMember {
@@ -117,7 +118,7 @@ export function PartnerRequestDetailModal({
               <a href={partner.externalUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline text-sm break-all">{partner.externalUrl}</a>
             </div>
           )}
-          <div><p className="text-text-secondary text-xs uppercase mb-1">신청일</p><p className="text-text-primary text-sm">{new Date(partner.createdAt).toLocaleDateString('ko-KR')}</p></div>
+          <div><p className="text-text-secondary text-xs uppercase mb-1">신청일</p><p className="text-text-primary text-sm">{formatDate(partner.createdAt)}</p></div>
           {partner.status === 'rejected' && partner.rejectedReason && (
             <div><p className="text-text-secondary text-xs uppercase mb-1">거절 사유</p><p className="text-accent-text text-sm bg-accent-light rounded-lg p-3">{partner.rejectedReason}</p></div>
           )}
@@ -351,7 +352,7 @@ function PartnerManageDetailModal({
           <div className="grid grid-cols-2 gap-4">
             <div><p className="text-text-secondary text-xs uppercase mb-1">이메일</p><p className="text-text-primary text-sm">{partner.userId?.email}</p></div>
             <div><p className="text-text-secondary text-xs uppercase mb-1">포스트</p><p className="text-text-primary text-sm">{partner.postCount}</p></div>
-            {partner.approvedAt && <div><p className="text-text-secondary text-xs uppercase mb-1">승인일</p><p className="text-text-primary text-sm">{new Date(partner.approvedAt).toLocaleDateString('ko-KR')}</p></div>}
+            {partner.approvedAt && <div><p className="text-text-secondary text-xs uppercase mb-1">승인일</p><p className="text-text-primary text-sm">{formatDate(partner.approvedAt)}</p></div>}
           </div>
           {partner.slogan && <div><p className="text-text-secondary text-xs uppercase mb-1">슬로건</p><p className="text-text-primary text-sm italic">&quot;{partner.slogan}&quot;</p></div>}
           {partner.selectedTopics?.length > 0 && (
@@ -526,7 +527,7 @@ function CorporateTabContent({ activeTab }: { activeTab: 'developers' | 'partner
                         <span className="text-xs text-accent-text bg-accent-light px-2 py-0.5 rounded-full">정지됨</span>
                       )}
                     </td>
-                    <td className="text-text-secondary px-4 py-3 text-xs">{new Date(m.createdAt).toLocaleDateString('ko-KR')}</td>
+                    <td className="text-text-secondary px-4 py-3 text-xs">{formatDate(m.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <Link href={`/admin/users-enhanced/${m._id}`}
@@ -675,7 +676,7 @@ export function PartnerRequestsContent() {
                 <td className="px-4 py-3 text-text-secondary text-sm">{(page - 1) * 20 + idx + 1}</td>
                 <td className="px-4 py-3 text-text-primary text-sm font-medium">{r.userId?.username ?? '-'}</td>
                 <td className="px-4 py-3 text-text-secondary text-sm">{r.userId?.email ?? '-'}</td>
-                <td className="px-4 py-3 text-text-secondary text-sm">{new Date(r.createdAt).toLocaleDateString('ko-KR')}</td>
+                <td className="px-4 py-3 text-text-secondary text-sm">{formatDate(r.createdAt)}</td>
                 <td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${PARTNER_STATUS_MAP[r.status]?.cls}`}>{PARTNER_STATUS_MAP[r.status]?.label}</span></td>
                 <td className="px-4 py-3">
                   <button onClick={() => setSelected(r)} className="text-base text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 px-2 py-1 rounded">상세</button>
@@ -881,7 +882,7 @@ export function PartnerManagementContent() {
                   )}
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-text-muted">가입일</span>
-                    <span className="text-text-primary">{p.approvedAt ? new Date(p.approvedAt).toLocaleDateString('ko-KR') : p.createdAt ? new Date(p.createdAt).toLocaleDateString('ko-KR') : '-'}</span>
+                    <span className="text-text-primary">{p.approvedAt ? formatDate(p.approvedAt) : p.createdAt ? formatDate(p.createdAt) : '-'}</span>
                   </div>
                 </div>
 
