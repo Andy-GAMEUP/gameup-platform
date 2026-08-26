@@ -14,10 +14,9 @@ export interface IPost extends Document {
   views: number
   commentCount: number
   status: 'active' | 'hidden' | 'deleted'
-  isPinned: boolean
   isHot: boolean
   hotScore: number
-  isTempSave: boolean
+  isPublished: boolean
   reportCount: number
   deletedByReport: boolean
   deletedAt?: Date
@@ -45,10 +44,9 @@ const postSchema = new Schema<IPost>(
     views: { type: Number, default: 0 },
     commentCount: { type: Number, default: 0 },
     status: { type: String, enum: ['active', 'hidden', 'deleted'], default: 'active' },
-    isPinned: { type: Boolean, default: false },
     isHot: { type: Boolean, default: false },
     hotScore: { type: Number, default: 0 },
-    isTempSave: { type: Boolean, default: false },
+    isPublished: { type: Boolean, default: true },
     reportCount: { type: Number, default: 0 },
     deletedByReport: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
@@ -65,8 +63,6 @@ postSchema.index({ status: 1, createdAt: -1 })
 postSchema.index({ status: 1, hotScore: -1 })
 postSchema.index({ author: 1, createdAt: -1 })
 postSchema.index({ gameId: 1, status: 1, createdAt: -1 })
-postSchema.index({ isPinned: -1, status: 1, createdAt: -1 })
-postSchema.index({ isPinned: -1, status: 1, hotScore: -1 })
 postSchema.index({ channel: 1, status: 1, createdAt: -1 })
 
 export default mongoose.model<IPost>('Post', postSchema)

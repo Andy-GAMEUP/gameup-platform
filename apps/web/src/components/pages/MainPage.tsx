@@ -356,7 +356,7 @@ function NoticeColumn({ notices }: { notices: PublicAnnouncement[] }) {
         {notices.map(n => (
           <Link
             key={n._id}
-            href={`/community/announcement/${n._id}?from=${encodeURIComponent('게임업 공지')}&fromHref=${encodeURIComponent(communityTabHref('notice-platform'))}`}
+            href={`/community/announcement/${n._id}?from=${encodeURIComponent('커뮤니티 공지')}&fromHref=${encodeURIComponent(communityTabHref('notice-platform'))}`}
             className="flex flex-col gap-1 p-2 rounded-lg hover:bg-bg-tertiary transition-colors group"
           >
             <div className="flex items-center gap-2">

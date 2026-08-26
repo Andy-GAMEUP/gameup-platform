@@ -55,7 +55,7 @@ export const getPartnerProfiles = async (req: AuthRequest, res: Response) => {
     const skip = (pageNum - 1) * limitNum
 
     const sortParam = String(sort || 'default')
-    const populateOpts = { path: 'userId', select: 'username memberType companyInfo.companyName companyInfo.companyCategory companyInfo.companyType' }
+    const populateOpts = { path: 'userId', select: 'username memberType profileImage companyInfo.companyName companyInfo.companyCategory companyInfo.companyType companyInfo.businessType' }
 
     let profiles
     if (sortParam === 'portfolio') {
@@ -87,9 +87,15 @@ export const getPartnerProfiles = async (req: AuthRequest, res: Response) => {
 
     const total = await Partner.countDocuments(filter)
 
+    // Partner 채널 자체 프로필 이미지가 없으면 계정 프로필 이미지로 대체
+    const profilesWithFallbackImage = profiles.map((p: any) => {
+      const obj = typeof p.toObject === 'function' ? p.toObject() : p
+      return { ...obj, profileImage: obj.profileImage || obj.userId?.profileImage || '' }
+    })
+
     res.json({
       success: true,
-      profiles,
+      profiles: profilesWithFallbackImage,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -138,14 +144,17 @@ export const getPartnerProfileById = async (req: AuthRequest, res: Response) => 
     }
 
     const profile = await Partner.findById(id)
-      .populate('userId', 'username memberType companyInfo.companyName companyInfo.companyCategory companyInfo.companyType')
+      .populate('userId', 'username memberType profileImage companyInfo.companyName companyInfo.companyCategory companyInfo.companyType companyInfo.businessType')
       .populate('representativeGameId')
 
     if (!profile) {
       return res.status(404).json({ message: '파트너를 찾을 수 없습니다' })
     }
 
-    res.json({ success: true, profile })
+    const profileObj = profile.toObject() as any
+    profileObj.profileImage = profileObj.profileImage || profileObj.userId?.profileImage || ''
+
+    res.json({ success: true, profile: profileObj })
   } catch (error) {
     console.error('Get partner profile by id error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })

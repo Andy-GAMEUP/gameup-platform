@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, type CSSProperties } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Navbar from '@/components/Navbar'
@@ -18,13 +18,6 @@ const categoryOptions = [
   { value: 'developer', label: '개발사' },
   { value: 'partner', label: '파트너사' },
 ]
-
-// 계정마다 고유한 색을 갖도록 id 기반으로 색상(hue)을 결정 — 매번 같은 회사는 항상 같은 색
-function accentHueOf(id: string) {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
-  return hash % 360
-}
 
 export default function PartnerMatchingDirectoryPage() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -218,44 +211,17 @@ export default function PartnerMatchingDirectoryPage() {
             {profiles.map((profile) => {
               const displayName = profile.displayNameOverride || profile.userId?.companyInfo?.companyName || profile.userId?.username || '이름 없음'
               const hasIntro = !isEmptyRichText(profile.introduction)
-              const hasHistory = (profile.history?.length ?? 0) > 0
-              const hasSkills = (profile.skills?.length ?? 0) > 0
-              const isProfileComplete = hasIntro && hasHistory && hasSkills
-              const hue = accentHueOf(profile._id)
-              const accent = `hsl(${hue} 72% 52%)`
-              const accentSoft = `hsl(${hue} 72% 52% / 0.12)`
               const companyCategory = profile.userId?.companyInfo?.companyCategory
               const companyTypeArr = profile.userId?.companyInfo?.companyType || []
               const isDeveloperCompany = companyCategory === 'developer' || (!companyCategory && companyTypeArr.includes('developer'))
-              const hasContact = !!(profile.contactEmail || profile.contactPhone)
               const portfolioCount = profile.portfolio?.length ?? 0
               const filledStars = Math.round(profile.rating || 0)
               return (
               <Link
                 key={profile._id}
-                href={isProfileComplete ? `/partner/${profile._id}` : '#'}
-                onClick={(e) => { if (!isProfileComplete) e.preventDefault() }}
-                aria-disabled={!isProfileComplete}
-                title={isProfileComplete ? undefined : '소개, 회사 연혁, 보유 기술을 모두 등록해야 프로필을 볼 수 있습니다'}
-                style={isProfileComplete ? ({ '--card-accent': accent, '--card-accent-soft': accentSoft } as CSSProperties) : undefined}
-                className={`group relative flex items-center gap-5 bg-bg-tertiary/50 border border-line-light rounded-2xl p-5 pl-8 overflow-hidden transition-all ${
-                  isProfileComplete
-                    ? 'hover:border-[var(--card-accent)] hover:shadow-[0_14px_36px_-16px_var(--card-accent)] hover:-translate-y-0.5 cursor-pointer'
-                    : 'opacity-60 cursor-not-allowed'
-                }`}
+                href={`/partner/${profile._id}`}
+                className="group relative flex items-center gap-5 bg-bg-tertiary/50 border border-line-light rounded-2xl p-5 overflow-hidden transition-colors hover:border-accent cursor-pointer"
               >
-                {/* 계정마다 고유한 색상 띠 — 이 회사만의 시그니처 컬러 */}
-                <span
-                  className="absolute left-0 top-0 bottom-0 w-2"
-                  style={{ backgroundColor: isProfileComplete ? accent : 'var(--line)' }}
-                />
-
-                {!isProfileComplete && (
-                  <span className="absolute top-4 right-4 text-[0.65rem] font-medium text-text-muted bg-bg-secondary border border-line rounded-full px-2 py-0.5">
-                    준비중
-                  </span>
-                )}
-
                 {/* 아바타 */}
                 {profile.profileImage ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -263,13 +229,9 @@ export default function PartnerMatchingDirectoryPage() {
                     src={profile.profileImage}
                     alt={displayName}
                     className="w-20 h-20 rounded-2xl object-cover flex-shrink-0"
-                    style={{ boxShadow: isProfileComplete ? `0 8px 20px -8px ${accent}` : undefined }}
                   />
                 ) : (
-                  <div
-                    className="w-20 h-20 rounded-2xl flex items-center justify-center text-white text-3xl font-bold flex-shrink-0"
-                    style={{ backgroundColor: isProfileComplete ? accent : undefined, boxShadow: isProfileComplete ? `0 8px 20px -8px ${accent}` : undefined }}
-                  >
+                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center bg-accent text-text-inverse text-3xl font-bold flex-shrink-0">
                     {displayName.charAt(0) || '?'}
                   </div>
                 )}
@@ -277,12 +239,9 @@ export default function PartnerMatchingDirectoryPage() {
                 {/* 이름 + 소개 + 태그 */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-xl font-bold text-text-primary truncate group-hover:text-[var(--card-accent)] transition-colors">{displayName}</h3>
+                    <h3 className="text-xl font-bold text-text-primary truncate group-hover:text-accent transition-colors">{displayName}</h3>
                     {profile.isVerified && (
-                      <span
-                        className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0"
-                        style={{ color: accent, backgroundColor: accentSoft }}
-                      >
+                      <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 bg-accent-light text-accent">
                         <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                         </svg>
@@ -297,7 +256,7 @@ export default function PartnerMatchingDirectoryPage() {
                     </span>
                     <span className="flex items-center gap-1">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4" /></svg>
-                      법인사업자
+                      {profile.userId?.companyInfo?.businessType === 'individual' ? '개인사업자' : '법인'}
                     </span>
                   </div>
                   <p className="text-sm text-text-secondary truncate mb-2.5">{hasIntro ? stripRichText(profile.introduction) : '등록된 소개가 없습니다'}</p>
@@ -306,20 +265,12 @@ export default function PartnerMatchingDirectoryPage() {
                       <span key={i} className="bg-accent-light text-accent px-2 py-0.5 rounded-full text-xs">{COMPANY_TYPE_LABELS[type] || type}</span>
                     ))}
                   </div>
-                  {(profile.isVerified || hasContact) && (
+                  {profile.isVerified && (
                     <div className="flex flex-wrap gap-1.5 mt-2.5">
-                      {profile.isVerified && (
-                        <span className="flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400 border border-teal-600/30 dark:border-teal-400/30 rounded-full px-2 py-0.5">
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                          신원 인증
-                        </span>
-                      )}
-                      {hasContact && (
-                        <span className="flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400 border border-teal-600/30 dark:border-teal-400/30 rounded-full px-2 py-0.5">
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                          연락처 등록
-                        </span>
-                      )}
+                      <span className="flex items-center gap-1 text-xs text-teal-600 dark:text-teal-400 border border-teal-600/30 dark:border-teal-400/30 rounded-full px-2 py-0.5">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                        신원 인증
+                      </span>
                     </div>
                   )}
                 </div>
@@ -346,11 +297,9 @@ export default function PartnerMatchingDirectoryPage() {
                 </div>
 
                 {/* 화살표 */}
-                {isProfileComplete && (
-                  <svg className="w-5 h-5 text-text-muted group-hover:text-[var(--card-accent)] group-hover:translate-x-0.5 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                )}
+                <svg className="w-5 h-5 text-text-muted group-hover:text-accent group-hover:translate-x-0.5 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </Link>
               )
             })}

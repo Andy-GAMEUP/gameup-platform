@@ -6,6 +6,7 @@ export interface IComment extends Document {
   content: string
   parentId?: mongoose.Types.ObjectId
   likes: mongoose.Types.ObjectId[]
+  dislikes: mongoose.Types.ObjectId[]
   status: 'active' | 'hidden' | 'deleted'
   reportCount: number
   deletedAt?: Date
@@ -26,6 +27,7 @@ const commentSchema = new Schema<IComment>(
     content: { type: String, required: true, maxlength: 2000 },
     parentId: { type: Schema.Types.ObjectId, ref: 'Comment', default: null },
     likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    dislikes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     status: { type: String, enum: ['active', 'hidden', 'deleted'], default: 'active' },
     reportCount: { type: Number, default: 0 },
     deletedAt: { type: Date, default: null },

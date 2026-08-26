@@ -12,21 +12,21 @@ import {
 
 import Editor from '@/components/Editor'
 import AnnouncementManager, { AnnouncementFormValue } from '@/components/community/AnnouncementManager'
+import GameReviewManager from '@/components/GameReviewManager'
 import { gameService } from '../../services/gameService'
 import { developerBalanceService } from '../../services/developerBalanceService'
 import DeleteGameModal from '../DeleteGameModal'
-import GracRatingBadge from '../GracRatingBadge'
 import RequestReviewButton from '../RequestReviewButton'
 import ConfirmModal from '../ConfirmModal'
-import { RatingClass } from '@gameup/types'
+import AlertModal from '../AlertModal'
 import { useRouter } from 'next/navigation'
 import { FORM_GENRES } from '@/constants/game'
 import { formatDate } from '@/lib/formatDate'
 
 interface MediaItem { _id: string; type: 'screenshot' | 'video'; title: string; url: string; order: number; createdAt: string }
 interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; paymentType?: 'cash' | 'capcoin'; currencyName?: string; currencyIconUrl?: string; currencyType: string; currencyId?: string; currencyAmount: number; bonusAmount: number; stock: string; sales: number; active: boolean; description: string; imageUrl: string; sortOrder: number; itemId?: string; names?: Record<string, string>; currencyNames?: Record<string, string>; isSpecial?: boolean; specialImageUrl?: string; country?: string; saleStatus?: 'registering' | 'reviewing' | 'on_sale' | 'rejected'; capcoinPrice?: number; capcoinName?: string; capcoinIconUrl?: string }
-interface Announcement { _id: string; title: string; createdAt: string; type: string; priority: string; content: string }
-type TabKey = 'main-settings' | 'edit' | 'media' | 'shop' | 'points' | 'dev-settings' | 'announcements'
+interface Announcement { _id: string; title: string; createdAt: string; type: string; priority: string; content: string; isPublished?: boolean }
+type TabKey = 'edit' | 'media' | 'shop' | 'points' | 'dev-settings' | 'announcements' | 'reviews'
 
 const ANNOUNCEMENT_TYPE_OPTIONS = [
   { value: 'notice', label: '공지' },
@@ -83,6 +83,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'points', label: '포인트 보상' },
   { key: 'dev-settings', label: '개발자 설정' },
   { key: 'announcements', label: '공지 작성' },
+  { key: 'reviews', label: '리뷰 관리' },
 ]
 
 const POINT_TYPES = [
@@ -160,7 +161,6 @@ interface GameData {
   isPublic?: boolean
   thumbnail?: string
   bannerImage?: string
-  suspendedAt?: string
   shopCurrencyIconUrl?: string
   shopCurrencyName?: string
   shopCurrencyNames?: Record<string, string>
@@ -182,6 +182,7 @@ export default function GameDetailManagementPage() {
   const searchParams = useSearchParams()
   const adminView = searchParams.get('adminView') === '1'
   const [activeTab, setActiveTab] = useState<TabKey>('edit')
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [gameData, setGameData] = useState<GameData | null>(null)
   const [gameLoading, setGameLoading] = useState(true)
@@ -545,7 +546,7 @@ export default function GameDetailManagementPage() {
       setPendingIconFile(null)
       setPendingIconPreview(null)
       await triggerReReview()
-      alert('저장되었습니다.')
+      setAlertMessage('저장되었습니다.')
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '저장에 실패했습니다'
       alert(msg)
@@ -565,7 +566,7 @@ export default function GameDetailManagementPage() {
       const data = await gameService.updateGame(gameId, fd)
       setGameData(prev => prev ? { ...prev, ...(data.game as unknown as GameData) } : prev)
       await triggerReReview()
-      alert('저장되었습니다.')
+      setAlertMessage('저장되었습니다.')
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '저장에 실패했습니다'
       alert(msg)
@@ -852,6 +853,7 @@ export default function GameDetailManagementPage() {
       title: data.title, content: data.content,
       type: data.type, priority: data.priority,
       images: data.images, thumbnailIndex: data.thumbnailIndex,
+      isPublished: data.isPublished,
     })
     loadAnnouncements()
   }
@@ -861,6 +863,7 @@ export default function GameDetailManagementPage() {
       title: data.title, content: data.content,
       type: data.type, priority: data.priority,
       images: data.images, thumbnailIndex: data.thumbnailIndex,
+      isPublished: data.isPublished,
     })
     loadAnnouncements()
   }
@@ -914,7 +917,6 @@ export default function GameDetailManagementPage() {
   const isWaitingLaunch = !adminView && gameData.status !== 'published' && gameData.approvalStatus === 'approved'
   const isEditLocked = isUnderReview || isWaitingLaunch
   const isLiveLocked = !adminView && gameData.status === 'published'
-  const isSuspended = !adminView && !!gameData.suspendedAt
 
   const reviewChecks = {
     basicInfo: !!(gameData.title && gameData.genre && gameData.description),
@@ -984,9 +986,7 @@ export default function GameDetailManagementPage() {
             <span className="text-xs px-2 py-1 rounded-full bg-accent-light text-accent border border-accent-muted">
               {serviceLabel[gameData.serviceType] || gameData.serviceType}
             </span>
-            {gameData.suspendedAt
-              ? <span className="text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400 border border-red-500/50">강제 중지</span>
-              : gameData.approvalStatus === 'not_submitted' && gameData.status === 'published'
+            {gameData.approvalStatus === 'not_submitted' && gameData.status === 'published'
               ? null
               : gameData.approvalStatus === 'not_submitted'
               ? <span className="text-xs px-2 py-1 rounded-full bg-bg-tertiary/40 text-text-muted border border-line/50">초안 작성 중</span>
@@ -1027,24 +1027,7 @@ export default function GameDetailManagementPage() {
             )
           })}
         </div>
-        <button
-          onClick={() => setActiveTab('main-settings')}
-          className={`flex items-center gap-1.5 px-4 py-2 text-base font-semibold rounded-lg border transition-colors ${activeTab === 'main-settings' ? 'bg-purple-600 border-purple-500 text-white' : 'border-purple-500/50 text-purple-400 hover:bg-purple-500/10'}`}
-        >
-          <Shield className="w-4 h-4" /> 등급 분류
-        </button>
-        <div className={`flex items-center gap-2 ml-auto ${isSuspended ? 'pointer-events-none opacity-40' : ''}`}>
-          {gameData.status !== 'published' && (
-            <button
-              onClick={adminView ? undefined : handleLaunchGame}
-              disabled={adminView || !!gameData.suspendedAt || gameData.approvalStatus !== 'approved'}
-              title={adminView ? '관리자는 출시할 수 없습니다' : gameData.suspendedAt ? '강제 중지 상태에서는 출시가 불가합니다' : gameData.approvalStatus !== 'approved' ? '심사 완료 후 출시할 수 있습니다' : undefined}
-              className="flex items-center gap-2 px-6 py-3 rounded-lg text-base font-semibold transition-colors text-white bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Globe className="w-5 h-5" />
-              게임 출시
-            </button>
-          )}
+        <div className="flex items-center gap-2 ml-auto">
           {gameData.status !== 'published' && (
             <RequestReviewButton
               gameId={gameId}
@@ -1054,160 +1037,27 @@ export default function GameDetailManagementPage() {
               onSuccess={reloadGameData}
               size="lg"
               color="violet"
-              extraDisabled={adminView || isSuspended || !canRequestReview}
-              extraDisabledTitle={adminView ? '관리자는 심사 등록할 수 없습니다' : gameData.suspendedAt ? '강제 중지 상태에서는 심사 등록이 불가합니다' : !canRequestReview ? ['등록 필요:', ...reviewBlockReasons.map(r => `• ${r}`)] : undefined}
-              onDisabledClick={!canRequestReview && !adminView && !gameData.suspendedAt ? () => setShowReviewErrors(true) : undefined}
+              extraDisabled={adminView || !canRequestReview}
+              extraDisabledTitle={adminView ? '관리자는 심사 등록할 수 없습니다' : !canRequestReview ? ['등록 필요:', ...reviewBlockReasons.map(r => `• ${r}`)] : undefined}
+              onDisabledClick={!canRequestReview && !adminView ? () => setShowReviewErrors(true) : undefined}
             />
+          )}
+          {gameData.status !== 'published' && (
+            <button
+              onClick={adminView ? undefined : handleLaunchGame}
+              disabled={adminView || gameData.approvalStatus !== 'approved'}
+              title={adminView ? '관리자는 출시할 수 없습니다' : gameData.approvalStatus !== 'approved' ? '심사 완료 후 출시할 수 있습니다' : undefined}
+              className="flex items-center gap-2 px-6 py-3 rounded-lg text-base font-semibold transition-colors text-white bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Globe className="w-5 h-5" />
+              게임 출시
+            </button>
           )}
         </div>
       </div>
 
       {/* ── 탭 콘텐츠 ── */}
-      <div className={isSuspended ? 'pointer-events-none opacity-50' : ''}>
-
-      {/* ── GCRB 탭 ── */}
-      {activeTab === 'main-settings' && (
-        <div className={`flex gap-10 items-start ${isEditLocked || isLiveLocked ? 'pointer-events-none opacity-50' : ''}`}>
-
-          {/* 왼쪽: 헤더 + 폼 */}
-          <div className="flex-1 max-w-xl space-y-6">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Shield className="w-4 h-4 text-purple-400" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold">게임물관리위원회 등급분류 인증서 등록</h2>
-                <p className="text-sm text-text-muted mt-0.5">발급받은 등급 분류 정보를 입력하고 인증서 파일을 첨부하세요.</p>
-              </div>
-            </div>
-
-            <div className="space-y-5">
-              <div>
-                <label className={labelCls}>등급 분류</label>
-                <select value={certRatingClass} onChange={e => setCertRatingClass(e.target.value)} className="w-full px-3 py-3 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent">
-                  <option value="">선택 안 함</option>
-                  <option value="전체이용가">전체이용가</option>
-                  <option value="12세이용가">12세이용가</option>
-                  <option value="15세이용가">15세이용가</option>
-                  <option value="18세이용가">18세이용가</option>
-                  <option value="청소년이용불가">청소년이용불가</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>등급 분류 번호</label>
-                <input value={certNumber} onChange={e => setCertNumber(e.target.value)} placeholder="예: 2024-게-12345" className="w-full px-3 py-3 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent" />
-              </div>
-              <div>
-                <label className={labelCls}>등급 분류일</label>
-                <input type="date" value={certDate} onChange={e => setCertDate(e.target.value)} className="w-full px-3 py-3 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent" />
-              </div>
-              <div>
-                <label className={labelCls}>인증서 파일</label>
-                <input ref={certFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setCertFile(e.target.files?.[0] ?? null)} />
-                <div
-                  onClick={() => certFileRef.current?.click()}
-                  className="flex items-center gap-3 px-4 py-3 bg-bg-tertiary border border-line rounded-md cursor-pointer hover:border-accent transition-colors group"
-                >
-                  <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 transition-colors ${certFile ? 'bg-accent/10' : 'bg-bg-secondary border border-line group-hover:border-accent'}`}>
-                    {certFile ? <Check className="w-4 h-4 text-accent" /> : <Upload className="w-4 h-4 text-text-muted" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    {certFile ? (
-                      <>
-                        <p className="text-sm text-text-primary font-medium truncate">{certFile.name}</p>
-                        <p className="text-xs text-text-muted">{(certFile.size / 1024).toFixed(0)} KB</p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-sm text-text-secondary">파일을 선택하세요</p>
-                        <p className="text-xs text-text-muted">PDF, JPG, PNG · 최대 10MB</p>
-                      </>
-                    )}
-                  </div>
-                  <span className="text-xs text-text-muted group-hover:text-accent transition-colors flex-shrink-0">
-                    {certFile ? '변경' : '업로드'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <button onClick={handleSaveCert} disabled={certSaving || !certRatingClass || !certNumber.trim() || !certDate || !certFile} className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-base font-semibold transition-colors">
-              <Save className="w-4 h-4" /> {certSaving ? '저장 중...' : '저장'}
-            </button>
-          </div>
-
-          {/* 구분선 */}
-          {gameData.ratingCertificate?.ratingClass && (
-            <div className="self-stretch flex flex-col pt-20">
-              <div className="w-px bg-line flex-1" />
-            </div>
-          )}
-
-          {/* 오른쪽: 등급 상태 */}
-          {gameData.ratingCertificate?.ratingClass && (
-            <div className="w-52 flex-shrink-0 pt-20">
-              <p className="text-sm text-text-secondary mb-4">등급 현황</p>
-              {(() => {
-                const cert = gameData.ratingCertificate
-                const isSubmitted = gameData.approvalStatus !== 'not_submitted'
-
-                if (cert?.isVerified) return (
-                  <div className="flex flex-col items-center gap-6 text-center">
-                    <div className="scale-[1.5] origin-top mb-[34px]">
-                      <GracRatingBadge ratingClass={cert.ratingClass as RatingClass} size="md" />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-center gap-1.5 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                        <span className="text-xs font-semibold text-green-400">승인 완료</span>
-                      </div>
-                      <p className="text-sm font-semibold text-text-primary">{cert.ratingClass}</p>
-                      {cert.certNumber && <p className="text-xs text-text-muted mt-1 font-mono">{cert.certNumber}</p>}
-                    </div>
-                    <p className="text-xs text-text-secondary">플레이어 화면에 노출 중</p>
-                  </div>
-                )
-
-                if (isSubmitted) return (
-                  <div className="flex flex-col items-center gap-6 text-center">
-                    <div className="scale-[1.5] origin-top mb-[34px]">
-                      <div className="w-14 h-[68px] rounded-lg bg-bg-tertiary border border-line flex items-center justify-center">
-                        <Clock className="w-6 h-6 text-text-muted" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-center gap-1.5 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
-                        <span className="text-xs font-semibold text-yellow-400">심사 중</span>
-                      </div>
-                      <p className="text-sm font-semibold text-text-primary">{cert?.ratingClass}</p>
-                      {cert?.certNumber && <p className="text-xs text-text-muted mt-1 font-mono">{cert.certNumber}</p>}
-                    </div>
-                  </div>
-                )
-
-                return (
-                  <div className="flex flex-col items-center gap-6 text-center">
-                    <div className="scale-[1.5] origin-top mb-[34px]">
-                      <div className="w-14 h-[68px] rounded-lg bg-bg-tertiary border border-line flex items-center justify-center">
-                        <Shield className="w-6 h-6 text-text-muted" />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-center gap-1.5 mb-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-gray-500" />
-                        <span className="text-xs font-semibold text-text-muted">미제출</span>
-                      </div>
-                      <p className="text-sm font-semibold text-text-primary">{cert?.ratingClass}</p>
-                      {cert?.certNumber && <p className="text-xs text-text-muted mt-1 font-mono">{cert.certNumber}</p>}
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-          )}
-        </div>
-      )}
+      <div>
 
       {activeTab === 'announcements' && (
         <AnnouncementManager
@@ -1224,6 +1074,10 @@ export default function GameDetailManagementPage() {
             return result.images
           }}
         />
+      )}
+
+      {activeTab === 'reviews' && gameId && (
+        <GameReviewManager gameId={gameId} />
       )}
 
 
@@ -1859,7 +1713,8 @@ export default function GameDetailManagementPage() {
       {/* 게임정보 편집 탭 (기본 정보 + 고급 편집 통합) */}
       {activeTab === 'edit' && (
         <div className="space-y-6">
-          <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-6">
+          <div className="flex gap-6 items-stretch">
+          <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-6 w-[65%]">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold">게임정보 편집</h2>
@@ -1867,7 +1722,7 @@ export default function GameDetailManagementPage() {
               </div>
               <button
                 onClick={handleSaveGameInfo}
-                disabled={isEditLocked || editSaving || !(gameData.thumbnail || pendingIconFile) || !editTitle.trim() || !editGenre || !editNotes.trim() || !editDescription.trim() || (gameData.serviceType !== 'live' && (!editStartDate || !editEndDate || !editMaxTesters || !editTestType))}
+                disabled={isEditLocked || editSaving || !(gameData.thumbnail || pendingIconFile) || !editTitle.trim() || !editGenre || !editNotes.trim() || editNotes === '<p></p>' || !editDescription.trim() || (gameData.serviceType !== 'live' && (!editStartDate || !editEndDate || !editMaxTesters || !editTestType))}
                 className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="w-4 h-4" /> {editSaving ? '저장 중...' : '저장'}
@@ -1912,11 +1767,11 @@ export default function GameDetailManagementPage() {
               </div>
               <div className="flex-1 space-y-4">
                 <div>
-                  <label className={labelCls}>게임 제목 *</label>
-                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className={inputCls} disabled={isLiveLocked} />
+                  <label className={labelCls}>게임 제목</label>
+                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className={`${inputCls} w-3/5`} disabled={isLiveLocked} />
                 </div>
                 <div>
-                  <label className={labelCls}>게임 장르 *</label>
+                  <label className={labelCls}>게임 장르</label>
                   <div className="relative" ref={genreRef}>
                     <button
                       type="button"
@@ -1948,18 +1803,110 @@ export default function GameDetailManagementPage() {
                     )}
                   </div>
                 </div>
+                <div>
+                  <label className={labelCls}>짧은 설명 <span className="text-text-muted">(최대 100자)</span></label>
+                  <input value={editDescription} onChange={e => setEditDescription(e.target.value)} maxLength={100} className={inputCls} />
+                </div>
               </div>
             </div>
 
             {/* 하단 전체폭 필드 */}
             <div className={isEditLocked ? 'pointer-events-none opacity-50' : ''}>
-              <label className={labelCls}>게임 설명 *</label>
-              <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} className={`${inputCls} min-h-32 resize-y`} />
+              <label className={labelCls}>게임 설명</label>
+              <Editor content={editNotes} onChange={setEditNotes} placeholder="게임에 대해 자세히 설명해주세요"
+                onImageUpload={async (file) => {
+                  const result = await gameService.uploadGameContentImages(gameId, [file])
+                  const raw = result.images[0]
+                  return raw.startsWith('http') ? raw : `${UPLOADS_URL}${raw}`
+                }}
+              />
             </div>
-            <div className={isEditLocked ? 'pointer-events-none opacity-50' : ''}>
-              <label className={labelCls}>짧은 설명 * <span className="text-text-muted">(최대 100자)</span></label>
-              <input value={editDescription} onChange={e => setEditDescription(e.target.value)} maxLength={100} className={inputCls} />
+          </div>
+
+          <div className="flex-1 flex flex-col gap-6">
+          {/* 등급 분류 (GCRB) */}
+          <div className={`bg-bg-secondary border border-line rounded-lg p-6 space-y-6 ${isEditLocked || isLiveLocked ? 'pointer-events-none opacity-50' : ''}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">게임물관리위원회 등급분류 등록</h2>
+                <p className="text-sm text-text-secondary mt-1">심사가 통과된 증명서를 등록하세요.</p>
+              </div>
+              <button
+                onClick={handleSaveCert}
+                disabled={certSaving || !certRatingClass || !certNumber.trim() || !certDate || !certFile}
+                className="flex items-center gap-2 px-4 py-2 bg-accent hover:bg-accent-hover rounded-md text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save className="w-4 h-4" /> {certSaving ? '저장 중...' : '저장'}
+              </button>
             </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className={labelCls}>등급 분류</label>
+                <select value={certRatingClass} onChange={e => setCertRatingClass(e.target.value)} className="w-full px-3 py-3 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent">
+                  <option value="">선택 안 함</option>
+                  <option value="전체이용가">전체이용가</option>
+                  <option value="12세이용가">12세이용가</option>
+                  <option value="15세이용가">15세이용가</option>
+                  <option value="18세이용가">18세이용가</option>
+                  <option value="청소년이용불가">청소년이용불가</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>등급 분류 번호</label>
+                <input value={certNumber} onChange={e => setCertNumber(e.target.value)} placeholder="예: 2024-게-12345" className="w-full px-3 py-3 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent" />
+              </div>
+              <div>
+                <label className={labelCls}>등급 분류일</label>
+                <input type="date" value={certDate} onChange={e => setCertDate(e.target.value)} className="w-full px-3 py-3 bg-bg-tertiary border border-line rounded-md text-sm focus:outline-none focus:border-accent" />
+              </div>
+              <div>
+                <label className={labelCls}>인증서 파일</label>
+                <input ref={certFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => setCertFile(e.target.files?.[0] ?? null)} />
+                <div
+                  onClick={() => certFileRef.current?.click()}
+                  className="flex items-center gap-3 px-4 py-3 bg-bg-tertiary border border-line rounded-md cursor-pointer hover:border-accent transition-colors group"
+                >
+                  <div className={`w-8 h-8 rounded flex items-center justify-center flex-shrink-0 transition-colors ${certFile ? 'bg-accent/10' : 'bg-bg-secondary border border-line group-hover:border-accent'}`}>
+                    {certFile ? <Check className="w-4 h-4 text-accent" /> : <Upload className="w-4 h-4 text-text-muted" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {certFile ? (
+                      <>
+                        <p className="text-sm text-text-primary font-medium truncate">{certFile.name}</p>
+                        <p className="text-xs text-text-muted">{(certFile.size / 1024).toFixed(0)} KB</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm text-text-secondary">파일을 선택하세요</p>
+                        <p className="text-xs text-text-muted">PDF, JPG, PNG · 최대 10MB</p>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-xs text-text-muted group-hover:text-accent transition-colors flex-shrink-0">
+                    {certFile ? '변경' : '업로드'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 추가 정보 */}
+          <div className="flex-1 bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-accent" />추가 정보</h3>
+              <p className="text-sm text-text-secondary mt-1">공식 웹사이트, 커뮤니티 링크를 등록하세요.</p>
+            </div>
+            <div>
+              <label className={labelCls}>공식 웹사이트</label>
+              <input value={editWebsite} onChange={e => setEditWebsite(e.target.value)} placeholder="https://..." className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>디스코드 서버</label>
+              <input value={editDiscord} onChange={e => setEditDiscord(e.target.value)} placeholder="https://discord.gg/..." className={inputCls} />
+            </div>
+          </div>
+          </div>
           </div>
 
           {/* 베타 테스트 정보 */}
@@ -2001,31 +1948,16 @@ export default function GameDetailManagementPage() {
             </div>
           </div>}
 
-          {/* 추가 정보 */}
-          <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
-            <div>
-              <h3 className="font-semibold flex items-center gap-2"><Globe className="w-4 h-4 text-accent" />추가 정보</h3>
-              <p className="text-sm text-text-secondary mt-1">공식 웹사이트, 커뮤니티 링크를 등록하세요.</p>
+          {gameData.status !== 'published' && !adminView && (
+            <div className="flex justify-start pt-2">
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-base font-semibold transition-colors"
+              >
+                <Trash2 className="w-4 h-4" /> 게임 삭제
+              </button>
             </div>
-            <div>
-              <label className={labelCls}>공식 웹사이트</label>
-              <input value={editWebsite} onChange={e => setEditWebsite(e.target.value)} placeholder="https://..." className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>디스코드 서버</label>
-              <input value={editDiscord} onChange={e => setEditDiscord(e.target.value)} placeholder="https://discord.gg/..." className={inputCls} />
-            </div>
-          </div>
-
-
-          <div className="flex justify-end pt-2">
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-base font-semibold transition-colors"
-            >
-              <Trash2 className="w-4 h-4" /> 게임 영구 삭제
-            </button>
-          </div>
+          )}
         </div>
       )}
 
@@ -2109,6 +2041,12 @@ export default function GameDetailManagementPage() {
         onCancel={() => setDeleteAnnouncementId(null)}
       />
 
+      <AlertModal
+        isOpen={!!alertMessage}
+        message={alertMessage || ''}
+        onConfirm={() => setAlertMessage(null)}
+      />
+
       <Modal open={itemModal} onClose={() => { setItemModal(false); resetNewItem() }} title="상품 추가" size="xl" disableBackdropClose showCloseButton>
         <div className="max-h-[75vh] overflow-y-auto pr-1">
           <div className="flex gap-5">
@@ -2139,7 +2077,7 @@ export default function GameDetailManagementPage() {
             {/* 오른쪽: 기본 정보 */}
             <div className="flex-1 space-y-3">
               <div>
-                <label className={labelCls}>상품명 *</label>
+                <label className={labelCls}>상품명</label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <input placeholder="예: 다이아 100개" value={newItem.name} onChange={e => { const v = e.target.value; setNewItem(p => ({ ...p, name: v })); setNewItemErrors(p => ({ ...p, name: undefined })) }} className={`${inputCls} w-full ${newItemErrors.name ? 'border-red-500' : ''}`} />
@@ -2288,7 +2226,7 @@ export default function GameDetailManagementPage() {
           {newItem.paymentType === 'cash' && (
             <div className="mt-3 grid grid-cols-[30fr_11fr] gap-3 items-end">
               <div>
-                <label className={labelCls}>판매가 (현금) *</label>
+                <label className={labelCls}>판매가 (현금)</label>
                 <div className="relative">
                   <div className={`flex items-center bg-bg-tertiary border rounded-md overflow-hidden focus-within:border-accent ${newItemErrors.price ? 'border-red-500' : 'border-line'}`}>
                     <input type="number" placeholder="9900" value={newItem.price} onChange={e => { setNewItem(p => ({ ...p, price: e.target.value })); setNewItemErrors(p => ({ ...p, price: undefined })) }} className="flex-1 px-3 py-2 bg-transparent text-sm focus:outline-none" />
@@ -2404,7 +2342,7 @@ export default function GameDetailManagementPage() {
               {/* 오른쪽: 기본 정보 */}
               <div className="flex-1 space-y-3">
                 <div>
-                  <label className={labelCls}>상품명 *</label>
+                  <label className={labelCls}>상품명</label>
                   <div className="flex gap-2">
                     <input value={editingItem.name} onChange={e => setEditingItem(p => p ? { ...p, name: e.target.value } : null)} className={`${inputCls} flex-1`} />
                     <select
@@ -2552,7 +2490,7 @@ export default function GameDetailManagementPage() {
             {editingItem.paymentType !== 'capcoin' && (
               <div className="mt-3 grid grid-cols-[30fr_11fr] gap-3 items-end">
                 <div>
-                  <label className={labelCls}>판매가 (현금) *</label>
+                  <label className={labelCls}>판매가 (현금)</label>
                   <div className="flex items-center bg-bg-tertiary border border-line rounded-md overflow-hidden focus-within:border-accent">
                     <input type="number" value={editingItem.price} onChange={e => setEditingItem(p => p ? { ...p, price: Number(e.target.value) } : null)} className="flex-1 px-3 py-2 bg-transparent text-sm focus:outline-none" />
                     <span className="px-3 py-2 text-xs text-text-secondary border-l border-line bg-bg-secondary whitespace-nowrap">{editingItem.currency}</span>
@@ -2683,7 +2621,7 @@ export default function GameDetailManagementPage() {
           ) : (
             <div className="space-y-4">
               <div>
-                <label className={labelCls}>Key 이름 *</label>
+                <label className={labelCls}>Key 이름</label>
                 <input placeholder="예: 프로덕션 서버" value={newApiKeyName} onChange={e => setNewApiKeyName(e.target.value)} className={inputCls} />
               </div>
               <p className="text-xs text-text-muted">게임당 최대 5개의 API Key를 생성할 수 있습니다.</p>

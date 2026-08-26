@@ -34,7 +34,13 @@
 
 이 기능 추가는 "내가 통일하랬지? 통일해 게시물이랑 똑같이 게임업 공지도 동일하다"는 요청에서 시작해서, 게임 공지까지 같은 기준으로 확장됨. **정리**: 공지(게임업 공지/게임 공지) 둘 다 이제 Post와 완전히 동일한 규칙 — 첨부 이미지 있으면 보여주고, 없으면 썸네일 자리 자체가 없음. 게임 아이콘을 보여주는 로직은 완전히 제거됨.
 
-**고정(`Pin`) 표시 전면 제거** (2026-08-13): 커뮤니티 게시물(Post)에는 `isPinned`를 실제로 설정할 수 있는 기능(관리 UI)이 아예 없어서 — "커뮤니티 전체적으로 고정 기능 없잖아" — 리스트/상세 페이지 어디에도 고정 뱃지·아이콘·테두리색 구분을 넣지 않는다. 플랫폼 공지(Announcement)는 관리자 페이지(`AdminCommunityPage.tsx`)에 실제 고정 토글 기능이 있지만, 그것과 별개로 사용자 화면(공지 리스트/상세)에서는 고정 뱃지를 표시하지 않기로 함(2026-08-13, 상세 페이지의 "고정" 뱃지도 명시적으로 빼라고 함). 정렬 시 `isPinned`를 우선시키는 백엔드/프론트 로직 자체는 건드리지 않았음 — 어디까지나 시각적 뱃지/아이콘만 제거 대상.
+**고정(`Pin`) 기능 완전 제거** (최초 2026-08-13, 2026-08-19에 최종 확정): 2026-08-13엔 시각적 뱃지/아이콘/테두리색만 빼고 정렬 우선순위와 관리자 고정 토글 기능은 남겨뒀었는데, 2026-08-19에 사용자가 "고정글 왜 아직도 있냐, 그때 기능 자체 삭제하라고 했을 거다"라고 재확인 → **`isPinned` 필드/기능을 스택 전체에서 완전히 제거**함:
+- DB 스키마: `Post.ts`, `Announcement.ts`에서 `isPinned` 필드 및 관련 인덱스 삭제
+- 백엔드: `communityController.ts`(`getPosts` 정렬), `adminController.ts`(`getAnnouncements`/`createAnnouncement`/`getPublicAnnouncements`)에서 `isPinned` 정렬/생성 로직 제거
+- 프론트: `AdminAnnouncementsPage.tsx`(고정 체크박스+테이블 📌 컬럼), `AdminCommunityPage.tsx`, `AnnouncementManager.tsx`(공용 작성 폼의 "상단 고정" 체크박스)에서 UI 제거, `CommunityPage.tsx`의 프론트 재정렬 로직도 제거
+- 타입: `adminService.ts`(`PublicAnnouncement`/`Announcement`), `communityService.ts`(`PostSummary`)에서 `isPinned` 필드 제거
+- 시드 스크립트(`seed.ts`, `seed-zombie-wooddada-sample.ts`, `seed-free-board-sample.ts`)에서도 `isPinned` 값 생성 제거
+이제 공지/게시물 정렬은 순수하게 날짜/조회수/hotScore 등 기준만 사용하며, "고정"이라는 개념 자체가 스택 어디에도 남아있지 않다. **교훈**: "시각적 표시만 빼줘"와 "기능 자체를 없애줘"는 다른 요청이니, 다음에 비슷한 "OO 빼줘" 요청을 받으면 범위(시각적 표시만인지, 로직/데이터까지인지)를 명확히 하고 진행할 것.
 
 ## 동일 그룹 B — 게시물/인기글 리스트 아이템
 

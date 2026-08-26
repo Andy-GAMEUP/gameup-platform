@@ -3,20 +3,24 @@ import mongoose from 'mongoose'
 import { GameAnnouncementModel, GameModel, UserModel } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 
-export const getPublicGameAnnouncements = async (req: Request, res: Response) => {
+export const getPublicGameAnnouncements = async (req: AuthRequest, res: Response) => {
   try {
     const { gameId } = req.params
     const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20))
     const page = Math.max(1, Number(req.query.page) || 1)
 
-    const total = await GameAnnouncementModel.countDocuments({ gameId, deletedAt: null })
-    const announcements = await GameAnnouncementModel.find({ gameId, deletedAt: null })
+    const game = await GameModel.findById(gameId).select('_id title thumbnail serviceType developerId').lean()
+    const isOwner = !!req.user && (req.user.role === 'admin' || game?.developerId?.toString() === req.user.id)
+    const filter: Record<string, unknown> = { gameId, deletedAt: null }
+    if (!isOwner) filter.isPublished = { $ne: false }
+
+    const total = await GameAnnouncementModel.countDocuments(filter)
+    const announcements = await GameAnnouncementModel.find(filter)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean()
 
-    const game = await GameModel.findById(gameId).select('_id title thumbnail serviceType').lean()
     const developerIds = [...new Set(announcements.map(a => a.developerId.toString()))]
     const developers = await UserModel.find({ _id: { $in: developerIds } }).select('_id username profileImage').lean()
     const developerMap = Object.fromEntries(developers.map(d => [d._id.toString(), d]))
@@ -28,9 +32,17 @@ export const getPublicGameAnnouncements = async (req: Request, res: Response) =>
   }
 }
 
-export const getGameAnnouncementById = async (req: Request, res: Response) => {
+export const getGameAnnouncementById = async (req: AuthRequest, res: Response) => {
   try {
     const { announcementId } = req.params
+    const existing = await GameAnnouncementModel.findOne({ _id: announcementId, deletedAt: null }).select('developerId isPublished')
+    if (!existing) return res.status(404).json({ message: '공지를 찾을 수 없습니다' })
+
+    const isOwner = !!req.user && (req.user.role === 'admin' || existing.developerId.toString() === req.user.id)
+    if (existing.isPublished === false && !isOwner) {
+      return res.status(404).json({ message: '공지를 찾을 수 없습니다' })
+    }
+
     const announcement = await GameAnnouncementModel.findOneAndUpdate(
       { _id: announcementId, deletedAt: null },
       { $inc: { views: 1 } },
@@ -56,7 +68,7 @@ export const getRecentGameAnnouncements = async (req: Request, res: Response) =>
     const search = String(req.query.search || '').trim()
     const sort = String(req.query.sort || 'latest')
 
-    const filter: Record<string, unknown> = { deletedAt: null }
+    const filter: Record<string, unknown> = { deletedAt: null, isPublished: { $ne: false } }
     if (search) filter.title = { $regex: search, $options: 'i' }
     const sortObj: Record<string, 1 | -1> = sort === 'latest' ? { createdAt: -1 } : { views: -1 }
 
@@ -159,7 +171,7 @@ export const createGameAnnouncement = async (req: AuthRequest, res: Response) =>
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
 
     const { gameId } = req.params
-    const { title, content, type, priority, startDate, endDate, images, thumbnailIndex } = req.body
+    const { title, content, type, priority, startDate, endDate, images, thumbnailIndex, isPublished } = req.body
 
     if (!title?.trim()) return res.status(400).json({ message: '제목을 입력해주세요' })
     if (!content?.trim()) return res.status(400).json({ message: '내용을 입력해주세요' })
@@ -178,6 +190,7 @@ export const createGameAnnouncement = async (req: AuthRequest, res: Response) =>
       endDate: endDate ? new Date(endDate) : undefined,
       images: images || [],
       thumbnailIndex: thumbnailIndex || 0,
+      isPublished: isPublished === false ? false : true,
     })
 
     res.status(201).json({ success: true, announcement })
@@ -192,7 +205,7 @@ export const updateGameAnnouncement = async (req: AuthRequest, res: Response) =>
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
 
     const { gameId, announcementId } = req.params
-    const { title, content, type, priority, images, thumbnailIndex } = req.body
+    const { title, content, type, priority, images, thumbnailIndex, isPublished } = req.body
 
     if (!title?.trim()) return res.status(400).json({ message: '제목을 입력해주세요' })
     if (!content?.trim()) return res.status(400).json({ message: '내용을 입력해주세요' })
@@ -209,6 +222,7 @@ export const updateGameAnnouncement = async (req: AuthRequest, res: Response) =>
         priority: priority || 'normal',
         images: images || [],
         thumbnailIndex: thumbnailIndex || 0,
+        isPublished: isPublished === false ? false : true,
       },
       { new: true }
     )

@@ -5,7 +5,6 @@ import {
   getPendingGames, getAllGamesAdmin, approveGame, controlGameStatus, archiveGame, toggleNewFeatured,
   approveShopReview, rejectShopReview,
   getGameMetrics,
-  getAllReviews, blockReview, deleteReview,
   getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement,
   getPublicAnnouncements, getPublicAnnouncementById,
   toggleAnnouncementLike, reportAnnouncement,
@@ -44,7 +43,6 @@ router.get('/members/pending-counts', getPendingMemberCounts)
 router.get('/games', getAllGamesAdmin)
 router.get('/games/pending', getPendingGames)
 router.get('/games/:id/metrics', getGameMetrics)
-router.get('/reviews', getAllReviews)
 router.get('/announcements', getAnnouncements)
 
 // 공지사항 작성/수정 (Monitor 이상)
@@ -57,7 +55,6 @@ router.patch('/users/:id/ban', requireAdminLevel('super', 'normal'), banUser)
 router.patch('/games/:id/control', requireAdminLevel('super', 'normal'), controlGameStatus)
 router.patch('/games/:id/archive', requireAdminLevel('super', 'normal'), archiveGame)
 router.patch('/games/:id/new-featured', requireAdminLevel('super', 'normal'), toggleNewFeatured)
-router.patch('/reviews/:id/block', requireAdminLevel('super', 'normal'), blockReview)
 
 // 탈퇴 회원 복구/완전삭제 (Super만)
 router.post('/users/deleted/:id/restore', requireAdminLevel('super'), restoreUser)
@@ -70,7 +67,6 @@ router.post('/users/create-admin', requireAdminLevel('super'), createAdminUser)
 router.patch('/games/:id/approve', requireAdminLevel('super'), approveGame)
 router.post('/games/:gameId/shop-review/approve', requireAdminLevel('super', 'normal'), approveShopReview)
 router.post('/games/:gameId/shop-review/reject', requireAdminLevel('super', 'normal'), rejectShopReview)
-router.delete('/reviews/:id', requireAdminLevel('super'), deleteReview)
 router.delete('/announcements/:id', requireAdminLevel('super'), deleteAnnouncement)
 router.get('/community/deleted-announcements', getDeletedAnnouncements)
 router.patch('/community/deleted-announcements/platform/:id/restore', requireAdminLevel('super'), restoreAnnouncement)

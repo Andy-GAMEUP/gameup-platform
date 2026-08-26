@@ -4,13 +4,16 @@ import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
 import adminService, { CommunityBanner, ReportedPost, ReportedComment, ReportedAnnouncement, ReportReason, DeletedAnnouncement } from '@/services/adminService'
-import communityService from '@/services/communityService'
+import communityService, { PostSummary } from '@/services/communityService'
 import AnnouncementManager, { AnnouncementFormValue } from '@/components/community/AnnouncementManager'
+import Editor from '@/components/Editor'
+import CommentSection from '@/components/community/CommentSection'
+import { useAuth } from '@/lib/useAuth'
 import {
-  Search, ShieldOff, ShieldCheck, Trash2, ChevronLeft, ChevronRight, ChevronDown,
-  Loader2, AlertCircle, AlertTriangle, CheckCircle, MessageSquare, PenSquare, X,
-  ImagePlus, Hash, Image as ImageIcon, Megaphone, Upload,
-  Plus, Eye, EyeOff, Pin, Bell, BellOff, Edit2, LayoutDashboard, ExternalLink, ThumbsUp, MessageCircle, ArrowUpDown, ArrowUp, ArrowDown,
+  Search, ShieldCheck, Trash2, ChevronLeft, ChevronRight, ChevronDown,
+  Loader2, AlertCircle, AlertTriangle, CheckCircle, X,
+  Image as ImageIcon, Megaphone, Upload, Sparkles,
+  Plus, Eye, EyeOff, Bell, BellOff, Edit2, LayoutDashboard, ExternalLink, ThumbsUp, MessageCircle, ArrowUpDown, ArrowUp, ArrowDown,
   BarChart2, Star,
 } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from 'recharts'
@@ -24,7 +27,6 @@ interface Announcement {
   content: string
   type: 'notice' | 'event' | 'maintenance' | 'update'
   priority: 'low' | 'normal' | 'high' | 'urgent'
-  isPinned: boolean
   isPublished: boolean
   targetRole: 'all' | 'developer' | 'player'
   images?: string[]
@@ -32,13 +34,6 @@ interface Announcement {
   publishedAt?: string
   expiresAt?: string
   createdAt: string
-}
-
-const FEEDBACK_LABELS: Record<string, { label: string; cls: string }> = {
-  general:    { label: '일반',  cls: 'bg-bg-muted/40 text-text-secondary' },
-  bug:        { label: '버그',  cls: 'bg-accent-light text-accent-text border border-accent-muted' },
-  suggestion: { label: '건의',  cls: 'bg-blue-600/20 text-blue-300 border border-blue-500/30' },
-  praise:     { label: '칭찬',  cls: 'bg-accent-light text-accent border border-green-500/30' },
 }
 
 const CHANNELS = [
@@ -1025,137 +1020,317 @@ function AnnouncementsTab({ showToast }: { showToast: (msg: string, ok?: boolean
   )
 }
 
-// ────────── 탭 3: 게시글 모니터링 ──────────
+// ────────── 탭: 신작게임소개 관리 ──────────
 
-function WritePostModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [channel, setChannel] = useState('notice')
-  const [tags, setTags] = useState<string[]>([])
-  const [tagInput, setTagInput] = useState('')
-  const [videoUrl, setVideoUrl] = useState('')
-  const [images, setImages] = useState<string[]>([])
+function NewGameIntroFormModal({
+  titleText, initial, onSave, onClose,
+}: {
+  titleText: string
+  initial: { title: string; content: string; images: string[]; thumbnailIndex: number; isPublished: boolean }
+  onSave: (data: { title: string; content: string; images: string[]; thumbnailIndex: number; isPublished: boolean }) => Promise<void>
+  onClose: () => void
+}) {
+  const [form, setForm] = useState(initial)
+  const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-    if (images.length + files.length > 5) { setError('이미지는 최대 5개까지 가능합니다'); return }
+  const set = <K extends keyof typeof form>(k: K, v: typeof form[K]) => setForm(p => ({ ...p, [k]: v }))
+  const pushImage = (url: string) => setForm(p => ({ ...p, images: [...p.images, url] }))
+  const removeImage = (idx: number) => {
+    setForm(p => {
+      const images = p.images.filter((_, i) => i !== idx)
+      let thumbnailIndex = p.thumbnailIndex
+      if (idx === thumbnailIndex) thumbnailIndex = 0
+      else if (idx < thumbnailIndex) thumbnailIndex -= 1
+      return { ...p, images, thumbnailIndex }
+    })
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
     setUploading(true)
     try {
-      const data = await communityService.uploadImages(Array.from(files))
-      setImages(prev => [...prev, ...(data.images || [])])
-    } catch { setError('이미지 업로드 실패') }
-    finally { setUploading(false) }
+      const result = await communityService.uploadImages(files)
+      setForm(p => ({ ...p, images: [...p.images, ...result.images.map(img => img.startsWith('http') ? img : `${UPLOADS_URL}${img}`)] }))
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
   }
 
-  const handleAddTag = () => {
-    const tag = tagInput.replace(/^#/, '').trim()
-    if (!tag || tags.length >= 10) return
-    if (!tags.includes(tag)) setTags(prev => [...prev, tag])
-    setTagInput('')
-  }
-
-  const handleSubmit = async () => {
-    if (!title.trim()) { setError('제목을 입력해주세요'); return }
-    if (!content.trim()) { setError('내용을 입력해주세요'); return }
-    setSubmitting(true); setError('')
-    try {
-      await communityService.createPost({ title: title.trim(), content: content.trim(), channel, images, videoUrl: videoUrl.trim() || undefined, tags: tags.length > 0 ? tags : undefined })
-      onSuccess()
-    } catch { setError('게시글 작성에 실패했습니다') }
-    finally { setSubmitting(false) }
+  const handleSave = async () => {
+    if (!form.title.trim()) { setError('제목을 입력하세요'); return }
+    if (!form.content.trim() || form.content === '<p></p>') { setError('내용을 입력하세요'); return }
+    if (form.images.length === 0) { setError('이미지를 최소 1장 첨부해주세요'); return }
+    setSaving(true); setError('')
+    try { await onSave(form) } catch { setError('저장에 실패했습니다'); setSaving(false) }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="bg-bg-primary border border-line rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="p-5 border-b border-line flex items-center justify-between flex-shrink-0">
-          <h2 className="text-text-primary font-bold text-lg flex items-center gap-2"><PenSquare className="w-5 h-5 text-accent" /> 관리자 콘텐츠 작성</h2>
-          <button onClick={onClose} className="p-2 text-text-muted hover:text-text-primary"><X className="w-5 h-5" /></button>
+      <div className="bg-bg-secondary border border-line rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">{titleText}</h2>
+          <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors"><X className="w-5 h-5" /></button>
         </div>
-        <div className="p-5 overflow-y-auto flex-1 space-y-4">
-          {error && <div className="flex items-center gap-2 p-3 bg-red-100 text-red-700 rounded-lg text-sm"><AlertCircle className="w-4 h-4" /> {error}</div>}
+
+        <div className="space-y-4">
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+
           <div>
-            <label className="text-text-secondary text-sm font-medium mb-1.5 block">게시판</label>
+            <label className="text-xs text-text-muted mb-1 block">제목</label>
+            <input value={form.title} onChange={e => set('title', e.target.value)} maxLength={200}
+              placeholder="신작게임소개 제목"
+              className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
+          </div>
+
+          <div>
+            <label className="text-xs text-text-muted mb-1 block">내용</label>
+            <div className="bg-bg-card border border-line rounded-2xl overflow-hidden">
+              <Editor
+                content={form.content}
+                onChange={html => set('content', html)}
+                placeholder="신작게임소개 내용을 입력하세요"
+                onImageUpload={async (file) => {
+                  const result = await communityService.uploadImages([file])
+                  const raw = result.images[0]
+                  const url = raw.startsWith('http') ? raw : `${UPLOADS_URL}${raw}`
+                  pushImage(url)
+                  return url
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="bg-bg-card border border-line rounded-2xl p-4">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-text-secondary mb-3">
+              <Star className="w-4 h-4" />
+              썸네일 선택
+              <span className="text-xs text-text-muted font-normal">· 카드에 표시될 대표 이미지</span>
+            </p>
             <div className="flex flex-wrap gap-2">
-              {CHANNELS.map(ch => (
-                <button key={ch.value} onClick={() => setChannel(ch.value)}
-                  className={`px-3 py-1.5 rounded-lg text-base font-medium transition-colors ${channel === ch.value ? 'bg-accent text-white' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary border border-line'}`}>
-                  {ch.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="text-text-secondary text-sm font-medium mb-1.5 block">제목 *</label>
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} maxLength={200} placeholder="게시글 제목"
-              className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:border-accent" />
-          </div>
-          <div>
-            <label className="text-text-secondary text-sm font-medium mb-1.5 block">내용 *</label>
-            <textarea value={content} onChange={e => setContent(e.target.value)} rows={8} placeholder="내용을 입력하세요..."
-              className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-3 text-sm text-text-primary focus:outline-none focus:border-accent resize-none" />
-          </div>
-          <div>
-            <label className="text-text-secondary text-sm font-medium mb-1.5 block">이미지 (최대 5개)</label>
-            <input type="file" ref={fileRef} onChange={handleImageUpload} accept="image/*" multiple className="hidden" />
-            <div className="flex flex-wrap gap-2">
-              {images.map((img, i) => (
-                <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-line group">
-                  <img src={img.startsWith('http') ? img : `${UPLOADS_URL}${img}`} alt="" className="w-full h-full object-cover" />
-                  <button onClick={() => setImages(prev => prev.filter((_, j) => j !== i))} className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100"><X className="w-3 h-3 text-white" /></button>
-                </div>
-              ))}
-              {images.length < 5 && (
-                <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                  className="w-20 h-20 rounded-lg border-2 border-dashed border-line flex flex-col items-center justify-center text-text-muted hover:text-text-secondary hover:border-text-muted transition-colors">
-                  {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><ImagePlus className="w-5 h-5" /><span className="text-xs mt-1">추가</span></>}
-                </button>
-              )}
-            </div>
-          </div>
-          <div>
-            <label className="text-text-secondary text-sm font-medium mb-1.5 block">영상 URL (선택)</label>
-            <input type="url" value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="https://youtube.com/..."
-              className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
-          </div>
-          <div>
-            <label className="text-text-secondary text-sm font-medium mb-1.5 block">태그 (최대 10개)</label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                <input type="text" value={tagInput} onChange={e => setTagInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag() } }}
-                  placeholder="태그 입력 후 Enter"
-                  className="w-full pl-9 pr-3 py-2 bg-bg-tertiary border border-line rounded-lg text-sm text-text-primary focus:outline-none" />
-              </div>
-            </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {tags.map(tag => (
-                  <span key={tag} className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 text-accent rounded-full text-xs">
-                    #{tag}<button onClick={() => setTags(prev => prev.filter(t => t !== tag))}><X className="w-3 h-3" /></button>
+              {form.images.map((img, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => set('thumbnailIndex', i)}
+                  className={`relative w-20 h-14 rounded-lg overflow-hidden border-2 transition-all group ${
+                    form.thumbnailIndex === i ? 'border-accent shadow-sm shadow-accent/30' : 'border-line hover:border-accent/50'
+                  }`}
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  {form.thumbnailIndex === i && (
+                    <div className="absolute inset-0 bg-accent/30 flex items-center justify-center">
+                      <Star className="w-4 h-4 text-white fill-white drop-shadow" />
+                    </div>
+                  )}
+                  <span
+                    onClick={e => { e.stopPropagation(); removeImage(i) }}
+                    className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-2.5 h-2.5" />
                   </span>
-                ))}
-              </div>
-            )}
+                </button>
+              ))}
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                className="w-20 h-14 rounded-lg border-2 border-dashed border-line hover:border-accent/50 flex items-center justify-center text-text-muted hover:text-accent transition-colors disabled:opacity-50">
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" multiple hidden onChange={handleFileChange} />
+            </div>
           </div>
-        </div>
-        <div className="p-5 border-t border-line flex items-center justify-between flex-shrink-0">
-          <p className="text-text-muted text-xs">관리자 계정으로 게시됩니다</p>
-          <div className="flex gap-3">
-            <button onClick={onClose} className="px-4 py-2 border border-line rounded-lg text-base text-text-secondary hover:bg-bg-tertiary">취소</button>
-            <button onClick={handleSubmit} disabled={submitting || !title.trim() || !content.trim()}
-              className="flex items-center gap-2 px-5 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium disabled:opacity-50">
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenSquare className="w-4 h-4" />} 게시하기
-            </button>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 bg-bg-tertiary rounded-xl px-4 py-2.5">
+              <span className={`text-sm font-medium ${form.isPublished ? 'text-text-secondary' : 'text-text-muted'}`}>{form.isPublished ? '공개 ON' : '공개 OFF'}</span>
+              <button type="button" onClick={() => set('isPublished', !form.isPublished)}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${form.isPublished ? 'bg-green-500' : 'bg-bg-muted'}`}>
+                <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isPublished ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={onClose} className="px-4 py-2 border border-line rounded-lg text-base text-text-secondary hover:bg-bg-tertiary">취소</button>
+              <button onClick={handleSave} disabled={saving}
+                className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium disabled:opacity-50">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {titleText.includes('수정') ? '수정 완료' : '게시하기'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function stripPostHtml(html: string) {
+  return html.replace(/<[^>]*>/g, '').slice(0, 200)
+}
+
+function NewGameIntroCommentPanel({ postId, authorId, onCommentCountChange }: {
+  postId: string
+  authorId?: string
+  onCommentCountChange: (delta: number) => void
+}) {
+  const { user, isAuthenticated } = useAuth()
+  return (
+    <div className="mt-3 pt-3 border-t border-line" onClick={e => e.stopPropagation()}>
+      <CommentSection
+        postId={postId}
+        isPostAuthor={!!user && user.id === authorId}
+        currentUser={user}
+        isAuthenticated={isAuthenticated}
+        onCommentCountChange={onCommentCountChange}
+        showHeader={false}
+      />
+    </div>
+  )
+}
+
+function NewGameIntroTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
+  const [items, setItems] = useState<PostSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [editingItem, setEditingItem] = useState<PostSummary | null>(null)
+  const [confirm, setConfirm] = useState<{ msg: string; onConfirm: () => void } | null>(null)
+  const [search, setSearch] = useState('')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await communityService.getPosts({ channel: 'new-game-intro', limit: 50 })
+      setItems(data.posts)
+    } catch { showToast('불러오기 실패', false) }
+    finally { setLoading(false) }
+  }, [showToast])
+
+  useEffect(() => { load() }, [load])
+
+  const filteredItems = search.trim()
+    ? items.filter(i => i.title.toLowerCase().includes(search.trim().toLowerCase()))
+    : items
+
+  const handleDelete = (item: PostSummary) => {
+    setConfirm({
+      msg: `"${item.title}" 게시물을 삭제하시겠습니까?`,
+      onConfirm: async () => {
+        setConfirm(null)
+        await communityService.deletePost(item._id)
+        showToast('삭제되었습니다')
+        load()
+      },
+    })
+  }
+
+  const handleCommentCountChange = (postId: string, delta: number) => {
+    setItems(prev => prev.map(i => i._id === postId ? { ...i, commentCount: Math.max(0, i.commentCount + delta) } : i))
+  }
+
+  return (
+    <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
+      {confirm && <ConfirmModal msg={confirm.msg} onConfirm={confirm.onConfirm} onCancel={() => setConfirm(null)} />}
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-muted" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="제목 검색..."
+              className="bg-bg-tertiary border border-line rounded-lg pl-8 pr-3 py-2 text-base text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent w-[36rem]"
+            />
+          </div>
+          <span className="text-base text-text-secondary whitespace-nowrap">총 {items.length}개</span>
+        </div>
+        <button onClick={() => setCreating(true)}
+          className="flex items-center gap-2 px-8 py-4 bg-accent hover:bg-accent-hover text-white border-2 border-accent-hover rounded-xl text-xl font-semibold transition-colors">
+          <Sparkles className="w-5 h-5" /> 신작게임소개 작성
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-8 text-text-secondary">불러오는 중...</div>
+      ) : filteredItems.length === 0 ? (
+        <div className="text-center py-8 text-text-muted text-sm">
+          {items.length === 0 ? '등록된 신작게임소개가 없습니다' : '검색 결과가 없습니다'}
+        </div>
+      ) : filteredItems.map(item => {
+        const thumb = item.images?.[item.thumbnailIndex || 0] || item.images?.[0]
+        return (
+          <div key={item._id} className="p-4 bg-bg-tertiary/30 rounded-lg border border-line">
+            <div className="flex items-start gap-3">
+              <div onClick={() => setEditingItem(item)} className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer">
+                {thumb && (
+                  <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-bg-tertiary">
+                    <img src={thumb.startsWith('http') ? thumb : `${UPLOADS_URL}${thumb}`} alt="" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <h3 className="font-semibold">{item.title}</h3>
+                    {!item.isPublished && <span className="text-[11px] px-1.5 py-0.5 rounded bg-bg-muted text-text-muted flex-shrink-0">비공개</span>}
+                  </div>
+                  <p className="text-sm text-text-secondary mb-1">{stripPostHtml(item.content)}</p>
+                  <div className="flex items-center gap-3 text-xs text-text-secondary">
+                    <span>{formatDate(item.createdAt)}</span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setExpandedId(prev => prev === item._id ? null : item._id)}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex-shrink-0 ${
+                  expandedId === item._id ? 'bg-accent/10 text-accent' : 'text-text-muted hover:text-accent hover:bg-accent/10'
+                }`}>
+                <MessageCircle className="w-4 h-4" /> {item.commentCount}
+              </button>
+              <button onClick={() => handleDelete(item)}
+                className="flex items-center justify-center w-7 h-7 rounded-lg border border-line text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex-shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+            {expandedId === item._id && (
+              <NewGameIntroCommentPanel postId={item._id} authorId={item.author?._id}
+                onCommentCountChange={(delta) => handleCommentCountChange(item._id, delta)} />
+            )}
+          </div>
+        )
+      })}
+
+      {creating && (
+        <NewGameIntroFormModal
+          titleText="신작게임소개 작성"
+          initial={{ title: '', content: '', images: [], thumbnailIndex: 0, isPublished: true }}
+          onClose={() => setCreating(false)}
+          onSave={async (data) => {
+            await communityService.createPost({ ...data, channel: 'new-game-intro' })
+            showToast('등록되었습니다')
+            setCreating(false)
+            load()
+          }}
+        />
+      )}
+      {editingItem && (
+        <NewGameIntroFormModal
+          titleText="신작게임소개 수정"
+          initial={{
+            title: editingItem.title, content: editingItem.content,
+            images: editingItem.images.map(img => img.startsWith('http') ? img : `${UPLOADS_URL}${img}`),
+            thumbnailIndex: editingItem.thumbnailIndex,
+            isPublished: editingItem.isPublished,
+          }}
+          onClose={() => setEditingItem(null)}
+          onSave={async (data) => {
+            await communityService.updatePost(editingItem._id, data)
+            showToast('수정되었습니다')
+            setEditingItem(null)
+            load()
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -1460,147 +1635,6 @@ export function ReportedPostsTab({ showToast }: { showToast: (msg: string, ok?: 
               })}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2">
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-            className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
-            <ChevronLeft className="w-4 h-4 text-text-primary" />
-          </button>
-          <span className="text-text-secondary text-sm">{page} / {totalPages}</span>
-          <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-            className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center disabled:opacity-40">
-            <ChevronRight className="w-4 h-4 text-text-primary" />
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ────────── 탭 4: 게임 리뷰 관리 ──────────
-
-function ReviewsTab({ showToast }: { showToast: (msg: string, ok?: boolean) => void }) {
-  const [reviews, setReviews] = useState<any[]>([])
-  const [total, setTotal] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState('')
-  const [filterBlocked, setFilterBlocked] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [actionId, setActionId] = useState<string | null>(null)
-  const [confirm, setConfirm] = useState<any>(null)
-  const [showWriteModal, setShowWriteModal] = useState(false)
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await adminService.getAllReviews({ page, search, isBlocked: filterBlocked || undefined })
-      setReviews(data.reviews || [])
-      setTotal(data.total || 0)
-      setTotalPages(data.totalPages || 1)
-    } catch { showToast('불러오기 실패', false) }
-    finally { setLoading(false) }
-  }, [page, search, filterBlocked, showToast])
-
-  useEffect(() => { load() }, [load])
-
-  const handleBlock = (r: any) => {
-    const blocking = !r.isBlocked
-    setConfirm({
-      msg: blocking ? `"${r.title}" 리뷰를 차단하시겠습니까?` : `"${r.title}" 차단을 해제하시겠습니까?`,
-      danger: blocking,
-      onConfirm: async () => {
-        setConfirm(null); setActionId(r._id)
-        try { await adminService.blockReview(r._id, { isBlocked: blocking }); showToast(blocking ? '차단되었습니다' : '차단 해제됨'); load() }
-        catch { showToast('처리 실패', false) }
-        finally { setActionId(null) }
-      },
-    })
-  }
-
-  const handleDelete = (r: any) => {
-    setConfirm({
-      msg: `"${r.title}" 리뷰를 삭제하시겠습니까?`,
-      danger: true,
-      onConfirm: async () => {
-        setConfirm(null); setActionId(r._id)
-        try { await adminService.deleteReview(r._id); showToast('삭제되었습니다'); load() }
-        catch { showToast('삭제 실패', false) }
-        finally { setActionId(null) }
-      },
-    })
-  }
-
-  return (
-    <div className="space-y-4">
-      {confirm && <ConfirmModal {...confirm} onCancel={() => setConfirm(null)} />}
-      {showWriteModal && <WritePostModal onClose={() => setShowWriteModal(false)} onSuccess={() => { setShowWriteModal(false); showToast('게시글이 작성되었습니다') }} />}
-
-      <div className="flex items-center justify-between">
-        <span className="text-text-muted text-sm">총 <span className="text-text-primary font-semibold">{total}</span>개</span>
-        <button onClick={() => setShowWriteModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium">
-          <PenSquare className="w-4 h-4" /> 콘텐츠 작성
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="리뷰 제목·내용 검색..."
-            className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
-        </div>
-        <select value={filterBlocked} onChange={e => { setFilterBlocked(e.target.value); setPage(1) }}
-          className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
-          <option value="">전체</option>
-          <option value="false">정상</option>
-          <option value="true">차단됨</option>
-        </select>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center h-48"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
-      ) : reviews.length === 0 ? (
-        <div className="text-center py-16 text-text-muted">리뷰가 없습니다</div>
-      ) : (
-        <div className="space-y-3">
-          {reviews.map(r => {
-            const fb = FEEDBACK_LABELS[r.feedbackType] || FEEDBACK_LABELS.general
-            return (
-              <div key={r._id} className={`bg-bg-secondary border rounded-xl p-4 ${r.isBlocked ? 'border-red-800/50 bg-red-950/10' : 'border-line'} ${actionId === r._id ? 'opacity-60 pointer-events-none' : ''}`}>
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-bg-tertiary rounded-full flex items-center justify-center text-sm font-bold text-text-primary flex-shrink-0">
-                    {(r.userId?.username || '?')[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center flex-wrap gap-2 mb-1">
-                      <span className="text-text-secondary text-sm font-medium">{r.userId?.username}</span>
-                      <span className="text-yellow-400 text-xs">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${fb.cls}`}>{fb.label}</span>
-                      {r.isBlocked && <span className="bg-red-500/10 text-red-400 text-xs px-1.5 rounded border border-red-500/30">차단됨</span>}
-                      {r.gameId && <Link href={`/admin/metrics/${r.gameId._id}`} className="text-text-muted hover:text-cyan-300 text-xs">🎮 {r.gameId.title}</Link>}
-                    </div>
-                    <p className={`text-sm font-semibold mb-0.5 ${r.isBlocked ? 'line-through text-text-muted' : 'text-text-primary'}`}>{r.title}</p>
-                    <p className={`text-xs line-clamp-2 ${r.isBlocked ? 'text-text-muted' : 'text-text-secondary'}`}>{r.content}</p>
-                    <p className="text-text-muted text-xs mt-1">{formatDate(r.createdAt)} · 도움됨 {r.helpfulCount || 0}</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={() => handleBlock(r)}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base border transition-colors ${r.isBlocked ? 'bg-green-700/20 text-green-400 border-green-600/40 hover:bg-green-700/40' : 'bg-orange-700/20 text-orange-300 border-orange-600/40 hover:bg-orange-700/40'}`}>
-                      {r.isBlocked ? <><ShieldCheck className="w-3 h-3" /> 해제</> : <><ShieldOff className="w-3 h-3" /> 차단</>}
-                    </button>
-                    <button onClick={() => handleDelete(r)}
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-base border bg-red-700/20 text-red-400 border-red-600/40 hover:bg-red-700/40 transition-colors">
-                      <Trash2 className="w-3 h-3" /> 삭제
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
         </div>
       )}
 
@@ -2052,20 +2086,20 @@ export default function AdminCommunityPage() {
           <h2 className="text-text-primary text-xl font-bold flex items-center gap-2">
             {activeTab === 'banner' && <ImageIcon className="w-5 h-5 text-purple-400" />}
             {activeTab === 'announcements' && <Megaphone className="w-5 h-5 text-purple-400" />}
-            {activeTab === 'reviews' && <MessageSquare className="w-5 h-5 text-purple-400" />}
-            {activeTab === 'banner' ? '배너 관리' : activeTab === 'announcements' ? '공지사항' : '게임 리뷰 관리'}
+            {activeTab === 'new-game-intro' && <Sparkles className="w-5 h-5 text-purple-400" />}
+            {activeTab === 'banner' ? '배너 관리' : activeTab === 'announcements' ? '공지사항' : '신작게임소개'}
           </h2>
           <p className="text-text-muted text-sm mt-1">
             {activeTab === 'banner' && '커뮤니티에서 메인 화면에 노출되는 배너 이미지를 등록하고 관리합니다'}
             {activeTab === 'announcements' && '커뮤니티에서 플랫폼 전체 공지사항을 작성하고 관리합니다'}
-            {activeTab === 'reviews' && '커뮤니티에서 사용자가 작성한 게임 리뷰를 검토하고 관리합니다'}
+            {activeTab === 'new-game-intro' && '커뮤니티 신작게임소개 게시물을 작성하고 관리합니다 (관리자 전용)'}
           </p>
         </div>
 
         {/* 탭 콘텐츠 */}
         {activeTab === 'banner' && <BannerTab showToast={showToast} />}
         {activeTab === 'announcements' && <AnnouncementsTab showToast={showToast} />}
-        {activeTab === 'reviews' && <ReviewsTab showToast={showToast} />}
+        {activeTab === 'new-game-intro' && <NewGameIntroTab showToast={showToast} />}
       </div>
     </AdminLayout>
   )

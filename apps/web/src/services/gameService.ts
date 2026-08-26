@@ -18,7 +18,7 @@ export interface RecentGameAnnouncement {
 }
 
 export const gameService = {
-  getAllGames: async (params?: { genre?: string; search?: string; sort?: string; page?: number; limit?: number; serviceType?: string; featuredNew?: string; developerId?: string }) => {
+  getAllGames: async (params?: { genre?: string; search?: string; sort?: string; page?: number; limit?: number; serviceType?: string; featuredNew?: string; developerId?: string; includeDeleted?: boolean }) => {
     const response = await apiClient.get<{ games: Game[]; pagination?: { page: number; limit: number; total: number; pages: number } }>('/games', { params })
     return response.data
   },
@@ -74,7 +74,7 @@ export const gameService = {
     return response.data
   },
 
-  getGameDeletionLogs: async (params?: { page?: number; limit?: number; search?: string }) => {
+  getGameDeletionLogs: async (params?: { page?: number; limit?: number; search?: string; developerId?: string; deletedByRole?: string }) => {
     const response = await apiClient.get('/games/admin/deletion-logs', { params })
     return response.data
   },
@@ -366,12 +366,12 @@ export const gameService = {
     return response.data
   },
 
-  createGameAnnouncement: async (gameId: string, data: { title: string; content: string; type: string; priority: string; startDate?: string; endDate?: string; images?: string[]; thumbnailIndex?: number }) => {
+  createGameAnnouncement: async (gameId: string, data: { title: string; content: string; type: string; priority: string; startDate?: string; endDate?: string; images?: string[]; thumbnailIndex?: number; isPublished?: boolean }) => {
     const response = await apiClient.post(`/games/${gameId}/announcements`, data)
     return response.data
   },
 
-  updateGameAnnouncement: async (gameId: string, announcementId: string, data: { title: string; content: string; type: string; priority: string; images?: string[]; thumbnailIndex?: number }) => {
+  updateGameAnnouncement: async (gameId: string, announcementId: string, data: { title: string; content: string; type: string; priority: string; images?: string[]; thumbnailIndex?: number; isPublished?: boolean }) => {
     const response = await apiClient.patch(`/games/${gameId}/announcements/${announcementId}`, data)
     return response.data
   },
@@ -385,8 +385,32 @@ export const gameService = {
     return response.data as { success: boolean; images: string[] }
   },
 
+  uploadGameContentImages: async (gameId: string, files: File[]) => {
+    const formData = new FormData()
+    files.forEach(f => formData.append('gameContentImages', f))
+    const response = await apiClient.post(`/games/${gameId}/content/upload-images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data as { success: boolean; images: string[] }
+  },
+
   deleteGameAnnouncement: async (gameId: string, announcementId: string) => {
     const response = await apiClient.delete(`/games/${gameId}/announcements/${announcementId}`)
+    return response.data
+  },
+
+  getManagedGameReviews: async (gameId: string, params?: { page?: number; limit?: number; search?: string; isBlocked?: string }) => {
+    const response = await apiClient.get(`/games/${gameId}/reviews/manage`, { params })
+    return response.data
+  },
+
+  setGameReviewBlocked: async (gameId: string, reviewId: string, data: { isBlocked: boolean; blockReason?: string }) => {
+    const response = await apiClient.patch(`/games/${gameId}/reviews/${reviewId}/block`, data)
+    return response.data
+  },
+
+  removeGameReview: async (gameId: string, reviewId: string) => {
+    const response = await apiClient.delete(`/games/${gameId}/reviews/${reviewId}`)
     return response.data
   },
 

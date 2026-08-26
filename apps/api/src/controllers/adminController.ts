@@ -250,14 +250,10 @@ export const getPendingGames = async (req: AuthRequest, res: Response) => {
 // ── 전체 게임 목록 (관리자) ───────────────────────────────────────
 export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
   try {
-    const { page = 1, limit = 20, status, approvalStatus, search, serviceType, suspended, excludePublished } = req.query
-    const filter: Record<string, unknown> = {}
-    if (suspended === 'true') {
-      filter.suspendedAt = { $exists: true, $ne: null }
-    } else {
-      if (status) filter.status = status
-      if (excludePublished === 'true') filter.status = { $ne: 'published' }
-    }
+    const { page = 1, limit = 20, status, approvalStatus, search, serviceType, excludePublished } = req.query
+    const filter: Record<string, unknown> = { isDeleted: { $ne: true } }
+    if (status) filter.status = status
+    if (excludePublished === 'true') filter.status = { $ne: 'published' }
     if (serviceType) filter.serviceType = serviceType
     if (approvalStatus === 'pending') {
       filter.approvalStatus = { $in: ['pending', 'review'] }
@@ -286,7 +282,7 @@ export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
 
-    const allIds = await Game.find({}, '_id').sort({ _id: 1 }).lean()
+    const allIds = await Game.find({ isDeleted: { $ne: true } }, '_id').sort({ _id: 1 }).lean()
     const rankMap = new Map(allIds.map((g, i) => [(g._id as any).toString(), i + 1]))
 
     const gameIds = games.map(g => (g._id as any).toString())
@@ -321,7 +317,21 @@ export const approveShopReview = async (req: AuthRequest, res: Response) => {
 export const rejectShopReview = async (req: AuthRequest, res: Response) => {
   try {
     const { gameId } = req.params
-    const result = await GameShopItemModel.updateMany({ gameId, saleStatus: 'reviewing' }, { saleStatus: 'rejected' })
+    const { reason } = req.body
+    const rejectionReason = reason || '심사 기준 미충족'
+    const result = await GameShopItemModel.updateMany({ gameId, saleStatus: 'reviewing' }, { saleStatus: 'rejected', rejectionReason })
+    if (result.modifiedCount > 0) {
+      const game = await Game.findById(gameId).select('title developerId')
+      if (game) {
+        Notification.create({
+          userId: game.developerId,
+          type: 'system',
+          title: '상품 심사 거부',
+          content: `"${game.title}" 게임의 상품 심사가 거부되었습니다. 사유: ${rejectionReason}`,
+          linkUrl: `/games-management/${gameId}/manage`,
+        }).catch(() => {})
+      }
+    }
     res.json({ success: true, updated: result.modifiedCount })
   } catch {
     res.status(500).json({ message: '상품 심사 거부 처리에 실패했습니다' })
@@ -344,6 +354,9 @@ export const approveGame = async (req: AuthRequest, res: Response) => {
       update.status = isReApproval ? existing.status : 'beta'
       update.approvedAt = new Date()
       update.approvedBy = req.user!.id
+      if ((existing as any).ratingCertificate?.ratingClass) {
+        update['ratingCertificate.isVerified'] = true
+      }
       const [shopItems, mediaItems] = await Promise.all([
         GameShopItemModel.find({ gameId: id }).lean(),
         GameMediaModel.find({ gameId: id }).lean(),
@@ -366,49 +379,37 @@ export const approveGame = async (req: AuthRequest, res: Response) => {
     if (adminNote) update.adminNote = adminNote
     const game = await Game.findByIdAndUpdate(id, update, { new: true }).populate('developerId', 'username email')
     if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+
+    if (action === 'reject') {
+      Notification.create({
+        userId: existing.developerId,
+        type: 'system',
+        title: '게임 심사 거부',
+        content: `"${existing.title}" 게임의 심사가 거부되었습니다. 사유: ${update.rejectionReason}`,
+        linkUrl: `/games-management/${id}/manage`,
+      }).catch(() => {})
+    }
+
     res.json({ message: `게임이 ${action === 'approve' ? '승인' : action === 'reject' ? '거부' : '검토 중으로 변경'}되었습니다`, game })
   } catch {
     res.status(500).json({ message: '게임 승인 처리 실패' })
   }
 }
 
-// ── 게임 상태 제어 (중지/재활성화/종료) ──────────────────────────
+// ── 게임 상태 제어 (종료 등) ──────────────────────────
 export const controlGameStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
     const { action, reason } = req.body
 
-    const VALID = ['suspend', 'reactivate', 'archive', 'set_beta', 'set_published']
+    const VALID = ['archive', 'set_beta', 'set_published']
     if (!VALID.includes(action))
       return res.status(400).json({ message: '유효하지 않은 액션입니다' })
 
     const update: Record<string, unknown> = {}
     let msg = ''
 
-    if (action === 'suspend') {
-      const target = await Game.findById(id)
-      if (!target) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
-      update.statusBeforeSuspend = target.status
-      update.status = 'draft'
-      update.suspendReason = reason || '관리자에 의해 중지됨'
-      update.suspendedAt = new Date()
-      msg = '게임 서비스가 중지되었습니다'
-    } else if (action === 'reactivate') {
-      const target = await Game.findById(id)
-      if (!target) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
-
-      const restoredStatus = target.statusBeforeSuspend || 'published'
-      const game = await Game.findByIdAndUpdate(
-        id,
-        {
-          $set: { status: restoredStatus },
-          $unset: { suspendReason: '', suspendedAt: '', statusBeforeSuspend: '' },
-        },
-        { new: true }
-      ).populate('developerId', 'username email')
-      if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
-      return res.json({ success: true, message: '게임이 재활성화되었습니다', game })
-    } else if (action === 'archive') {
+    if (action === 'archive') {
       update.status = 'archived'
       update.archivedAt = new Date()
       update.archiveReason = reason || '베타 서비스 종료'
@@ -579,65 +580,6 @@ export const getGameMetrics = async (req: AuthRequest, res: Response) => {
   }
 }
 
-// ── 리뷰 전체 목록 (커뮤니티 모니터링) ───────────────────────────
-export const getAllReviews = async (req: AuthRequest, res: Response) => {
-  try {
-    const { page = 1, limit = 20, search, isBlocked, gameId } = req.query
-    const filter: Record<string, unknown> = {}
-    if (isBlocked !== undefined) filter.isBlocked = isBlocked === 'true'
-    if (gameId) filter.gameId = gameId
-    if (search) filter.$or = [
-      { title: { $regex: search, $options: 'i' } },
-      { content: { $regex: search, $options: 'i' } }
-    ]
-    const total = await Review.countDocuments(filter)
-    const reviews = await Review.find(filter)
-      .populate('userId', 'username email')
-      .populate('gameId', 'title')
-      .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit))
-    res.json({ reviews, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
-  } catch {
-    res.status(500).json({ message: '리뷰 목록 조회 실패' })
-  }
-}
-
-// ── 리뷰 차단/해제 ────────────────────────────────────────────────
-export const blockReview = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params
-    const { isBlocked, blockReason } = req.body
-    if (typeof isBlocked !== 'boolean') {
-      return res.status(400).json({ message: 'isBlocked는 boolean이어야 합니다' })
-    }
-    let updateOp: Record<string, unknown>
-    if (isBlocked) {
-      updateOp = { $set: { isBlocked: true, blockReason: blockReason || '관리자에 의해 차단됨', blockedAt: new Date() } }
-    } else {
-      updateOp = { $set: { isBlocked: false }, $unset: { blockReason: '', blockedAt: '' } }
-    }
-    const review = await Review.findByIdAndUpdate(id, updateOp, { new: true })
-      .populate('userId', 'username')
-      .populate('gameId', 'title')
-    if (!review) return res.status(404).json({ message: '리뷰를 찾을 수 없습니다' })
-    res.json({ success: true, message: isBlocked ? '리뷰가 차단되었습니다' : '차단이 해제되었습니다', review })
-  } catch {
-    res.status(500).json({ message: '리뷰 처리 실패' })
-  }
-}
-
-// ── 리뷰 삭제 ────────────────────────────────────────────────────
-export const deleteReview = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params
-    const review = await Review.findByIdAndDelete(id)
-    if (!review) return res.status(404).json({ message: '리뷰를 찾을 수 없습니다' })
-    res.json({ success: true, message: '리뷰가 삭제되었습니다' })
-  } catch {
-    res.status(500).json({ message: '리뷰 삭제 실패' })
-  }
-}
 
 // ── 공지사항 CRUD ─────────────────────────────────────────────────
 export const getAnnouncements = async (req: AuthRequest, res: Response) => {
@@ -649,7 +591,7 @@ export const getAnnouncements = async (req: AuthRequest, res: Response) => {
     const total = await Announcement.countDocuments(filter)
     const announcements = await Announcement.find(filter)
       .populate('authorId', 'username')
-      .sort({ isPinned: -1, createdAt: -1 })
+      .sort({ createdAt: -1 })
       .skip((Number(page) - 1) * Number(limit))
       .limit(Number(limit))
     res.json({ announcements, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
@@ -660,14 +602,13 @@ export const getAnnouncements = async (req: AuthRequest, res: Response) => {
 
 export const createAnnouncement = async (req: AuthRequest, res: Response) => {
   try {
-    const { title, content, type, priority, isPinned, isPublished, expiresAt, targetRole, images, thumbnailIndex } = req.body
+    const { title, content, type, priority, isPublished, expiresAt, targetRole, images, thumbnailIndex } = req.body
     const finalIsPublished = isPublished !== undefined ? isPublished : true
     const announcement = new Announcement({
       title, content,
       type: type || 'notice',
       priority: priority || 'normal',
       authorId: req.user!.id,
-      isPinned: isPinned || false,
       isPublished: finalIsPublished,
       publishedAt: finalIsPublished ? new Date() : undefined,
       expiresAt: expiresAt ? new Date(expiresAt) : undefined,
@@ -910,7 +851,7 @@ export const getPublicAnnouncements = async (req: AuthRequest, res: Response) =>
       $or: [{ expiresAt: { $gt: now } }, { expiresAt: { $exists: false } }]
     })
       .populate('authorId', 'username')
-      .sort({ isPinned: -1, publishedAt: -1 })
+      .sort({ publishedAt: -1 })
       .limit(100)
     res.json({ announcements })
   } catch {

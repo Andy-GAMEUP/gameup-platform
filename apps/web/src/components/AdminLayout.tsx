@@ -6,11 +6,11 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
 import {
   LayoutDashboard, Gamepad2, Users, Megaphone,
-  MessageSquare, ChevronLeft, ChevronRight, ChevronDown,
+  ChevronLeft, ChevronRight, ChevronDown,
   Shield, UserPlus, Handshake, Tags,
   Smartphone, Globe, Calendar, FileCheck, ImageIcon, Bell, Package,
   BarChart3, PieChart, UserCircle, Building2, Award, Activity, FileText, Gift, Flag,
-  MessageCircle, ShieldBan, Trash2, CreditCard, Calculator, LogOut,
+  MessageCircle, ShieldBan, Trash2, CreditCard, Calculator, LogOut, Sparkles,
 } from 'lucide-react'
 
 interface AdminLayoutProps { children: ReactNode }
@@ -37,22 +37,15 @@ const navItems: NavItem[] = [
   { path: '/admin/payments', label: '결제 / 환불', icon: CreditCard },
   { path: '/admin/settlements', label: '정산', icon: Calculator },
   { path: '/admin/notifications', label: '알림', icon: Bell },
-  {
-    path: '/admin/community',
-    label: '콘텐츠 관리',
-    icon: MessageSquare,
-    children: [
-      { path: '/admin/community?tab=banner',        label: '배너 관리',      icon: ImageIcon,      exact: true },
-      { path: '/admin/community?tab=reviews',       label: '게임 리뷰 관리', icon: MessageSquare,  exact: true },
-    ],
-  },
+  { path: '/admin/community?tab=banner', label: '배너 관리', icon: ImageIcon },
   {
     path: '/admin/community-board',
     label: '커뮤니티 관리',
     icon: MessageCircle,
     children: [
-      { path: '/admin/community?tab=announcements',  label: '공지사항',        icon: Megaphone, exact: true },
-      { path: '/admin/community/reported',           label: '신고 게시물 관리', icon: Flag,      exact: true },
+      { path: '/admin/community?tab=announcements',  label: '공지사항',          icon: Megaphone, exact: true },
+      { path: '/admin/community?tab=new-game-intro', label: '신작게임소개',      icon: Sparkles,  exact: true },
+      { path: '/admin/community/reported',           label: '신고 게시물 관리',   icon: Flag,      exact: true },
       { path: '/admin/community/reported/deleted',   label: '삭제 게시물 관리', icon: Trash2 },
     ],
   },
@@ -185,10 +178,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         <div key={path}>
           <button
             onClick={() => toggleMenu(path)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base transition-colors ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 border-l-[3px] text-base transition-colors ${
               parentActive
-                ? 'bg-accent-light text-accent-text border border-accent-muted'
-                : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
+                ? 'bg-accent-light border-accent text-accent-text font-semibold rounded-r-xl'
+                : 'border-transparent text-text-muted hover:text-text-primary hover:bg-bg-tertiary rounded-xl'
             }`}
             style={{ fontSize: '0.875rem' }}
             title={!open ? label : undefined}
@@ -208,10 +201,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 const SubIcon = sub.icon
                 return (
                   <Link key={sub.path} href={sub.path}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                    className={`flex items-center gap-3 px-3 py-2 border-l-[3px] text-sm transition-colors ${
                       subActive
-                        ? 'bg-accent-light text-accent-text'
-                        : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary/50'
+                        ? 'bg-accent-light border-accent text-accent-text font-semibold rounded-r-xl'
+                        : 'border-transparent text-text-muted hover:text-text-primary hover:bg-bg-tertiary/50 rounded-xl'
                     }`}
                   >
                     <SubIcon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -228,10 +221,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const active = isActive(path, exact)
     return (
       <Link key={path} href={path}
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+        className={`flex items-center gap-3 px-3 py-2.5 border-l-[3px] text-sm transition-colors ${
           active
-            ? 'bg-accent-light text-accent-text border border-accent-muted'
-            : 'text-text-muted hover:text-text-primary hover:bg-bg-tertiary'
+            ? 'bg-accent-light border-accent text-accent-text font-semibold rounded-r-xl'
+            : 'border-transparent text-text-muted hover:text-text-primary hover:bg-bg-tertiary rounded-xl'
         }`}
         title={!open ? label : undefined}
       >

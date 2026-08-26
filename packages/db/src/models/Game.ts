@@ -70,6 +70,9 @@ export interface IGame extends Document {
   shopPaymentType?: 'cash' | 'capcoin'
   additionalCurrencies?: { _id: string; name: string; names: Record<string, string>; iconUrl: string; paymentType?: 'cash' | 'capcoin' }[]
   publishedSnapshot?: Record<string, unknown>
+  isDeleted?: boolean
+  deletedAt?: Date
+  hiddenFromCommunity?: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -229,6 +232,17 @@ const gameSchema = new Schema<IGame>(
       certFileUrl: { type: String },
       isVerified: { type: Boolean, default: false },
     },
+    isDeleted: {
+      type: Boolean,
+      default: false
+    },
+    deletedAt: {
+      type: Date
+    },
+    hiddenFromCommunity: {
+      type: Boolean,
+      default: false
+    },
   },
   {
     timestamps: true,
@@ -240,5 +254,6 @@ const gameSchema = new Schema<IGame>(
 gameSchema.index({ developerId: 1, status: 1, createdAt: -1 })
 gameSchema.index({ status: 1, approvalStatus: 1 })
 gameSchema.index({ approvalStatus: 1, createdAt: -1 })
+gameSchema.index({ isDeleted: 1 })
 
 export default mongoose.model<IGame>('Game', gameSchema)

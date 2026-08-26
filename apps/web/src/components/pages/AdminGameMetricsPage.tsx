@@ -7,7 +7,7 @@ import adminService from '@/services/adminService'
 import {
   BarChart2, Play, Star, Heart, TrendingUp, ArrowLeft, Loader2,
   Users, Clock, Shield, Bug, Lightbulb, ThumbsUp, MessageSquare,
-  CheckCircle, XCircle, Archive, RotateCcw, Pause, AlertTriangle,
+  CheckCircle, XCircle, Archive, AlertTriangle,
   ChevronRight, Calendar
 } from 'lucide-react'
 import { formatDate } from '@/lib/formatDate'
@@ -270,23 +270,6 @@ export default function AdminGameMetricsPage() {
 
           {/* 빠른 액션 */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {game.status === 'beta' || game.status === 'published' ? (
-              <button
-                onClick={() => setConfirm({ title: '게임 서비스 중지', desc: '게임이 즉시 중지되고 플레이어가 접근할 수 없게 됩니다. 계속하시겠습니까?', action: 'suspend' })}
-                disabled={actionLoading}
-                className="flex items-center gap-1.5 bg-orange-600/20 text-orange-300 border border-orange-500/30 hover:bg-orange-600/40 px-3 py-1.5 rounded-lg text-base transition-colors disabled:opacity-50"
-              >
-                <Pause className="w-3.5 h-3.5" /> 중지
-              </button>
-            ) : game.status === 'draft' && game.approvalStatus === 'approved' ? (
-              <button
-                onClick={() => setConfirm({ title: '게임 재활성화', desc: '게임을 베타 상태로 재활성화합니다. 계속하시겠습니까?', action: 'reactivate' })}
-                disabled={actionLoading}
-                className="flex items-center gap-1.5 bg-cyan-600/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-600/40 px-3 py-1.5 rounded-lg text-base transition-colors disabled:opacity-50"
-              >
-                <RotateCcw className="w-3.5 h-3.5" /> 재활성화
-              </button>
-            ) : null}
             {game.status !== 'archived' && (
               <button
                 onClick={() => setConfirm({ title: '게임 종료 (아카이브)', desc: '이 게임을 영구적으로 종료 처리합니다. 이 작업은 되돌리기 어렵습니다. 정말 진행하시겠습니까?', action: 'archive', danger: true })}

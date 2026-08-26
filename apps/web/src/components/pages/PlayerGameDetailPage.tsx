@@ -662,7 +662,22 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             {/* 게임 설명 */}
             <div className="bg-bg-secondary border border-line rounded-xl p-6 min-h-[500px]">
               <p className="text-text-primary font-bold mb-3" style={{ fontSize: '30px' }}>게임 설명</p>
-              <p className="text-text-secondary leading-relaxed">{game.notes as string}</p>
+              <div className="text-text-secondary leading-relaxed
+                [&_h2]:text-text-primary [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2
+                [&_h3]:text-text-primary [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1.5
+                [&_p]:mb-3 [&_p:last-child]:mb-0
+                [&_ul]:list-none [&_ul]:pl-0 [&_ul]:mb-3 [&_ul]:space-y-1
+                [&_li>p]:pl-[1.4em] [&_li>p]:[text-indent:-1.4em]
+                [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_ol]:space-y-1
+                [&_blockquote]:border-l-2 [&_blockquote]:border-accent [&_blockquote]:pl-4 [&_blockquote]:text-text-muted [&_blockquote]:italic [&_blockquote]:my-3
+                [&_code]:bg-bg-tertiary [&_code]:text-accent [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono
+                [&_pre]:bg-bg-tertiary [&_pre]:p-4 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:my-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0
+                [&_a]:text-accent [&_a]:underline [&_a:hover]:text-accent
+                [&_img]:rounded-lg [&_img]:max-w-full [&_img]:my-3 [&_img]:border [&_img]:border-line
+                [&_strong]:text-text-primary [&_strong]:font-semibold
+                [&_em]:italic"
+                dangerouslySetInnerHTML={{ __html: game.notes as string }}
+              />
             </div>
             </div>
               )

@@ -150,10 +150,10 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                           }
                           setAnalyticsOpen(v => !v)
                         }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                        className={`w-full flex items-center gap-3 px-4 py-3 border-l-[3px] transition-colors ${
                           active
-                            ? 'bg-accent text-text-inverse'
-                            : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
+                            ? 'bg-accent-light border-accent text-accent font-semibold rounded-r-xl'
+                            : 'border-transparent text-text-muted hover:bg-bg-tertiary hover:text-text-primary rounded-lg'
                         }`}
                       >
                         {item.icon}
@@ -173,10 +173,10 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                               <Link
                                 key={child.tab}
                                 href={`${item.path}?tab=${child.tab}`}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                                className={`flex items-center gap-2 px-3 py-2 border-l-[3px] text-sm transition-colors ${
                                   childActive
-                                    ? 'bg-accent/15 text-accent font-medium'
-                                    : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
+                                    ? 'bg-accent-light border-accent text-accent font-semibold rounded-r-xl'
+                                    : 'border-transparent text-text-muted hover:bg-bg-tertiary hover:text-text-primary rounded-md'
                                 }`}
                               >
                                 {child.icon}
@@ -194,10 +194,10 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                   <Link
                     key={item.path}
                     href={item.path}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    className={`flex items-center gap-3 px-4 py-3 border-l-[3px] transition-colors ${
                       active
-                        ? 'bg-accent text-text-inverse'
-                        : 'text-text-muted hover:bg-bg-tertiary hover:text-text-primary'
+                        ? 'bg-accent-light border-accent text-accent font-semibold rounded-r-xl'
+                        : 'border-transparent text-text-muted hover:bg-bg-tertiary hover:text-text-primary rounded-lg'
                     }`}
                   >
                     {item.icon}

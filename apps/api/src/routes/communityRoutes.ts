@@ -5,23 +5,21 @@ import {
   getComments, createComment, updateComment, deleteComment, restoreComment,
   toggleCommentLike, reportComment,
   getReportedPosts, adminUpdatePostStatus, getCommunityStats,
-  tempSave, getMyDrafts, uploadCommunityImages
+  uploadCommunityImages, toggleCommentDislike
 } from '../controllers/communityController'
-import { authenticateToken, requireAdmin } from '../middleware/auth'
+import { authenticateToken, requireAdmin, optionalAuth } from '../middleware/auth'
 import { communityUpload } from '../middleware/upload'
 
 const router = Router()
 
-// 공개 라우트
+// 공개 라우트 (비공개 게시글 판별을 위해 로그인 여부만 선택적으로 확인)
 router.get('/stats', getCommunityStats)
-router.get('/posts', getPosts)
-router.get('/posts/:id', getPost)
+router.get('/posts', optionalAuth, getPosts)
+router.get('/posts/:id', optionalAuth, getPost)
 router.get('/posts/:postId/comments', getComments)
 
 router.use(authenticateToken)
 router.post('/upload-images', communityUpload, uploadCommunityImages)
-router.post('/posts/temp-save', tempSave)
-router.get('/my/drafts', getMyDrafts)
 router.post('/posts', createPost)
 // PUT and PATCH both call updatePost (partial update semantics; full replacement not supported)
 router.put('/posts/:id', updatePost)
@@ -37,6 +35,7 @@ router.patch('/comments/:id', updateComment)
 router.delete('/comments/:id', deleteComment)
 router.post('/comments/:id/restore', restoreComment)
 router.post('/comments/:id/like', toggleCommentLike)
+router.post('/comments/:id/dislike', toggleCommentDislike)
 router.post('/comments/:id/report', reportComment)
 
 // 관리자 전용

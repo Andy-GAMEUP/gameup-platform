@@ -24,7 +24,6 @@ const emptyForm: {
   content: string
   type: 'notice' | 'event' | 'maintenance' | 'update'
   priority: 'low' | 'normal' | 'high' | 'urgent'
-  isPinned: boolean
   isPublished: boolean
   targetRole: 'all' | 'developer' | 'player'
   expiresAt: string
@@ -33,7 +32,6 @@ const emptyForm: {
   content: '',
   type: 'notice',
   priority: 'normal',
-  isPinned: false,
   isPublished: false,
   targetRole: 'all',
   expiresAt: ''
@@ -76,7 +74,6 @@ export default function AdminAnnouncementsPage() {
       content: a.content,
       type: a.type,
       priority: a.priority,
-      isPinned: a.isPinned,
       isPublished: a.isPublished,
       targetRole: a.targetRole,
       expiresAt: a.expiresAt ? a.expiresAt.substring(0, 10) : ''
@@ -129,7 +126,6 @@ export default function AdminAnnouncementsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-text-secondary">
-                <th className="text-left px-4 py-3 w-8">📌</th>
                 <th className="text-left px-4 py-3">제목</th>
                 <th className="text-left px-4 py-3">유형</th>
                 <th className="text-left px-4 py-3">우선순위</th>
@@ -141,15 +137,14 @@ export default function AdminAnnouncementsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-8 text-text-muted">로딩 중...</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-text-muted">로딩 중...</td></tr>
               ) : announcements.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-text-muted">공지사항이 없습니다</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-text-muted">공지사항이 없습니다</td></tr>
               ) : announcements.map((a) => {
                 const tl = TYPE_LABELS[a.type] || { label: a.type, color: 'text-text-secondary' }
                 const pl = PRIORITY_LABELS[a.priority] || { label: a.priority, color: 'text-text-secondary' }
                 return (
                   <tr key={a._id} className="border-b border-line/50 hover:bg-bg-tertiary/30">
-                    <td className="px-4 py-3 text-yellow-400">{a.isPinned ? '📌' : ''}</td>
                     <td className="px-4 py-3 text-text-primary font-medium">{a.title}</td>
                     <td className={`px-4 py-3 ${tl.color} text-xs`}>{tl.label}</td>
                     <td className={`px-4 py-3 ${pl.color} text-xs`}>{pl.label}</td>
@@ -223,10 +218,6 @@ export default function AdminAnnouncementsPage() {
                 </div>
               </div>
               <div className="flex gap-6">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={form.isPinned} onChange={(e) => setForm({ ...form, isPinned: e.target.checked })} className="accent-red-500" />
-                  <span className="text-text-secondary text-sm">상단 고정</span>
-                </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={form.isPublished} onChange={(e) => setForm({ ...form, isPublished: e.target.checked })} className="accent-red-500" />
                   <span className="text-text-secondary text-sm">즉시 게시</span>

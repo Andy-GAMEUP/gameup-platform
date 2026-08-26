@@ -8,13 +8,13 @@ import { gameService } from '@/services/gameService'
 import Editor from '@/components/Editor'
 import { useAuth } from '@/lib/useAuth'
 import {
-  Loader2, ArrowLeft, Save,
-  ImageIcon, FlaskConical, Gamepad2, MessageCircle, Sparkles,
+  Loader2, ArrowLeft,
+  ImageIcon, FlaskConical, Gamepad2, MessageCircle,
   X, ChevronDown, ChevronRight, Search, Star,
 } from 'lucide-react'
 
+// 신작게임소개는 관리자 전용(관리자 커뮤니티 관리 화면)에서만 작성 — 여기서는 채널 선택지에서 제외
 const CHANNELS = [
-  { value: 'new-game-intro', label: '신작게임소개', icon: Sparkles,       serviceType: null },
   { value: 'beta-game',      label: '베타게임',    icon: FlaskConical,  serviceType: 'beta' },
   { value: 'live-game',      label: '라이브게임',   icon: Gamepad2,       serviceType: 'live' },
   { value: 'free',           label: '자유게시판',   icon: MessageCircle,  serviceType: null },
@@ -22,7 +22,6 @@ const CHANNELS = [
 
 // 검색용 플랫 목록 (breadcrumb 경로 포함)
 const FLAT_CHANNELS = [
-  { value: 'new-game-intro', label: '신작게임소개', icon: Sparkles,      path: '전체 > 신작게임소개' },
   { value: 'beta-game',      label: '베타게임',    icon: FlaskConical,  path: '전체 > 베타게임' },
   { value: 'live-game',      label: '라이브게임',   icon: Gamepad2,      path: '전체 > 라이브게임' },
   { value: 'free',           label: '자유게시판',   icon: MessageCircle, path: '전체 > 자유게시판' },
@@ -59,7 +58,9 @@ export default function CommunityWritePage() {
   const { isAuthenticated, isLoading } = useAuth()
   const isEdit = !!id
 
-  const initChannel = searchParams.get('channel') || 'free'
+  const rawInitChannel = searchParams.get('channel') || 'free'
+  // 신작게임소개는 관리자 전용 채널이라 이 페이지의 새 글쓰기에서는 선택할 수 없음
+  const initChannel = rawInitChannel === 'new-game-intro' ? 'free' : rawInitChannel
   // 게임 선택 UI는 베타게임/라이브게임 채널에만 있으므로, 다른 채널로 진입할 때는 gameId를 무시한다
   const initGameId  = (initChannel === 'beta-game' || initChannel === 'live-game')
     ? (searchParams.get('gameId') || null)
@@ -77,9 +78,8 @@ export default function CommunityWritePage() {
   const chanRef = useRef<HTMLDivElement>(null)
   const chanInputRef = useRef<HTMLInputElement>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [tempSaving, setTempSaving] = useState(false)
   const [error, setError]           = useState('')
-  const [tempSaveMsg, setTempSaveMsg] = useState('')
+  const [isPublished, setIsPublished] = useState(true)
 
   const [betaGames, setBetaGames]   = useState<WriteGame[]>([])
   const [liveGames, setLiveGames]   = useState<WriteGame[]>([])
@@ -110,6 +110,7 @@ export default function CommunityWritePage() {
         if (ch === 'beta-game' || ch === 'live-game') setExpandedChan(ch)
         if (p.gameId?._id) setSelectedGameId(p.gameId._id)
         setTags(p.tags || [])
+        setIsPublished(p.isPublished !== false)
         if (p.images?.length) {
           setUploadedImages(p.images.map(img => img.startsWith('http') ? img : `${UPLOADS_URL}${img}`))
           setThumbnailIndex(p.thumbnailIndex || 0)
@@ -143,6 +144,7 @@ export default function CommunityWritePage() {
         title: title.trim(), content, channel, tags,
         images: uploadedImages,
         thumbnailIndex,
+        isPublished,
       }
       if (selectedGameId) payload.gameId = selectedGameId
       if (isEdit) {
@@ -156,15 +158,6 @@ export default function CommunityWritePage() {
       const err = e as { response?: { data?: { message?: string } } }
       setError(err?.response?.data?.message || '저장 실패')
     } finally { setSubmitting(false) }
-  }
-
-  const handleTempSave = async () => {
-    setTempSaving(true); setTempSaveMsg('')
-    try {
-      await communityService.tempSave({ title: title.trim() || '임시저장', content, channel, tags })
-      setTempSaveMsg('임시저장 완료')
-    } catch { setTempSaveMsg('임시저장 실패') }
-    finally { setTempSaving(false); setTimeout(() => setTempSaveMsg(''), 3000) }
   }
 
   useEffect(() => {
@@ -320,16 +313,6 @@ export default function CommunityWritePage() {
           <div className="flex-1 min-w-0 space-y-4">
             <div className="flex items-center justify-between">
               <h1 className="text-text-primary text-xl font-bold">{isEdit ? '게시글 수정' : '게시글 작성'}</h1>
-              {!isEdit && (
-                <button onClick={handleTempSave} disabled={tempSaving}
-                  className="flex items-center gap-1.5 text-base text-text-muted hover:text-accent transition-colors">
-                  {tempSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  임시저장
-                  {tempSaveMsg && (
-                    <span className={`text-xs ml-1 ${tempSaveMsg.includes('실패') ? 'text-red-400' : 'text-green-400'}`}>{tempSaveMsg}</span>
-                  )}
-                </button>
-              )}
             </div>
 
             {error && (
@@ -486,16 +469,25 @@ export default function CommunityWritePage() {
             </div>
 
             {/* 제출 */}
-            <div className="flex items-center gap-3 pt-2">
-              <button onClick={handleSubmit} disabled={submitting || ((channel === 'beta-game' || channel === 'live-game') && !selectedGameId) || (channel === 'new-game-intro' && uploadedImages.length === 0)}
-                className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-primary py-3 rounded-xl text-base font-semibold transition-colors">
-                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {isEdit ? '수정 완료' : '게시하기'}
-              </button>
-              <button onClick={() => router.back()}
-                className="px-6 py-3 text-base text-text-muted border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
-                취소
-              </button>
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <div className="flex items-center gap-3 bg-bg-tertiary rounded-xl px-4 py-2.5">
+                <span className={`text-sm font-medium ${isPublished ? 'text-text-secondary' : 'text-text-muted'}`}>{isPublished ? '공개 ON' : '공개 OFF'}</span>
+                <button type="button" onClick={() => setIsPublished(v => !v)}
+                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${isPublished ? 'bg-green-500' : 'bg-bg-muted'}`}>
+                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isPublished ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => router.back()}
+                  className="px-6 py-2.5 text-sm text-text-muted border border-line rounded-xl hover:bg-bg-tertiary transition-colors">
+                  취소
+                </button>
+                <button onClick={handleSubmit} disabled={submitting || ((channel === 'beta-game' || channel === 'live-game') && !selectedGameId) || (channel === 'new-game-intro' && uploadedImages.length === 0)}
+                  className="w-52 flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-primary py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                  {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isEdit ? '수정 완료' : '게시하기'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

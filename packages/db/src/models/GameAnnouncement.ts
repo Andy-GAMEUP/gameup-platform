@@ -12,6 +12,7 @@ export interface IGameAnnouncement extends Document {
   views: number
   images: string[]
   thumbnailIndex: number
+  isPublished: boolean
   deletedAt?: Date
   likes: Types.ObjectId[]
   reportCount: number
@@ -35,6 +36,7 @@ const GameAnnouncementSchema = new Schema<IGameAnnouncement>(
     views: { type: Number, default: 0 },
     images: [{ type: String }],
     thumbnailIndex: { type: Number, default: 0 },
+    isPublished: { type: Boolean, default: true },
     deletedAt: { type: Date, default: null },
     likes: [{ type: Schema.Types.ObjectId, ref: 'User' }],
     reportCount: { type: Number, default: 0 },

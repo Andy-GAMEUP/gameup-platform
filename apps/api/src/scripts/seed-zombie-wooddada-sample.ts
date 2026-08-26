@@ -95,10 +95,8 @@ async function main() {
       views: Math.floor(Math.random() * 3000),
       commentCount: Math.floor(Math.random() * 60),
       status: 'active' as const,
-      isPinned: n === 1 || n === 2, // 2개는 고정글 테스트용
       isHot: Math.random() < 0.15,
       hotScore: Math.random() * 60,
-      isTempSave: false,
       reportCount: 0,
       reports: [],
       createdAt,

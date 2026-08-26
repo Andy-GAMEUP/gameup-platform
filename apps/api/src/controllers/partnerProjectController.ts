@@ -68,7 +68,7 @@ export const getProjects = async (req: AuthRequest, res: Response) => {
     const skip = (pageNum - 1) * limitNum
 
     const projects = await PartnerProject.find(filter)
-      .populate('ownerId', 'username companyInfo')
+      .populate('ownerId', 'username profileImage companyInfo')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
@@ -132,7 +132,7 @@ export const getProjectById = async (req: AuthRequest, res: Response) => {
     }
 
     const project = await PartnerProject.findById(id)
-      .populate('ownerId', 'username companyInfo memberType')
+      .populate('ownerId', 'username profileImage companyInfo memberType')
 
     if (!project) {
       return res.status(404).json({ message: '프로젝트를 찾을 수 없습니다' })

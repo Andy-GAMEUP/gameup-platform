@@ -6,7 +6,6 @@ export interface IAnnouncement extends Document {
   type: 'notice' | 'event' | 'maintenance' | 'update'
   priority: 'low' | 'normal' | 'high' | 'urgent'
   authorId: mongoose.Types.ObjectId
-  isPinned: boolean
   isPublished: boolean
   publishedAt?: Date
   expiresAt?: Date
@@ -48,10 +47,6 @@ const announcementSchema = new Schema<IAnnouncement>(
       ref: 'User',
       required: true
     },
-    isPinned: {
-      type: Boolean,
-      default: false
-    },
     isPublished: {
       type: Boolean,
       default: false
@@ -87,7 +82,7 @@ const announcementSchema = new Schema<IAnnouncement>(
   }
 )
 
-announcementSchema.index({ isPublished: 1, isPinned: -1, createdAt: -1 })
+announcementSchema.index({ isPublished: 1, createdAt: -1 })
 announcementSchema.index({ targetRole: 1, isPublished: 1 })
 
 export default mongoose.model<IAnnouncement>('Announcement', announcementSchema)

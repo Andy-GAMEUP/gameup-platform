@@ -269,9 +269,9 @@ async function seed() {
   console.log('\n📢 공지사항...')
 
   const announcements = [
-    { title: '게임업 플랫폼 베타 서비스 오픈', content: '<p>게임업 플랫폼의 베타 서비스가 오픈되었습니다.</p>', type: 'notice', priority: 'high', isPublished: true, isPinned: true, targetRole: 'all', authorId: admin._id },
-    { title: '서비스 점검 안내 (3/15)', content: '<p>3월 15일 02:00~06:00 서비스 점검이 예정되어 있습니다.</p>', type: 'maintenance', priority: 'normal', isPublished: true, isPinned: false, targetRole: 'all', authorId: admin._id },
-    { title: '파트너 채널 오픈 기념 이벤트', content: '<p>파트너 채널 오픈을 기념하여 포인트 지급 이벤트를 진행합니다!</p>', type: 'event', priority: 'normal', isPublished: true, isPinned: false, targetRole: 'all', authorId: admin._id },
+    { title: '게임업 플랫폼 베타 서비스 오픈', content: '<p>게임업 플랫폼의 베타 서비스가 오픈되었습니다.</p>', type: 'notice', priority: 'high', isPublished: true, targetRole: 'all', authorId: admin._id },
+    { title: '서비스 점검 안내 (3/15)', content: '<p>3월 15일 02:00~06:00 서비스 점검이 예정되어 있습니다.</p>', type: 'maintenance', priority: 'normal', isPublished: true, targetRole: 'all', authorId: admin._id },
+    { title: '파트너 채널 오픈 기념 이벤트', content: '<p>파트너 채널 오픈을 기념하여 포인트 지급 이벤트를 진행합니다!</p>', type: 'event', priority: 'normal', isPublished: true, targetRole: 'all', authorId: admin._id },
   ]
 
   for (const a of announcements) {

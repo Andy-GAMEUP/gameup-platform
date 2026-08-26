@@ -16,7 +16,6 @@ export interface AnnouncementManagerItem {
   createdAt: string
   images?: string[]
   thumbnailIndex?: number
-  isPinned?: boolean
   isPublished?: boolean
   targetRole?: 'all' | 'developer' | 'player'
 }
@@ -30,7 +29,6 @@ export interface AnnouncementFormValue {
   thumbnailIndex: number
   targetRole?: 'all' | 'developer' | 'player'
   expiresAt?: string
-  isPinned?: boolean
   isPublished?: boolean
 }
 
@@ -55,8 +53,8 @@ function stripHtml(html: string) {
 function emptyForm(showAdminFields?: boolean): AnnouncementFormValue {
   return {
     title: '', content: '', type: 'notice', priority: 'normal',
-    images: [], thumbnailIndex: 0,
-    ...(showAdminFields ? { targetRole: 'all', isPinned: false, isPublished: true } : {}),
+    images: [], thumbnailIndex: 0, isPublished: true,
+    ...(showAdminFields ? { targetRole: 'all' } : {}),
   }
 }
 
@@ -64,6 +62,8 @@ function toForm(item: AnnouncementManagerItem): AnnouncementFormValue {
   return {
     title: item.title, content: item.content, type: item.type, priority: item.priority,
     images: item.images || [], thumbnailIndex: item.thumbnailIndex || 0,
+    isPublished: item.isPublished !== false,
+    ...(item.targetRole ? { targetRole: item.targetRole } : {}),
   }
 }
 
@@ -88,7 +88,7 @@ function AnnouncementFormModal({
   const set = <K extends keyof AnnouncementFormValue>(k: K, v: AnnouncementFormValue[K]) =>
     setForm(p => ({ ...p, [k]: v }))
 
-  const pushImage = (url: string) => set('images', [...form.images, url])
+  const pushImage = (url: string) => setForm(p => ({ ...p, images: [...p.images, url] }))
 
   const removeImage = (idx: number) => {
     setForm(p => {
@@ -183,8 +183,12 @@ function AnnouncementFormModal({
             </div>
           </div>
 
-          <div>
-            <label className="text-xs text-text-muted mb-1 block">이미지 (선택)</label>
+          <div className="bg-bg-card border border-line rounded-2xl p-4">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-text-secondary mb-3">
+              <Star className="w-4 h-4" />
+              썸네일 선택
+              <span className="text-xs text-text-muted font-normal">· 카드에 표시될 대표 이미지</span>
+            </p>
             <div className="flex flex-wrap gap-2">
               {form.images.map((img, i) => (
                 <button
@@ -220,26 +224,22 @@ function AnnouncementFormModal({
             )}
           </div>
 
-          {showAdminFields && (
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!form.isPinned} onChange={e => set('isPinned', e.target.checked)} className="rounded" />
-                <span className="text-sm text-text-secondary">상단 고정</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={!!form.isPublished} onChange={e => set('isPublished', e.target.checked)} className="rounded" />
-                <span className="text-sm text-text-secondary">즉시 게시</span>
-              </label>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 bg-bg-tertiary rounded-xl px-4 py-2.5">
+              <span className={`text-sm font-medium ${form.isPublished ? 'text-text-secondary' : 'text-text-muted'}`}>{form.isPublished ? '공개 ON' : '공개 OFF'}</span>
+              <button type="button" onClick={() => set('isPublished', !form.isPublished)}
+                className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${form.isPublished ? 'bg-green-500' : 'bg-bg-muted'}`}>
+                <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.isPublished ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
             </div>
-          )}
-
-          <div className="flex justify-end gap-2">
-            <button onClick={onClose} className="px-4 py-2 border border-line rounded-lg text-base text-text-secondary hover:bg-bg-tertiary">취소</button>
-            <button onClick={handleSave} disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium disabled:opacity-50">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              저장
-            </button>
+            <div className="flex gap-2">
+              <button onClick={onClose} className="px-4 py-2 border border-line rounded-lg text-base text-text-secondary hover:bg-bg-tertiary">취소</button>
+              <button onClick={handleSave} disabled={saving}
+                className="flex items-center gap-1.5 px-4 py-2 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium disabled:opacity-50">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {title.includes('수정') ? '수정 완료' : '게시하기'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -13,6 +13,7 @@
 | 배지 | 파일 | 의미 | 쓰이는 곳 |
 |------|------|------|-----------|
 | `NoticeTypeBadge` | `apps/web/src/components/NoticeTypeBadge.tsx` | 공지 유형 (공지/이벤트/점검/업데이트) | 커뮤니티 공지 목록 전체(`CommunityPage.tsx`, 홈 공지사항/게임별공지사항 카드, 게임업 공지/게임 공지 탭, 게임 선택 시 게임 공지, 대형 카드 포함), 플랫폼 공지 상세(`AnnouncementDetailPage.tsx`), 게임 공지 상세(`GameAnnouncementDetailPage.tsx`), 개발사·관리자 공지 작성 화면(`AnnouncementManager.tsx`), **메인 화면(`/`, `MainPage.tsx`)의 "커뮤니티 공지" 위젯** |
+| 베스트 댓글 배지 (인라인) | `apps/web/src/components/community/CommentSection.tsx`의 `CommentBlock` | 댓글 "베스트순" 정렬 시 Wilson Score 1위 댓글(순추천 > 0)에 표시 | `CommentSection`이 커뮤니티 게시글 상세(`CommunityPostPage.tsx`)·관리자 신작게임소개(`AdminCommunityPage.tsx`) 양쪽에서 공유되므로 별도 컴포넌트로 안 뽑아도 이미 공용 — 댓글 UI가 쓰이는 곳이 늘어나면 자동으로 같이 적용됨 |
 
 **2026-08-14에 발견해서 고친 누락**: 메인 화면 `MainPage.tsx`의 "커뮤니티 공지" 위젯은 `NoticeTypeBadge`를 만들 때(2026-08-13) 놓쳐서, 자체 `NOTICE_TYPE_LABEL`/`NOTICE_TYPE_COLOR` 하드코딩 맵으로 계속 다른 색(파랑/보라/노랑/초록)을 쓰고 있었다. 사용자가 "왜 다른쪽이랑 통일 안했어?"라고 지적해서 발견 — 하드코딩 맵 제거하고 `NoticeTypeBadge` 컴포넌트로 교체함. **새 화면을 추가할 때마다 이 표에 없는 곳에서 공지 유형을 보여주고 있지 않은지 먼저 확인한다.**
 

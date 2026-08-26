@@ -1,18 +1,19 @@
 import { Router } from 'express'
-import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGames, getDeveloperStats, getGameDeletionLogs, requestReview, cancelReview, restoreGame, getGamePayments, getAllDeveloperPayments, getPaymentProviders } from '../controllers/gameController'
+import { getAllGames, getGameById, createGame, updateGame, deleteGame, getMyGames, getDeveloperStats, getGameDeletionLogs, requestReview, cancelReview, restoreGame, updateGameCommunityVisibility, getGamePayments, getAllDeveloperPayments, getPaymentProviders, uploadGameContentImages } from '../controllers/gameController'
 import { getDeveloperOverview, getDeveloperDaily, getGameAnalytics, exportGameAnalytics, exportDeveloperDashboard } from '../controllers/gameAnalyticsController'
 import { getGameQAs, createGameQA, getDeveloperQAs, answerGameQA, getMyQAs } from '../controllers/gameQAController'
 import { getGameMedia, addGameMedia, deleteGameMedia } from '../controllers/gameMediaController'
 import { getGameShopItems, getPublicGameShopItems, createGameShopItem, updateGameShopItem, deleteGameShopItem, reorderGameShopItems, updateShopCurrencyIcon, updateShopCurrencyName, submitShopReview, addAdditionalCurrency, updateAdditionalCurrency, deleteAdditionalCurrency, purchaseWithCapcoin, copyGameShopItem } from '../controllers/gameShopController'
 import { getGameAnnouncements, createGameAnnouncement, updateGameAnnouncement, deleteGameAnnouncement, getRecentGameAnnouncements, getGameAnnouncementById, getPublicGameAnnouncements, uploadGameAnnouncementImages, toggleGameAnnouncementLike, reportGameAnnouncement } from '../controllers/gameAnnouncementController'
+import { getManagedGameReviews, setGameReviewBlocked, removeGameReview } from '../controllers/reviewController'
 import { authenticateToken, requireRole, optionalAuth } from '../middleware/auth'
-import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload, additionalCurrencyIconUpload, mediaUpload, gameAnnouncementUpload } from '../middleware/upload'
+import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload, additionalCurrencyIconUpload, mediaUpload, gameAnnouncementUpload, gameContentUpload } from '../middleware/upload'
 
 const router = Router()
 
 router.get('/', getAllGames)
 router.get('/announcements/recent', getRecentGameAnnouncements)
-router.get('/announcements/:announcementId', getGameAnnouncementById)
+router.get('/announcements/:announcementId', optionalAuth, getGameAnnouncementById)
 router.post('/announcements/:announcementId/like', authenticateToken, toggleGameAnnouncementLike)
 router.post('/announcements/:announcementId/report', authenticateToken, reportGameAnnouncement)
 router.get('/my', authenticateToken, requireRole('developer', 'admin'), getMyGames)
@@ -26,6 +27,7 @@ router.get('/developer/export', authenticateToken, requireRole('developer', 'adm
 // 게임 삭제 감사로그 (admin)
 router.get('/admin/deletion-logs', authenticateToken, requireRole('admin'), getGameDeletionLogs)
 router.post('/admin/deletion-logs/:logId/restore', authenticateToken, requireRole('admin'), restoreGame)
+router.patch('/admin/deletion-logs/:logId/community-visibility', authenticateToken, requireRole('admin'), updateGameCommunityVisibility)
 
 // 개발자 Q&A 관리 (피드백 관리)
 router.get('/developer/qas', authenticateToken, requireRole('developer', 'admin'), getDeveloperQAs)
@@ -40,6 +42,7 @@ router.post('/:id/request-review', authenticateToken, requireRole('developer'), 
 router.post('/:id/cancel-review', authenticateToken, requireRole('developer'), cancelReview)
 router.put('/:id', authenticateToken, requireRole('developer', 'admin'), uploadFields, updateGame)
 router.delete('/:id', authenticateToken, requireRole('developer', 'admin'), deleteGame)
+router.post('/:id/content/upload-images', authenticateToken, requireRole('developer', 'admin'), gameContentUpload, uploadGameContentImages)
 
 // 게임별 Q&A
 router.get('/:gameId/qas', getGameQAs)
@@ -77,8 +80,13 @@ router.post('/:gameId/currencies', authenticateToken, requireRole('developer', '
 router.patch('/:gameId/currencies/:currencyId', authenticateToken, requireRole('developer', 'admin'), additionalCurrencyIconUpload, updateAdditionalCurrency)
 router.delete('/:gameId/currencies/:currencyId', authenticateToken, requireRole('developer', 'admin'), deleteAdditionalCurrency)
 
+// 게임 리뷰 관리 (개발자 본인 게임 또는 관리자)
+router.get('/:gameId/reviews/manage', authenticateToken, requireRole('developer', 'admin'), getManagedGameReviews)
+router.patch('/:gameId/reviews/:reviewId/block', authenticateToken, requireRole('developer', 'admin'), setGameReviewBlocked)
+router.delete('/:gameId/reviews/:reviewId', authenticateToken, requireRole('developer', 'admin'), removeGameReview)
+
 // 게임 공지&알림
-router.get('/:gameId/announcements/public', getPublicGameAnnouncements)
+router.get('/:gameId/announcements/public', optionalAuth, getPublicGameAnnouncements)
 router.get('/:gameId/announcements', authenticateToken, requireRole('developer', 'admin'), getGameAnnouncements)
 router.post('/:gameId/announcements', authenticateToken, requireRole('developer', 'admin'), createGameAnnouncement)
 router.post('/:gameId/announcements/upload-images', authenticateToken, requireRole('developer', 'admin'), gameAnnouncementUpload, uploadGameAnnouncementImages)

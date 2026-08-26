@@ -15,7 +15,6 @@ export interface Post {
   viewCount: number
   likeCount: number
   commentCount: number
-  isTempSave: boolean
   isPublished: boolean
   createdAt: Date
   updatedAt: Date

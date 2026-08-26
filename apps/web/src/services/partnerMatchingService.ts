@@ -7,10 +7,12 @@ export interface PartnerMatchingProfile {
   userId: {
     _id: string
     username: string
+    profileImage?: string
     companyInfo?: {
       companyName: string
       companyCategory?: string
       companyType: string[]
+      businessType?: 'individual' | 'corporation'
     }
     memberType: string
   }
@@ -51,6 +53,7 @@ export interface PartnerProjectItem {
   ownerId: {
     _id: string
     username: string
+    profileImage?: string
     companyInfo?: {
       companyName: string
       companyType: string[]

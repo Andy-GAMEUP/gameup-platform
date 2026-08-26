@@ -30,6 +30,7 @@ interface DeletionLog {
   gameSnapshot?: Record<string, unknown>
   deletedAt: string
   totalRevenue?: number
+  hiddenFromCommunity?: boolean
 }
 
 export default function AdminGameDeletionLogsPage() {
@@ -38,12 +39,16 @@ export default function AdminGameDeletionLogsPage() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [developerFilter, setDeveloperFilter] = useState('')
+  const [developerOptions, setDeveloperOptions] = useState<{ id: string; name: string }[]>([])
+  const [roleFilter, setRoleFilter] = useState('')
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
   const [total, setTotal] = useState(0)
   const [detail, setDetail] = useState<DeletionLog | null>(null)
   const [restoring, setRestoring] = useState<string | null>(null)
   const [restoreTarget, setRestoreTarget] = useState<DeletionLog | null>(null)
+  const [togglingVisibility, setTogglingVisibility] = useState<string | null>(null)
   const limit = 20
 
   useEffect(() => {
@@ -55,7 +60,12 @@ export default function AdminGameDeletionLogsPage() {
     setLoading(true)
     setError('')
     try {
-      const data = await gameService.getGameDeletionLogs({ page, limit, search: debouncedSearch || undefined })
+      const data = await gameService.getGameDeletionLogs({
+        page, limit,
+        search: debouncedSearch || undefined,
+        developerId: developerFilter || undefined,
+        deletedByRole: roleFilter || undefined,
+      })
       setLogs(data.logs || [])
       setPages(data.pagination?.pages || 1)
       setTotal(data.pagination?.total || 0)
@@ -65,9 +75,23 @@ export default function AdminGameDeletionLogsPage() {
     } finally {
       setLoading(false)
     }
-  }, [page, debouncedSearch])
+  }, [page, debouncedSearch, developerFilter, roleFilter])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    adminService.getAllGames({ limit: 1000 }).then((data) => {
+      const map = new Map<string, string>()
+      for (const g of data.games || []) {
+        const dev = g.developerId
+        if (!dev) continue
+        const id = dev._id || dev
+        const name = dev?.companyInfo?.companyName || dev?.username || ''
+        if (id && name) map.set(id, name)
+      }
+      setDeveloperOptions(Array.from(map.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)))
+    }).catch(() => {})
+  }, [])
 
   const handleRestore = async (log: DeletionLog) => {
     setRestoring(log._id)
@@ -80,6 +104,21 @@ export default function AdminGameDeletionLogsPage() {
       alert(msg || '복구에 실패했습니다.')
     } finally {
       setRestoring(null)
+    }
+  }
+
+  const handleToggleCommunityVisibility = async (log: DeletionLog) => {
+    const nextHidden = !log.hiddenFromCommunity
+    setTogglingVisibility(log._id)
+    setLogs(prev => prev.map(l => l._id === log._id ? { ...l, hiddenFromCommunity: nextHidden } : l))
+    try {
+      await adminService.updateGameCommunityVisibility(log._id, nextHidden)
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      alert(msg || '변경에 실패했습니다.')
+      setLogs(prev => prev.map(l => l._id === log._id ? { ...l, hiddenFromCommunity: log.hiddenFromCommunity } : l))
+    } finally {
+      setTogglingVisibility(null)
     }
   }
 
@@ -104,15 +143,36 @@ export default function AdminGameDeletionLogsPage() {
       </div>
 
       <div className="bg-bg-secondary border border-line rounded-lg p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
-          <input
-            type="text"
-            placeholder="게임명, 개발사, 삭제 유저로 검색..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            className="w-full pl-10 pr-4 py-2 bg-bg-tertiary border border-line rounded-md text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={developerFilter}
+            onChange={(e) => { setDeveloperFilter(e.target.value); setPage(1) }}
+            className="bg-bg-tertiary border border-line rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+          >
+            <option value="">개발사</option>
+            {developerOptions.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <select
+            value={roleFilter}
+            onChange={(e) => { setRoleFilter(e.target.value); setPage(1) }}
+            className="bg-bg-tertiary border border-line rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+          >
+            <option value="">삭제 그룹</option>
+            <option value="admin">관리자</option>
+            <option value="developer">개발사</option>
+          </select>
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
+            <input
+              type="text"
+              placeholder="게임명, 개발사, 삭제 유저로 검색..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              className="w-full pl-10 pr-4 py-2 bg-bg-tertiary border border-line rounded-md text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent"
+            />
+          </div>
         </div>
       </div>
 
@@ -129,16 +189,17 @@ export default function AdminGameDeletionLogsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="min-w-full">
               <thead>
                 <tr className="border-b border-line bg-bg-tertiary/50 divide-x divide-line/30">
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">게임명</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">개발사</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">삭제 유저</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">삭제 당시 상태</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">삭제일시</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">게임 복구</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium">상세</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">게임명</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">개발사</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">삭제 유저</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">삭제 그룹</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">삭제일시</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">커뮤니티 탭</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">게임 복구</th>
+                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">상세</th>
                 </tr>
               </thead>
               <tbody>
@@ -148,34 +209,34 @@ export default function AdminGameDeletionLogsPage() {
                       <p className="font-semibold text-text-primary">{log.gameTitle}</p>
                       {log.gameGenre && <p className="text-xs text-text-muted">{normalizeGenre(log.gameGenre)}</p>}
                     </td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">{log.developerCompanyName || log.developerUsername || '-'}</td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">{log.developerCompanyName || log.developerUsername || '-'}</td>
+                    <td className="px-4 py-3 text-sm whitespace-nowrap">
                       <p className="text-text-primary">{log.deletedByUsername || '-'}</p>
                       <p className="text-xs text-text-muted">{log.deletedByEmail || '-'}</p>
                     </td>
                     <td className="px-4 py-3">
-                      {(() => {
-                        const snap = log.gameSnapshot as Record<string, string> | undefined
-                        if (!snap) return <span className="text-xs text-text-muted">-</span>
-                        const isSuspended = !!snap.suspendedAt
-                        const s =
-                          isSuspended ? { label: '강제 중지 중', color: 'text-red-400', dot: 'bg-red-400', pulse: false }
-                          : snap.approvalStatus === 'not_submitted' ? { label: '초안 작성 중', color: 'text-text-muted', dot: 'bg-text-muted', pulse: false }
-                          : snap.approvalStatus === 'pending' || snap.approvalStatus === 'review' ? { label: '심사 중', color: 'text-yellow-400', dot: 'bg-yellow-400', pulse: true }
-                          : snap.approvalStatus === 'rejected' ? { label: '심사 거부', color: 'text-red-400', dot: 'bg-red-400', pulse: false }
-                          : snap.approvalStatus === 'approved' && snap.status !== 'published' ? { label: '출시 대기', color: 'text-emerald-400', dot: 'bg-emerald-400', pulse: true }
-                          : snap.approvalStatus === 'approved' ? { label: '운영 중', color: 'text-blue-500', dot: 'bg-blue-500', pulse: true }
-                          : { label: '-', color: 'text-text-muted', dot: 'bg-text-muted', pulse: false }
-                        return (
-                          <span className={`inline-flex items-center gap-1 text-sm font-medium whitespace-nowrap ${s.color}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot} ${s.pulse ? 'animate-pulse' : ''}`} />
-                            {s.label}
-                          </span>
-                        )
-                      })()}
+                      <span className={`inline-flex items-center gap-1 text-sm font-medium whitespace-nowrap ${log.deletedByRole === 'admin' ? 'text-red-400' : 'text-blue-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${log.deletedByRole === 'admin' ? 'bg-red-400' : 'bg-blue-400'}`} />
+                        {log.deletedByRole === 'admin' ? '관리자' : '개발사'}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                       {new Date(log.deletedAt).toLocaleString('ko-KR')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleToggleCommunityVisibility(log)}
+                        disabled={togglingVisibility === log._id}
+                        className="flex items-center gap-2 disabled:opacity-40"
+                        title="커뮤니티 사이드바 탭 노출 여부"
+                      >
+                        <div className={`relative w-9 h-5 rounded-full transition-colors ${!log.hiddenFromCommunity ? 'bg-green-500' : 'bg-bg-muted'}`}>
+                          <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${!log.hiddenFromCommunity ? 'translate-x-4' : 'translate-x-0'}`} />
+                        </div>
+                        <span className={`text-xs whitespace-nowrap ${!log.hiddenFromCommunity ? 'text-green-400' : 'text-text-muted'}`}>
+                          {log.hiddenFromCommunity ? '숨김' : '노출'}
+                        </span>
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-left">
                       <button

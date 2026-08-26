@@ -6,6 +6,7 @@ export interface IGameDeletionLog extends Document {
   gameGenre?: string
   developerId: mongoose.Types.ObjectId
   developerUsername?: string
+  developerCompanyName?: string
   deletedBy: mongoose.Types.ObjectId
   deletedByUsername?: string
   deletedByEmail?: string
@@ -25,6 +26,7 @@ const gameDeletionLogSchema = new Schema<IGameDeletionLog>(
     gameGenre: { type: String },
     developerId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     developerUsername: { type: String },
+    developerCompanyName: { type: String },
     deletedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     deletedByUsername: { type: String },
     deletedByEmail: { type: String },

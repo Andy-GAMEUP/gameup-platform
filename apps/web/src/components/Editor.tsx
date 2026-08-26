@@ -93,12 +93,15 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
   }
 
   const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !onImageUpload || !editor) return
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0 || !onImageUpload || !editor) return
     setUploading(true)
     try {
-      const url = await onImageUpload(file)
-      editor.chain().focus().setImage({ src: url }).run()
+      for (const file of files) {
+        const url = await onImageUpload(file)
+        // 이미지 삽입 직후 커서가 노드 자체를 선택한 상태로 남아, 다음 삽입이 이를 덮어쓰는 것을 방지
+        editor.chain().focus().setImage({ src: url }).createParagraphNear().run()
+      }
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -127,7 +130,7 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
 
       {/* 숨김 파일 입력 */}
       {onImageUpload && (
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
+        <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageFile} />
       )}
 
       {/* ── 툴바 ── */}

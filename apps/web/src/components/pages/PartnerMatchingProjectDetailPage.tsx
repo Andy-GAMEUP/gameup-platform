@@ -275,9 +275,15 @@ export default function PartnerMatchingProjectDetailPage() {
             {/* Company Info */}
             {companyInfo && (
               <div className="flex items-center gap-3">
-                <span className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-hover text-white text-base font-bold shadow-sm">
-                  {companyInfo.companyName?.charAt(0) || '?'}
-                </span>
+                {project.ownerId?.profileImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={project.ownerId.profileImage} alt={companyInfo.companyName || ''}
+                    className="w-10 h-10 flex-shrink-0 rounded-full object-cover" />
+                ) : (
+                  <span className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full bg-gradient-to-br from-accent to-accent-hover text-white text-base font-bold shadow-sm">
+                    {companyInfo.companyName?.charAt(0) || '?'}
+                  </span>
+                )}
                 <div>
                   <div className="flex items-center gap-2">
                     {partnerChannelId && partnerChannelPublic ? (

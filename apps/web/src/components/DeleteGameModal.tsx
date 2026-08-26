@@ -8,9 +8,10 @@ interface DeleteGameModalProps {
   gameTitle: string
   onClose: () => void
   onDeleted?: () => void
+  confirmDiscussion?: boolean
 }
 
-export default function DeleteGameModal({ gameId, gameTitle, onClose, onDeleted }: DeleteGameModalProps) {
+export default function DeleteGameModal({ gameId, gameTitle, onClose, onDeleted, confirmDiscussion }: DeleteGameModalProps) {
   const [confirmTitle, setConfirmTitle] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -51,9 +52,15 @@ export default function DeleteGameModal({ gameId, gameTitle, onClose, onDeleted 
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div className="bg-red-900/20 border border-red-500/30 rounded-md p-3 text-sm text-red-300">
-            이 작업은 <strong>되돌릴 수 없습니다.</strong>
-          </div>
+          <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+            이 작업은 되돌릴 수 없습니다.
+          </p>
+
+          {confirmDiscussion && (
+            <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+              개발사와 충분히 논의하셨습니까?
+            </p>
+          )}
 
           <div>
             <label className="block text-sm text-text-secondary mb-1">

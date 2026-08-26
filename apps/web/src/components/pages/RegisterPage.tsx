@@ -12,6 +12,7 @@ import Image from 'next/image'
 type MemberType = 'individual' | 'corporate'
 type CompanyCategory = 'developer' | 'partner'
 type CompanyType = 'publisher' | 'game_solution' | 'game_service' | 'operations' | 'qa' | 'marketing' | 'development' | 'original_art' | 'other'
+type BusinessType = 'individual' | 'corporation'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -30,6 +31,7 @@ export default function RegisterPage() {
     companyCategory: 'developer' as CompanyCategory,
     companyType: [] as CompanyType[],
     businessNumber: '',
+    businessType: 'corporation' as BusinessType,
     contactName: '',
     contactPhone: '',
     contactEmail: '',
@@ -162,6 +164,7 @@ export default function RegisterPage() {
           companyCategory: companyData.companyCategory,
           companyType: companyData.companyType,
           businessNumber: companyData.businessNumber,
+          businessType: companyData.businessType,
         }
         registerData.contactPerson = {
           name: formData.username,
@@ -536,10 +539,18 @@ export default function RegisterPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-text-secondary mb-2">사업자 등록번호 <span className="text-red-400">*</span></label>
-                    <div className="relative">
-                      <FileDigit className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-                      <input type="text" inputMode="numeric" value={companyData.businessNumber} onChange={handleBusinessNumberChange} placeholder="123-45-67890"
-                        className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.businessNumber ? 'border-red-500' : 'border-line'}`} />
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <FileDigit className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                        <input type="text" inputMode="numeric" value={companyData.businessNumber} onChange={handleBusinessNumberChange} placeholder="123-45-67890"
+                          className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.businessNumber ? 'border-red-500' : 'border-line'}`} />
+                      </div>
+                      <select value={companyData.businessType}
+                        onChange={e => setCompanyData(prev => ({ ...prev, businessType: e.target.value as BusinessType }))}
+                        className="bg-bg-tertiary border border-line rounded-lg px-3 py-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent transition-colors flex-shrink-0">
+                        <option value="corporation">법인</option>
+                        <option value="individual">개인사업자</option>
+                      </select>
                     </div>
                     {errors.businessNumber && <p className="mt-1 text-xs text-danger">{errors.businessNumber}</p>}
                   </div>

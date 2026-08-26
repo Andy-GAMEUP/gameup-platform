@@ -82,6 +82,7 @@ export const register = async (req: AuthRequest, res: Response) => {
         companyCategory: companyInfo.companyCategory,
         companyType: companyInfo.companyType,
         businessNumber: companyInfo.businessNumber,
+        businessType: companyInfo.businessType === 'individual' ? 'individual' : 'corporation',
         isApproved: false,
         approvalStatus: 'pending',
       }

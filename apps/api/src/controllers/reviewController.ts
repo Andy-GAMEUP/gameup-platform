@@ -189,6 +189,87 @@ export const getMyReview = async (req: AuthRequest, res: Response) => {
   }
 }
 
+// 게임 리뷰 관리 목록 조회 (개발자 본인 게임 또는 관리자)
+export const getManagedGameReviews = async (req: AuthRequest, res: Response) => {
+  try {
+    const { gameId } = req.params
+    const game = await Game.findById(gameId).select('developerId')
+    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    if (req.user!.role !== 'admin' && game.developerId.toString() !== req.user!.id) {
+      return res.status(403).json({ message: '본인 게임의 리뷰만 관리할 수 있습니다' })
+    }
+
+    const { page = 1, limit = 20, search, isBlocked } = req.query
+    const filter: Record<string, unknown> = { gameId }
+    if (isBlocked !== undefined) filter.isBlocked = isBlocked === 'true'
+    if (search) {
+      const safe = (search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      filter.$or = [
+        { title: { $regex: safe, $options: 'i' } },
+        { content: { $regex: safe, $options: 'i' } },
+      ]
+    }
+    const pageNum = Math.max(1, Number(page))
+    const limitNum = Math.min(100, Math.max(1, Number(limit)))
+    const total = await Review.countDocuments(filter)
+    const reviews = await Review.find(filter)
+      .populate('userId', 'username email')
+      .sort({ createdAt: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+    res.json({ reviews, total, page: pageNum, totalPages: Math.ceil(total / limitNum) })
+  } catch {
+    res.status(500).json({ message: '리뷰 목록 조회 실패' })
+  }
+}
+
+// 게임 리뷰 차단/차단 해제 (개발자 본인 게임 또는 관리자)
+export const setGameReviewBlocked = async (req: AuthRequest, res: Response) => {
+  try {
+    const { gameId, reviewId } = req.params
+    const game = await Game.findById(gameId).select('developerId')
+    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    if (req.user!.role !== 'admin' && game.developerId.toString() !== req.user!.id) {
+      return res.status(403).json({ message: '본인 게임의 리뷰만 관리할 수 있습니다' })
+    }
+
+    const { isBlocked, blockReason } = req.body
+    if (typeof isBlocked !== 'boolean') {
+      return res.status(400).json({ message: 'isBlocked는 boolean이어야 합니다' })
+    }
+    const updateOp = isBlocked
+      ? { $set: { isBlocked: true, blockReason: blockReason || '개발사에 의해 차단됨', blockedAt: new Date() } }
+      : { $set: { isBlocked: false }, $unset: { blockReason: '', blockedAt: '' } }
+    const review = await Review.findOneAndUpdate({ _id: reviewId, gameId }, updateOp, { new: true })
+      .populate('userId', 'username')
+    if (!review) return res.status(404).json({ message: '리뷰를 찾을 수 없습니다' })
+    await updateGameRating(gameId)
+    res.json({ success: true, message: isBlocked ? '리뷰가 차단되었습니다' : '차단이 해제되었습니다', review })
+  } catch {
+    res.status(500).json({ message: '리뷰 처리 실패' })
+  }
+}
+
+// 게임 리뷰 삭제 (개발자 본인 게임 또는 관리자)
+export const removeGameReview = async (req: AuthRequest, res: Response) => {
+  try {
+    const { gameId, reviewId } = req.params
+    const game = await Game.findById(gameId).select('developerId')
+    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    if (req.user!.role !== 'admin' && game.developerId.toString() !== req.user!.id) {
+      return res.status(403).json({ message: '본인 게임의 리뷰만 관리할 수 있습니다' })
+    }
+
+    const review = await Review.findOneAndDelete({ _id: reviewId, gameId })
+    if (!review) return res.status(404).json({ message: '리뷰를 찾을 수 없습니다' })
+    await Game.findByIdAndUpdate(gameId, { $inc: { feedbackCount: -1 } })
+    await updateGameRating(gameId)
+    res.json({ success: true, message: '리뷰가 삭제되었습니다' })
+  } catch {
+    res.status(500).json({ message: '리뷰 삭제 실패' })
+  }
+}
+
 async function updateGameRating(gameId: string) {
   const result = await Review.aggregate([
     { $match: { gameId: new mongoose.Types.ObjectId(gameId), isBlocked: { $ne: true } } },

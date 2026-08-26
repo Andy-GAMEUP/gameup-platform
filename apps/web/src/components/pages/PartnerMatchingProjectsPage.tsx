@@ -287,41 +287,46 @@ export default function PartnerMatchingProjectsPage() {
                   {/* 호버 시 살짝 드러나는 상단 액센트 라인 */}
                   <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
 
-                  {/* Row 1: 회사 아바타 + 회사명/프로젝트명 + 상태 */}
+                  {/* Row 1: 회사 아바타(3줄 높이) + 회사명/프로젝트명/스탯 + 상태 */}
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent/25 to-accent/5 border border-accent/20 flex items-center justify-center text-accent font-bold text-sm flex-shrink-0">
-                        {companyName?.[0]?.toUpperCase() || '?'}
-                      </div>
+                    <div className="flex items-start gap-3 min-w-0">
+                      {project.ownerId?.profileImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={project.ownerId.profileImage} alt={companyName || ''}
+                          className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-accent/25 to-accent/5 border border-accent/20 flex items-center justify-center text-accent font-bold text-xl flex-shrink-0">
+                          {companyName?.[0]?.toUpperCase() || '?'}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <h2 className="text-text-primary font-semibold text-[15px] leading-snug truncate group-hover:text-accent transition-colors">
                           {project.title}
                         </h2>
                         <p className="text-text-muted text-xs truncate">{companyName}</p>
+                        {/* 금액 + 마감일 + 지원자 */}
+                        <div className="flex items-center gap-3 flex-wrap text-xs text-text-muted mt-1.5">
+                          {(project.budget || project.budgetMin) && (
+                            <span className="flex items-center gap-1">
+                              <Wallet className="w-3 h-3" />
+                              {project.budget || `${project.budgetMin}~${project.budgetMax}`}
+                            </span>
+                          )}
+                          {deadline && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> {deadline} 마감
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {project.applicantCount}명 지원
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <span className={`flex-shrink-0 inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full ${status.badge}`}>
                       <span className="w-2 h-2 rounded-full bg-current" />
                       {status.text}
-                    </span>
-                  </div>
-
-                  {/* Row 2: 금액 + 마감일 + 지원자 */}
-                  <div className="flex items-center gap-3 flex-wrap text-xs text-text-muted pl-[46px]">
-                    {(project.budget || project.budgetMin) && (
-                      <span className="flex items-center gap-1">
-                        <Wallet className="w-3 h-3" />
-                        {project.budget || `${project.budgetMin}~${project.budgetMax}`}
-                      </span>
-                    )}
-                    {deadline && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> {deadline} 마감
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {project.applicantCount}명 지원
                     </span>
                   </div>
 

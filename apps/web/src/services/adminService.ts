@@ -7,7 +7,6 @@ export interface PublicAnnouncement {
   content: string
   type: 'notice' | 'event' | 'maintenance' | 'update'
   priority: 'low' | 'normal' | 'high' | 'urgent'
-  isPinned: boolean
   targetRole: 'all' | 'developer' | 'player'
   views: number
   images: string[]
@@ -79,7 +78,6 @@ export interface Announcement {
   content: string
   type: 'notice' | 'event' | 'maintenance' | 'update'
   priority: 'low' | 'normal' | 'high' | 'urgent'
-  isPinned: boolean
   isPublished: boolean
   publishedAt?: string
   expiresAt?: string
@@ -353,8 +351,8 @@ export const adminService = {
     return res.data
   },
 
-  rejectShopReview: async (gameId: string) => {
-    const res = await apiClient.post(`/admin/games/${gameId}/shop-review/reject`)
+  rejectShopReview: async (gameId: string, reason?: string) => {
+    const res = await apiClient.post(`/admin/games/${gameId}/shop-review/reject`, { reason })
     return res.data
   },
 
@@ -365,21 +363,6 @@ export const adminService = {
 
   getGameMetrics: async (id: string) => {
     const res = await apiClient.get(`/admin/games/${id}/metrics`)
-    return res.data
-  },
-
-  getAllReviews: async (params?: { page?: number; limit?: number; search?: string; isBlocked?: string; gameId?: string }) => {
-    const res = await apiClient.get('/admin/reviews', { params })
-    return res.data
-  },
-
-  blockReview: async (id: string, data: { isBlocked: boolean; blockReason?: string }) => {
-    const res = await apiClient.patch(`/admin/reviews/${id}/block`, data)
-    return res.data
-  },
-
-  deleteReview: async (id: string) => {
-    const res = await apiClient.delete(`/admin/reviews/${id}`)
     return res.data
   },
 
@@ -685,6 +668,9 @@ export const adminService = {
 
   restoreGame: (logId: string) =>
     apiClient.post(`/games/admin/deletion-logs/${logId}/restore`).then(r => r.data),
+
+  updateGameCommunityVisibility: (logId: string, hidden: boolean) =>
+    apiClient.patch(`/games/admin/deletion-logs/${logId}/community-visibility`, { hidden }).then(r => r.data as { success: boolean; hiddenFromCommunity: boolean }),
 }
 
 export default adminService

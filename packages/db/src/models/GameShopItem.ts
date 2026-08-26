@@ -29,6 +29,7 @@ export interface IGameShopItem extends Document {
   sales: number
   sortOrder: number
   saleStatus: 'registering' | 'reviewing' | 'on_sale' | 'rejected'
+  rejectionReason?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -63,6 +64,7 @@ const GameShopItemSchema = new Schema<IGameShopItem>(
     sales: { type: Number, default: 0 },
     sortOrder: { type: Number, default: 0 },
     saleStatus: { type: String, enum: ['registering', 'reviewing', 'on_sale', 'rejected'], default: 'registering' },
+    rejectionReason: { type: String },
   },
   { timestamps: true }
 )

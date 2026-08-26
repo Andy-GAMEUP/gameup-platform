@@ -12,6 +12,7 @@ interface ICompanyInfo {
   companyEmail?: string
   employeeCount?: number
   businessNumber?: string
+  businessType?: 'individual' | 'corporation'
   companyLogo?: string
   businessLicense?: string
   companyCategory?: 'developer' | 'partner'
@@ -166,6 +167,7 @@ const userSchema = new Schema<IUser>(
       companyEmail: { type: String },
       employeeCount: { type: Number },
       businessNumber: { type: String },
+      businessType: { type: String, enum: ['individual', 'corporation'] },
       companyLogo: { type: String },
       businessLicense: { type: String },
       companyCategory: { type: String, enum: ['developer', 'partner'] },

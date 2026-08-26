@@ -3,35 +3,18 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
-import communityService, { PostSummary, CommentItem } from '@/services/communityService'
+import communityService, { PostSummary } from '@/services/communityService'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useAuth } from '@/lib/useAuth'
-import { getRelativeTime } from '@/lib/relativeTime'
+import Avatar from '@/components/community/Avatar'
+import CommentSection from '@/components/community/CommentSection'
 import {
-  ThumbsUp, MessageSquare, Eye, ArrowLeft,
-  Send, Trash2, Pencil, CornerDownRight, Loader2,
+  ThumbsUp, Eye, ArrowLeft,
+  Trash2, Pencil, Loader2,
   AlertTriangle, CheckCircle,
-  Share2, RotateCcw, Gamepad2,
+  Share2, Gamepad2,
   Twitter, Facebook, Link as LinkIcon
 } from 'lucide-react'
-
-function Avatar({ username, role, profileImage, size = 8 }: { username: string; role: string; profileImage?: string; size?: number }) {
-  if (profileImage) {
-    return (
-      <img src={profileImage} alt={username}
-        className="rounded-full object-cover flex-shrink-0"
-        style={{ width: size*4, height: size*4 }} />
-    )
-  }
-  const bg = role==='admin'?'bg-violet-600':role==='developer'?'bg-cyan-600':'bg-accent'
-  const textColor = role==='admin'||role==='developer' ? 'text-text-primary' : 'text-text-inverse'
-  return (
-    <div className={`rounded-full flex items-center justify-center font-bold ${textColor} flex-shrink-0 ${bg}`}
-      style={{ width: size*4, height: size*4, fontSize: size*1.5 }}>
-      {username[0].toUpperCase()}
-    </div>
-  )
-}
 
 export default function CommunityPostPage() {
   const { id } = useParams<{ id: string }>()
@@ -42,23 +25,15 @@ export default function CommunityPostPage() {
   const { user, isAuthenticated } = useAuth()
 
   const [post, setPost] = useState<PostSummary | null>(null)
-  const [comments, setComments] = useState<CommentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
 
-  const [commentText, setCommentText] = useState('')
-  const [replyingId, setReplyingId] = useState<string | null>(null)
-  const [replyText, setReplyText] = useState('')
-  const [editingComment, setEditingComment] = useState<{ id: string; content: string } | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [reportModal, setReportModal] = useState<{ type: 'post' | 'comment'; id: string } | null>(null)
+  const [reportModal, setReportModal] = useState<{ type: 'post'; id: string } | null>(null)
   const [reportReason, setReportReason] = useState('')
   const [showDeletePostConfirm, setShowDeletePostConfirm] = useState(false)
-  const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
   const toastRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const commentInputRef = useRef<HTMLTextAreaElement>(null)
   const [shareMenuOpen, setShareMenuOpen] = useState(false)
   const shareMenuRef = useRef<HTMLDivElement>(null)
 
@@ -82,9 +57,8 @@ export default function CommunityPostPage() {
     if (!id) return
     setLoading(true)
     try {
-      const [p, c] = await Promise.all([communityService.getPost(id), communityService.getComments(id)])
+      const p = await communityService.getPost(id)
       setPost(p)
-      setComments(c)
       setLikeCount(p.likeCount)
       if (user) {
         setLiked(p.likes.includes(user.id))
@@ -143,84 +117,10 @@ export default function CommunityPostPage() {
     } catch { showToast('삭제 실패', false) }
   }
 
-  const handleSubmitComment = async () => {
-    if (!commentText.trim() || submitting) return
-    setSubmitting(true)
-    try {
-      const newComment = editingComment
-        ? await communityService.updateComment(editingComment.id, commentText)
-        : await communityService.createComment(id!, commentText)
-      if (editingComment) {
-        setComments(prev => prev.map(c => c._id === editingComment.id ? { ...c, ...newComment } : c))
-      } else {
-        setComments(prev => [...prev, newComment])
-        setPost(p => p ? { ...p, commentCount: p.commentCount + 1 } : p)
-      }
-      setCommentText('')
-      setEditingComment(null)
-    } catch { showToast('댓글 작성 실패', false) }
-    finally { setSubmitting(false) }
-  }
-
-  const handleSubmitReply = async (parentId: string) => {
-    if (!replyText.trim() || submitting) return
-    setSubmitting(true)
-    try {
-      const newComment = await communityService.createComment(id!, replyText, parentId)
-      setComments(prev => [...prev, newComment])
-      setPost(p => p ? { ...p, commentCount: p.commentCount + 1 } : p)
-      setReplyText('')
-      setReplyingId(null)
-    } catch { showToast('댓글 작성 실패', false) }
-    finally { setSubmitting(false) }
-  }
-
-  const handleDeleteComment = async (cid: string) => {
-    try {
-      await communityService.deleteComment(cid)
-      setComments(prev => prev.map(c => c._id === cid
-        ? { ...c, status: 'deleted', isDeleted: true, author: null, content: '[삭제된 댓글입니다]', deletedBy: user?.id }
-        : c
-      ))
-      setPost(p => p ? { ...p, commentCount: Math.max(0, p.commentCount - 1) } : p)
-    } catch { showToast('삭제 실패', false) }
-  }
-
-  const handleRestoreComment = async (cid: string) => {
-    try {
-      await communityService.restoreComment(cid)
-      const fresh = await communityService.getComments(id!)
-      setComments(fresh)
-      setPost(p => p ? { ...p, commentCount: p.commentCount + 1 } : p)
-    } catch { showToast('복구 실패', false) }
-  }
-
-  const handleCommentLike = async (cid: string) => {
-    if (!isAuthenticated) return router.push('/login')
-    try {
-      const r = await communityService.toggleCommentLike(cid)
-      setComments(prev => prev.map(c => c._id === cid ? { ...c, likeCount: r.likeCount } : c))
-    } catch {}
-  }
-
-  // 부모 댓글이 보존기간 만료로 완전삭제되어 사라진 경우, 답글이 화면에서 통째로 안 보이지 않도록 최상위처럼 취급한다
-  const isOrphan = (c: CommentItem) => !!c.parentId && !comments.some(p => p._id === c.parentId)
-
-  const flattenReplies = (parentId: string): { item: CommentItem; parentAuthor?: CommentItem['author'] }[] => {
-    const parent = comments.find(c => c._id === parentId)
-    const result: { item: CommentItem; parentAuthor?: CommentItem['author'] }[] = []
-    for (const child of comments.filter(c => c.parentId === parentId)) {
-      result.push({ item: child, parentAuthor: parent?.author })
-      result.push(...flattenReplies(child._id))
-    }
-    return result
-  }
-
   const handleReport = async () => {
-    if (!reportReason.trim()) return
+    if (!reportReason.trim() || !reportModal) return
     try {
-      if (reportModal?.type === 'post') await communityService.reportPost(reportModal.id, reportReason)
-      else if (reportModal?.type === 'comment') await communityService.reportComment(reportModal!.id, reportReason)
+      await communityService.reportPost(reportModal.id, reportReason)
       showToast('신고가 접수되었습니다')
       setReportModal(null)
       setReportReason('')
@@ -262,7 +162,7 @@ export default function CommunityPostPage() {
           <div className="bg-bg-card border border-line rounded-xl w-full max-w-sm p-6">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="w-5 h-5 text-red-500" />
-              <h3 className="text-text-primary font-bold">{reportModal.type==='post'?'게시글':'댓글'} 신고</h3>
+              <h3 className="text-text-primary font-bold">게시글 신고</h3>
             </div>
             <textarea value={reportReason} onChange={e=>setReportReason(e.target.value)}
               placeholder="신고 사유를 입력해주세요 (필수)"
@@ -288,20 +188,6 @@ export default function CommunityPostPage() {
           handleDeletePost()
         }}
         onCancel={() => setShowDeletePostConfirm(false)}
-      />
-
-      <ConfirmModal
-        isOpen={!!deleteCommentId}
-        title="댓글 삭제"
-        message="댓글을 삭제하시겠습니까?"
-        confirmLabel="삭제"
-        danger
-        onConfirm={() => {
-          if (!deleteCommentId) return
-          handleDeleteComment(deleteCommentId)
-          setDeleteCommentId(null)
-        }}
-        onCancel={() => setDeleteCommentId(null)}
       />
 
       <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 py-8">
@@ -402,201 +288,15 @@ export default function CommunityPostPage() {
 
         {/* 댓글 섹션 */}
         <section className="bg-bg-card border border-line rounded-2xl p-5 sm:p-6 lg:p-8">
-          <h2 className="text-text-primary font-bold mb-5 flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-accent" /> 댓글 {post.commentCount}개
-          </h2>
-
-          {/* 댓글 입력 (상단) */}
-          {isAuthenticated ? (
-            <div className="mb-6 pb-5 border-b border-line">
-              {editingComment && (
-                <div className="flex items-center gap-2 mb-2 text-xs text-text-muted bg-bg-tertiary rounded-lg px-3 py-2">
-                  <Pencil className="w-3.5 h-3.5 text-accent" />
-                  댓글 수정 중
-                  <button onClick={() => { setEditingComment(null); setCommentText('') }}
-                    className="ml-auto text-text-secondary hover:text-text-primary">✕</button>
-                </div>
-              )}
-              <div className="flex gap-3">
-                <Avatar username={user?.username||'?'} role={user?.role||''} profileImage={user?.profileImage||undefined} size={9} />
-                <div className="flex-1">
-                  <textarea ref={commentInputRef} value={commentText} onChange={e=>setCommentText(e.target.value)}
-                    onKeyDown={e => { if (e.key==='Enter' && (e.ctrlKey||e.metaKey)) handleSubmitComment() }}
-                    placeholder="댓글을 입력하세요..."
-                    rows={3}
-                    className="w-full bg-bg-secondary border border-line text-text-primary text-sm px-3 py-2 rounded-xl resize-none focus:outline-none focus:border-accent transition-colors"
-                  />
-                  <div className="flex justify-end mt-2">
-                    <button onClick={handleSubmitComment} disabled={!commentText.trim() || submitting}
-                      className="flex items-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-primary text-base px-4 py-2 rounded-xl transition-colors">
-                      {submitting ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
-                      {editingComment ? '수정' : '등록'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mb-6 pb-5 border-b border-line text-center">
-              <p className="text-text-secondary text-sm mb-3">댓글을 작성하려면 로그인이 필요합니다</p>
-              <Link href="/login" className="bg-accent hover:bg-accent-hover text-text-primary text-sm px-4 py-2 rounded-xl transition-colors inline-block">로그인</Link>
-            </div>
-          )}
-
-          {/* 댓글 목록 */}
-          <div className="space-y-4">
-            {comments.filter(c => !c.parentId || isOrphan(c)).map((root) => (
-              <div key={root._id}>
-                <CommentBlock comment={root} currentUser={user} isReply={false} isPostAuthor={isOwner}
-                  replyingId={replyingId} replyText={replyText} onReplyTextChange={setReplyText}
-                  onSubmitReply={handleSubmitReply} submittingReply={submitting}
-                  onReply={(cid) => { setReplyingId(prev => prev === cid ? null : cid); setReplyText('') }}
-                  onEdit={(cid, content) => { setEditingComment({id: cid, content}); setReplyingId(null); setCommentText(content); commentInputRef.current?.focus() }}
-                  onDelete={(cid) => setDeleteCommentId(cid)}
-                  onLike={handleCommentLike}
-                  onReport={(cid) => setReportModal({type:'comment', id: cid})}
-                  onRestore={handleRestoreComment}
-                />
-                {flattenReplies(root._id).map(({ item, parentAuthor }) => (
-                  <CommentBlock key={item._id} comment={item} currentUser={user} isReply parentAuthorName={parentAuthor?.username} isPostAuthor={isOwner}
-                    replyingId={replyingId} replyText={replyText} onReplyTextChange={setReplyText}
-                    onSubmitReply={handleSubmitReply} submittingReply={submitting}
-                    onReply={(cid) => { setReplyingId(prev => prev === cid ? null : cid); setReplyText('') }}
-                    onEdit={(cid, content) => { setEditingComment({id: cid, content}); setReplyingId(null); setCommentText(content); commentInputRef.current?.focus() }}
-                    onDelete={(cid) => setDeleteCommentId(cid)}
-                    onLike={handleCommentLike}
-                    onReport={(cid) => setReportModal({type:'comment', id: cid})}
-                    onRestore={handleRestoreComment}
-                  />
-                ))}
-              </div>
-            ))}
-            {comments.length === 0 && <p className="text-text-secondary text-sm text-center py-6">첫 댓글을 남겨보세요</p>}
-          </div>
+          <CommentSection
+            postId={id!}
+            isPostAuthor={isOwner}
+            currentUser={user}
+            isAuthenticated={isAuthenticated}
+            onRequireLogin={() => router.push('/login')}
+            showToast={showToast}
+          />
         </section>
-      </div>
-    </div>
-  )
-}
-
-function CommentBlock({
-  comment, currentUser, onReply, onEdit, onDelete, onLike, onReport, onRestore, isReply = false, parentAuthorName, isPostAuthor = false,
-  replyingId, replyText, onReplyTextChange, onSubmitReply, submittingReply
-}: {
-  comment: CommentItem; currentUser: { id: string; username: string; role: string } | null
-  onReply: (id: string) => void
-  onEdit: (id: string, content: string) => void
-  onDelete: (id: string) => void
-  onLike: (id: string) => void
-  onReport: (id: string) => void
-  onRestore: (id: string) => void
-  isReply?: boolean
-  parentAuthorName?: string
-  isPostAuthor?: boolean
-  replyingId: string | null
-  replyText: string
-  onReplyTextChange: (v: string) => void
-  onSubmitReply: (parentId: string) => void
-  submittingReply: boolean
-}) {
-  const isOwner = currentUser?.id === comment.author?._id
-  const isAdmin = currentUser?.role==='admin'
-
-  if (comment.isDeleted) {
-    const canRestore = !!currentUser && currentUser.id === comment.deletedBy
-    return (
-      <div className={isReply ? 'ml-8 border-l-2 border-line pl-4' : ''}>
-        <div className="py-3">
-          <div className="flex items-start gap-3">
-            <Avatar username="?" role="" size={8} />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span className="text-sm font-semibold text-text-muted">알 수 없음</span>
-                <span className="text-text-secondary text-xs">{getRelativeTime(comment.createdAt)}</span>
-              </div>
-              <p className="text-text-muted text-sm italic">
-                {isReply && parentAuthorName && <span className="text-accent font-medium mr-1 not-italic">@{parentAuthorName}</span>}
-                {comment.content}
-              </p>
-              {canRestore && (
-                <>
-                  <p className="text-text-muted text-xs mt-0.5">삭제 후 7일이 지나면 완전히 삭제됩니다</p>
-                  <button onClick={() => onRestore(comment._id)}
-                    className="flex items-center gap-1 text-base text-accent hover:text-accent-hover transition-colors mt-2">
-                    <RotateCcw className="w-3 h-3"/> 복구
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className={isReply ? 'ml-8 border-l-2 border-line pl-4' : ''}>
-      <div className="py-3">
-        <div className="flex items-start gap-3">
-          <Avatar username={comment.author?.username||'?'} role={comment.author?.role||''} profileImage={comment.author?.profileImage} size={8} />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className={`text-sm font-semibold ${comment.author?.role==='admin'?'text-violet-700 dark:text-violet-300':comment.author?.role==='developer'?'text-cyan-700 dark:text-cyan-300':'text-text-primary'}`}>
-                {comment.author?.username}
-              </span>
-              <span className="text-text-secondary text-xs">{getRelativeTime(comment.createdAt)}</span>
-            </div>
-            <p className="text-text-secondary text-sm whitespace-pre-wrap break-words">
-              {isReply && parentAuthorName && <span className="text-accent font-medium mr-1">@{parentAuthorName}</span>}
-              {comment.content}
-            </p>
-            <div className="flex items-center gap-3 mt-2">
-              <button onClick={() => onLike(comment._id)}
-                className="flex items-center gap-1 text-base text-text-secondary hover:text-accent transition-colors">
-                <ThumbsUp className="w-3 h-3"/> {comment.likeCount}
-              </button>
-              {currentUser && (
-                <button onClick={() => onReply(comment._id)}
-                  className="flex items-center gap-1 text-base text-text-secondary hover:text-accent transition-colors">
-                  <CornerDownRight className="w-3 h-3"/> 답글
-                </button>
-              )}
-              {(isOwner || isAdmin) && (
-                <button onClick={() => onEdit(comment._id, comment.content)}
-                  className="flex items-center gap-1 text-base text-text-secondary hover:text-text-primary transition-colors">
-                  <Pencil className="w-3 h-3"/> 수정
-                </button>
-              )}
-              {(isOwner || isPostAuthor || isAdmin) && (
-                <button onClick={() => onDelete(comment._id)}
-                  className="flex items-center gap-1 text-base text-text-secondary hover:text-red-500 transition-colors">
-                  <Trash2 className="w-3 h-3"/> 삭제
-                </button>
-              )}
-              {!isOwner && currentUser && (
-                <button onClick={() => onReport(comment._id)}
-                  className="flex items-center gap-1 text-base text-text-secondary hover:text-red-500 transition-colors">
-                  <AlertTriangle className="w-3 h-3"/> 신고
-                </button>
-              )}
-            </div>
-            {replyingId === comment._id && (
-              <div className="flex gap-2 mt-3">
-                <input value={replyText} onChange={e => onReplyTextChange(e.target.value)}
-                  onKeyDown={e => { if (e.key==='Enter') onSubmitReply(comment._id) }}
-                  placeholder="답글을 입력하세요"
-                  autoFocus
-                  className="flex-1 bg-bg-secondary border border-line text-text-primary text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-accent transition-colors"
-                />
-                <button onClick={() => onSubmitReply(comment._id)} disabled={!replyText.trim() || submittingReply}
-                  className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-primary text-base px-3 py-2 rounded-lg transition-colors">
-                  {submittingReply ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <Send className="w-3.5 h-3.5"/>}
-                  등록
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </div>
   )

@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 
 const NOTICE_SUB_TABS = [
-  { value: 'notice-platform', label: '게임업 공지', icon: Megaphone },
+  { value: 'notice-platform', label: '커뮤니티 공지', icon: Megaphone },
   { value: 'notice-game', label: '게임 공지', icon: Gamepad2 },
 ]
 
@@ -112,7 +112,7 @@ export default function CommunityPage() {
   const [sortOpen, setSortOpen] = useState(false)
   const [banners, setBanners] = useState<CommunityBanner[]>([])
   const [bannerIdx, setBannerIdx] = useState(0)
-  const [notices, setNotices] = useState<{ _id: string; title: string; content: string; type: string; isPinned: boolean; views: number; likes?: string[]; images?: string[]; thumbnailIndex?: number; createdAt: string; authorId?: { username: string; role: string } }[]>([])
+  const [notices, setNotices] = useState<{ _id: string; title: string; content: string; type: string; views: number; likes?: string[]; images?: string[]; thumbnailIndex?: number; createdAt: string; authorId?: { username: string; role: string } }[]>([])
   const [newGamePosts, setNewGamePosts] = useState<any[]>([])
   const [newGamePage, setNewGamePage] = useState(0)
   const [hotPosts, setHotPosts] = useState<any[]>([])
@@ -131,7 +131,6 @@ export default function CommunityPage() {
   const filteredNotices = notices
     .filter(n => !search || n.title.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
-      if (Number(b.isPinned) !== Number(a.isPinned)) return Number(b.isPinned) - Number(a.isPinned)
       return sort === 'latest'
         ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         : (b.views ?? 0) - (a.views ?? 0)
@@ -148,11 +147,17 @@ export default function CommunityPage() {
   }, [search, sort])
 
   // 게임 선택 시 해당 serviceType 카테고리 탭 자동 펼치기 (단, 즐겨찾기로 이동한 경우는 원본 탭을 펼치지 않는다)
+  // selectedGame?.id만 의존성으로 둔다 — viaBookmarks까지 넣으면, "내 커뮤니티"에서 다른 곳(홈 등)으로 나갈 때
+  // setViaBookmarks(false)는 즉시 반영되지만 router.push로 인한 selectedGame(=URL 기반) 갱신은 한 박자 늦게 반영되는
+  // 타이밍 차이 때문에, 그 사이 렌더에서 "selectedGame은 아직 이전 게임, viaBookmarks만 false"인 순간이 생겨
+  // 원치 않게 그 게임의 카테고리를 다시 펼쳐버리는 버그가 있었다(2026-08-19, "내 커뮤니티 갔다가 홈 가면 즐겨찾기한
+  // 게임 탭이 펼쳐진 채로 나옴"). viaBookmarks는 계속 클로저로 참조만 하고 의존성에서만 뺀다.
   useEffect(() => {
     if (!selectedGame?.serviceType || viaBookmarks) return
     const catValue = selectedGame.serviceType === 'beta' ? 'beta-game' : selectedGame.serviceType === 'live' ? 'live-game' : null
     if (catValue) setCollapsedCats(prev => ({ ...prev, [catValue]: false }))
-  }, [selectedGame?.id, viaBookmarks])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGame?.id])
 
   // 하위 탭(subTabs)이 있는 카테고리(공지사항 등): 그 하위 탭이 선택되면 자동 펼치기 (게임 카테고리와 동일 규칙)
   useEffect(() => {
@@ -259,16 +264,21 @@ export default function CommunityPage() {
 
   const { data: betaGamesData } = useQuery({
     queryKey: ['sidebarGames', 'beta'],
-    queryFn: () => gameService.getAllGames({ serviceType: 'beta', limit: 100 }),
+    queryFn: () => gameService.getAllGames({ serviceType: 'beta', limit: 100, includeDeleted: true }),
     staleTime: 5 * 60 * 1000,
   })
   const { data: liveGamesData } = useQuery({
     queryKey: ['sidebarGames', 'live'],
-    queryFn: () => gameService.getAllGames({ serviceType: 'live', limit: 100 }),
+    queryFn: () => gameService.getAllGames({ serviceType: 'live', limit: 100, includeDeleted: true }),
     staleTime: 5 * 60 * 1000,
   })
   const betaGames = betaGamesData?.games ?? []
   const liveGames = liveGamesData?.games ?? []
+
+  // 관리자가 커뮤니티에서 숨긴(hiddenFromCommunity) 게임은 betaGames/liveGames 목록에도 안 잡히므로,
+  // 그 게임을 즐겨찾기해뒀던 사용자의 "내 커뮤니티" 목록에서도 같이 숨긴다
+  const visibleGameIds = new Set([...betaGames, ...liveGames].map(g => g._id))
+  const visibleBookmarkedTabs = (user?.bookmarkedTabs ?? []).filter(entry => !entry.gameId || visibleGameIds.has(entry.gameId))
 
   // 카테고리 라벨 클릭 — 하위 항목(정적 subTabs 또는 동적 게임 목록)이 있으면 그 첫 항목을 바로 선택해서 자녀 화면으로 진입한다.
   // 부모 자체의 "전체 보기" 화면을 거치지 않는다 — 공지사항/베타게임/라이브게임 전부 동일 규칙.
@@ -326,6 +336,8 @@ export default function CommunityPage() {
   const gameAnnouncements = allGameAnnouncements.slice(annPage * ANN_PER_PAGE, (annPage + 1) * ANN_PER_PAGE)
 
   const isBookmarksTab = channel === 'bookmarks'
+  // 신작게임소개는 관리자 전용 작성 채널 — 일반 사용자 글쓰기 진입점을 노출하지 않음
+  const isNewGameIntroTab = channel === 'new-game-intro'
 
   const limit = viewMode === 'small' ? 30 : 20
 
@@ -455,7 +467,7 @@ export default function CommunityPage() {
               const isBookmarks = cat.value === 'bookmarks'
               const subGames = cat.value === 'beta-game' ? betaGames : cat.value === 'live-game' ? liveGames : []
               const subTabs = cat.subTabs || []
-              const bookmarkedEntries = isBookmarks ? (user?.bookmarkedTabs ?? []) : []
+              const bookmarkedEntries = isBookmarks ? visibleBookmarkedTabs : []
               const isActive = isCategoryActive(cat, channel, search, selectedGame, viaBookmarks)
               const hasSubGames = subGames.length > 0
               const hasSubItems = hasSubGames || subTabs.length > 0 || bookmarkedEntries.length > 0
@@ -627,12 +639,12 @@ export default function CommunityPage() {
               </div>
             )}
 
-            {/* 홈 탭 게임업 공지사항 (전체 폭) */}
+            {/* 홈 탭 커뮤니티 공지 (전체 폭) */}
             {isHomePage && notices.length > 0 && (
               <div className="mb-6 bg-bg-secondary border border-line rounded-xl overflow-hidden flex flex-col">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line bg-bg-tertiary">
                   <Megaphone className="w-4 h-4 text-accent flex-shrink-0" />
-                  <span className="text-text-primary text-[16.8px] font-semibold">게임업 공지</span>
+                  <span className="text-text-primary text-[16.8px] font-semibold">커뮤니티 공지</span>
                   <div className="flex-1" />
                   <button onClick={() => handleSubTabClick('notice-platform')} className="text-xs text-text-muted hover:text-accent transition-colors">더보기</button>
                 </div>
@@ -641,7 +653,7 @@ export default function CommunityPage() {
                     const dateStr = formatDate(n.createdAt)
                     const noticeThumb = n.images?.[n.thumbnailIndex || 0] || n.images?.[0]
                     return (
-                      <li key={n._id} onClick={() => router.push(`/community/announcement/${n._id}?from=${encodeURIComponent('게임업 공지')}&fromHref=${encodeURIComponent(communityTabHref('notice-platform'))}`)}
+                      <li key={n._id} onClick={() => router.push(`/community/announcement/${n._id}?from=${encodeURIComponent('커뮤니티 공지')}&fromHref=${encodeURIComponent(communityTabHref('notice-platform'))}`)}
                         className={`group flex items-center gap-3 px-4 py-3 hover:bg-bg-tertiary transition-colors cursor-pointer ${i !== 0 ? 'border-t border-line' : ''}`}>
                         {noticeThumb && (
                           <div className="relative w-[52px] h-[52px] rounded-xl overflow-hidden flex-shrink-0 bg-bg-tertiary ring-1 ring-black/5 dark:ring-white/10">
@@ -822,7 +834,7 @@ export default function CommunityPage() {
               <div className="flex items-center gap-2 mb-2">
                 <Bookmark className="w-4 h-4 text-accent" />
                 <span className="text-text-primary text-sm font-semibold">즐겨찾기한 탭</span>
-                <span className="text-text-muted text-xs">총 {user?.bookmarkedTabs?.length ?? 0}개</span>
+                <span className="text-text-muted text-xs">총 {visibleBookmarkedTabs.length}개</span>
               </div>
             )}
 
@@ -892,7 +904,7 @@ export default function CommunityPage() {
                 ))}
               </div>
 
-              {isAuthenticated && !isBookmarksTab && !isNoticeTab && (
+              {isAuthenticated && !isBookmarksTab && !isNoticeTab && !isNewGameIntroTab && (
                 <button onClick={() => {
                   const params = new URLSearchParams()
                   if (channel && channel !== 'home') params.set('channel', channel)
@@ -905,7 +917,7 @@ export default function CommunityPage() {
               )}
             </div>}
 
-            {/* 공지사항 > 게임업 공지 탭 */}
+            {/* 공지사항 > 커뮤니티 공지 탭 */}
             {channel === 'notice-platform' && notices.length > 0 && (
               <div className="mb-4 bg-bg-secondary border border-line rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line bg-bg-tertiary">
@@ -921,7 +933,7 @@ export default function CommunityPage() {
                         authorNode: <span className="text-[13.2px] text-text-secondary">{n.authorId?.username ?? '게임업 관리자'}</span>,
                         views: n.views ?? 0, likes: n.likes?.length ?? 0,
                         thumbnail: noticeThumb ? (noticeThumb.startsWith('http') ? noticeThumb : `${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${noticeThumb}`) : undefined,
-                        onClick: () => router.push(`/community/announcement/${n._id}?from=${encodeURIComponent('게임업 공지')}&fromHref=${encodeURIComponent(communityTabHref('notice-platform'))}`),
+                        onClick: () => router.push(`/community/announcement/${n._id}?from=${encodeURIComponent('커뮤니티 공지')}&fromHref=${encodeURIComponent(communityTabHref('notice-platform'))}`),
                       })
                     })}
                   </div>
@@ -931,7 +943,7 @@ export default function CommunityPage() {
                     const dateStr = formatDate(n.createdAt)
                     const noticeThumb = n.images?.[n.thumbnailIndex || 0] || n.images?.[0]
                     return (
-                      <li key={n._id} onClick={() => router.push(`/community/announcement/${n._id}?from=${encodeURIComponent('게임업 공지')}&fromHref=${encodeURIComponent(communityTabHref('notice-platform'))}`)}
+                      <li key={n._id} onClick={() => router.push(`/community/announcement/${n._id}?from=${encodeURIComponent('커뮤니티 공지')}&fromHref=${encodeURIComponent(communityTabHref('notice-platform'))}`)}
                         className={`group flex items-center gap-3 px-4 py-3 hover:bg-bg-tertiary transition-colors cursor-pointer ${i !== 0 ? 'border-t border-line' : ''}`}>
                         {noticeThumb && (
                           <div className="relative w-[52px] h-[52px] rounded-xl overflow-hidden flex-shrink-0 bg-bg-tertiary ring-1 ring-black/5 dark:ring-white/10">
@@ -1161,7 +1173,7 @@ export default function CommunityPage() {
                   <div className={`text-center col-span-full p-16 ${viewMode === 'small' ? '' : 'bg-bg-card border border-line rounded-2xl'}`}>
                     <MessageSquare className="w-12 h-12 text-text-muted mx-auto mb-3" />
                     <p className="text-text-secondary">게시글이 없습니다</p>
-                    {isAuthenticated && (
+                    {isAuthenticated && !isNewGameIntroTab && (
                       <button onClick={() => {
                         const params = new URLSearchParams()
                         if (channel && channel !== 'home') params.set('channel', channel)

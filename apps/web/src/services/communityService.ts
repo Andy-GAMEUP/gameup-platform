@@ -17,10 +17,9 @@ export interface PostSummary {
   views: number
   commentCount: number
   status: string
-  isPinned: boolean
   isHot: boolean
   hotScore: number
-  isTempSave?: boolean
+  isPublished: boolean
   reportCount: number
   createdAt: string
   updatedAt: string
@@ -42,6 +41,8 @@ export interface CommentItem {
   parentId: string | null
   likes: string[]
   likeCount: number
+  dislikes: string[]
+  dislikeCount: number
   status: string
   isDeleted?: boolean
   deletedBy?: string | null
@@ -65,7 +66,7 @@ const communityService = {
   createPost: async (data: {
     title: string; content: string; channel?: string
     gameId?: string; images?: string[]; videoUrl?: string; thumbnailIndex?: number
-    tags?: string[]
+    tags?: string[]; isPublished?: boolean
   }) => {
     const res = await apiClient.post('/community/posts', data)
     return res.data.post as PostSummary
@@ -74,7 +75,7 @@ const communityService = {
   updatePost: async (id: string, data: Partial<{
     title: string; content: string; channel: string
     images: string[]; videoUrl: string; thumbnailIndex: number
-    tags: string[]
+    tags: string[]; isPublished: boolean
   }>) => {
     const res = await apiClient.put(`/community/posts/${id}`, data)
     return res.data.post as PostSummary
@@ -113,16 +114,6 @@ const communityService = {
     return res.data as { success: boolean; images: string[] }
   },
 
-  tempSave: async (data: { title: string; content: string; channel?: string; tags?: string[] }) => {
-    const res = await apiClient.post('/community/posts/temp-save', data)
-    return res.data.post as PostSummary
-  },
-
-  getMyDrafts: async () => {
-    const res = await apiClient.get('/community/my/drafts')
-    return res.data.posts as PostSummary[]
-  },
-
   getComments: async (postId: string) => {
     const res = await apiClient.get(`/community/posts/${postId}/comments`)
     return res.data.comments as CommentItem[]
@@ -150,7 +141,12 @@ const communityService = {
 
   toggleCommentLike: async (id: string) => {
     const res = await apiClient.post(`/community/comments/${id}/like`)
-    return res.data as { liked: boolean; likeCount: number }
+    return res.data as { liked: boolean; likeCount: number; dislikeCount: number }
+  },
+
+  toggleCommentDislike: async (id: string) => {
+    const res = await apiClient.post(`/community/comments/${id}/dislike`)
+    return res.data as { disliked: boolean; likeCount: number; dislikeCount: number }
   },
 
   reportComment: async (id: string, reason: string) => {

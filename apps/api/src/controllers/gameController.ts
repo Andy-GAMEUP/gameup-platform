@@ -7,10 +7,17 @@ import { grantGameAccessPoint } from '../services/pointService'
 
 export const getAllGames = async (req: AuthRequest, res: Response) => {
   try {
-    const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType, featuredNew, developerId } = req.query
+    const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType, featuredNew, developerId, includeDeleted } = req.query
 
     const filter: Record<string, unknown> = {
       status: 'published',
+    }
+
+    if (includeDeleted !== 'true') {
+      filter.isDeleted = { $ne: true }
+    } else {
+      // 삭제된 게임을 커뮤니티 탭에 계속 보여줄 때도, 관리자가 수동으로 숨긴 건 제외
+      filter.hiddenFromCommunity = { $ne: true }
     }
 
     if (developerId) {
@@ -107,7 +114,7 @@ export const getGameById = async (req: AuthRequest, res: Response) => {
 
     const game = await Game.findById(id).populate('developerId', 'username email companyInfo profileImage')
 
-    if (!game) {
+    if (!game || game.isDeleted) {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     }
 
@@ -203,7 +210,7 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
     const { id } = req.params
     const game = await Game.findById(id)
 
-    if (!game) {
+    if (!game || game.isDeleted) {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     }
 
@@ -331,6 +338,19 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
   }
 }
 
+export const uploadGameContentImages = async (req: AuthRequest, res: Response) => {
+  try {
+    const files = req.files as Express.Multer.File[]
+    if (!files || files.length === 0) {
+      return res.status(400).json({ message: '업로드할 이미지를 선택해주세요' })
+    }
+    const imageUrls = files.map(f => `/uploads/game-content/${f.filename}`)
+    res.json({ success: true, images: imageUrls })
+  } catch {
+    res.status(500).json({ message: '이미지 업로드 실패' })
+  }
+}
+
 export const deleteGame = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -339,7 +359,7 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
 
     const { id } = req.params
     const game = await Game.findById(id)
-    if (!game) {
+    if (!game || game.isDeleted) {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     }
 
@@ -347,24 +367,31 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: '자신의 게임만 삭제할 수 있습니다' })
     }
 
+    if (req.user.role !== 'admin' && game.status === 'published') {
+      return res.status(403).json({ message: '운영 중인 게임은 개발사가 직접 삭제할 수 없습니다. 관리자에게 문의하세요.' })
+    }
+
     const actor = await User.findById(req.user.id).select('username email')
 
     // 감사로그 기록 (삭제 전)
     let developerUsername: string | undefined
+    let developerCompanyName: string | undefined
     try {
-      const developer = await User.findById(game.developerId).select('username email')
+      const developer = await User.findById(game.developerId).select('username email companyInfo')
       developerUsername = (developer as { username?: string } | null)?.username
+      developerCompanyName = (developer as unknown as { companyInfo?: { companyName?: string } } | null)?.companyInfo?.companyName
     } catch { /* no-op */ }
 
     const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress
     const userAgent = req.headers['user-agent'] as string | undefined
 
-    const createdLog = await GameDeletionLog.create({
+    await GameDeletionLog.create({
       gameId: game._id,
       gameTitle: game.title,
       gameGenre: game.genre,
       developerId: game.developerId,
       developerUsername,
+      developerCompanyName,
       deletedBy: req.user.id,
       deletedByUsername: (actor as { username?: string })?.username,
       deletedByEmail: (actor as { email?: string })?.email,
@@ -375,26 +402,11 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
       deletedAt: new Date(),
     })
 
-    // 파일을 삭제 대신 deleted 폴더로 이동 (복구 시 되돌리기 위해)
-    const logId = (createdLog._id as { toString(): string }).toString()
-    const deletedDir = path.join(process.cwd(), 'uploads', 'deleted', logId)
-    if (!fs.existsSync(deletedDir)) fs.mkdirSync(deletedDir, { recursive: true })
-
-    const moveFile = (filePath: string) => {
-      const absPath = filePath.startsWith('/uploads/')
-        ? path.join(process.cwd(), filePath.slice(1))
-        : filePath
-      if (fs.existsSync(absPath)) {
-        const dest = path.join(deletedDir, path.basename(absPath))
-        fs.renameSync(absPath, dest)
-      }
-    }
-
-    if (game.gameFile) moveFile(game.gameFile)
-    if (game.thumbnail) moveFile(game.thumbnail)
-    if (game.bannerImage) moveFile(game.bannerImage)
-
-    await Game.findByIdAndDelete(id)
+    // 소프트 삭제: 게임 문서와 파일은 그대로 두고 isDeleted만 표시
+    // (커뮤니티 탭/게시물/공지는 삭제 후에도 기존과 동일하게 열람·작성 가능해야 하므로 하드 삭제하지 않음)
+    game.isDeleted = true
+    game.deletedAt = new Date()
+    await game.save({ validateBeforeSave: false })
 
     res.json({ success: true, message: '게임이 삭제되었습니다' })
   } catch (error) {
@@ -411,7 +423,7 @@ export const getGameDeletionLogs = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ message: '관리자만 접근할 수 있습니다' })
     }
 
-    const { page = 1, limit = 20, search } = req.query
+    const { page = 1, limit = 20, search, developerId, deletedByRole } = req.query
     const pageNum = Math.max(1, Number(page))
     const limitNum = Math.min(100, Math.max(1, Number(limit)))
     const skip = (pageNum - 1) * limitNum
@@ -426,6 +438,8 @@ export const getGameDeletionLogs = async (req: AuthRequest, res: Response) => {
         { deletedByEmail: { $regex: safe, $options: 'i' } },
       ]
     }
+    if (developerId) filter.developerId = developerId
+    if (deletedByRole) filter.deletedByRole = deletedByRole
 
     const [logs, total] = await Promise.all([
       GameDeletionLog.find(filter).sort({ deletedAt: -1 }).skip(skip).limit(limitNum).populate('developerId', 'username companyInfo'),
@@ -440,13 +454,18 @@ export const getGameDeletionLogs = async (req: AuthRequest, res: Response) => {
     const revenueMap: Record<string, number> = {}
     revenueAgg.forEach(r => { revenueMap[String(r._id)] = r.total })
 
+    // 소프트 삭제된 게임은 문서가 그대로 남아있으므로, 현재 커뮤니티 탭 숨김 여부를 같이 내려준다
+    const games = await Game.find({ _id: { $in: gameIds } }).select('hiddenFromCommunity')
+    const hiddenMap = new Map(games.map(g => [String(g._id), !!g.hiddenFromCommunity]))
+
     const logsWithRevenue = logs.map(l => {
       const obj = l.toObject() as unknown as Record<string, unknown>
       const dev = obj.developerId as { username?: string; companyInfo?: { companyName?: string } } | null
       return {
         ...obj,
-        developerCompanyName: dev?.companyInfo?.companyName || null,
+        developerCompanyName: (obj.developerCompanyName as string | undefined) || dev?.companyInfo?.companyName || null,
         totalRevenue: revenueMap[String(l.gameId)] ?? 0,
+        hiddenFromCommunity: hiddenMap.get(String(l.gameId)) ?? false,
       }
     })
 
@@ -470,10 +489,22 @@ export const restoreGame = async (req: AuthRequest, res: Response) => {
     const { logId } = req.params
     const log = await GameDeletionLog.findById(logId)
     if (!log) return res.status(404).json({ message: '삭제 로그를 찾을 수 없습니다' })
-    if (!log.gameSnapshot) return res.status(400).json({ message: '스냅샷 데이터가 없습니다' })
 
     const existing = await Game.findById(log.gameId)
-    if (existing) return res.status(409).json({ message: '이미 해당 ID의 게임이 존재합니다' })
+
+    // 소프트 삭제된 게임(문서가 그대로 남아있는 경우): isDeleted 플래그만 해제
+    if (existing) {
+      if (!existing.isDeleted) return res.status(409).json({ message: '이미 해당 ID의 게임이 존재합니다' })
+      existing.isDeleted = false
+      existing.deletedAt = undefined
+      existing.hiddenFromCommunity = false
+      await existing.save({ validateBeforeSave: false })
+      await GameDeletionLog.findByIdAndUpdate(logId, { restoredAt: new Date() })
+      return res.json({ success: true, message: '게임이 복구되었습니다' })
+    }
+
+    // 과거 하드 삭제 로그(문서가 완전히 삭제된 경우): 스냅샷으로 재생성
+    if (!log.gameSnapshot) return res.status(400).json({ message: '스냅샷 데이터가 없습니다' })
 
     const { _id, __v, id, ...snapshot } = log.gameSnapshot as Record<string, unknown>
     const VALID_STATUS = ['draft', 'beta', 'published', 'archived']
@@ -484,6 +515,8 @@ export const restoreGame = async (req: AuthRequest, res: Response) => {
     if (!VALID_APPROVAL.includes(snapshot.approvalStatus as string)) snapshot.approvalStatus = 'not_submitted'
     if (!VALID_SERVICE_TYPE.includes(snapshot.serviceType as string)) snapshot.serviceType = 'beta'
     if (!VALID_MONETIZATION.includes(snapshot.monetization as string)) snapshot.monetization = 'free'
+    snapshot.isDeleted = false
+    snapshot.hiddenFromCommunity = false
     await Game.create({ _id: log.gameId, ...snapshot })
 
     // deleted 폴더의 파일을 원래 경로로 복원
@@ -511,6 +544,32 @@ export const restoreGame = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, message: '게임이 복구되었습니다' })
   } catch (error) {
     console.error('Restore game error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 삭제된(소프트 삭제) 게임의 커뮤니티 탭 노출 여부를 관리자가 수동으로 전환
+export const updateGameCommunityVisibility = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({ message: '관리자만 변경할 수 있습니다' })
+    }
+
+    const { logId } = req.params
+    const { hidden } = req.body as { hidden?: boolean }
+
+    const log = await GameDeletionLog.findById(logId)
+    if (!log) return res.status(404).json({ message: '삭제 로그를 찾을 수 없습니다' })
+
+    const game = await Game.findById(log.gameId)
+    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다 (완전 삭제된 게임은 변경할 수 없습니다)' })
+
+    game.hiddenFromCommunity = !!hidden
+    await game.save({ validateBeforeSave: false })
+
+    res.json({ success: true, hiddenFromCommunity: game.hiddenFromCommunity })
+  } catch (error) {
+    console.error('Update game community visibility error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }
 }
@@ -689,7 +748,8 @@ export const getAllDeveloperPayments = async (req: AuthRequest, res: Response) =
 export const getMyGames = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
-    const gameQuery = req.user.role === 'admin' ? {} : { developerId: req.user.id }
+    const gameQuery: Record<string, unknown> = req.user.role === 'admin' ? {} : { developerId: req.user.id }
+    gameQuery.isDeleted = { $ne: true }
     const gamesQuery = Game.find(gameQuery).sort({ createdAt: -1 })
     if (req.user.role === 'admin') {
       gamesQuery.populate('developerId', 'username companyInfo')
@@ -752,7 +812,7 @@ export const requestReview = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
     const game = await Game.findById(req.params.id)
-    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    if (!game || game.isDeleted) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     if (game.developerId.toString() !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: '자신의 게임만 심사 요청할 수 있습니다' })
     if (game.approvalStatus === 'pending' || game.approvalStatus === 'review') return res.status(400).json({ message: '이미 심사 중입니다' })
     if (!game.gameDomain?.trim()) return res.status(400).json({ message: '게임 URL을 먼저 등록해주세요' })
@@ -769,7 +829,7 @@ export const cancelReview = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
     const game = await Game.findById(req.params.id)
-    if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    if (!game || game.isDeleted) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     if (game.developerId.toString() !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: '자신의 게임만 취소할 수 있습니다' })
     if (game.approvalStatus !== 'pending' && game.approvalStatus !== 'review') return res.status(400).json({ message: '심사 중인 게임만 취소할 수 있습니다' })
     const snapshot = (game as any).publishedSnapshot
