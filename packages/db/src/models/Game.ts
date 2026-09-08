@@ -58,11 +58,13 @@ export interface IGame extends Document {
   approvedBy?: mongoose.Types.ObjectId
   isNewFeatured?: boolean
   ratingCertificate?: {
-    ratingClass?: '전체이용가' | '12세이용가' | '15세이용가' | '18세이용가' | '청소년이용불가'
+    ratingClass?: '전체이용가' | '12세이용가' | '15세이용가' | '청소년이용불가'
     certNumber?: string
     certDate?: string
     certFileUrl?: string
+    otherPlatformLink?: string
     isVerified?: boolean
+    contentDescriptors?: string[]
   }
   shopCurrencyIconUrl?: string
   shopCurrencyName?: string
@@ -225,12 +227,14 @@ const gameSchema = new Schema<IGame>(
     ratingCertificate: {
       ratingClass: {
         type: String,
-        enum: ['전체이용가', '12세이용가', '15세이용가', '18세이용가', '청소년이용불가'],
+        enum: ['전체이용가', '12세이용가', '15세이용가', '청소년이용불가'],
       },
       certNumber: { type: String },
       certDate: { type: String },
       certFileUrl: { type: String },
+      otherPlatformLink: { type: String },
       isVerified: { type: Boolean, default: false },
+      contentDescriptors: { type: [String], default: [] },
     },
     isDeleted: {
       type: Boolean,

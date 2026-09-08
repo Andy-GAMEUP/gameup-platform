@@ -456,11 +456,11 @@ export default function AdminGameMetricsPage() {
               </div>
             )}
 
-            {/* 도움됨 TOP 리뷰 */}
+            {/* 추천 TOP 리뷰 */}
             {topHelpfulReviews.length > 0 && (
               <div className="bg-bg-secondary border border-line rounded-xl p-5">
                 <h3 className="text-text-primary font-semibold mb-4 flex items-center gap-2">
-                  <ThumbsUp className="w-4 h-4 text-accent" /> 도움됨 TOP 리뷰
+                  <ThumbsUp className="w-4 h-4 text-accent" /> 추천 TOP 리뷰
                 </h3>
                 <div className="space-y-3">
                   {topHelpfulReviews.map((r: any) => (
@@ -547,7 +547,7 @@ export default function AdminGameMetricsPage() {
                           <span className="text-text-muted text-xs">{formatDate(r.createdAt)}</span>
                           {r.helpfulCount > 0 && (
                             <span className="text-accent text-xs flex items-center gap-1">
-                              <ThumbsUp className="w-3 h-3" /> {r.helpfulCount}명 도움됨
+                              <ThumbsUp className="w-3 h-3" /> {r.helpfulCount}명 추천
                             </span>
                           )}
                         </div>

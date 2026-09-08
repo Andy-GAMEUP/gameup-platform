@@ -49,6 +49,7 @@ export default function AdminMembersPage() {
   const [submitting, setSubmitting] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [categoryTarget, setCategoryTarget] = useState<{ id: string; name: string; next: 'developer' | 'partner' } | null>(null)
+  const [manageApprovalTarget, setManageApprovalTarget] = useState<PendingUser | null>(null)
   const limit = 15
 
   const loadCounts = useCallback(async () => {
@@ -198,35 +199,33 @@ export default function AdminMembersPage() {
                 <thead>
                   <tr className="border-b border-line text-text-secondary">
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">No.</th>
-                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">사용자명</th>
-                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">이메일</th>
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">회사명</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">담당자</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">이메일</th>
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">기업 유형</th>
-                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">사업자등록번호</th>
-                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">사업자 형태</th>
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">대표 연락처</th>
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">가입일</th>
-                    <th className="text-left px-4 py-3 font-medium border-r border-line/30">기업 정보</th>
                     <th className="text-left px-4 py-3 font-medium border-r border-line/30">상태</th>
-                    <th className="text-left px-4 py-3 font-medium">가입 승인</th>
+                    <th className="text-left px-4 py-3 font-medium border-r border-line/30 w-[100px]">기업 정보</th>
+                    <th className="text-left px-1 py-3 font-medium w-[100px]"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line/50">
                   {users.length === 0 ? (
-                    <tr><td colSpan={12} className="text-center py-12 text-text-muted">데이터가 없습니다</td></tr>
+                    <tr><td colSpan={10} className="text-center py-12 text-text-muted">데이터가 없습니다</td></tr>
                   ) : users.map((user, idx) => {
                     const _cat = user.companyInfo?.companyCategory
                     const isDeveloper = _cat === 'developer' || (!_cat && user.companyInfo?.companyType?.includes('developer'))
                     return (
-                      <tr key={user._id} className="hover:bg-bg-tertiary/30 transition-colors">
+                      <tr key={user._id} className={`transition-colors ${user.isActive && user.companyInfo?.approvalStatus !== 'approved' ? 'bg-amber-500/10 hover:bg-amber-500/15' : 'hover:bg-bg-tertiary/30'}`}>
                         <td className="px-4 py-3 text-text-secondary border-r border-line/20">{(page - 1) * limit + idx + 1}</td>
-                        <td className="px-4 py-3 text-text-primary font-medium border-r border-line/20">
-                          <Link href={`/admin/users-enhanced/${user._id}`} className="hover:text-accent-text transition-colors">{user.username}</Link>
-                        </td>
-                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">{user.email}</td>
                         <td className="px-4 py-3 text-text-secondary border-r border-line/20">
                           {user.companyInfo?.companyName || '-'}
                         </td>
+                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">
+                          <Link href={`/admin/users-enhanced/${user._id}`} className="hover:text-accent-text transition-colors">{user.username}</Link>
+                        </td>
+                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">{user.email}</td>
                         <td className="px-4 py-3 text-text-secondary border-r border-line/20">
                           <div className="flex items-center gap-1.5">
                             <span>{isDeveloper ? '개발사' : '파트너'}</span>
@@ -239,47 +238,29 @@ export default function AdminMembersPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-text-secondary border-r border-line/20">
-                          {user.companyInfo?.businessNumber || '-'}
-                        </td>
-                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">
-                          {user.companyInfo ? (user.companyInfo.businessType === 'individual' ? '개인사업자' : '법인') : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-text-secondary border-r border-line/20">
                           {user.contactPerson?.phone || '-'}
                         </td>
                         <td className="px-4 py-3 text-text-secondary border-r border-line/20">{formatDate(user.createdAt)}</td>
                         <td className="px-4 py-3 border-r border-line/20">
-                          <Link href={user.partnerId ? `/partner/${user.partnerId}` : `/admin/users-enhanced/${user._id}`}
-                            className="px-3 py-1 rounded-md text-xs font-medium bg-bg-tertiary hover:bg-line-light border border-line text-text-secondary hover:text-text-primary transition-colors whitespace-nowrap flex items-center gap-1 w-fit">
+                          {!user.isActive
+                            ? <span className="text-rose-400 font-medium">중지됨</span>
+                            : user.companyInfo?.approvalStatus === 'approved' ? <span className="text-text-primary font-medium">활성</span>
+                            : <span className="text-amber-700 font-medium">가입 대기</span>}
+                        </td>
+                        <td className="px-4 py-3 border-r border-line/20 w-[100px]">
+                          <Link href={`/admin/users-enhanced/${user._id}`}
+                            className="px-3 py-1 rounded-md text-base font-medium bg-blue-600 hover:bg-blue-500 border border-blue-500 text-white transition-colors whitespace-nowrap w-fit">
                             보기
                           </Link>
                         </td>
-                        <td className="px-4 py-3 border-r border-line/20">
-                          {!user.isActive
-                            ? <span className="text-rose-400 font-medium">중지됨</span>
-                            : user.companyInfo?.approvalStatus === 'approved' ? <span className="text-text-primary font-medium">회원</span>
-                            : <span className="text-amber-400 font-medium">가입 대기</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          {(() => {
-                            const isApproved = user.companyInfo?.approvalStatus === 'approved'
-                            return (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => !isApproved && handleInlineApprove(user._id)}
-                                  disabled={submitting || isApproved}
-                                  className={`px-3 py-1 rounded-md text-base font-medium transition-colors whitespace-nowrap ${isApproved ? 'bg-emerald-600/30 text-emerald-400/50 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50'}`}>
-                                  승인
-                                </button>
-                                <button
-                                  onClick={() => !isApproved && !submitting && setDeleteConfirmId(user._id)}
-                                  disabled={submitting || isApproved}
-                                  className={`px-3 py-1 rounded-md text-base font-medium transition-colors whitespace-nowrap ${isApproved ? 'bg-rose-600/30 text-rose-400/50 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-500 text-white disabled:opacity-50'}`}>
-                                  삭제
-                                </button>
-                              </div>
-                            )
-                          })()}
+                        <td className="px-1 py-3 w-[100px]">
+                          {user.companyInfo?.approvalStatus !== 'approved' && (
+                            <button
+                              onClick={() => setManageApprovalTarget(user)}
+                              className="px-[7.5px] py-[6.25px] rounded-md text-[15px] font-semibold bg-amber-600 hover:bg-amber-500 text-white transition-colors whitespace-nowrap inline-flex items-center justify-center leading-none">
+                              승인
+                            </button>
+                          )}
                         </td>
                       </tr>
                     )
@@ -335,6 +316,37 @@ export default function AdminMembersPage() {
         }}
         onCancel={() => setCategoryTarget(null)}
       />
+
+      {manageApprovalTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4" onClick={() => setManageApprovalTarget(null)}>
+          <div className="w-full max-w-sm bg-bg-card border border-line rounded-xl shadow-2xl p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="text-text-primary font-semibold mb-1.5">가입 관리</h3>
+            <p className="text-text-secondary text-sm mb-5 whitespace-pre-wrap">
+              {`'${manageApprovalTarget.companyInfo?.companyName || manageApprovalTarget.username}'의 가입 신청을 처리합니다`}
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  handleInlineApprove(manageApprovalTarget._id)
+                  setManageApprovalTarget(null)
+                }}
+                disabled={submitting}
+                className="px-4 py-2 rounded-lg text-base font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors disabled:opacity-50">
+                승인
+              </button>
+              <button
+                onClick={() => {
+                  setDeleteConfirmId(manageApprovalTarget._id)
+                  setManageApprovalTarget(null)
+                }}
+                disabled={submitting}
+                className="px-4 py-2 rounded-lg text-base font-semibold bg-rose-600 hover:bg-rose-500 text-white transition-colors disabled:opacity-50">
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   )
 }

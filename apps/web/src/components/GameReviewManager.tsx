@@ -9,7 +9,6 @@ interface Review {
   _id: string
   userId?: { username?: string }
   rating: number
-  title: string
   content: string
   feedbackType: 'general' | 'bug' | 'suggestion' | 'praise'
   isBlocked: boolean
@@ -59,7 +58,7 @@ export default function GameReviewManager({ gameId }: Props) {
     const blocking = !r.isBlocked
     setConfirm({
       title: blocking ? '리뷰 차단' : '차단 해제',
-      message: blocking ? `"${r.title}" 리뷰를 차단하시겠습니까?` : `"${r.title}" 차단을 해제하시겠습니까?`,
+      message: blocking ? '이 리뷰를 차단하시겠습니까?' : '이 리뷰 차단을 해제하시겠습니까?',
       danger: blocking,
       onConfirm: async () => {
         setConfirm(null); setActionId(r._id)
@@ -72,7 +71,7 @@ export default function GameReviewManager({ gameId }: Props) {
   const handleDelete = (r: Review) => {
     setConfirm({
       title: '리뷰 삭제',
-      message: `"${r.title}" 리뷰를 삭제하시겠습니까?`,
+      message: '이 리뷰를 삭제하시겠습니까?',
       danger: true,
       onConfirm: async () => {
         setConfirm(null); setActionId(r._id)
@@ -107,7 +106,7 @@ export default function GameReviewManager({ gameId }: Props) {
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="리뷰 제목·내용 검색..."
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="리뷰 내용 검색..."
             className="w-full bg-bg-tertiary border border-line rounded-lg pl-9 pr-3 py-2 text-sm text-text-primary focus:outline-none" />
         </div>
         <select value={filterBlocked} onChange={e => { setFilterBlocked(e.target.value); setPage(1) }}
@@ -139,9 +138,8 @@ export default function GameReviewManager({ gameId }: Props) {
                       <span className={`text-xs px-1.5 py-0.5 rounded ${fb.cls}`}>{fb.label}</span>
                       {r.isBlocked && <span className="bg-red-500/10 text-red-400 text-xs px-1.5 rounded border border-red-500/30">차단됨</span>}
                     </div>
-                    <p className={`text-sm font-semibold mb-0.5 ${r.isBlocked ? 'line-through text-text-muted' : 'text-text-primary'}`}>{r.title}</p>
-                    <p className={`text-xs line-clamp-2 ${r.isBlocked ? 'text-text-muted' : 'text-text-secondary'}`}>{r.content}</p>
-                    <p className="text-text-muted text-xs mt-1">{formatDate(r.createdAt)} · 도움됨 {r.helpfulCount || 0}</p>
+                    <p className={`text-sm line-clamp-2 ${r.isBlocked ? 'text-text-muted line-through' : 'text-text-primary'}`}>{r.content}</p>
+                    <p className="text-text-muted text-xs mt-1">{formatDate(r.createdAt)} · 추천 {r.helpfulCount || 0}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button onClick={() => handleBlock(r)}

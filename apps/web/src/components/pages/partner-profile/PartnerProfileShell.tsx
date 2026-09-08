@@ -57,7 +57,7 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
 
   const { data: developerGamesData } = useQuery({
     queryKey: ['partnerDeveloperGames', partnerUserId],
-    queryFn: () => gameService.getAllGames({ developerId: partnerUserId!, serviceType: 'live', limit: 50 }),
+    queryFn: () => gameService.getAllGames({ developerId: partnerUserId!, limit: 50 }),
     enabled: !!partnerUserId && isDeveloperCompany,
   })
 

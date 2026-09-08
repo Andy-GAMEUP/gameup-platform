@@ -7,12 +7,15 @@ import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/useAuth'
 import playerService, { FavoriteGame, Activity, ActivityScoreItem } from '@/services/playerService'
 import { authService } from '@/services/authService'
+import MyInquiryTab from '@/components/MyInquiryTab'
+import { useUnreadInquiryCount } from '@/lib/useUnreadInquiryCount'
 import { gameService } from '@/services/gameService'
 import { FILTER_GENRES } from '@/constants/game'
 import MiniHomeManagementPage from '@/components/pages/MiniHomeManagementPage'
 import {
   User, Heart, Activity as ActivityIcon, Star, Award,
-  Edit2, Lock, Trash2, Check, X, Loader2, ChevronRight, Eye, EyeOff, HelpCircle, Building2, Camera
+  Edit2, Lock, Trash2, Check, X, Loader2, ChevronRight, Eye, EyeOff, HelpCircle, Building2, Camera,
+  MessageCircleQuestion,
 } from 'lucide-react'
 import LevelBadge from '@/components/LevelBadge'
 import LevelProgressCard from '@/components/LevelProgressCard'
@@ -23,7 +26,7 @@ const ACTIVITY_CONFIG: Record<string, { label: string; icon: string; color: stri
   review:    { label: '리뷰 작성',   icon: '✍️', color: 'text-purple-400' },
   favorite:  { label: '즐겨찾기 추가', icon: '❤️', color: 'text-pink-400'  },
   unfavorite:{ label: '즐겨찾기 해제', icon: '💔', color: 'text-text-secondary' },
-  helpful:   { label: '도움됨 표시',  icon: '👍', color: 'text-accent'  },
+  helpful:   { label: '추천 표시',  icon: '👍', color: 'text-accent'  },
 }
 
 const GENRE_LIST = FILTER_GENRES.filter(g => g !== '전체')
@@ -63,7 +66,7 @@ const ACTIVITY_SCORE_CONFIG: Record<string, { label: string; icon: string }> = {
   admin_deduct:         { label: '관리자 차감',   icon: '❌' },
 }
 
-type Tab = 'favorites' | 'activity' | 'activityPoints' | 'qa' | 'profile' | 'security'
+type Tab = 'favorites' | 'activity' | 'activityPoints' | 'qa' | 'profile' | 'inquiry' | 'security'
 
 function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   return (
@@ -78,6 +81,7 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
 
 export default function PlayerMyPage() {
   const { user, isAuthenticated, isLoading, logout, updateUser } = useAuth()
+  const unreadInquiryCount = useUnreadInquiryCount()
   const router = useRouter()
   const [tab, setTab] = useState<Tab>('favorites')
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
@@ -213,7 +217,7 @@ export default function PlayerMyPage() {
       })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.username, (user as any)?.bio])
+  }, [user?.username, (user as any)?.bio, JSON.stringify((user as any)?.favoriteGenres)])
 
   // ── 프로필 이미지 변경 ──
   const avatarInputRef = useRef<HTMLInputElement>(null)
@@ -323,7 +327,8 @@ export default function PlayerMyPage() {
     { key: 'activity',  label: '활동 내역',               icon: <ActivityIcon className="w-4 h-4" /> },
     { key: 'activityPoints', label: '활동포인트',         icon: <Award className="w-4 h-4" /> },
     { key: 'qa',        label: `Q&A (${qaTotal})`,        icon: <HelpCircle className="w-4 h-4" /> },
-    { key: 'profile',   label: isCorporate ? '파트너 프로필' : '프로필 편집', icon: isCorporate ? <Building2 className="w-4 h-4" /> : <Edit2 className="w-4 h-4" /> },
+    { key: 'profile',   label: isCorporate ? '파트너 프로필' : '계정 정보', icon: isCorporate ? <Building2 className="w-4 h-4" /> : <Edit2 className="w-4 h-4" /> },
+    { key: 'inquiry',   label: '문의하기',                   icon: <MessageCircleQuestion className="w-4 h-4" /> },
     { key: 'security',  label: '보안 설정',                icon: <Lock className="w-4 h-4" /> },
   ]
 
@@ -340,13 +345,25 @@ export default function PlayerMyPage() {
           <div className="absolute -top-20 -right-16 w-64 h-64 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-12 w-56 h-56 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            <div className="w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-cyan-900/50 ring-2 ring-white/20 flex-shrink-0 overflow-hidden">
-              {user?.profileImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
-              ) : (
-                user?.username?.[0]?.toUpperCase() || '?'
-              )}
+            <div className="relative flex-shrink-0">
+              <div className="w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-cyan-900/50 ring-2 ring-white/20 overflow-hidden">
+                {user?.profileImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  user?.username?.[0]?.toUpperCase() || '?'
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                title="프로필 이미지 변경"
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent hover:bg-accent-hover text-text-inverse flex items-center justify-center border-2 border-bg-secondary transition-colors disabled:opacity-50"
+              >
+                {avatarUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+              </button>
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
@@ -404,11 +421,14 @@ export default function PlayerMyPage() {
               onClick={() => setTab(t.key)}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-base font-medium border-b-2 whitespace-nowrap transition-colors ${
                 tab === t.key
-                  ? 'border-cyan-400 text-cyan-300'
+                  ? 'border-accent text-accent'
                   : 'border-transparent text-text-secondary hover:text-text-primary'
               }`}
             >
               {t.icon}{t.label}
+              {t.key === 'inquiry' && unreadInquiryCount > 0 && (
+                <span className="w-1.5 h-1.5 rounded-full bg-danger" />
+              )}
             </button>
           ))}
         </div>
@@ -660,12 +680,12 @@ export default function PlayerMyPage() {
             <div className="bg-bg-secondary border border-line rounded-2xl p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                  <User className="w-5 h-5 text-cyan-400" />
+                  <User className="w-5 h-5 text-accent" />
                   <h2 className="text-lg font-semibold">기본 정보</h2>
                 </div>
                 {!profileEditing ? (
                   <button onClick={() => setProfileEditing(true)}
-                    className="flex items-center gap-1.5 text-base text-cyan-400 hover:text-cyan-300 transition-colors">
+                    className="flex items-center gap-1.5 text-base text-accent hover:text-accent-hover transition-colors">
                     <Edit2 className="w-4 h-4" /> 편집
                   </button>
                 ) : (
@@ -675,7 +695,7 @@ export default function PlayerMyPage() {
                       취소
                     </button>
                     <button onClick={handleSaveProfile} disabled={profileSaving}
-                      className="flex items-center gap-1.5 text-base bg-cyan-600 hover:bg-cyan-700 text-text-primary px-3 py-1.5 rounded transition-colors disabled:opacity-50">
+                      className="flex items-center gap-1.5 text-base bg-accent hover:bg-accent-hover text-text-inverse px-3 py-1.5 rounded transition-colors disabled:opacity-50">
                       {profileSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                       저장
                     </button>
@@ -684,45 +704,17 @@ export default function PlayerMyPage() {
               </div>
 
               <div className="space-y-5">
-                {/* 아바타 */}
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-shrink-0">
-                    <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-2xl font-bold overflow-hidden">
-                      {user?.profileImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        user?.username?.[0]?.toUpperCase() || '?'
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => avatarInputRef.current?.click()}
-                      disabled={avatarUploading}
-                      title="프로필 이미지 변경"
-                      className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-cyan-600 hover:bg-cyan-700 text-text-inverse flex items-center justify-center border-2 border-bg-secondary transition-colors disabled:opacity-50"
-                    >
-                      {avatarUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
-                    </button>
-                    <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-secondary">
-                      카메라 아이콘을 눌러 프로필 사진을 변경할 수 있습니다
-                    </p>
-                  </div>
-                </div>
 
                 {/* 사용자명 */}
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">사용자명 <span className="text-red-400">*</span></label>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">사용자명</label>
                   {profileEditing ? (
                     <input
                       type="text"
                       value={profileForm.username}
                       onChange={(e) => setProfileForm((p) => ({ ...p, username: e.target.value }))}
                       maxLength={20}
-                      className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-cyan-500 transition-colors"
+                      className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent transition-colors"
                       placeholder="2~20자 사용자명"
                     />
                   ) : (
@@ -734,10 +726,7 @@ export default function PlayerMyPage() {
                 {/* 이메일 (읽기 전용) */}
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">이메일</label>
-                  <div className="flex items-center gap-2 bg-bg-tertiary/50 border border-line rounded-lg px-3 py-2.5">
-                    <p className="text-text-secondary flex-1">{user?.email}</p>
-                    <span className="text-xs text-text-muted bg-bg-tertiary px-2 py-0.5 rounded">변경 불가</span>
-                  </div>
+                  <p className="text-text-secondary bg-bg-tertiary/50 border border-line rounded-lg px-3 py-2.5">{user?.email}</p>
                 </div>
 
                 {/* 자기소개 */}
@@ -749,7 +738,7 @@ export default function PlayerMyPage() {
                       onChange={(e) => setProfileForm((p) => ({ ...p, bio: e.target.value }))}
                       maxLength={200}
                       rows={3}
-                      className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-cyan-500 transition-colors resize-none"
+                      className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent transition-colors resize-none"
                       placeholder="간단한 자기소개를 입력하세요 (최대 200자)"
                     />
                   ) : (
@@ -773,7 +762,7 @@ export default function PlayerMyPage() {
                           disabled={!profileEditing}
                           className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors ${
                             selected
-                              ? 'bg-cyan-600 text-text-primary'
+                              ? 'bg-accent text-text-primary'
                               : profileEditing
                               ? 'bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary border border-line'
                               : 'bg-bg-tertiary/50 text-text-muted border border-line cursor-default'
@@ -789,17 +778,13 @@ export default function PlayerMyPage() {
                   )}
                 </div>
 
-                {/* 가입일 */}
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">가입일</label>
-                  <p className="text-text-secondary text-sm">
-                    {user ? formatDate((user as any).createdAt || Date.now()) : '-'}
-                  </p>
-                </div>
               </div>
             </div>
           </div>
         )}
+
+        {/* ─── 문의하기 탭 ─── */}
+        {tab === 'inquiry' && <MyInquiryTab />}
 
         {/* ─── 보안 설정 탭 ─── */}
         {tab === 'security' && (
@@ -807,7 +792,7 @@ export default function PlayerMyPage() {
             {/* 비밀번호 변경 */}
             <div className="bg-bg-secondary border border-line rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-6">
-                <Lock className="w-5 h-5 text-yellow-400" />
+                <Lock className="w-5 h-5 text-accent" />
                 <h2 className="text-lg font-semibold">비밀번호 변경</h2>
               </div>
 
@@ -824,7 +809,7 @@ export default function PlayerMyPage() {
                         type={showPw[key] ? 'text' : 'password'}
                         value={pwForm[field]}
                         onChange={(e) => setPwForm((p) => ({ ...p, [field]: e.target.value }))}
-                        className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 pr-10 text-text-primary focus:outline-none focus:border-yellow-500 transition-colors"
+                        className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 pr-10 text-text-primary focus:outline-none focus:border-accent transition-colors"
                         placeholder="비밀번호 입력"
                         onKeyDown={(e) => e.key === 'Enter' && handleChangePassword()}
                       />
@@ -848,7 +833,7 @@ export default function PlayerMyPage() {
                 <button
                   onClick={handleChangePassword}
                   disabled={pwSaving}
-                  className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-text-primary px-5 py-2.5 rounded-lg text-base font-medium transition-colors disabled:opacity-50 mt-2"
+                  className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-text-inverse px-5 py-2.5 rounded-lg text-base font-medium transition-colors disabled:opacity-50 mt-2"
                 >
                   {pwSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                   비밀번호 변경

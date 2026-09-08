@@ -168,7 +168,7 @@ export default function AdminAdminMembersPage() {
                       </td>
                       <td className="px-4 py-3 border-r border-line/20">
                         <Link href={`/admin/users-enhanced/${m._id}`}
-                          className="px-2 py-1 bg-bg-tertiary hover:bg-bg-hover text-text-secondary text-xs rounded transition-colors">
+                          className="px-3 py-1 rounded-md text-base font-medium bg-blue-600 hover:bg-blue-500 border border-blue-500 text-white transition-colors whitespace-nowrap">
                           보기
                         </Link>
                       </td>

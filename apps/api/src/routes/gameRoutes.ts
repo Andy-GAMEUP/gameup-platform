@@ -11,7 +11,7 @@ import { uploadFields, screenshotUpload, shopItemUpload, shopCurrencyIconUpload,
 
 const router = Router()
 
-router.get('/', getAllGames)
+router.get('/', optionalAuth, getAllGames)
 router.get('/announcements/recent', getRecentGameAnnouncements)
 router.get('/announcements/:announcementId', optionalAuth, getGameAnnouncementById)
 router.post('/announcements/:announcementId/like', authenticateToken, toggleGameAnnouncementLike)

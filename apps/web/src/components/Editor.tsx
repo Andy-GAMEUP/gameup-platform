@@ -126,7 +126,7 @@ export default function Editor({ content, onChange, placeholder = '내용을 입
   )
 
   return (
-    <div className="bg-bg-card rounded-2xl overflow-hidden border border-line focus-within:border-accent/40 focus-within:ring-2 focus-within:ring-accent/10 transition-all">
+    <div className="bg-bg-card rounded-2xl overflow-hidden border border-line hover:border-accent/40 focus-within:border-accent/40 focus-within:ring-2 focus-within:ring-accent/10 transition-all">
 
       {/* 숨김 파일 입력 */}
       {onImageUpload && (

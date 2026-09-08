@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Menu, X, LogOut, LayoutDashboard, User, Bell, MessageSquare, Sun, Moon, ChevronDown } from 'lucide-react'
+import { Menu, X, LogOut, LayoutDashboard, User, Bell, Sun, Moon, ChevronDown } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Button from './Button'
@@ -87,19 +87,19 @@ export default function Navbar() {
     const links = [
       { path: '/', label: '메인' },
       { path: '/betazone', label: '베타존' },
-      { path: '/live_games', label: '라이브게임' },
+      { path: '/live_games', label: '라이브존' },
     ]
     if (!isAuthenticated) {
-      // 비로그인: 메인, 베타존, 라이브게임, 플랫폼 소개, 커뮤니티, 파트너라운지
+      // 비로그인: 메인, 베타존, 라이브존, 플랫폼 소개, 커뮤니티, 파트너라운지
       links.push({ path: '/gameup_platform', label: '플랫폼 소개' })
       links.push({ path: '/community', label: '커뮤니티' })
       links.push({ path: '/partner', label: '파트너라운지' })
     } else if (isAdmin || isCorporateApproved || showDeveloperCenter || isTeamMember) {
-      // 관리자 / 기업회원(승인) / 개발자(개인·기업) / 기업 소속 게임회원: 메인, 베타존, 라이브게임, 커뮤니티, 파트너라운지
+      // 관리자 / 기업회원(승인) / 개발자(개인·기업) / 기업 소속 게임회원: 메인, 베타존, 라이브존, 커뮤니티, 파트너라운지
       links.push({ path: '/community', label: '커뮤니티' })
       links.push({ path: '/partner', label: '파트너라운지' })
     } else {
-      // 개인회원(플레이어): 메인, 베타존, 라이브게임, 커뮤니티
+      // 개인회원(플레이어): 메인, 베타존, 라이브존, 커뮤니티
       links.push({ path: '/community', label: '커뮤니티' })
     }
     return links
@@ -124,7 +124,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-1.5">
-            <Image src="/logo_gameup_v2_2.png" alt="" width={212} height={80} className="h-[45px] w-auto object-contain" />
+            <Image src="/logo_gameup_v2_2.png" alt="" width={212} height={80} className="h-[52px] w-auto object-contain" />
           </Link>
 
           {/* Desktop Nav Links */}
@@ -142,10 +142,10 @@ export default function Navbar() {
                     }}
                   >
                     <Link href="/partner"
-                      className={`flex items-center gap-1 transition-colors text-sm font-medium ${isActive(link.path) ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
+                      className={`flex items-center gap-1 transition-colors text-base font-medium ${isActive(link.path) ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
                     >
                       {link.label}
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${partnerDropdownOpen ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-4 h-4 transition-transform ${partnerDropdownOpen ? 'rotate-180' : ''}`} />
                     </Link>
                     {partnerDropdownOpen && (
                       <div className="absolute left-1/2 -translate-x-1/2 top-full pt-1 w-36 z-50">
@@ -177,7 +177,7 @@ export default function Navbar() {
                 <Link
                   key={link.path}
                   href={link.path}
-                  className={`transition-colors text-sm font-medium ${isActive(link.path) ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
+                  className={`transition-colors text-base font-medium ${isActive(link.path) ? 'text-accent' : 'text-text-secondary hover:text-text-primary'}`}
                 >
                   {link.label}
                 </Link>
@@ -192,18 +192,15 @@ export default function Navbar() {
                 <button onClick={toggleTheme}
                   className="text-text-muted hover:text-text-primary transition-colors p-1.5"
                   title={theme === 'light' ? '다크 모드' : '라이트 모드'}>
-                  {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                  {theme === 'light' ? <Moon className="w-[17px] h-[17px]" /> : <Sun className="w-[17px] h-[17px]" />}
                 </button>
-                <Link href="/messages" className="relative text-text-muted hover:text-text-primary transition-colors p-1.5">
-                  <MessageSquare className="w-5 h-5" />
-                </Link>
                 <button
                   onClick={() => setNotifOpen((v) => !v)}
                   className="relative text-text-muted hover:text-text-primary transition-colors p-1.5"
                 >
-                  <Bell className="w-5 h-5" />
+                  <Bell className="w-[17px] h-[17px]" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-text-primary text-[10px] font-bold rounded-full flex items-center justify-center px-0.5">
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[13px] h-[13px] bg-red-500 text-text-primary text-[8px] font-bold rounded-full flex items-center justify-center px-0.5">
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
@@ -213,7 +210,7 @@ export default function Navbar() {
                     onClick={() => setProfileMenuOpen((v) => !v)}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-tertiary hover:bg-line-light transition-colors"
                   >
-                    <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-text-inverse text-sm font-bold overflow-hidden">
+                    <div className="w-[25px] h-[25px] rounded-full bg-accent flex items-center justify-center text-text-inverse text-[11px] font-bold overflow-hidden">
                       {user.profileImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
@@ -221,7 +218,7 @@ export default function Navbar() {
                         user.username[0].toUpperCase()
                       )}
                     </div>
-                    <span className="text-sm text-text-primary">{user.username}</span>
+                    <span className="text-[11px] text-text-primary">{user.username}</span>
                   </button>
                   {profileMenuOpen && (
                     <div className="absolute right-0 top-12 w-44 bg-bg-card border border-line rounded-xl shadow-xl py-1 z-50">
@@ -271,12 +268,12 @@ export default function Navbar() {
             ) : (
               <>
                 <Link href="/login">
-                  <Button variant="ghost" className="text-text-secondary hover:text-text-primary">
+                  <Button variant="ghost" size="lg" className="text-text-secondary hover:text-text-primary">
                     로그인
                   </Button>
                 </Link>
                 <Link href="/register">
-                  <Button className="bg-accent hover:bg-accent-hover">
+                  <Button size="lg" className="bg-accent hover:bg-accent-hover">
                     가입하기
                   </Button>
                 </Link>
@@ -289,7 +286,7 @@ export default function Navbar() {
             className="md:hidden text-text-primary"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            {mobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
           </button>
         </div>
 

@@ -8,6 +8,7 @@ import {
   Gamepad2, User, Mail, Phone, Loader2, CheckCircle2, AlertCircle, ArrowLeft,
 } from 'lucide-react'
 import { useAuth } from '@/lib/useAuth'
+import { formatPhoneNumber } from '@/lib/formatPhoneNumber'
 
 interface EventBannerInfo {
   _id: string
@@ -232,7 +233,7 @@ export default function EventRegisterPage() {
                   <input
                     type="tel"
                     value={form.phone}
-                    onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+                    onChange={e => setForm(p => ({ ...p, phone: formatPhoneNumber(e.target.value) }))}
                     placeholder="010-0000-0000"
                     className="w-full bg-bg-tertiary border border-line rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
                   />

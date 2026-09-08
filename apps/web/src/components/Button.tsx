@@ -22,7 +22,7 @@ export default function Button({
 
   const variantStyles = {
     default: 'bg-accent text-text-inverse hover:bg-accent-hover shadow-sm',
-    destructive: 'bg-danger text-text-primary hover:bg-danger/80 shadow-sm',
+    destructive: 'bg-danger text-text-inverse hover:bg-danger/80 shadow-sm',
     outline: 'border border-line bg-transparent text-text-secondary hover:bg-bg-tertiary',
     secondary: 'bg-bg-tertiary text-text-primary hover:bg-line-light',
     ghost: 'bg-transparent text-text-secondary hover:bg-bg-tertiary hover:text-text-primary',

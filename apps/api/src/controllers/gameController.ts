@@ -7,7 +7,7 @@ import { grantGameAccessPoint } from '../services/pointService'
 
 export const getAllGames = async (req: AuthRequest, res: Response) => {
   try {
-    const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType, featuredNew, developerId, includeDeleted } = req.query
+    const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType, featuredNew, developerId, includeDeleted, ids } = req.query
 
     const filter: Record<string, unknown> = {
       status: 'published',
@@ -24,6 +24,11 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
       filter.developerId = developerId
     }
 
+    if (ids) {
+      const idList = (Array.isArray(ids) ? ids : String(ids).split(',')).filter(Boolean)
+      filter._id = { $in: idList }
+    }
+
     if (featuredNew === 'true') {
       filter.isNewFeatured = true
     }
@@ -37,7 +42,12 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
     }
 
     if (status && status !== 'all') {
-      filter.status = status
+      // 🔒 비공개 상태(draft/pending/review/archived 등) 조회는 본인 게임이거나 관리자일 때만 허용
+      const isAdmin = req.user?.role === 'admin'
+      const isOwnerQuery = !!req.user && !!developerId && developerId === req.user.id
+      if (isAdmin || isOwnerQuery) {
+        filter.status = status
+      }
     }
 
     if (genre && genre !== 'all') {
@@ -126,6 +136,12 @@ export const getGameById = async (req: AuthRequest, res: Response) => {
     const gameObj = (game as any).toObject()
     const developerIdStr = gameObj.developerId?._id?.toString() ?? gameObj.developerId?.toString()
     const isOwner = req.user && (req.user.id === developerIdStr || req.user.role === 'admin')
+
+    // 🔒 비공개 상태(draft/pending/review/archived 등)는 본인/관리자만 조회 가능
+    if (!isOwner && !['published', 'beta'].includes(gameObj.status)) {
+      return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    }
+
     if (!isOwner && ['published', 'beta'].includes(gameObj.status) && gameObj.approvalStatus !== 'approved' && gameObj.publishedSnapshot) {
       const merged = { ...gameObj, ...gameObj.publishedSnapshot, _id: gameObj._id, developerId: gameObj.developerId, status: gameObj.status, approvalStatus: gameObj.approvalStatus, suspendedAt: gameObj.suspendedAt, approvedAt: gameObj.approvedAt, approvedBy: gameObj.approvedBy, publishedSnapshot: gameObj.publishedSnapshot, createdAt: gameObj.createdAt, updatedAt: gameObj.updatedAt }
       return res.json({ success: true, game: merged })
@@ -269,16 +285,26 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
     }
 
     // 등급 인증서
-    const { ratingClass, certNumber, certDate } = req.body
+    const { ratingClass, certNumber, certDate, otherPlatformLink } = req.body
     const certFileUploaded = files && files.certFile && files.certFile[0]
-    if (ratingClass !== undefined || certNumber !== undefined || certDate !== undefined || certFileUploaded) {
+    const contentDescriptorsRaw = req.body['contentDescriptors']
+    const contentDescriptorsProvided = req.body['contentDescriptorsProvided'] !== undefined
+    if (
+      ratingClass !== undefined || certNumber !== undefined || certDate !== undefined ||
+      otherPlatformLink !== undefined || certFileUploaded || contentDescriptorsProvided
+    ) {
       const existing = (game as any).ratingCertificate || {}
+      const contentDescriptors = contentDescriptorsProvided
+        ? (Array.isArray(contentDescriptorsRaw) ? contentDescriptorsRaw : (contentDescriptorsRaw !== undefined ? [contentDescriptorsRaw] : []))
+        : (existing.contentDescriptors || [])
       ;(game as any).ratingCertificate = {
         ratingClass: ratingClass || existing.ratingClass,
         certNumber: certNumber !== undefined ? certNumber : existing.certNumber,
         certDate: certDate !== undefined ? certDate : existing.certDate,
         certFileUrl: certFileUploaded ? '/uploads/certs/' + certFileUploaded.filename : existing.certFileUrl,
+        otherPlatformLink: otherPlatformLink !== undefined ? otherPlatformLink : existing.otherPlatformLink,
         isVerified: existing.isVerified || false,
+        contentDescriptors,
       }
     }
 

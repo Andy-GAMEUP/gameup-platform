@@ -44,6 +44,8 @@ export const oauthCallback = async (req: Request, res: Response) => {
       })
     }
 
+    await User.findByIdAndUpdate(user._id, { lastLoginAt: new Date() })
+
     return res.json({
       user: {
         id: user._id.toString(),

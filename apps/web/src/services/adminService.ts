@@ -572,6 +572,9 @@ export const adminService = {
   getUserDetail: (id: string) =>
     apiClient.get(`/admin/users-enhanced/${id}/detail`).then(r => r.data),
 
+  getUserPosts: (id: string, params: { page: number; limit: number }) =>
+    apiClient.get(`/admin/users-enhanced/${id}/posts`, { params }).then(r => r.data),
+
   updateUserDetail: (id: string, data: Record<string, unknown>) =>
     apiClient.patch(`/admin/users-enhanced/${id}`, data).then(r => r.data),
 
@@ -583,6 +586,9 @@ export const adminService = {
 
   grantPoints: (id: string, data: GrantPointsData) =>
     apiClient.post(`/admin/users-enhanced/${id}/points`, data).then(r => r.data),
+
+  resetUserPassword: (id: string) =>
+    apiClient.post(`/admin/users-enhanced/${id}/reset-password`).then(r => r.data),
 
   bulkNotify: (data: BulkNotifyData) =>
     apiClient.post('/admin/users-enhanced/bulk-notify', data).then(r => r.data),

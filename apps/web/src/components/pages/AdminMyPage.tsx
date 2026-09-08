@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/useAuth'
 import { authService } from '@/services/authService'
-import { Loader2, Lock, Edit2, Shield, Check, X, Eye, EyeOff, User, Camera } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
+import { Loader2, Lock, Edit2, Shield, Check, X, Eye, EyeOff, Camera } from 'lucide-react'
 
 function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   return (
@@ -17,6 +18,8 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   )
 }
 
+type Tab = 'account' | 'security'
+
 const ADMIN_LEVEL_LABELS: Record<string, { label: string; cls: string }> = {
   super:   { label: '최고 관리자', cls: 'text-red-200' },
   normal:  { label: '일반 관리자', cls: 'text-amber-200' },
@@ -27,6 +30,7 @@ export default function AdminMyPage() {
   const { user, isAuthenticated, isLoading, updateUser } = useAuth()
   const router = useRouter()
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
+  const [tab, setTab] = useState<Tab>('account')
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
     setToast({ msg, type })
@@ -37,27 +41,27 @@ export default function AdminMyPage() {
     if (!isLoading && !isAuthenticated) router.replace('/login')
   }, [isAuthenticated, isLoading, router])
 
-  // ── 프로필 편집 ──
+  // ── 계정 정보 편집 ──
+  const [accountEditing, setAccountEditing] = useState(false)
+  const [accountSaving, setAccountSaving] = useState(false)
   const [username, setUsername] = useState('')
-  const [usernameSaving, setUsernameSaving] = useState(false)
-  const [usernameEditing, setUsernameEditing] = useState(false)
 
   useEffect(() => {
     if (user) setUsername(user.username)
   }, [user?.username])
 
-  const handleSaveUsername = async () => {
+  const handleSaveAccount = async () => {
     if (!username.trim()) { showToast('사용자명을 입력해주세요', 'error'); return }
-    setUsernameSaving(true)
+    setAccountSaving(true)
     try {
       const data = await authService.updateProfile({ username })
       updateUser({ username: data.user.username })
-      setUsernameEditing(false)
-      showToast('프로필이 저장되었습니다')
+      setAccountEditing(false)
+      showToast('계정 정보가 저장되었습니다')
     } catch (err: any) {
       showToast(err?.response?.data?.message || '저장 실패', 'error')
     } finally {
-      setUsernameSaving(false)
+      setAccountSaving(false)
     }
   }
 
@@ -114,6 +118,13 @@ export default function AdminMyPage() {
   const adminLevel = user?.adminLevel as string | null
   const levelInfo = adminLevel ? ADMIN_LEVEL_LABELS[adminLevel] : null
 
+  const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: 'account', label: '계정 정보', icon: <Shield className="w-4 h-4" /> },
+    { key: 'security', label: '보안 설정', icon: <Lock className="w-4 h-4" /> },
+  ]
+
+  const viewCls = 'bg-bg-tertiary/50 border border-line rounded-lg px-3 py-2.5'
+
   return (
     <div className="min-h-screen bg-bg-primary text-text-primary">
       <Navbar />
@@ -126,13 +137,25 @@ export default function AdminMyPage() {
           <div className="absolute -top-20 -right-16 w-64 h-64 bg-red-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-12 w-56 h-56 bg-orange-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-orange-500 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-red-900/50 ring-2 ring-white/20 flex-shrink-0 overflow-hidden">
-              {user?.profileImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
-              ) : (
-                (user?.username || '?')[0].toUpperCase()
-              )}
+            <div className="relative flex-shrink-0">
+              <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-orange-500 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-red-900/50 ring-2 ring-white/20 overflow-hidden">
+                {user?.profileImage ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  (user?.username || '?')[0].toUpperCase()
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarUploading}
+                title="프로필 이미지 변경"
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent hover:bg-accent-hover text-text-inverse flex items-center justify-center border-2 border-bg-secondary transition-colors disabled:opacity-50"
+              >
+                {avatarUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
+              </button>
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -151,73 +174,90 @@ export default function AdminMyPage() {
           </div>
         </div>
 
-        {/* 사용자명 */}
-        <div className="bg-bg-secondary border border-line rounded-2xl p-6">
-            <div className="flex items-start gap-5">
-              {/* 프로필 이미지 */}
-              <div className="relative flex-shrink-0">
-                <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-red-400 to-orange-500 flex items-center justify-center text-2xl font-bold text-white">
-                  {user?.profileImage ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    (user?.username || '?')[0].toUpperCase()
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={avatarUploading}
-                  title="프로필 이미지 변경"
-                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent hover:bg-accent-hover text-text-inverse flex items-center justify-center border-2 border-bg-secondary transition-colors disabled:opacity-50"
-                >
-                  {avatarUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
-                </button>
-                <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-              </div>
-
-              <div className="flex-1 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <User className="w-5 h-5" />사용자명
-                  </h2>
-                  {!usernameEditing && (
-                    <button onClick={() => setUsernameEditing(true)}
-                      className="flex items-center gap-1.5 text-base text-accent hover:text-accent-hover transition-colors">
-                      <Edit2 className="w-4 h-4" />편집
-                    </button>
-                  )}
-                </div>
-                {usernameEditing ? (
-                  <>
-                    <input
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
-                    />
-                    <div className="flex gap-2">
-                      <button onClick={handleSaveUsername} disabled={usernameSaving}
-                        className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-inverse font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
-                        {usernameSaving && <Loader2 className="w-4 h-4 animate-spin" />}저장
-                      </button>
-                      <button onClick={() => { setUsernameEditing(false); setUsername(user?.username || '') }}
-                        className="px-6 py-2.5 rounded-lg border border-line text-text-secondary hover:text-text-primary transition-colors">
-                        취소
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-text-primary">{user?.username}</p>
-                )}
-              </div>
-            </div>
+        {/* 탭 메뉴 */}
+        <div className="flex gap-1 border-b border-line overflow-x-auto">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-base font-medium border-b-2 whitespace-nowrap transition-colors ${
+                tab === t.key
+                  ? 'border-accent text-accent'
+                  : 'border-transparent text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {t.icon}{t.label}
+            </button>
+          ))}
         </div>
 
-        {/* 비밀번호 변경 */}
-        <div className="bg-bg-secondary border border-line rounded-2xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Lock className="w-5 h-5" />비밀번호 변경
-          </h2>
+        {/* ─── 계정 정보 탭 ─── */}
+        {tab === 'account' && (
+          <div className="bg-bg-secondary border border-line rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-accent" />
+                <h2 className="text-lg font-semibold">계정 정보</h2>
+              </div>
+              {!accountEditing ? (
+                <button onClick={() => setAccountEditing(true)}
+                  className="flex items-center gap-1.5 text-base text-accent hover:text-accent-hover transition-colors">
+                  <Edit2 className="w-4 h-4" /> 편집
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <button onClick={() => { setAccountEditing(false); setUsername(user?.username || '') }}
+                    className="text-base text-text-secondary hover:text-text-primary px-3 py-1.5 rounded border border-line transition-colors">
+                    취소
+                  </button>
+                  <button onClick={handleSaveAccount} disabled={accountSaving}
+                    className="flex items-center gap-1.5 text-base bg-accent hover:bg-accent-hover text-text-inverse px-3 py-1.5 rounded transition-colors disabled:opacity-50">
+                    {accountSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    저장
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-5">
+              {/* 사용자명 */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">사용자명</label>
+                {accountEditing ? (
+                  <input value={username} onChange={e => setUsername(e.target.value)} maxLength={20}
+                    className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent transition-colors" />
+                ) : (
+                  <p className={viewCls}>{user?.username}</p>
+                )}
+              </div>
+
+              {/* 이메일 (읽기 전용) */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">이메일</label>
+                <p className={viewCls}>{user?.email}</p>
+              </div>
+
+              {/* 관리자 등급 (읽기 전용) */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">관리자 등급</label>
+                <p className={viewCls}>{levelInfo?.label || '-'}</p>
+              </div>
+
+              {/* 가입일 */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">가입일</label>
+                <p className="text-text-secondary text-sm">{user ? formatDate((user as any).createdAt || Date.now()) : '-'}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── 보안 설정 탭 ─── */}
+        {tab === 'security' && (
+          <div className="bg-bg-secondary border border-line rounded-2xl p-6 space-y-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Lock className="w-5 h-5" />비밀번호 변경
+            </h2>
             {(['current', 'newPw', 'confirm'] as const).map((field) => {
               const labels = { current: '현재 비밀번호', newPw: '새 비밀번호', confirm: '새 비밀번호 확인' }
               const keys = { current: 'currentPassword', newPw: 'newPassword', confirm: 'confirmPassword' } as const
@@ -239,11 +279,12 @@ export default function AdminMyPage() {
                 </div>
               )
             })}
-          <button onClick={handleChangePassword} disabled={pwSaving}
-            className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-inverse font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
-            {pwSaving && <Loader2 className="w-4 h-4 animate-spin" />}비밀번호 변경
-          </button>
-        </div>
+            <button onClick={handleChangePassword} disabled={pwSaving}
+              className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-inverse font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
+              {pwSaving && <Loader2 className="w-4 h-4 animate-spin" />}비밀번호 변경
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

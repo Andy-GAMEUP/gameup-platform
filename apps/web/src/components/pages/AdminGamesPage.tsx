@@ -8,7 +8,7 @@ import DeleteGameModal from '@/components/DeleteGameModal'
 import adminService from '@/services/adminService'
 import {
   Search, CheckCircle, XCircle, Clock, Archive, Play, Pause,
-  RotateCcw, BarChart2, ChevronLeft, ChevronRight, Loader2, AlertCircle, Settings, Gamepad2, FileText
+  RotateCcw, BarChart2, ChevronLeft, ChevronRight, Loader2, AlertCircle, Settings, Gamepad2, FileText, ExternalLink
 } from 'lucide-react'
 
 const APPROVAL_STATUS: Record<string, { label: string; cls: string }> = {
@@ -272,8 +272,8 @@ export default function AdminGamesPage() {
                   <th className="px-2 py-2 text-left w-24 border-r border-line/20">서비스 상태</th>
                   <th className="px-1 py-2 text-center w-10 border-r border-line/20">테스트</th>
                   <th className="px-1 py-2 text-center w-10 border-r border-line/20">관리</th>
-                  <th className="px-1 py-2 text-center w-10 border-r border-line/20">인증서</th>
-                  <th className="px-2 py-2 text-left w-24 border-r border-line/20">게임 현황</th>
+                  <th className="px-1 py-2 text-center w-10 border-r border-line/20">등급 확인</th>
+                  <th className="px-2 py-2 text-left w-[77px] border-r border-line/20">게임 현황</th>
                   <th className="px-2 py-2 text-center w-24 border-r border-line/20">게임 심사</th>
                   <th className="px-2 py-2 text-center w-24 border-r border-line/20">상품 심사</th>
                   <th className="px-2 py-2 text-center w-20 border-r border-line/20">삭제</th>
@@ -285,7 +285,7 @@ export default function AdminGamesPage() {
                   const isLoading = actionLoading === g._id
                   const gameStateLabel =
                     g.status === 'published' ? { label: '운영 중', color: 'text-blue-400', dot: 'bg-blue-400', pulse: true }
-                    : g.approvalStatus === 'not_submitted' ? { label: '초안 작성 중', color: 'text-text-muted', dot: 'bg-text-muted', pulse: false }
+                    : g.approvalStatus === 'not_submitted' ? { label: '초안', color: 'text-text-muted', dot: 'bg-text-muted', pulse: false }
                     : g.approvalStatus === 'pending' || g.approvalStatus === 'review' ? { label: '심사 중', color: 'text-yellow-400', dot: 'bg-yellow-400', pulse: true }
                     : g.approvalStatus === 'rejected' ? { label: '심사 거부', color: 'text-red-400', dot: 'bg-red-400', pulse: false }
                     : g.approvalStatus === 'approved' && g.status !== 'published' ? { label: '출시 대기', color: 'text-emerald-400', dot: 'bg-emerald-400', pulse: true }
@@ -340,13 +340,27 @@ export default function AdminGamesPage() {
                       </td>
                       {/* 등급 인증서 */}
                       <td className="px-1 py-2 text-center border-r border-line/20">
-                        {g.ratingCertificate?.certFileUrl ? (
-                          <button
-                            onClick={() => setCertModal({ url: g.ratingCertificate.certFileUrl, title: g.title })}
-                            className="inline-flex items-center justify-center w-8 h-8 hover:text-emerald-400 border border-line hover:border-emerald-500/40 rounded transition-colors"
-                            title="등급 인증서 보기">
-                            <FileText className="w-4 h-4" />
-                          </button>
+                        {g.ratingCertificate?.certFileUrl || g.ratingCertificate?.otherPlatformLink ? (
+                          <div className="inline-flex items-center justify-center gap-1">
+                            {g.ratingCertificate?.certFileUrl && (
+                              <button
+                                onClick={() => setCertModal({ url: g.ratingCertificate.certFileUrl, title: g.title })}
+                                className="inline-flex items-center justify-center w-8 h-8 hover:text-emerald-400 border border-line hover:border-emerald-500/40 rounded transition-colors"
+                                title="등급 인증서 보기">
+                                <FileText className="w-4 h-4" />
+                              </button>
+                            )}
+                            {g.ratingCertificate?.otherPlatformLink && (
+                              <a
+                                href={g.ratingCertificate.otherPlatformLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center w-8 h-8 hover:text-emerald-400 border border-line hover:border-emerald-500/40 rounded transition-colors"
+                                title="타 플랫폼 링크로 인증 확인">
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-text-muted text-xs">-</span>
                         )}

@@ -24,6 +24,7 @@ ensureDir(path.join(UPLOAD_BASE, 'partner'))
 ensureDir(path.join(UPLOAD_BASE, 'avatars'))
 ensureDir(path.join(UPLOAD_BASE, 'game-announcements'))
 ensureDir(path.join(UPLOAD_BASE, 'game-content'))
+ensureDir(path.join(UPLOAD_BASE, 'messages'))
 
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb) => {
@@ -49,6 +50,8 @@ const storage = multer.diskStorage({
       cb(null, path.join(UPLOAD_BASE, 'game-announcements'))
     } else if (file.fieldname === 'gameContentImages') {
       cb(null, path.join(UPLOAD_BASE, 'game-content'))
+    } else if (file.fieldname === 'messageImage') {
+      cb(null, path.join(UPLOAD_BASE, 'messages'))
     } else if (file.fieldname === 'shopItemImage' || file.fieldname === 'shopCurrencyIcon' || file.fieldname === 'specialItemImage' || file.fieldname === 'currencyIcon' || file.fieldname === 'capcoinIcon') {
       cb(null, path.join(UPLOAD_BASE, 'shop-items'))
     } else {
@@ -72,7 +75,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     } else {
       cb(new Error('게임 파일은 HTML 또는 ZIP 형식만 가능합니다'))
     }
-  } else if (['thumbnail','bannerImage','communityImages','partnerImages','announcementImages','gameContentImages','screenshot','shopItemImage','shopCurrencyIcon','avatar'].includes(file.fieldname)) {
+  } else if (['thumbnail','bannerImage','communityImages','partnerImages','announcementImages','gameContentImages','screenshot','shopItemImage','shopCurrencyIcon','avatar','messageImage'].includes(file.fieldname)) {
     const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     const allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     const ext = path.extname(file.originalname).toLowerCase()
@@ -229,3 +232,10 @@ export const gameContentUpload = multer({
     files: 5
   }
 }).array('gameContentImages', 5)
+
+// 문의하기 채팅 이미지(스크린샷) 업로드 (1장, 5MB)
+export const messageImageUpload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 }
+}).single('messageImage')

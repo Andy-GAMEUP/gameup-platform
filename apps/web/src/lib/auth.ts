@@ -37,6 +37,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           level: data.user.level || 1,
           activityScore: data.user.activityScore || 0,
           bookmarkedTabs: data.user.bookmarkedTabs || [],
+          bio: data.user.bio || '',
+          favoriteGenres: data.user.favoriteGenres || [],
           accessToken: data.token,
         }
       },
@@ -94,6 +96,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.level = (user as any).level || 1
         token.activityScore = (user as any).activityScore || 0
         token.bookmarkedTabs = (user as any).bookmarkedTabs || []
+        token.bio = (user as any).bio || ''
+        token.favoriteGenres = (user as any).favoriteGenres || []
         token.accessToken = (user as any).accessToken || ''
         return token
       }
@@ -117,6 +121,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.role = u.role ?? token.role
             token.username = u.username ?? token.username
             token.bookmarkedTabs = u.bookmarkedTabs ?? token.bookmarkedTabs
+            token.bio = u.bio ?? token.bio
+            token.favoriteGenres = u.favoriteGenres ?? token.favoriteGenres
           }
         } catch { /* 실패해도 기존 토큰 유지 */ }
       }
@@ -136,6 +142,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         ;(session.user as any).level = token.level
         ;(session.user as any).activityScore = token.activityScore
         ;(session.user as any).bookmarkedTabs = token.bookmarkedTabs
+        ;(session.user as any).bio = token.bio
+        ;(session.user as any).favoriteGenres = token.favoriteGenres
         ;(session.user as any).accessToken = token.accessToken
       }
       return session

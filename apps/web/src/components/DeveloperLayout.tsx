@@ -12,6 +12,7 @@ import {
   LayoutDashboard, Gamepad2, Users, MessageSquare, BarChart3, Settings,
   Bell, ChevronLeft, ChevronRight, ChevronDown, LogOut, Plus, Handshake,
   LineChart, Repeat2, DollarSign, UserPlus, Crown, TrendingUp, CreditCard,
+  Megaphone, Star,
 } from 'lucide-react'
 
 export default function DeveloperLayout({ children }: { children: React.ReactNode }) {
@@ -20,7 +21,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
   const [notifOpen,     setNotifOpen]     = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const [unreadCount,   setUnreadCount]   = useState(0)
-  const [analyticsOpen, setAnalyticsOpen] = useState(false)
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({})
   const pathname     = usePathname()
   const router       = useRouter()
   const searchParams = useSearchParams()
@@ -41,7 +42,16 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
   }, [profileOpen])
 
   useEffect(() => {
-    if (pathname.startsWith('/analytics')) setAnalyticsOpen(true)
+    setOpenMenus(prev => {
+      const next = { ...prev }
+      for (const item of navItems) {
+        if (!item.children) continue
+        const matches = pathname.startsWith(item.path) || item.children.some(c => c.path && pathname.startsWith(c.path))
+        if (matches) next[item.path] = true
+      }
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 
   useEffect(() => {
@@ -66,14 +76,21 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
     load()
   }, [isAuthenticated, notifOpen])
 
-  type NavChild = { tab: string; label: string; icon: React.ReactNode }
+  type NavChild = { tab?: string; path?: string; label: string; icon: React.ReactNode }
   type NavItem  = { path: string; label: string; icon: React.ReactNode; children?: NavChild[] }
 
   const navItems: NavItem[] = [
     { path: '/dashboard',       label: '대시보드',   icon: <LayoutDashboard className="w-5 h-5" /> },
     { path: '/games-management', label: '게임 관리', icon: <Gamepad2        className="w-5 h-5" /> },
     { path: '/testers',         label: '테스터 관리', icon: <Users           className="w-5 h-5" /> },
-    { path: '/feedback',        label: '피드백',     icon: <MessageSquare   className="w-5 h-5" /> },
+    {
+      path: '/community-management', label: '게임 운영', icon: <Megaphone className="w-5 h-5" />,
+      children: [
+        { tab: 'announcements', label: '공지 작성', icon: <Megaphone     className="w-4 h-4" /> },
+        { tab: 'reviews',       label: '리뷰 관리', icon: <Star          className="w-4 h-4" /> },
+        { path: '/feedback',    label: '피드백',    icon: <MessageSquare className="w-4 h-4" /> },
+      ],
+    },
     {
       path: '/analytics', label: '분석', icon: <BarChart3 className="w-5 h-5" />,
       children: [
@@ -137,7 +154,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
           <nav className="flex-1 p-4 overflow-y-auto">
             <div className="space-y-1">
               {navItems.map((item) => {
-                const active = isActive(item.path)
+                const active = isActive(item.path) || !!item.children?.some(c => c.path && isActive(c.path))
 
                 if (item.children) {
                   return (
@@ -145,10 +162,11 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                       <button
                         onClick={() => {
                           if (!sidebarOpen) {
-                            router.push(`${item.path}?tab=analysis`)
+                            const first = item.children![0]
+                            router.push(first.path ? first.path : `${item.path}?tab=${first.tab}`)
                             return
                           }
-                          setAnalyticsOpen(v => !v)
+                          setOpenMenus(prev => ({ ...prev, [item.path]: !prev[item.path] }))
                         }}
                         className={`w-full flex items-center gap-3 px-4 py-3 border-l-[3px] transition-colors ${
                           active
@@ -160,19 +178,19 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
                         {sidebarOpen && (
                           <>
                             <span className="flex-1 text-left">{item.label}</span>
-                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${analyticsOpen ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openMenus[item.path] ? 'rotate-180' : ''}`} />
                           </>
                         )}
                       </button>
 
-                      {analyticsOpen && sidebarOpen && (
+                      {openMenus[item.path] && sidebarOpen && (
                         <div className="mt-1 ml-4 pl-3 border-l border-line space-y-0.5">
                           {item.children.map(child => {
-                            const childActive = active && currentTab === child.tab
+                            const childActive = child.path ? isActive(child.path) : (active && currentTab === child.tab)
                             return (
                               <Link
-                                key={child.tab}
-                                href={`${item.path}?tab=${child.tab}`}
+                                key={child.path || child.tab}
+                                href={child.path || `${item.path}?tab=${child.tab}`}
                                 className={`flex items-center gap-2 px-3 py-2 border-l-[3px] text-sm transition-colors ${
                                   childActive
                                     ? 'bg-accent-light border-accent text-accent font-semibold rounded-r-xl'

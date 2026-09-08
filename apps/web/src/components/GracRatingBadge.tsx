@@ -10,8 +10,7 @@ const RATING_CONFIG: Record<RatingClass, {
   '전체이용가':    { bg: '#2e8b3a', ghost: '#3dab4a', short: 'ALL', fontSize: 18, ghostSize: 28 },
   '12세이용가':   { bg: '#1a8c6c', ghost: '#24b589', short: '12',  fontSize: 24, ghostSize: 36 },
   '15세이용가':   { bg: '#d97b1a', ghost: '#f09030', short: '15',  fontSize: 24, ghostSize: 36 },
-  '18세이용가':   { bg: '#c0392b', ghost: '#e05040', short: '18',  fontSize: 24, ghostSize: 36 },
-  '청소년이용불가': { bg: '#b52222', ghost: '#d03535', short: '청불', fontSize: 14, ghostSize: 22 },
+  '청소년이용불가': { bg: '#b52222', ghost: '#d03535', short: '19', fontSize: 24, ghostSize: 36 },
 }
 
 interface Props {

@@ -555,7 +555,7 @@ export default function MainPage() {
             <RecommendedGames games={recGames} />
             <div className="grid grid-cols-2 gap-6">
               <GameColumn title="베타존" games={betaRanking} serviceType="beta" badge="(순위 책정 더미)" />
-              <GameColumn title="라이브게임" games={liveRanking} serviceType="live" badge="(순위 책정 더미)" />
+              <GameColumn title="라이브존" games={liveRanking} serviceType="live" badge="(순위 책정 더미)" />
             </div>
           </div>
           <div style={{ width: '20%' }} className="flex flex-col gap-6">

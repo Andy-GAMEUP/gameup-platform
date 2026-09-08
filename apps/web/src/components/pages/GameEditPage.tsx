@@ -640,7 +640,6 @@ export default function GameEditPage() {
               <option value="전체이용가">전체이용가</option>
               <option value="12세이용가">12세이용가</option>
               <option value="15세이용가">15세이용가</option>
-              <option value="18세이용가">18세이용가</option>
               <option value="청소년이용불가">청소년이용불가</option>
             </select>
           </div>

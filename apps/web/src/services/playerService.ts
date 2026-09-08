@@ -6,7 +6,7 @@ export interface Review {
   userId: { _id: string; username: string; role?: string; level?: number; profileImage?: string }
   gameId: string
   rating: number
-  title: string
+  title?: string
   content: string
   feedbackType: 'general' | 'bug' | 'suggestion' | 'praise'
   bugSeverity?: 'low' | 'medium' | 'high' | 'critical'
@@ -61,7 +61,7 @@ export interface FollowUser {
 }
 
 export const playerService = {
-  getGameReviews: async (gameId: string, params?: { page?: number; limit?: number; sort?: string; feedbackType?: string }) => {
+  getGameReviews: async (gameId: string, params?: { page?: number; limit?: number; sort?: string; feedbackType?: string; rating?: string }) => {
     const res = await apiClient.get(`/games/${gameId}/reviews`, { params })
     return res.data
   },
@@ -69,7 +69,7 @@ export const playerService = {
     const res = await apiClient.get(`/games/${gameId}/my-review`)
     return res.data
   },
-  upsertReview: async (gameId: string, data: { rating: number; title: string; content: string; feedbackType?: string; bugSeverity?: string }) => {
+  upsertReview: async (gameId: string, data: { rating: number; content: string; feedbackType?: string; bugSeverity?: string }) => {
     const res = await apiClient.post(`/games/${gameId}/reviews`, data)
     return res.data
   },
@@ -110,6 +110,10 @@ export const playerService = {
   getMyActivity: async (params?: { page?: number; limit?: number }) => {
     const res = await apiClient.get('/player/activity', { params })
     return res.data
+  },
+  getMyPlayedGameIds: async () => {
+    const res = await apiClient.get('/player/played-games')
+    return res.data as { gameIds: string[] }
   },
 
   toggleFollow: async (userId: string) => {

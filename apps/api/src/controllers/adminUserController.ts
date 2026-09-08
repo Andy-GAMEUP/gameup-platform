@@ -1,7 +1,15 @@
 import { Response } from 'express'
+import crypto from 'crypto'
 import { AuthRequest } from '../middleware/auth'
 import { UserModel, ActivityScoreModel, PointHistoryModel, LevelModel, NotificationModel, PostModel, PartnerModel } from '@gameup/db'
 import { emitToUser } from '../socket'
+import { hashPassword } from '../services/authService'
+
+// 관리자 비밀번호 초기화용 임시 비밀번호 생성 (8자+ 영문/숫자/특수문자 정책 충족 보장)
+function generateTempPassword(): string {
+  const digits = Array.from({ length: 4 }, () => crypto.randomInt(10)).join('')
+  return `Gameup!${digits}`
+}
 
 export const getIndividualMembers = async (req: AuthRequest, res: Response) => {
   try {
@@ -149,16 +157,39 @@ export const getUserDetail = async (req: AuthRequest, res: Response) => {
     const user = await UserModel.findById(id).select('-password')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
 
-    // 최근 게시물 10개 조회
-    const recentPosts = await PostModel.find({ author: id, status: 'active' })
-      .select('title channel views commentCount createdAt')
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .lean()
+    const postFilter = { author: id, status: 'active' }
+    const [recentPosts, postsTotal] = await Promise.all([
+      PostModel.find(postFilter)
+        .select('title channel views commentCount createdAt')
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean(),
+      PostModel.countDocuments(postFilter),
+    ])
 
-    res.json({ user, recentPosts })
+    res.json({ user, recentPosts, postsTotal })
   } catch {
     res.status(500).json({ message: '사용자 상세 조회 실패' })
+  }
+}
+
+export const getUserPosts = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const { page = 1, limit = 10 } = req.query
+
+    const filter = { author: id, status: 'active' }
+    const total = await PostModel.countDocuments(filter)
+    const posts = await PostModel.find(filter)
+      .select('title channel views commentCount createdAt')
+      .sort({ createdAt: -1 })
+      .skip((Number(page) - 1) * Number(limit))
+      .limit(Number(limit))
+      .lean()
+
+    res.json({ posts, total, page: Number(page), totalPages: Math.ceil(total / Number(limit)) })
+  } catch {
+    res.status(500).json({ message: '게시물 조회 실패' })
   }
 }
 
@@ -174,22 +205,15 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       banReason,
       adminMemo,
       memberType,
-      type,
-      isPartner,
       companyInfo,
       contactPerson,
-      nickname,
-      name,
       profileImage,
       bio,
-      company,
-      contact,
+      favoriteGenres,
     } = req.body
 
     const update: Record<string, unknown> = {}
     if (username !== undefined) update.username = username
-    if (name !== undefined) update.username = name
-    if (nickname !== undefined) update.nickname = nickname
     if (email !== undefined) update.email = email
     if (role !== undefined) update.role = role
     if (isActive !== undefined) update.isActive = isActive
@@ -197,18 +221,19 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     if (banReason !== undefined) update.banReason = banReason
     if (adminMemo !== undefined) update.adminMemo = adminMemo
     if (memberType !== undefined) update.memberType = memberType
-    if (type !== undefined) update.memberType = type
-    if (isPartner !== undefined) update.isPartner = isPartner
     if (profileImage !== undefined) update.profileImage = profileImage
     if (bio !== undefined) update.bio = bio
+    if (favoriteGenres !== undefined) update.favoriteGenres = favoriteGenres
     if (companyInfo !== undefined) {
       for (const [key, value] of Object.entries(companyInfo)) {
         update[`companyInfo.${key}`] = value
       }
     }
-    if (contactPerson !== undefined) update.contactPerson = contactPerson
-    if (company !== undefined) update['companyInfo.companyName'] = company.name
-    if (contact !== undefined) update.contactPerson = contact
+    if (contactPerson !== undefined) {
+      for (const [key, value] of Object.entries(contactPerson)) {
+        update[`contactPerson.${key}`] = value
+      }
+    }
 
     const user = await UserModel.findByIdAndUpdate(id, update, { new: true }).select('-password')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
@@ -245,6 +270,22 @@ export const updateCorporateApproval = async (req: AuthRequest, res: Response) =
     res.json({ message: approvalStatus === 'approved' ? '기업회원이 승인되었습니다' : '기업회원이 거절되었습니다', user: updatedUser })
   } catch {
     res.status(500).json({ message: '기업회원 승인 처리 실패' })
+  }
+}
+
+export const resetUserPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const user = await UserModel.findById(id)
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+
+    const tempPassword = generateTempPassword()
+    const hashedPassword = await hashPassword(tempPassword)
+    await UserModel.findByIdAndUpdate(id, { password: hashedPassword })
+
+    res.json({ message: '임시 비밀번호가 발급되었습니다', tempPassword })
+  } catch {
+    res.status(500).json({ message: '비밀번호 초기화 실패' })
   }
 }
 

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Eye, Plus, Search, Star, RefreshCw, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import { gameService } from '@/services/gameService'
 import DeleteGameModal from '@/components/DeleteGameModal'
+import GameApprovalStatusBadge from '@/components/GameApprovalStatusBadge'
 import { formatDate } from '@/lib/formatDate'
 
 interface Game {
@@ -45,15 +46,15 @@ const approvalLabel: Record<string, string> = {
 // 요구사항: 서비스 = 베타 / 라이브 / 종료
 const getServiceDisplay = (game: Game): { label: string; className: string } => {
   if (game.status === 'archived' || game.serviceType === 'ended') {
-    return { label: '종료', className: 'bg-orange-500 text-white border-2 border-white/90' }
+    return { label: '종료', className: 'bg-orange-500 text-white border border-white/90' }
   }
   if (game.serviceType === 'beta') {
-    return { label: '베타', className: 'bg-blue-500 text-white border-2 border-white/90' }
+    return { label: '베타', className: 'bg-blue-500 text-white border border-white/90' }
   }
   if (game.serviceType === 'live' || game.status === 'published') {
-    return { label: '라이브', className: 'bg-accent text-white border-2 border-white/90' }
+    return { label: '라이브', className: 'bg-accent text-white border border-white/90' }
   }
-  return { label: '베타', className: 'bg-blue-500 text-white border-2 border-white/90' }
+  return { label: '베타', className: 'bg-blue-500 text-white border border-white/90' }
 }
 
 // 요구사항: 수익모델 4종 - 무료, 광고, 유료, 프리미엄
@@ -66,11 +67,7 @@ const monetizationLabel: Record<string, string> = {
 
 function GameCard({ game }: { game: Game }) {
   const service = getServiceDisplay(game)
-  const showStatusLine =
-    (game.approvalStatus === 'not_submitted' && game.status !== 'published') ||
-    ((game.approvalStatus === 'pending' || game.approvalStatus === 'review') && game.status !== 'published') ||
-    (game.approvalStatus === 'approved' && game.status !== 'published') ||
-    game.approvalStatus === 'rejected'
+  const isPrelaunch = game.status !== 'published'
   const thumbSrc = game.thumbnail
     ? (game.thumbnail.startsWith('http') || game.thumbnail.startsWith('/uploads/')
         ? game.thumbnail
@@ -80,71 +77,50 @@ function GameCard({ game }: { game: Game }) {
   return (
     <div className="group flex flex-col rounded-xl bg-bg-secondary border-2 border-line/40 hover:border-accent hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
       {/* 썸네일 */}
-      <div className="relative aspect-video bg-bg-tertiary overflow-hidden">
+      <Link href={`/games-management/${game._id}/manage`} className="relative aspect-video bg-bg-tertiary overflow-hidden block cursor-pointer">
         {thumbSrc ? (
           <img src={thumbSrc} alt={game.title} className="absolute inset-0 w-full h-full object-cover"
             onError={(e) => { e.currentTarget.style.display = 'none' }} />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-3xl">🎮</div>
         )}
-        <span className={`absolute top-2 right-2 text-[15.6px] font-bold px-[7.2px] py-[2.4px] rounded ${service.className}`}>
+        <span className={`absolute top-2 right-2 text-[9.36px] font-bold px-[4.32px] py-[1.44px] rounded ${service.className}`}>
           {service.label}
         </span>
-      </div>
+      </Link>
 
       {/* 정보 */}
       <div className="flex flex-col gap-[12.61px] p-3 flex-1">
         <div>
           <div className="flex items-center justify-between gap-1">
             <div className="flex items-baseline gap-[15px] min-w-0">
-              <p className="font-semibold text-text-primary text-[21.84px] leading-tight truncate">{game.title}</p>
-              <span className="text-[15.6px] text-text-muted flex-shrink-0">{game.genre}</span>
+              <p className="font-semibold text-text-primary text-[19.66px] leading-tight truncate">{game.title}</p>
             </div>
             <div className="flex-shrink-0 flex items-center gap-1.5">
-              {game.rating > 0 && (
-                <span className="flex items-center gap-0.5 text-[15.6px] text-yellow-400 font-medium">
-                  <Star className="w-3 h-3 fill-yellow-400" />
-                  {game.rating.toFixed(1)}
-                </span>
+              {isPrelaunch ? (
+                <GameApprovalStatusBadge approvalStatus={game.approvalStatus} status={game.status} />
+              ) : (
+                game.rating > 0 && (
+                  <span className="flex items-center gap-0.5 text-[15.6px] text-yellow-400 font-medium">
+                    <Star className="w-3 h-3 fill-yellow-400" />
+                    {game.rating.toFixed(1)}
+                  </span>
+                )
               )}
             </div>
           </div>
-          {showStatusLine && (
-            <div className="flex items-center gap-1.5 mt-0.5">
-              {game.approvalStatus === 'not_submitted' && game.status !== 'published' && (
-                <span className="inline-flex items-center gap-1 text-[15.6px] text-text-muted">
-                  <span className="w-1 h-1 rounded-full bg-text-muted" />초안
-                </span>
-              )}
-              {(game.approvalStatus === 'pending' || game.approvalStatus === 'review') && game.status !== 'published' && (
-                <span className="inline-flex items-center gap-1 text-[15.6px] text-yellow-400">
-                  <span className="w-1 h-1 rounded-full bg-yellow-400 animate-pulse" />심사중
-                </span>
-              )}
-              {game.approvalStatus === 'approved' && game.status !== 'published' && (
-                <span className="inline-flex items-center gap-1 text-[15.6px] text-accent">
-                  <span className="w-1 h-1 rounded-full bg-accent animate-pulse" />출시 대기
-                </span>
-              )}
-              {game.approvalStatus === 'rejected' && (
-                <span className="inline-flex items-center gap-1 text-[15.6px] text-red-400">
-                  <span className="w-1 h-1 rounded-full bg-red-400" />심사 거부
-                </span>
-              )}
-            </div>
-          )}
         </div>
 
         {/* 버튼 */}
         <div className="flex gap-1 mt-auto">
           <Link href={`/games/${game._id}`} className="flex-1" target="_blank" rel="noopener noreferrer">
-            <button className="w-full flex items-center justify-center gap-1 py-[5.35px] text-text-secondary hover:text-text-primary bg-bg-tertiary border-2 border-text-secondary hover:border-text-primary rounded-lg transition-colors text-[21.06px] font-medium">
-              <Eye className="w-4 h-4" />미리보기
+            <button className="w-full flex items-center justify-center gap-1 py-[3.21px] text-text-secondary hover:text-text-primary bg-bg-tertiary border border-line hover:border-text-secondary rounded-lg transition-colors text-[12.64px] font-medium">
+              <Eye className="w-3 h-3" />미리보기
             </button>
           </Link>
           <Link href={`/games-management/${game._id}/manage`} className="flex-1">
-            <button className="w-full flex items-center justify-center gap-1 py-[5.35px] text-white bg-violet-500/70 hover:bg-violet-500 border-2 border-violet-700 rounded-lg transition-colors text-[21.06px] font-medium">
-              <Settings className="w-4 h-4" />관리
+            <button className="w-full flex items-center justify-center gap-1 py-[3.21px] text-white bg-violet-500/70 hover:bg-violet-500 border border-violet-300 rounded-lg transition-colors text-[12.64px] font-medium">
+              <Settings className="w-3 h-3" />관리
             </button>
           </Link>
         </div>
@@ -170,9 +146,9 @@ function GameSection({
   return (
     <div className={`rounded-xl border ${borderClass} bg-bg-secondary overflow-hidden`}>
       {/* 헤더 */}
-      <div className="flex items-center justify-between px-5 py-3 border-b border-line/40">
-        <span className="text-[25.48px] font-bold text-text-primary">{title}</span>
-        <span className="text-[25.48px] text-text-muted">{games.length}개</span>
+      <div className="flex items-center justify-between px-5 py-[10.2px] border-b border-line/40">
+        <span className="text-[21.66px] font-bold text-text-primary">{title}</span>
+        <span className="self-end text-[13px] text-text-muted">{games.length}개</span>
       </div>
       {/* 카드 그리드 */}
       <div className="p-5 bg-black/5 dark:bg-black/20">

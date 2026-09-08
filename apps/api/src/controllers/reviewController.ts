@@ -10,7 +10,7 @@ const VALID_SEVERITIES = ['low', 'medium', 'high', 'critical']
 export const getGameReviews = async (req: AuthRequest, res: Response) => {
   try {
     const { gameId } = req.params
-    const { page = 1, limit = 10, sort = 'recent', feedbackType } = req.query
+    const { page = 1, limit = 10, sort = 'recent', feedbackType, rating } = req.query
 
     // 🔒 차단된 리뷰 제외 (버그 수정)
     const filter: Record<string, unknown> = {
@@ -18,6 +18,10 @@ export const getGameReviews = async (req: AuthRequest, res: Response) => {
       isBlocked: { $ne: true }
     }
     if (feedbackType) filter.feedbackType = feedbackType
+    if (rating) {
+      const ratings = String(rating).split(',').map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 5)
+      if (ratings.length > 0) filter.rating = { $in: ratings }
+    }
 
     const sortOption: Record<string, 1 | -1> =
       sort === 'helpful' ? { helpfulCount: -1 } : { createdAt: -1 }
@@ -55,17 +59,11 @@ export const getGameReviews = async (req: AuthRequest, res: Response) => {
 export const upsertReview = async (req: AuthRequest, res: Response) => {
   try {
     const { gameId } = req.params
-    const { rating, title, content, feedbackType, bugSeverity } = req.body
+    const { rating, content, feedbackType, bugSeverity } = req.body
     const userId = req.user!.id
 
     if (!rating || typeof rating !== 'number' || rating < 1 || rating > 5) {
       return res.status(400).json({ message: '별점은 1~5점 사이여야 합니다' })
-    }
-    if (!title || typeof title !== 'string' || title.trim().length === 0) {
-      return res.status(400).json({ message: '리뷰 제목을 입력해주세요' })
-    }
-    if (title.trim().length > 100) {
-      return res.status(400).json({ message: '제목은 100자 이내여야 합니다' })
     }
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return res.status(400).json({ message: '리뷰 내용을 입력해주세요' })
@@ -83,30 +81,28 @@ export const upsertReview = async (req: AuthRequest, res: Response) => {
     const game = await Game.findById(gameId)
     if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
 
+    const hasPlayed = await PlayerActivity.exists({ userId, gameId, type: 'play' })
+    if (!hasPlayed) {
+      return res.status(403).json({ message: '게임을 플레이한 유저만 리뷰를 작성할 수 있습니다' })
+    }
+
     const existing = await Review.findOne({ userId, gameId })
 
     if (existing) {
       existing.rating = rating
-      existing.title = title.trim()
       existing.content = content.trim()
       existing.feedbackType = feedbackType || 'general'
       existing.bugSeverity = bugSeverity || undefined
-      if (!existing.isVerifiedTester) {
-        const hasPlayed = await PlayerActivity.exists({ userId, gameId, type: 'play' })
-        existing.isVerifiedTester = !!hasPlayed
-      }
+      existing.isVerifiedTester = true
       await existing.save()
       await updateGameRating(gameId)
       return res.json({ message: '리뷰가 수정되었습니다', review: existing })
     }
 
-    const hasPlayed = await PlayerActivity.exists({ userId, gameId, type: 'play' })
-
     const review = await Review.create({
       userId,
       gameId,
       rating,
-      title: title.trim(),
       content: content.trim(),
       feedbackType: feedbackType || 'general',
       bugSeverity: bugSeverity || undefined,
@@ -144,7 +140,7 @@ export const deleteReview = async (req: AuthRequest, res: Response) => {
   }
 }
 
-// 리뷰 도움됨 토글
+// 리뷰 추천 토글
 export const toggleHelpful = async (req: AuthRequest, res: Response) => {
   try {
     const { reviewId } = req.params
@@ -153,9 +149,9 @@ export const toggleHelpful = async (req: AuthRequest, res: Response) => {
     const review = await Review.findById(reviewId)
     if (!review) return res.status(404).json({ message: '리뷰를 찾을 수 없습니다' })
 
-    // 🔒 자신의 리뷰에 도움됨 불가
+    // 🔒 자신의 리뷰에 추천 불가
     if (review.userId.toString() === userId) {
-      return res.status(400).json({ message: '자신의 리뷰에는 도움됨을 누를 수 없습니다' })
+      return res.status(400).json({ message: '자신의 리뷰에는 추천을 누를 수 없습니다' })
     }
 
     const mongoUserId = new mongoose.Types.ObjectId(userId)
@@ -204,10 +200,7 @@ export const getManagedGameReviews = async (req: AuthRequest, res: Response) => 
     if (isBlocked !== undefined) filter.isBlocked = isBlocked === 'true'
     if (search) {
       const safe = (search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      filter.$or = [
-        { title: { $regex: safe, $options: 'i' } },
-        { content: { $regex: safe, $options: 'i' } },
-      ]
+      filter.content = { $regex: safe, $options: 'i' }
     }
     const pageNum = Math.max(1, Number(page))
     const limitNum = Math.min(100, Math.max(1, Number(limit)))

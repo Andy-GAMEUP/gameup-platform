@@ -3,13 +3,22 @@ import fs from 'fs'
 import path from 'path'
 import { UserModel as User, ScrapModel as Scrap, PlayerActivityModel as PlayerActivity, ReviewModel as Review, UserDeletionLogModel } from '@gameup/db'
 import { hashPassword, comparePassword, generateToken } from '../services/authService'
+import { verifyTurnstileToken } from '../services/turnstileService'
+import { checkBusinessNumber } from '../services/businessNumberService'
 import { AuthRequest } from '../middleware/auth'
 
 const BUSINESS_NUMBER_REGEX = /^\d{3}-\d{2}-\d{5}$/
 
+// 비밀번호 정책: 8자 이상 + 영문/숫자/특수문자 모두 포함
+const isValidPassword = (password: string) =>
+  password.length >= 8 &&
+  /[a-zA-Z]/.test(password) &&
+  /[0-9]/.test(password) &&
+  /[^a-zA-Z0-9]/.test(password)
+
 export const register = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, username, role, memberType, companyInfo, contactPerson } = req.body
+    const { email, password, username, role, memberType, companyInfo, contactPerson, turnstileToken } = req.body
 
     if (!email || !password || !username) {
       return res.status(400).json({
@@ -17,9 +26,14 @@ export const register = async (req: AuthRequest, res: Response) => {
       })
     }
 
-    if (password.length < 6) {
+    const isHuman = await verifyTurnstileToken(turnstileToken, req.ip)
+    if (!isHuman) {
+      return res.status(400).json({ message: '캡차 인증에 실패했습니다. 다시 시도해주세요.' })
+    }
+
+    if (!isValidPassword(password)) {
       return res.status(400).json({
-        message: '비밀번호는 최소 6자 이상이어야 합니다'
+        message: '비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 모두 포함해야 합니다'
       })
     }
 
@@ -39,6 +53,20 @@ export const register = async (req: AuthRequest, res: Response) => {
       }
       if (!companyInfo?.businessNumber || !BUSINESS_NUMBER_REGEX.test(companyInfo.businessNumber)) {
         return res.status(400).json({ message: '사업자 등록번호를 올바른 형식(123-45-67890)으로 입력해주세요' })
+      }
+      const bizCheck = await checkBusinessNumber(companyInfo.businessNumber)
+      if (!bizCheck.valid) {
+        const reasonMsg = bizCheck.reason === 'closed' ? ' (폐업 상태)'
+          : bizCheck.reason === 'suspended' ? ' (휴업 상태)'
+          : ''
+        return res.status(400).json({ message: `사업자 등록번호를 확인할 수 없습니다${reasonMsg}. 다시 확인해주세요.` })
+      }
+      if (companyInfo?.homepageUrl) {
+        try {
+          new URL(companyInfo.homepageUrl)
+        } catch {
+          return res.status(400).json({ message: '회사 웹사이트를 올바른 URL 형식으로 입력해주세요 (예: https://company.com)' })
+        }
       }
     }
 
@@ -83,6 +111,7 @@ export const register = async (req: AuthRequest, res: Response) => {
         companyType: companyInfo.companyType,
         businessNumber: companyInfo.businessNumber,
         businessType: companyInfo.businessType === 'individual' ? 'individual' : 'corporation',
+        homepageUrl: companyInfo.homepageUrl || undefined,
         isApproved: false,
         approvalStatus: 'pending',
       }
@@ -122,6 +151,25 @@ export const register = async (req: AuthRequest, res: Response) => {
   }
 }
 
+// 가입 화면에서 사업자 등록번호 입력 중 실시간 확인용 (공개 API)
+export const verifyBusinessNumber = async (req: AuthRequest, res: Response) => {
+  try {
+    const { businessNumber } = req.body
+    if (!businessNumber || !BUSINESS_NUMBER_REGEX.test(businessNumber)) {
+      return res.status(400).json({ valid: false, message: '올바른 형식(123-45-67890)이 아닙니다' })
+    }
+    const result = await checkBusinessNumber(businessNumber)
+    if (result.valid) return res.json(result)
+
+    const reasonMsg = result.reason === 'closed' ? '폐업 상태인 사업자번호입니다'
+      : result.reason === 'suspended' ? '휴업 상태인 사업자번호입니다'
+      : '확인되지 않는 사업자번호입니다'
+    res.json({ ...result, message: reasonMsg })
+  } catch {
+    res.status(500).json({ valid: false, message: '확인 중 오류가 발생했습니다' })
+  }
+}
+
 export const login = async (req: AuthRequest, res: Response) => {
   try {
     const { email, password } = req.body
@@ -154,6 +202,8 @@ export const login = async (req: AuthRequest, res: Response) => {
       })
     }
 
+    await User.findByIdAndUpdate(user._id, { lastLoginAt: new Date() })
+
     const token = generateToken({
       id: user._id.toString(),
       email: user.email,
@@ -178,6 +228,8 @@ export const login = async (req: AuthRequest, res: Response) => {
         activityScore: user.activityScore || 0,
         profileImage: user.profileImage || null,
         bookmarkedTabs: user.bookmarkedTabs || [],
+        bio: user.bio || '',
+        favoriteGenres: user.favoriteGenres || [],
       },
       token
     })
@@ -341,8 +393,8 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: '현재 비밀번호와 새 비밀번호를 모두 입력해주세요' })
     }
-    if (newPassword.length < 8) {
-      return res.status(400).json({ message: '새 비밀번호는 8자 이상이어야 합니다' })
+    if (!isValidPassword(newPassword)) {
+      return res.status(400).json({ message: '새 비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 모두 포함해야 합니다' })
     }
 
     const user = await User.findById(req.user.id).select('password')
@@ -462,6 +514,29 @@ export const updateCompanyType = async (req: AuthRequest, res: Response) => {
     })
 
     res.json({ success: true, companyType })
+  } catch {
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+export const updateCompanyInfo = async (req: AuthRequest, res: Response) => {
+  try {
+    const { companyName, homepageUrl, contactPhone } = req.body
+
+    const user = await User.findById(req.user!.id).select('memberType companyInfo contactPerson')
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (user.memberType !== 'corporate') {
+      return res.status(400).json({ message: '기업회원만 회사 정보를 수정할 수 있습니다' })
+    }
+
+    const $set: Record<string, unknown> = {}
+    if (companyName !== undefined) $set['companyInfo.companyName'] = companyName
+    if (homepageUrl !== undefined) $set['companyInfo.homepageUrl'] = homepageUrl
+    if (contactPhone !== undefined) $set['contactPerson.phone'] = contactPhone
+
+    const updated = await User.findByIdAndUpdate(req.user!.id, { $set }, { new: true }).select('companyInfo contactPerson')
+
+    res.json({ success: true, companyInfo: updated!.companyInfo, contactPerson: updated!.contactPerson })
   } catch {
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }

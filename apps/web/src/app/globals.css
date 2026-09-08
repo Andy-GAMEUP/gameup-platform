@@ -234,6 +234,18 @@
   --accent-text: #fca5a5;
 }
 
+/* 관리자 콘솔은 accent가 red라 입력 필드 포커스에 그대로 쓰면 에러 상태처럼 보임 — 중립색으로 대체 */
+.accent-red input:focus,
+.accent-red input:focus-visible,
+.accent-red textarea:focus,
+.accent-red textarea:focus-visible,
+.accent-red select:focus,
+.accent-red select:focus-visible {
+  outline: none;
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.35);
+}
+
 /* ============================================
    글로벌 기본 스타일
    ============================================ */

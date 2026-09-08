@@ -499,7 +499,7 @@ export default function GameupPlatformPage() {
               <h3 className="font-semibold mb-4">플랫폼</h3>
               <ul className="space-y-2 text-sm text-text-secondary">
                 <li><Link href="/" className="hover:text-text-primary transition-colors">베타존</Link></li>
-                <li><Link href="/live_games" className="hover:text-text-primary transition-colors">라이브게임</Link></li>
+                <li><Link href="/live_games" className="hover:text-text-primary transition-colors">라이브존</Link></li>
                 <li><Link href="/community" className="hover:text-text-primary transition-colors">커뮤니티</Link></li>
               </ul>
             </div>

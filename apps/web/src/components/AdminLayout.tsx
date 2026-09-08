@@ -4,13 +4,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/useAuth'
+import { useUnreadInquiryCount } from '@/lib/useUnreadInquiryCount'
 import {
   LayoutDashboard, Gamepad2, Users, Megaphone,
   ChevronLeft, ChevronRight, ChevronDown,
   Shield, UserPlus, Handshake, Tags,
   Smartphone, Globe, Calendar, FileCheck, ImageIcon, Bell, Package,
   BarChart3, PieChart, UserCircle, Building2, Award, Activity, FileText, Gift, Flag,
-  MessageCircle, ShieldBan, Trash2, CreditCard, Calculator, LogOut, Sparkles,
+  MessageCircle, ShieldBan, Trash2, CreditCard, Calculator, LogOut, Sparkles, MessageCircleQuestion,
 } from 'lucide-react'
 
 interface AdminLayoutProps { children: ReactNode }
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
   { path: '/admin/payments', label: '결제 / 환불', icon: CreditCard },
   { path: '/admin/settlements', label: '정산', icon: Calculator },
   { path: '/admin/notifications', label: '알림', icon: Bell },
+  { path: '/admin/inquiries', label: '문의하기 관리', icon: MessageCircleQuestion },
   { path: '/admin/community?tab=banner', label: '배너 관리', icon: ImageIcon },
   {
     path: '/admin/community-board',
@@ -118,6 +120,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { logout, user, isLoading } = useAuth()
+  const unreadInquiryCount = useUnreadInquiryCount()
   const searchParams = useSearchParams()
   const [open, setOpen] = useState(true)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -221,7 +224,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const active = isActive(path, exact)
     return (
       <Link key={path} href={path}
-        className={`flex items-center gap-3 px-3 py-2.5 border-l-[3px] text-sm transition-colors ${
+        className={`relative flex items-center gap-3 px-3 py-2.5 border-l-[3px] text-sm transition-colors ${
           active
             ? 'bg-accent-light border-accent text-accent-text font-semibold rounded-r-xl'
             : 'border-transparent text-text-muted hover:text-text-primary hover:bg-bg-tertiary rounded-xl'
@@ -230,6 +233,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       >
         <Icon className="w-4 h-4 flex-shrink-0" />
         {open && <span>{label}</span>}
+        {path === '/admin/inquiries' && unreadInquiryCount > 0 && (
+          <span className={`w-1.5 h-1.5 rounded-full bg-danger ${open ? '' : 'absolute top-1.5 right-1.5'}`} />
+        )}
       </Link>
     )
   }

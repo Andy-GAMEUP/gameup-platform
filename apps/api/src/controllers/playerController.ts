@@ -194,6 +194,17 @@ export const getMyActivity = async (req: AuthRequest, res: Response) => {
   }
 }
 
+// 내가 플레이 중인 게임 ID 목록 (중복 제거)
+export const getMyPlayedGameIds = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id
+    const gameIds = await PlayerActivity.distinct('gameId', { userId, type: 'play' })
+    res.json({ gameIds: gameIds.map((id) => id.toString()) })
+  } catch {
+    res.status(500).json({ message: '플레이 중인 게임 조회 실패' })
+  }
+}
+
 export const toggleFavorite = toggleScrap
 export const getMyFavorites = getMyGameScraps
 export const checkFavorites = checkScraps

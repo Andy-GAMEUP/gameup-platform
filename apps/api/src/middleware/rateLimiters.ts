@@ -16,3 +16,15 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 })
+
+// 사업자등록번호 확인(가입 화면에서 입력 중 실시간 자동 호출) 전용 제한
+// authLimiter보다 훨씬 느슨하게 잡아서 정상적인 입력/수정 흐름은 안 막되,
+// 외부(국세청) API 사용량 소진이나 번호 무작위 대입은 막는다.
+export const businessCheckLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 20,
+  message: { message: '잠시 후 다시 시도해주세요.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'development'
+})

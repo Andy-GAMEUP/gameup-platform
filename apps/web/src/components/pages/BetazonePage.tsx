@@ -1,106 +1,69 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { Fragment, useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Button from '@/components/Button'
-import Badge from '@/components/Badge'
-import { Card, CardContent } from '@/components/Card'
-import { Heart, Star, Search, Filter, Loader2, Gamepad2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Loader2, Gamepad2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { gameService } from '@/services/gameService'
+import { playerService } from '@/services/playerService'
+import { useAuth } from '@/lib/useAuth'
 import { Game } from '@gameup/types'
+import StarRating from '@/components/StarRating'
 import EventBannerCarousel from '@/components/EventBannerCarousel'
 
 const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='256' viewBox='0 0 400 256'%3E%3Crect fill='%231e293b' width='400' height='256'/%3E%3Ctext fill='%23334155' font-family='sans-serif' font-size='24' x='50%25' y='50%25' text-anchor='middle' dy='.3em'%3EGame%3C/text%3E%3C/svg%3E"
 
 import { FILTER_GENRES as GENRES } from '@/constants/game'
-import GracRatingBadge from '@/components/GracRatingBadge'
-import { RatingClass } from '@gameup/types'
-const SORT_OPTIONS = [
-  { value: 'newest', label: '최신순' },
-  { value: 'popular', label: '인기순' },
-  { value: 'rating', label: '평점순' },
-]
 
 function GameCard({ game }: { game: Game }) {
   const router = useRouter()
   const id = (game as any)._id || game.id
-  const [favorite, setFavorite] = useState(false)
 
   return (
-    <div className="cursor-pointer group" onClick={() => router.push(`/games/${id}`)}>
-      <Card className="bg-bg-secondary/50 border-2 border-accent-muted overflow-hidden hover:border-accent transition-all h-full">
-        <div className="relative h-48 overflow-hidden">
+    <div className="cursor-pointer group h-full" onClick={() => router.push(`/games/${id}`)}>
+      <div className="h-full flex flex-col rounded-2xl overflow-hidden bg-bg-tertiary border-2 border-gray-300 dark:border-gray-600 group-hover:border-gray-500 dark:group-hover:border-gray-400 transition-colors">
+        <div className="relative aspect-[5/5]">
           <Image
             src={game.thumbnail || PLACEHOLDER}
             alt={game.title}
             fill
-            className="object-cover group-hover:scale-110 transition-transform duration-300"
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
             unoptimized
           />
-          <div className="absolute top-3 right-3">
-            <button
-              className="w-8 h-8 rounded-full bg-bg-primary/70 backdrop-blur-sm flex items-center justify-center hover:bg-bg-tertiary transition-colors"
-              onClick={(e) => { e.stopPropagation(); setFavorite((f) => !f) }}
-            >
-              <Heart className={`w-4 h-4 ${favorite ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-            </button>
+        </div>
+        <div className="p-2 flex-1 flex flex-col">
+          <div>
+            <h3 className="text-[18.2px] font-semibold text-text-primary truncate">{game.title}</h3>
+            <p className="text-xs text-text-muted mt-[2.4px] pl-1">{game.description}</p>
+          </div>
+          <div className="mt-auto pt-1.5 pl-1">
+            <div className="flex items-center gap-1">
+              <StarRating value={Math.round(game.rating || 0)} size={3.5} />
+              <span className="text-yellow-400 font-bold text-xs ml-1">{(game.rating || 0).toFixed(1)}</span>
+            </div>
+            {game.genre && (
+              <p className="text-xs text-accent mt-1.5">{game.genre}</p>
+            )}
           </div>
         </div>
-        <CardContent className="p-4">
-          <h3 className="font-bold text-lg mb-1 text-text-primary truncate">{game.title}</h3>
-          <p className="text-sm text-text-secondary line-clamp-2 mb-3">{game.description}</p>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-3.5 h-3.5 ${
-                    i < Math.floor(game.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-text-muted'
-                  }`}
-                />
-              ))}
-              <span className="text-xs text-text-secondary ml-1">{(game.rating || 0).toFixed(1)}</span>
-            </div>
-            <span className="text-xs text-text-muted">{(game.playCount || 0).toLocaleString()} 플레이</span>
-          </div>
-          {(() => {
-            const cert = (game as any).ratingCertificate
-            if (!cert?.ratingClass || !cert?.isVerified) return null
-            return (
-              <div className="mt-2">
-                <GracRatingBadge ratingClass={cert.ratingClass as RatingClass} size="sm" />
-              </div>
-            )
-          })()}
-          {game.genre && (
-            <div className="mt-2">
-              <Badge variant="outline" className="text-xs border-accent-muted text-accent">
-                {game.genre}
-              </Badge>
-            </div>
-          )}
-          {game.isPaid && game.price ? (
-            <div className="mt-2 text-sm font-semibold text-yellow-400">₩{game.price.toLocaleString()}</div>
-          ) : (
-            <div className="mt-2 text-sm font-semibold text-accent">무료</div>
-          )}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   )
 }
 
 export default function BetazonePage() {
+  const router = useRouter()
+  const { isAuthenticated } = useAuth()
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selectedGenre, setSelectedGenre] = useState('전체')
-  const [sort, setSort] = useState('newest')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
-  const [totalCount, setTotalCount] = useState(0)
   const [eventBanners, setEventBanners] = useState<any[]>([])
+  const [myGamesOnly, setMyGamesOnly] = useState(false)
+  const [playedIds, setPlayedIds] = useState<string[] | null>(null)
 
   useEffect(() => {
     fetch('/api/event-banners')
@@ -112,22 +75,28 @@ export default function BetazonePage() {
   const loadGames = useCallback(async () => {
     setLoading(true)
     try {
-      const params: any = { sort, page, limit: 12, serviceType: 'beta' }
+      if (myGamesOnly && (!playedIds || playedIds.length === 0)) {
+        setGames([])
+        setTotalPages(1)
+        return
+      }
+
+      const params: any = { sort: 'newest', page, limit: 12, serviceType: 'beta' }
       if (search.trim()) params.search = search.trim()
       if (selectedGenre !== '전체') params.genre = selectedGenre
+      if (myGamesOnly && playedIds) params.ids = playedIds.join(',')
 
       const data = await gameService.getAllGames(params)
       setGames(data.games || [])
       if ((data as any).pagination) {
         setTotalPages((data as any).pagination.pages || 1)
-        setTotalCount((data as any).pagination.total || 0)
       }
     } catch {
       setGames([])
     } finally {
       setLoading(false)
     }
-  }, [search, selectedGenre, sort, page])
+  }, [search, selectedGenre, page, myGamesOnly, playedIds])
 
   useEffect(() => {
     loadGames()
@@ -137,6 +106,36 @@ export default function BetazonePage() {
     e.preventDefault()
     setPage(1)
     loadGames()
+  }
+
+  const handleSelectGenre = (genre: string) => {
+    setSelectedGenre(genre)
+    setMyGamesOnly(false)
+    setPage(1)
+  }
+
+  const handleToggleMyGames = async () => {
+    if (!isAuthenticated) {
+      router.push('/login')
+      return
+    }
+    if (myGamesOnly) return // 다른 태그와 동일하게, 이미 선택된 태그를 다시 눌러도 유지
+    try {
+      const data = await playerService.getMyPlayedGameIds()
+      setPlayedIds(data.gameIds)
+    } catch {
+      setPlayedIds([])
+    }
+    setSelectedGenre('전체')
+    setMyGamesOnly(true)
+    setPage(1)
+  }
+
+  const resetFilters = () => {
+    setSearch('')
+    setSelectedGenre('전체')
+    setMyGamesOnly(false)
+    setPage(1)
   }
 
   return (
@@ -151,82 +150,66 @@ export default function BetazonePage() {
       )}
 
       {/* Header */}
-      <section className="bg-gradient-to-b from-bg-secondary to-bg-primary border-b border-line py-12">
+      <section className="bg-gradient-to-b from-bg-secondary to-bg-primary border-b border-line pt-[43px] pb-[24px]">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <Badge className="mb-4 bg-accent-light text-accent border border-accent-muted px-4 py-1">
-              ⚡ 베타 테스트 진행중
-            </Badge>
-            <h1 className="text-4xl font-bold mb-3">
-              <span className="text-accent">베타존</span>
+          <div className="text-center">
+            <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight mb-[35px] bg-gradient-to-r from-accent to-accent-hover bg-clip-text text-transparent">
+              베타존
             </h1>
-            <p className="text-text-secondary">베타 테스트 중인 게임을 탐색하고 참여하세요</p>
+            <p className="text-text-secondary text-base sm:text-lg">베타 테스트 중인 게임을 탐색하고 참여하세요</p>
+          </div>
+        </div>
+      </section>
+
+      <div className="container mx-auto px-4 pt-6 pb-12">
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-10">
+          <div className="flex flex-wrap gap-2">
+            {GENRES.map((genre) => (
+              <Fragment key={genre}>
+                <button
+                  onClick={() => handleSelectGenre(genre)}
+                  className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors ${
+                    selectedGenre === genre && !myGamesOnly
+                      ? 'bg-accent text-text-primary'
+                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'
+                  }`}
+                >
+                  {genre}
+                </button>
+                {genre === '전체' && (
+                  <button
+                    onClick={handleToggleMyGames}
+                    className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors ${
+                      myGamesOnly
+                        ? 'bg-accent text-text-primary'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'
+                    }`}
+                  >
+                    내 게임
+                  </button>
+                )}
+              </Fragment>
+            ))}
           </div>
 
           {/* Search */}
-          <form onSubmit={handleSearch} className="max-w-xl mx-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
+          <form onSubmit={handleSearch} className="relative w-full md:w-[403px] flex-shrink-0 md:ml-auto">
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="게임 이름 또는 설명 검색..."
-              className="w-full bg-bg-tertiary border border-line rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-secondary focus:outline-none focus:border-accent"
+              className="w-full bg-bg-tertiary border border-line rounded-full pl-4 pr-10 py-2.5 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-accent transition-colors"
             />
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-accent hover:bg-accent-hover px-4 py-1.5 rounded text-base font-medium transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-accent hover:text-accent-hover transition-colors"
             >
-              검색
+              <Search className="w-5 h-5" />
             </button>
           </form>
         </div>
-      </section>
-
-      <div className="container mx-auto px-4 py-8">
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-8">
-          <div className="flex flex-wrap gap-2">
-            <Filter className="w-4 h-4 text-text-secondary self-center" />
-            {GENRES.map((genre) => (
-              <button
-                key={genre}
-                onClick={() => { setSelectedGenre(genre); setPage(1) }}
-                className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors ${
-                  selectedGenre === genre
-                    ? 'bg-accent text-text-primary'
-                    : 'bg-bg-tertiary text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'
-                }`}
-              >
-                {genre}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-text-secondary">정렬:</span>
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => { setSort(opt.value); setPage(1) }}
-                className={`px-3 py-1.5 rounded text-base transition-colors ${
-                  sort === opt.value
-                    ? 'bg-bg-tertiary text-text-primary'
-                    : 'text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Count */}
-        {!loading && (
-          <p className="text-sm text-text-secondary mb-6">
-            총 <span className="text-text-primary font-semibold">{totalCount}</span>개의 베타 게임
-          </p>
-        )}
 
         {/* Game Grid */}
         {loading ? (
@@ -238,14 +221,16 @@ export default function BetazonePage() {
             <Gamepad2 className="w-20 h-20 mx-auto mb-6 opacity-20" />
             <p className="text-xl font-semibold mb-2">게임을 찾을 수 없습니다</p>
             <p className="text-sm">
-              {search || selectedGenre !== '전체'
+              {myGamesOnly
+                ? '플레이 중인 게임이 없습니다.'
+                : search || selectedGenre !== '전체'
                 ? '검색 조건을 변경해 보세요.'
                 : '현재 등록된 베타 게임이 없습니다. 잠시 후 다시 확인해 주세요.'}
             </p>
-            {(search || selectedGenre !== '전체') && (
+            {(search || selectedGenre !== '전체' || myGamesOnly) && (
               <Button
                 className="mt-6 bg-accent hover:bg-accent-hover"
-                onClick={() => { setSearch(''); setSelectedGenre('전체'); setPage(1) }}
+                onClick={resetFilters}
               >
                 필터 초기화
               </Button>
@@ -253,7 +238,7 @@ export default function BetazonePage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-[122px] gap-y-[28px]">
               {games.map((game) => (
                 <GameCard key={(game as any)._id || game.id} game={game} />
               ))}

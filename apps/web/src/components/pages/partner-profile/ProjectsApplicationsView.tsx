@@ -262,7 +262,7 @@ export default function ProjectsApplicationsView() {
             <div>
               <p className="text-xs text-text-muted mb-1">연락처</p>
               <p className="text-text-primary font-semibold">
-                {(typeof contactInfoApp.projectId === 'object' && (contactInfoApp.projectId.ownerId?.companyInfo?.phone || contactInfoApp.projectId.ownerId?.contactPerson?.phone)) || '-'}
+                {(typeof contactInfoApp.projectId === 'object' && (contactInfoApp.projectId.ownerId?.contactPerson?.phone || contactInfoApp.projectId.ownerId?.companyInfo?.phone)) || '-'}
               </p>
             </div>
           </div>

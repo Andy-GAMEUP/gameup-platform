@@ -8,10 +8,6 @@ interface FormData {
   title: string
   serviceType: string
   gameDomain: string
-  startDate: string
-  endDate: string
-  maxTesters: string
-  testType: string
   requirements: string
 }
 
@@ -24,10 +20,6 @@ export default function UploadGamePage() {
     title: '',
     serviceType: 'beta',
     gameDomain: '',
-    startDate: '',
-    endDate: '',
-    maxTesters: '',
-    testType: '',
     requirements: '',
   })
 
@@ -70,10 +62,6 @@ export default function UploadGamePage() {
       fd.append('isPaid', 'false')
       fd.append('status', 'draft')
       fd.append('gameDomain', formData.gameDomain.trim())
-      fd.append('startDate', formData.startDate)
-      fd.append('endDate', formData.endDate)
-      fd.append('maxTesters', formData.maxTesters)
-      fd.append('testType', formData.testType)
       fd.append('requirements', formData.requirements)
 
       await gameService.createGame(fd)
@@ -140,8 +128,8 @@ export default function UploadGamePage() {
             <label className="text-xs font-semibold uppercase tracking-widest text-text-muted">서비스 유형</label>
             <div className="flex gap-3">
               {[
-                { value: 'beta', label: '베타', desc: '테스트 & 피드백' },
-                { value: 'live', label: '라이브', desc: '정식 서비스' },
+                { value: 'beta', label: '베타', desc: '테스트 & 피드백', selectedClassName: 'bg-blue-500 shadow-blue-500/30' },
+                { value: 'live', label: '라이브', desc: '정식 서비스', selectedClassName: 'bg-accent shadow-accent/30' },
               ].map(opt => (
                 <button
                   key={opt.value}
@@ -149,7 +137,7 @@ export default function UploadGamePage() {
                   onClick={() => setFormData(prev => ({ ...prev, serviceType: opt.value }))}
                   className={`flex-1 py-4 rounded-2xl border transition-all text-left px-5 ${
                     formData.serviceType === opt.value
-                      ? 'border-transparent bg-accent text-white shadow-lg shadow-accent/30 scale-[1.02]'
+                      ? `border-transparent text-white shadow-lg scale-[1.02] ${opt.selectedClassName}`
                       : 'border-line hover:border-line/60 bg-bg-secondary'
                   }`}
                 >
@@ -159,44 +147,6 @@ export default function UploadGamePage() {
               ))}
             </div>
           </div>
-
-          {/* 베타 테스트 정보 */}
-          {formData.serviceType === 'beta' && (
-            <div className="space-y-3">
-              <label className="text-xs font-semibold uppercase tracking-widest text-text-muted">베타 테스트 정보</label>
-              <div className="bg-bg-secondary border border-line rounded-2xl p-5 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium block text-text-secondary">시작일</label>
-                    <input name="startDate" type="date" value={formData.startDate} onChange={handleChange}
-                      className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-xl text-text-primary text-sm focus:outline-none focus:border-accent transition-colors" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium block text-text-secondary">종료일</label>
-                    <input name="endDate" type="date" value={formData.endDate} onChange={handleChange}
-                      className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-xl text-text-primary text-sm focus:outline-none focus:border-accent transition-colors" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium block text-text-secondary">최대 테스터 수</label>
-                    <input name="maxTesters" type="number" placeholder="1000" value={formData.maxTesters} onChange={handleChange}
-                      className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-xl text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-accent transition-colors" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium block text-text-secondary">테스트 유형</label>
-                    <select name="testType" value={formData.testType} onChange={handleChange}
-                      className="w-full px-3 py-2 bg-bg-tertiary border border-line rounded-xl text-text-primary text-sm focus:outline-none focus:border-accent transition-colors">
-                      <option value="">유형 선택</option>
-                      <option value="closed">비공개 베타</option>
-                      <option value="open">공개 베타</option>
-                      <option value="alpha">알파 테스트</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* 버튼 */}
           <div className="flex gap-3 pt-2">
@@ -209,7 +159,7 @@ export default function UploadGamePage() {
             </button>
             <button
               type="submit"
-              disabled={submitting || (formData.serviceType === 'beta' && (!formData.startDate || !formData.endDate || !formData.maxTesters || !formData.testType))}
+              disabled={submitting}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-base font-bold transition-colors"
             >
               {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> 등록 중...</> : '게임 생성'}

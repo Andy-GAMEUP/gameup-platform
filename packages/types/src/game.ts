@@ -2,13 +2,16 @@ export type GameStatus = 'draft' | 'beta' | 'published' | 'archived'
 export type ApprovalStatus = 'not_submitted' | 'pending' | 'review' | 'approved' | 'rejected'
 export type MonetizationType = 'free' | 'ad' | 'paid' | 'freemium'
 export type ServiceType = 'beta' | 'live'
-export type RatingClass = '전체이용가' | '12세이용가' | '15세이용가' | '18세이용가' | '청소년이용불가'
+export type RatingClass = '전체이용가' | '12세이용가' | '15세이용가' | '청소년이용불가'
 
 export interface RatingCertificate {
   ratingClass: RatingClass
   certNumber: string
   certDate: string
+  certFileUrl?: string
+  otherPlatformLink?: string
   isVerified: boolean
+  contentDescriptors?: string[]
 }
 
 export interface Game {

@@ -4,7 +4,7 @@ export interface IReview extends Document {
   userId: mongoose.Types.ObjectId
   gameId: mongoose.Types.ObjectId
   rating: number
-  title: string
+  title?: string
   content: string
   feedbackType: 'general' | 'bug' | 'suggestion' | 'praise'
   bugSeverity?: 'low' | 'medium' | 'high' | 'critical'
@@ -23,7 +23,7 @@ const reviewSchema = new Schema<IReview>(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     gameId: { type: Schema.Types.ObjectId, ref: 'Game', required: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
-    title: { type: String, required: true, trim: true, maxlength: 100 },
+    title: { type: String, trim: true, maxlength: 100 },
     content: { type: String, required: true, maxlength: 2000 },
     feedbackType: {
       type: String,
