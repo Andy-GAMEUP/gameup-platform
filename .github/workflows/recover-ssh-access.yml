@@ -1,0 +1,33 @@
+name: Recover SSH Access (one-off)
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_key:
+        description: 'New SSH public key to append to server authorized_keys (public key only, not secret)'
+        required: true
+
+jobs:
+  add-key:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup deploy key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Append new public key to server
+        run: |
+          printf '%s\n' "${{ inputs.public_key }}" > new_key.pub
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no new_key.pub "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/new_key.pub"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" '
+            mkdir -p ~/.ssh
+            cat /tmp/new_key.pub >> ~/.ssh/authorized_keys
+            sort -u -o ~/.ssh/authorized_keys ~/.ssh/authorized_keys
+            chmod 700 ~/.ssh
+            chmod 600 ~/.ssh/authorized_keys
+            rm -f /tmp/new_key.pub
+            echo "DONE: key appended"
+          '
