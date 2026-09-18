@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import { gameService, RecentGameAnnouncement } from '@/services/gameService'
-import NoticeTypeBadge from '@/components/NoticeTypeBadge'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 import { useAuth } from '@/lib/useAuth'
 import { ArrowLeft, Loader2, Gamepad2, User, Eye, ThumbsUp, AlertTriangle, CheckCircle } from 'lucide-react'
 
@@ -124,7 +125,6 @@ export default function GameAnnouncementDetailPage() {
           {/* 제목 */}
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             <h1 className="text-text-primary text-xl sm:text-2xl lg:text-3xl font-bold">{announcement.title}</h1>
-            <NoticeTypeBadge type={announcement.type} className="flex-shrink-0" />
           </div>
 
           {/* 작성자 */}
@@ -142,6 +142,8 @@ export default function GameAnnouncementDetailPage() {
                 <span className="text-cyan-700 dark:text-cyan-300 text-sm font-semibold">
                   {announcement.developer?.username ?? '알 수 없는 개발사'}
                 </span>
+                {announcement.developer?.role === 'developer' && <OfficialBadge />}
+                {announcement.developer?.role === 'admin' && <AdminBadge />}
               </div>
               <div className="flex items-center gap-3 mt-0.5">
                 <p className="text-text-secondary text-xs">{new Date(announcement.createdAt).toLocaleString('ko-KR')}</p>

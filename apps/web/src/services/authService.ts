@@ -45,9 +45,22 @@ export const authService = {
     localStorage.removeItem('token')
   },
 
+  forgotPassword: async (email: string) => {
+    const response = await apiClient.post('/users/forgot-password', { email })
+    return response.data as { message: string }
+  },
+
   getProfile: async () => {
     const response = await apiClient.get('/users/profile')
     return response.data
+  },
+
+  getPublicProfile: async (userId: string) => {
+    const response = await apiClient.get(`/users/${userId}/public-profile`)
+    return response.data as {
+      username: string; profileImage: string | null; level: number; activityScore: number
+      bio: string; gamesPlayedCount: number; postsCount: number; reviewsCount: number
+    }
   },
 
   updateProfile: async (data: UpdateProfileData) => {
@@ -67,6 +80,21 @@ export const authService = {
   changePassword: async (data: { currentPassword: string; newPassword: string }) => {
     const response = await apiClient.patch('/users/password', data)
     return response.data
+  },
+
+  setup2FA: async () => {
+    const response = await apiClient.post('/users/2fa/setup')
+    return response.data as { success: boolean; secret: string; qrCode: string }
+  },
+
+  enable2FA: async (code: string) => {
+    const response = await apiClient.post('/users/2fa/enable', { code })
+    return response.data as { success: boolean; message: string; backupCodes: string[] }
+  },
+
+  disable2FA: async (password: string) => {
+    const response = await apiClient.post('/users/2fa/disable', { password })
+    return response.data as { success: boolean; message: string }
   },
 
   toggleBookmarkedTab: async (data: { key: string; label: string; channel?: string; gameId?: string }) => {

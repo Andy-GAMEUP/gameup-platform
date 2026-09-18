@@ -14,13 +14,13 @@ import {
 } from '../controllers/adminController'
 import { getCommunityBanners, getAllCommunityBanners, uploadCommunityBanner, updateCommunityBanner, deleteCommunityBanner, trackBannerEvent } from '../controllers/communityBannerController'
 import { getReportedPosts, adminUpdatePostStatus, getReportedComments, adminUpdateCommentStatus, getDeletedPosts, getDeletedComments, getReportedUsers, permanentlyDeletePost } from '../controllers/communityController'
-import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
+import { authenticateToken, requireAdmin, requireAdminLevel, optionalAuth } from '../middleware/auth'
 import { uploadFields } from '../middleware/upload'
 
 const router = Router()
 
-// 공개 — 커뮤니티 홈 배너 (인증 불필요)
-router.get('/community/banners', getCommunityBanners)
+// 공개 — 커뮤니티 홈 배너 (인증 불필요, 단 로그인 상태면 optionalAuth로 신청 여부(hasApplied)도 같이 계산)
+router.get('/community/banners', optionalAuth, getCommunityBanners)
 router.post('/community/banners/:id/track', trackBannerEvent)
 
 // 공개 공지사항 (인증 불필요)
@@ -46,8 +46,8 @@ router.get('/games/:id/metrics', getGameMetrics)
 router.get('/announcements', getAnnouncements)
 
 // 공지사항 작성/수정 (Monitor 이상)
-router.post('/announcements', requireAdminLevel('super', 'normal', 'monitor'), createAnnouncement)
-router.patch('/announcements/:id', requireAdminLevel('super', 'normal', 'monitor'), updateAnnouncement)
+router.post('/announcements', requireAdminLevel('super', 'normal'), createAnnouncement)
+router.patch('/announcements/:id', requireAdminLevel('super', 'normal'), updateAnnouncement)
 
 // 일반 관리 (Normal 이상)
 router.patch('/users/:id/role', requireAdminLevel('super', 'normal'), updateUserRole)
@@ -81,7 +81,7 @@ router.patch('/community/posts/:id/status', requireAdminLevel('super', 'normal')
 router.get('/community/reported-comments', getReportedComments)
 router.patch('/community/comments/:id/action', requireAdminLevel('super', 'normal'), adminUpdateCommentStatus)
 router.get('/community/deleted-posts', getDeletedPosts)
-router.delete('/community/deleted-posts/:id', permanentlyDeletePost)
+router.delete('/community/deleted-posts/:id', requireAdminLevel('super'), permanentlyDeletePost)
 router.get('/community/deleted-comments', getDeletedComments)
 router.get('/community/reported-users', getReportedUsers)
 

@@ -7,7 +7,7 @@ import {
   adminBatchApprove,
   adminBatchReject,
 } from '../controllers/gamePointController'
-import { authenticateToken, requireRole } from '../middleware/auth'
+import { authenticateToken, requireRole, requireAdminLevel } from '../middleware/auth'
 
 const router = Router()
 
@@ -18,16 +18,16 @@ router.use(requireRole('admin'))
 router.get('/game-point-policies', adminGetAllPolicies)
 
 // 관리자: 정책 승인
-router.put('/game-point-policies/:id/approve', adminApprovePolicy)
+router.put('/game-point-policies/:id/approve', requireAdminLevel('super', 'normal'), adminApprovePolicy)
 
 // 관리자: 정책 거절
-router.put('/game-point-policies/:id/reject', adminRejectPolicy)
+router.put('/game-point-policies/:id/reject', requireAdminLevel('super', 'normal'), adminRejectPolicy)
 
 // 관리자: 정책 활성/비활성 토글
-router.put('/game-point-policies/:id/toggle', adminTogglePolicy)
+router.put('/game-point-policies/:id/toggle', requireAdminLevel('super', 'normal'), adminTogglePolicy)
 
 // 관리자: 일괄 승인/거절
-router.post('/game-point-policies/batch-approve', adminBatchApprove)
-router.post('/game-point-policies/batch-reject', adminBatchReject)
+router.post('/game-point-policies/batch-approve', requireAdminLevel('super', 'normal'), adminBatchApprove)
+router.post('/game-point-policies/batch-reject', requireAdminLevel('super', 'normal'), adminBatchReject)
 
 export default router

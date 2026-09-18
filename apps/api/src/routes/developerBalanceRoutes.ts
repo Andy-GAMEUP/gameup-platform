@@ -10,7 +10,7 @@ import {
   adminCreatePackage,
   adminUpdatePackage,
 } from '../controllers/developerBalanceController'
-import { authenticateToken, requireRole } from '../middleware/auth'
+import { authenticateToken, requireRole, requireAdminLevel } from '../middleware/auth'
 
 const router = Router()
 
@@ -24,9 +24,9 @@ router.post('/developer/point-purchase', authenticateToken, requireRole('develop
 
 // ─── 관리자 API ──────────────────────────────────────────────────
 router.get('/admin/developer-balances', authenticateToken, requireRole('admin'), adminGetAllBalances)
-router.post('/admin/developer-balances/:developerId/adjust', authenticateToken, requireRole('admin'), adminAdjust)
+router.post('/admin/developer-balances/:developerId/adjust', authenticateToken, requireRole('admin'), requireAdminLevel('super', 'normal'), adminAdjust)
 router.get('/admin/point-packages', authenticateToken, requireRole('admin'), adminGetPackages)
-router.post('/admin/point-packages', authenticateToken, requireRole('admin'), adminCreatePackage)
-router.put('/admin/point-packages/:id', authenticateToken, requireRole('admin'), adminUpdatePackage)
+router.post('/admin/point-packages', authenticateToken, requireRole('admin'), requireAdminLevel('super', 'normal'), adminCreatePackage)
+router.put('/admin/point-packages/:id', authenticateToken, requireRole('admin'), requireAdminLevel('super', 'normal'), adminUpdatePackage)
 
 export default router

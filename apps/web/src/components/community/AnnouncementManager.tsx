@@ -2,7 +2,6 @@
 import { useRef, useState } from 'react'
 import { Megaphone, Star, Image as ImageIcon, Trash2, X, Loader2, Search } from 'lucide-react'
 import Editor from '@/components/Editor'
-import NoticeTypeBadge from '@/components/NoticeTypeBadge'
 import { formatDate } from '@/lib/formatDate'
 
 const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
@@ -11,7 +10,6 @@ export interface AnnouncementManagerItem {
   _id: string
   title: string
   content: string
-  type: string
   priority: string
   createdAt: string
   images?: string[]
@@ -23,7 +21,6 @@ export interface AnnouncementManagerItem {
 export interface AnnouncementFormValue {
   title: string
   content: string
-  type: string
   priority: string
   images: string[]
   thumbnailIndex: number
@@ -37,7 +34,6 @@ interface Option { value: string; label: string }
 export interface AnnouncementManagerProps<T extends AnnouncementManagerItem> {
   items: T[]
   loading: boolean
-  typeOptions: Option[]
   priorityOptions: Option[]
   onCreate: (data: AnnouncementFormValue) => Promise<void>
   onUpdate?: (id: string, data: AnnouncementFormValue) => Promise<void>
@@ -52,7 +48,7 @@ function stripHtml(html: string) {
 
 function emptyForm(showAdminFields?: boolean): AnnouncementFormValue {
   return {
-    title: '', content: '', type: 'notice', priority: 'normal',
+    title: '', content: '', priority: 'normal',
     images: [], thumbnailIndex: 0, isPublished: true,
     ...(showAdminFields ? { targetRole: 'all' } : {}),
   }
@@ -60,7 +56,7 @@ function emptyForm(showAdminFields?: boolean): AnnouncementFormValue {
 
 function toForm(item: AnnouncementManagerItem): AnnouncementFormValue {
   return {
-    title: item.title, content: item.content, type: item.type, priority: item.priority,
+    title: item.title, content: item.content, priority: item.priority,
     images: item.images || [], thumbnailIndex: item.thumbnailIndex || 0,
     isPublished: item.isPublished !== false,
     ...(item.targetRole ? { targetRole: item.targetRole } : {}),
@@ -68,11 +64,10 @@ function toForm(item: AnnouncementManagerItem): AnnouncementFormValue {
 }
 
 function AnnouncementFormModal({
-  title, initial, typeOptions, priorityOptions, showAdminFields, uploadImages, onSave, onClose,
+  title, initial, priorityOptions, showAdminFields, uploadImages, onSave, onClose,
 }: {
   title: string
   initial: AnnouncementFormValue
-  typeOptions: Option[]
   priorityOptions: Option[]
   showAdminFields?: boolean
   uploadImages: (files: File[]) => Promise<string[]>
@@ -116,6 +111,7 @@ function AnnouncementFormModal({
   const handleSave = async () => {
     if (!form.title.trim()) { setError('제목을 입력하세요'); return }
     if (!form.content.trim()) { setError('내용을 입력하세요'); return }
+    if (form.images.length === 0) { setError('썸네일 이미지를 1개 이상 등록하세요'); return }
     setSaving(true); setError('')
     try { await onSave(form) } catch { setError('저장에 실패했습니다'); setSaving(false) }
   }
@@ -151,20 +147,11 @@ function AnnouncementFormModal({
             </div>
           )}
 
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="text-xs text-text-muted mb-1 block">제목 *</label>
-              <input value={form.title} onChange={e => set('title', e.target.value)} maxLength={200}
-                placeholder="공지사항 제목"
-                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
-            </div>
-            <div className="w-40 flex-shrink-0">
-              <label className="text-xs text-text-muted mb-1 block">공지 유형 *</label>
-              <select value={form.type} onChange={e => set('type', e.target.value)}
-                className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
-                {typeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
+          <div>
+            <label className="text-xs text-text-muted mb-1 block">제목 *</label>
+            <input value={form.title} onChange={e => set('title', e.target.value)} maxLength={200}
+              placeholder="공지사항 제목"
+              className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
           </div>
 
           <div>
@@ -248,7 +235,7 @@ function AnnouncementFormModal({
 }
 
 export default function AnnouncementManager<T extends AnnouncementManagerItem>({
-  items, loading, typeOptions, priorityOptions,
+  items, loading, priorityOptions,
   onCreate, onUpdate, onDelete,
   uploadImages, showAdminFields,
 }: AnnouncementManagerProps<T>) {
@@ -300,7 +287,6 @@ export default function AnnouncementManager<T extends AnnouncementManagerItem>({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h3 className="font-semibold">{item.title}</h3>
-              <NoticeTypeBadge type={item.type} />
             </div>
             <p className="text-sm text-text-secondary mb-1">{stripHtml(item.content)}</p>
             <div className="flex items-center gap-3 text-xs text-text-secondary">
@@ -318,7 +304,6 @@ export default function AnnouncementManager<T extends AnnouncementManagerItem>({
         <AnnouncementFormModal
           title="새 공지사항 작성"
           initial={emptyForm(showAdminFields)}
-          typeOptions={typeOptions}
           priorityOptions={priorityOptions}
           showAdminFields={showAdminFields}
           uploadImages={uploadImages}
@@ -330,7 +315,6 @@ export default function AnnouncementManager<T extends AnnouncementManagerItem>({
         <AnnouncementFormModal
           title="공지사항 수정"
           initial={toForm(editingItem)}
-          typeOptions={typeOptions}
           priorityOptions={priorityOptions}
           showAdminFields={showAdminFields}
           uploadImages={uploadImages}

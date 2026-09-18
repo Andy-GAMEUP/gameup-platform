@@ -11,6 +11,8 @@ import { useTheme } from '@/lib/useTheme'
 import NotificationPanel from './NotificationPanel'
 import notificationService from '@/services/notificationService'
 import { partnerService } from '@/services/partnerService'
+import OfficialBadge from './OfficialBadge'
+import AdminBadge from './AdminBadge'
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -210,15 +212,18 @@ export default function Navbar() {
                     onClick={() => setProfileMenuOpen((v) => !v)}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-tertiary hover:bg-line-light transition-colors"
                   >
-                    <div className="w-[25px] h-[25px] rounded-full bg-accent flex items-center justify-center text-text-inverse text-[11px] font-bold overflow-hidden">
+                    <div className="relative w-[25px] h-[25px] rounded-full bg-accent flex items-center justify-center text-text-inverse text-[11px] font-bold overflow-hidden">
                       {user.profileImage ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
+                        <Image src={user.profileImage} alt="" fill sizes="25px" className="object-cover" />
                       ) : (
                         user.username[0].toUpperCase()
                       )}
                     </div>
-                    <span className="text-[11px] text-text-primary">{user.username}</span>
+                    <span className="flex items-center gap-1 text-[11px] text-text-primary">
+                      {user.username}
+                      {user.role === 'developer' && <OfficialBadge className="w-3 h-3" />}
+                      {user.role === 'admin' && <AdminBadge className="w-3 h-3" />}
+                    </span>
                   </button>
                   {profileMenuOpen && (
                     <div className="absolute right-0 top-12 w-44 bg-bg-card border border-line rounded-xl shadow-xl py-1 z-50">
@@ -226,11 +231,19 @@ export default function Navbar() {
                         <p className="text-xs text-text-muted">로그인 중</p>
                         <p className="text-sm font-medium text-text-primary truncate">{user.email}</p>
                       </div>
+                      <Link
+                        href="/my"
+                        onClick={() => setProfileMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-sm text-text-primary hover:bg-bg-tertiary transition-colors"
+                      >
+                        <User className="w-4 h-4" />
+                        마이페이지
+                      </Link>
                       {showDeveloperCenter && (
                         <Link
                           href="/dashboard"
                           onClick={() => setProfileMenuOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-text-primary hover:bg-bg-tertiary transition-colors"
                         >
                           <LayoutDashboard className="w-4 h-4" />
                           개발자 센터
@@ -240,23 +253,15 @@ export default function Navbar() {
                         <Link
                           href="/admin"
                           onClick={() => setProfileMenuOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2 text-sm text-danger hover:text-danger/80 hover:bg-bg-tertiary transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 text-sm text-text-primary hover:bg-bg-tertiary transition-colors"
                         >
                           <LayoutDashboard className="w-4 h-4" />
                           관리자 콘솔
                         </Link>
                       )}
-                      <Link
-                        href="/my"
-                        onClick={() => setProfileMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"
-                      >
-                        <User className="w-4 h-4" />
-                        마이페이지
-                      </Link>
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-4 py-2 text-base text-danger hover:text-danger/80 hover:bg-bg-tertiary transition-colors"
+                        className="w-full flex items-center gap-2 px-4 py-2 text-base text-text-primary hover:bg-bg-tertiary transition-colors"
                       >
                         <LogOut className="w-4 h-4" />
                         로그아웃

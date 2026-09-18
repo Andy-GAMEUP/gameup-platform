@@ -35,7 +35,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md', d
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0 bg-black bg-opacity-50"
+        className="absolute inset-0 bg-black/50"
         onClick={disableBackdropClose ? undefined : onClose}
       />
       <div className={`relative bg-bg-card rounded-lg shadow-xl ${sizeStyles[size]} w-full mx-4 max-h-[90vh] overflow-y-auto`}>

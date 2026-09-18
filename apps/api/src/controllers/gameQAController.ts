@@ -1,5 +1,5 @@
 import { Response } from 'express'
-import { GameQAModel, GameModel, NotificationModel } from '@gameup/db'
+import { GameQAModel, GameModel, NotificationModel, GameTesterApplicationModel } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 
 // 공개 Q&A 목록 조회 (게임 상세 페이지)
@@ -14,7 +14,7 @@ export const getGameQAs = async (req: AuthRequest, res: Response) => {
     const filter = { gameId, isPublic: true }
     const total = await GameQAModel.countDocuments(filter)
     const qas = await GameQAModel.find(filter)
-      .populate('userId', 'username profileImage')
+      .populate('userId', 'username profileImage role')
       .populate('developerId', 'username profileImage')
       .sort({ createdAt: -1 })
       .skip((pageNum - 1) * limitNum)
@@ -39,6 +39,14 @@ export const createGameQA = async (req: AuthRequest, res: Response) => {
 
     const game = await GameModel.findById(gameId)
     if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+
+    // 🔒 베타존 게임은 신청(hasApplied)한 유저만 Q&A 질문 작성 가능
+    if (game.serviceType === 'beta') {
+      const hasApplied = await GameTesterApplicationModel.exists({ gameId, userId: req.user!.id })
+      if (!hasApplied) {
+        return res.status(403).json({ message: '베타존 신청자만 Q&A를 작성할 수 있습니다' })
+      }
+    }
 
     const qa = await GameQAModel.create({
       gameId,

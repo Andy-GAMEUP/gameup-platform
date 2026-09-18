@@ -5,13 +5,6 @@ import ConfirmModal from '@/components/ConfirmModal'
 import adminService, { Announcement } from '@/services/adminService'
 import { formatDate } from '@/lib/formatDate'
 
-const TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  notice: { label: '공지', color: 'text-blue-400' },
-  event: { label: '이벤트', color: 'text-purple-400' },
-  maintenance: { label: '점검', color: 'text-yellow-400' },
-  update: { label: '업데이트', color: 'text-accent' },
-}
-
 const PRIORITY_LABELS: Record<string, { label: string; color: string }> = {
   low: { label: '낮음', color: 'text-text-secondary' },
   normal: { label: '보통', color: 'text-blue-400' },
@@ -22,7 +15,6 @@ const PRIORITY_LABELS: Record<string, { label: string; color: string }> = {
 const emptyForm: {
   title: string
   content: string
-  type: 'notice' | 'event' | 'maintenance' | 'update'
   priority: 'low' | 'normal' | 'high' | 'urgent'
   isPublished: boolean
   targetRole: 'all' | 'developer' | 'player'
@@ -30,7 +22,6 @@ const emptyForm: {
 } = {
   title: '',
   content: '',
-  type: 'notice',
   priority: 'normal',
   isPublished: false,
   targetRole: 'all',
@@ -72,7 +63,6 @@ export default function AdminAnnouncementsPage() {
     setForm({
       title: a.title,
       content: a.content,
-      type: a.type,
       priority: a.priority,
       isPublished: a.isPublished,
       targetRole: a.targetRole,
@@ -127,7 +117,6 @@ export default function AdminAnnouncementsPage() {
             <thead>
               <tr className="border-b border-line text-text-secondary">
                 <th className="text-left px-4 py-3">제목</th>
-                <th className="text-left px-4 py-3">유형</th>
                 <th className="text-left px-4 py-3">우선순위</th>
                 <th className="text-left px-4 py-3">대상</th>
                 <th className="text-left px-4 py-3">게시 상태</th>
@@ -141,12 +130,10 @@ export default function AdminAnnouncementsPage() {
               ) : announcements.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-8 text-text-muted">공지사항이 없습니다</td></tr>
               ) : announcements.map((a) => {
-                const tl = TYPE_LABELS[a.type] || { label: a.type, color: 'text-text-secondary' }
                 const pl = PRIORITY_LABELS[a.priority] || { label: a.priority, color: 'text-text-secondary' }
                 return (
                   <tr key={a._id} className="border-b border-line/50 hover:bg-bg-tertiary/30">
                     <td className="px-4 py-3 text-text-primary font-medium">{a.title}</td>
-                    <td className={`px-4 py-3 ${tl.color} text-xs`}>{tl.label}</td>
                     <td className={`px-4 py-3 ${pl.color} text-xs`}>{pl.label}</td>
                     <td className="px-4 py-3 text-text-secondary text-xs">{{ all: '전체', developer: '개발자', player: '플레이어' }[a.targetRole]}</td>
                     <td className="px-4 py-3">
@@ -186,15 +173,6 @@ export default function AdminAnnouncementsPage() {
                 <textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={6} className="w-full bg-bg-tertiary border border-line text-text-primary rounded px-3 py-2 text-sm" placeholder="공지사항 내용..." />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-text-secondary text-xs mb-1">유형</label>
-                  <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as typeof form.type })} className="w-full bg-bg-tertiary border border-line text-text-primary rounded px-3 py-2 text-sm">
-                    <option value="notice">공지</option>
-                    <option value="event">이벤트</option>
-                    <option value="maintenance">점검</option>
-                    <option value="update">업데이트</option>
-                  </select>
-                </div>
                 <div>
                   <label className="block text-text-secondary text-xs mb-1">우선순위</label>
                   <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value as typeof form.priority })} className="w-full bg-bg-tertiary border border-line text-text-primary rounded px-3 py-2 text-sm">

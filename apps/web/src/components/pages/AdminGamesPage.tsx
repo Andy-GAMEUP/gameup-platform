@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import AdminLayout from '@/components/AdminLayout'
 import DeleteGameModal from '@/components/DeleteGameModal'
 import adminService from '@/services/adminService'
+import { useAuth } from '@/lib/useAuth'
 import {
   Search, CheckCircle, XCircle, Clock, Archive, Play, Pause,
   RotateCcw, BarChart2, ChevronLeft, ChevronRight, Loader2, AlertCircle, Settings, Gamepad2, FileText, ExternalLink
@@ -53,6 +54,8 @@ function ConfirmModal({ title, desc, onConfirm, onCancel, danger = true, showRea
 }
 
 export default function AdminGamesPage() {
+  const { user } = useAuth()
+  const isSuperAdmin = (user?.adminLevel ?? 'super') === 'super'
   const searchParams = useSearchParams()
   const [games, setGames] = useState<any[]>([])
   const [total, setTotal] = useState(0)
@@ -61,8 +64,10 @@ export default function AdminGamesPage() {
   const [search, setSearch] = useState('')
   const [companyFilter, setCompanyFilter] = useState('')
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([])
-  const [serviceFilter, setServiceFilter] = useState('')
+  const serviceFilter = searchParams.get('service') === 'beta' ? 'beta' : 'live'
   const [reviewFilter, setReviewFilter] = useState('')
+  const [sortBy, setSortBy] = useState('updatedAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -76,14 +81,13 @@ export default function AdminGamesPage() {
     setTimeout(() => setToast(null), 3000)
   }
 
-
   const load = useCallback(async (priorityId?: string) => {
     setLoading(true)
     setLoadError(null)
     try {
-      const params: Record<string, string> = { page: String(page), search }
+      const params: Record<string, string> = { page: String(page), search, sortBy, sortOrder }
       if (companyFilter) params.developerId = companyFilter
-      if (serviceFilter) params.serviceType = serviceFilter
+      params.serviceType = serviceFilter
       if (reviewFilter === 'operating') params.status = 'published'
       else if (reviewFilter === 'draft')    params.approvalStatus = 'not_submitted'
       else if (reviewFilter === 'pending')  params.approvalStatus = 'pending'
@@ -110,7 +114,29 @@ export default function AdminGamesPage() {
       showToast(msg, false)
     }
     finally { setLoading(false) }
-  }, [page, search, companyFilter, serviceFilter, reviewFilter])
+  }, [page, search, companyFilter, serviceFilter, reviewFilter, sortBy, sortOrder, searchParams])
+
+  useEffect(() => { setPage(1) }, [serviceFilter])
+
+  const toggleSort = (field: string) => {
+    if (sortBy === field) {
+      setSortOrder(o => o === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(field)
+      setSortOrder('asc')
+    }
+    setPage(1)
+  }
+
+  const SortableHeader = ({ field, children }: { field: string; children: React.ReactNode }) => (
+    <button onClick={() => toggleSort(field)} className="inline-flex items-center gap-1 whitespace-nowrap text-[15px] font-semibold text-text-primary hover:text-accent transition-colors">
+      <span>{children}</span>
+      <span className="inline-flex flex-col leading-[7px] text-[8px]">
+        <span className={sortBy === field && sortOrder === 'asc' ? 'text-text-primary' : 'text-text-muted/50'}>▲</span>
+        <span className={sortBy === field && sortOrder === 'desc' ? 'text-text-primary' : 'text-text-muted/50'}>▼</span>
+      </span>
+    </button>
+  )
 
   useEffect(() => { load() }, [load])
 
@@ -211,7 +237,7 @@ export default function AdminGamesPage() {
       <div className="space-y-5">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-text-primary text-xl font-bold">게임 관리</h2>
+            <h2 className="text-text-primary text-xl font-bold">{serviceFilter === 'beta' ? '베타 게임 관리' : '라이브 게임 관리'}</h2>
             <p className="text-text-muted text-sm mt-1">등록된 게임 목록을 조회하고 상태를 관리합니다</p>
           </div>
           <span className="text-text-muted text-sm">{loading ? '로딩 중...' : `총 ${total}개`}</span>
@@ -226,19 +252,14 @@ export default function AdminGamesPage() {
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-          <select value={serviceFilter} onChange={(e) => { setServiceFilter(e.target.value); setPage(1) }}
-            className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
-            <option value="">서비스 상태</option>
-            <option value="beta">베타</option>
-            <option value="live">라이브</option>
-          </select>
           <select value={reviewFilter} onChange={(e) => { setReviewFilter(e.target.value); setPage(1) }}
             className="bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none">
             <option value="">게임 현황</option>
-            <option value="operating">운영 중</option>
+            <option value="operating">{serviceFilter === 'beta' ? '테스트 중' : '운영 중'}</option>
             <option value="draft">초안 작성 중</option>
             <option value="pending">심사 중</option>
-            <option value="waiting">출시 대기</option>
+            {serviceFilter !== 'beta' && <option value="waiting">출시 대기</option>}
+            {serviceFilter === 'beta' && <option value="waiting">테스트 종료</option>}
             <option value="rejected">심사 거부</option>
           </select>
           <div className="flex items-center gap-2 w-[36%]">
@@ -265,17 +286,39 @@ export default function AdminGamesPage() {
           <div className="bg-bg-secondary border border-line rounded-xl overflow-x-auto">
             <table className="w-full min-w-[1080px] text-sm text-text-primary">
               <thead>
-                <tr className="border-b border-line bg-bg-tertiary/50 text-xs font-semibold text-text-primary">
+                <tr className="border-b border-line bg-bg-tertiary/50 text-[15px] font-semibold text-text-primary">
                   <th className="px-2 py-2 text-left w-14 border-r border-line/20">썸네일</th>
                   <th className="px-2 py-2 text-left w-40 border-r border-line/20">이름</th>
                   <th className="px-2 py-2 text-left w-24 border-r border-line/20">개발사</th>
-                  <th className="px-2 py-2 text-left w-24 border-r border-line/20">서비스 상태</th>
+                  {serviceFilter === 'beta' && (
+                    <>
+                      <th className="px-2 py-2 text-left w-20 border-r border-line/20">
+                        <SortableHeader field="startDate">시작일</SortableHeader>
+                      </th>
+                      <th className="px-2 py-2 text-left w-20 border-r border-line/20">
+                        <SortableHeader field="endDate">종료일</SortableHeader>
+                      </th>
+                      <th className="px-2 py-2 text-center w-20 border-r border-line/20">
+                        <SortableHeader field="testPeriod">테스트 기간</SortableHeader>
+                      </th>
+                      <th className="px-2 py-2 text-center w-20 border-r border-line/20">
+                        <SortableHeader field="testers">참여 인원</SortableHeader>
+                      </th>
+                      <th className="px-2 py-2 text-center w-20 border-r border-line/20">
+                        <SortableHeader field="maxTesters">목표 인원</SortableHeader>
+                      </th>
+                    </>
+                  )}
                   <th className="px-1 py-2 text-center w-10 border-r border-line/20">테스트</th>
                   <th className="px-1 py-2 text-center w-10 border-r border-line/20">관리</th>
-                  <th className="px-1 py-2 text-center w-10 border-r border-line/20">등급 확인</th>
+                  {serviceFilter !== 'beta' && (
+                    <th className="px-1 py-2 text-center w-10 border-r border-line/20">등급 확인</th>
+                  )}
                   <th className="px-2 py-2 text-left w-[77px] border-r border-line/20">게임 현황</th>
                   <th className="px-2 py-2 text-center w-24 border-r border-line/20">게임 심사</th>
-                  <th className="px-2 py-2 text-center w-24 border-r border-line/20">상품 심사</th>
+                  {serviceFilter !== 'beta' && (
+                    <th className="px-2 py-2 text-center w-24 border-r border-line/20">상품 심사</th>
+                  )}
                   <th className="px-2 py-2 text-center w-20 border-r border-line/20">삭제</th>
                   <th className="px-1 py-2 text-center w-10">지표</th>
                 </tr>
@@ -284,11 +327,15 @@ export default function AdminGamesPage() {
                 {games.map((g) => {
                   const isLoading = actionLoading === g._id
                   const gameStateLabel =
-                    g.status === 'published' ? { label: '운영 중', color: 'text-blue-400', dot: 'bg-blue-400', pulse: true }
+                    g.status === 'published' ? { label: serviceFilter === 'beta' ? '테스트 중' : '운영 중', color: 'text-blue-400', dot: 'bg-blue-400', pulse: true }
                     : g.approvalStatus === 'not_submitted' ? { label: '초안', color: 'text-text-muted', dot: 'bg-text-muted', pulse: false }
                     : g.approvalStatus === 'pending' || g.approvalStatus === 'review' ? { label: '심사 중', color: 'text-yellow-400', dot: 'bg-yellow-400', pulse: true }
                     : g.approvalStatus === 'rejected' ? { label: '심사 거부', color: 'text-red-400', dot: 'bg-red-400', pulse: false }
-                    : g.approvalStatus === 'approved' && g.status !== 'published' ? { label: '출시 대기', color: 'text-emerald-400', dot: 'bg-emerald-400', pulse: true }
+                    : g.approvalStatus === 'approved' && g.status !== 'published' ? (
+                        serviceFilter === 'beta' && g.status === 'archived'
+                          ? { label: '테스트 종료', color: 'text-text-muted', dot: 'bg-text-muted', pulse: false }
+                          : { label: serviceFilter === 'beta' ? '테스트 대기' : '출시 대기', color: 'text-emerald-400', dot: 'bg-emerald-400', pulse: true }
+                      )
                     : null
                   const isOperating = g.status === 'published'
                   return (
@@ -308,22 +355,25 @@ export default function AdminGamesPage() {
                       </td>
                       {/* 개발사 */}
                       <td className="px-2 py-2 text-xs truncate max-w-[96px] border-r border-line/20">{(g.developerId as any)?.companyInfo?.companyName || (g.developerId as any)?.username || '-'}</td>
-                      {/* 구분 */}
-                      <td className="px-2 py-2 border-r border-line/20">
-                        {g.serviceType === 'beta' && (
-                          <div className="flex flex-col gap-1 items-start">
-                            <span className="text-sm font-bold px-3 py-1 rounded-full bg-blue-500 text-white whitespace-nowrap">베타</span>
-                            {(g.startDate || g.endDate) && (
-                              <span className="text-xs text-text-muted whitespace-nowrap">
-                                {g.startDate ? new Date(g.startDate).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.').replace(/\.$/, '') : ''}
-                                {g.startDate && g.endDate ? ' ~ ' : ''}
-                                {g.endDate ? new Date(g.endDate).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.').replace(/\.$/, '') : ''}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {g.serviceType === 'live' && <span className="text-sm font-bold px-3 py-1 rounded-full bg-green-500 text-white whitespace-nowrap">라이브</span>}
-                      </td>
+                      {serviceFilter === 'beta' && (
+                        <>
+                          <td className="px-2 py-2 text-xs border-r border-line/20 whitespace-nowrap">
+                            {g.startDate ? new Date(g.startDate).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.').replace(/\.$/, '') : '-'}
+                          </td>
+                          <td className="px-2 py-2 text-xs border-r border-line/20 whitespace-nowrap">
+                            {g.endDate ? new Date(g.endDate).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.').replace(/\.$/, '') : '-'}
+                          </td>
+                          <td className="px-2 py-2 text-xs text-center border-r border-line/20 whitespace-nowrap">
+                            {g.startDate && g.endDate ? `${Math.round((new Date(g.endDate).getTime() - new Date(g.startDate).getTime()) / (1000 * 60 * 60 * 24))}일` : '-'}
+                          </td>
+                          <td className="px-2 py-2 text-xs text-center border-r border-line/20 whitespace-nowrap">
+                            {(g.testers ?? 0).toLocaleString()}
+                          </td>
+                          <td className="px-2 py-2 text-xs text-center border-r border-line/20 whitespace-nowrap">
+                            {(g.maxTesters ?? 0).toLocaleString()}
+                          </td>
+                        </>
+                      )}
                       {/* 게임 테스트 */}
                       <td className="px-1 py-2 text-center border-r border-line/20">
                         <Link href={`/games/${g._id}`} target="_blank" rel="noopener noreferrer"
@@ -339,32 +389,34 @@ export default function AdminGamesPage() {
                         </Link>
                       </td>
                       {/* 등급 인증서 */}
-                      <td className="px-1 py-2 text-center border-r border-line/20">
-                        {g.ratingCertificate?.certFileUrl || g.ratingCertificate?.otherPlatformLink ? (
-                          <div className="inline-flex items-center justify-center gap-1">
-                            {g.ratingCertificate?.certFileUrl && (
-                              <button
-                                onClick={() => setCertModal({ url: g.ratingCertificate.certFileUrl, title: g.title })}
-                                className="inline-flex items-center justify-center w-8 h-8 hover:text-emerald-400 border border-line hover:border-emerald-500/40 rounded transition-colors"
-                                title="등급 인증서 보기">
-                                <FileText className="w-4 h-4" />
-                              </button>
-                            )}
-                            {g.ratingCertificate?.otherPlatformLink && (
-                              <a
-                                href={g.ratingCertificate.otherPlatformLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center w-8 h-8 hover:text-emerald-400 border border-line hover:border-emerald-500/40 rounded transition-colors"
-                                title="타 플랫폼 링크로 인증 확인">
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-text-muted text-xs">-</span>
-                        )}
-                      </td>
+                      {serviceFilter !== 'beta' && (
+                        <td className="px-1 py-2 text-center border-r border-line/20">
+                          {g.ratingCertificate?.certFileUrl || g.ratingCertificate?.otherPlatformLink ? (
+                            <div className="inline-flex items-center justify-center gap-1">
+                              {g.ratingCertificate?.certFileUrl && (
+                                <button
+                                  onClick={() => setCertModal({ url: g.ratingCertificate.certFileUrl, title: g.title })}
+                                  className="inline-flex items-center justify-center w-8 h-8 hover:text-emerald-400 border border-line hover:border-emerald-500/40 rounded transition-colors"
+                                  title="등급 인증서 보기">
+                                  <FileText className="w-4 h-4" />
+                                </button>
+                              )}
+                              {g.ratingCertificate?.otherPlatformLink && (
+                                <a
+                                  href={g.ratingCertificate.otherPlatformLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center w-8 h-8 hover:text-emerald-400 border border-line hover:border-emerald-500/40 rounded transition-colors"
+                                  title="타 플랫폼 링크로 인증 확인">
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-text-muted text-xs">-</span>
+                          )}
+                        </td>
+                      )}
                       {/* 게임 상태 */}
                       <td className="px-2 py-2 border-r border-line/20">
                         {gameStateLabel ? (
@@ -392,31 +444,35 @@ export default function AdminGamesPage() {
                         </div>
                       </td>
                       {/* 상품 심사 */}
-                      <td className="px-2 py-2 text-center border-r border-line/20">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => handleShopReview(g._id, 'approve')}
-                            disabled={!g.shopReviewingCount}
-                            className="px-2 py-1 rounded-md text-base font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap"
-                          >
-                            통과
-                          </button>
-                          <button
-                            onClick={() => handleShopReview(g._id, 'reject')}
-                            disabled={!g.shopReviewingCount}
-                            className="px-2 py-1 rounded-md text-base font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap"
-                          >
-                            거부
-                          </button>
-                        </div>
-                        {!!g.shopReviewingCount && (
-                          <p className="text-[10px] text-yellow-400 mt-0.5">{g.shopReviewingCount}개 심사 중</p>
-                        )}
-                      </td>
+                      {serviceFilter !== 'beta' && (
+                        <td className="px-2 py-2 text-center border-r border-line/20">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => handleShopReview(g._id, 'approve')}
+                              disabled={!g.shopReviewingCount}
+                              className="px-2 py-1 rounded-md text-base font-semibold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                              통과
+                            </button>
+                            <button
+                              onClick={() => handleShopReview(g._id, 'reject')}
+                              disabled={!g.shopReviewingCount}
+                              className="px-2 py-1 rounded-md text-base font-semibold bg-rose-500 text-white hover:bg-rose-600 transition-colors disabled:opacity-25 disabled:cursor-not-allowed whitespace-nowrap"
+                            >
+                              거부
+                            </button>
+                          </div>
+                          {!!g.shopReviewingCount && (
+                            <p className="text-[10px] text-yellow-400 mt-0.5">{g.shopReviewingCount}개 심사 중</p>
+                          )}
+                        </td>
+                      )}
                       {/* 삭제 */}
                       <td className="px-2 py-2 text-center border-r border-line/20">
                         <button onClick={() => setDeleteTarget({ id: g._id, title: g.title })}
-                          className="px-2 py-1 rounded-md text-base font-semibold bg-red-700 text-white hover:bg-red-800 transition-colors whitespace-nowrap">
+                          disabled={!isSuperAdmin}
+                          title={!isSuperAdmin ? '게임 삭제는 최고 관리자만 가능합니다' : undefined}
+                          className="px-2 py-1 rounded-md text-base font-semibold bg-red-700 text-white hover:bg-red-800 transition-colors whitespace-nowrap disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-red-700">
                           삭제
                         </button>
                       </td>

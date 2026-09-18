@@ -229,7 +229,7 @@ export default function MyInquiryTab() {
     return (
       <div className="bg-bg-secondary border border-line rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-          <h2 className="text-text-primary font-semibold">문의 내역</h2>
+          <h2 className="text-lg font-semibold text-text-primary">나의 문의하기 목록</h2>
           <button
             onClick={openCompose}
             className="flex items-center gap-1.5 bg-accent hover:bg-accent-hover text-text-inverse text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
@@ -255,6 +255,7 @@ export default function MyInquiryTab() {
                   <div className="flex items-center gap-1.5">
                     <InquiryStatusBadge status={room.status} />
                     <span className="text-text-primary font-medium truncate">{room.title || '(제목 없음)'}</span>
+                    {room.hasUnread && <span className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0" />}
                   </div>
                   <p className="text-text-muted text-xs mt-0.5">문의일 : {formatDate(room.createdAt)}</p>
                 </div>

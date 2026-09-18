@@ -6,7 +6,7 @@ import {
   deleteGameEvent,
   claimEventReward,
 } from '../controllers/gameEventController'
-import { authenticateToken, requireRole } from '../middleware/auth'
+import { authenticateToken, requireRole, blockAdminLevel } from '../middleware/auth'
 
 const router = Router()
 
@@ -14,9 +14,9 @@ const router = Router()
 router.get('/games/:gameId/events', getGameEvents)
 
 // 개발사: 이벤트 CRUD
-router.post('/game-events', authenticateToken, requireRole('developer', 'admin'), createGameEvent)
-router.put('/game-events/:id', authenticateToken, requireRole('developer', 'admin'), updateGameEvent)
-router.delete('/game-events/:id', authenticateToken, requireRole('developer', 'admin'), deleteGameEvent)
+router.post('/game-events', authenticateToken, requireRole('developer', 'admin'), blockAdminLevel('monitor'), createGameEvent)
+router.put('/game-events/:id', authenticateToken, requireRole('developer', 'admin'), blockAdminLevel('monitor'), updateGameEvent)
+router.delete('/game-events/:id', authenticateToken, requireRole('developer', 'admin'), blockAdminLevel('monitor', 'normal'), deleteGameEvent)
 
 // 플레이어: 이벤트 보상 청구
 router.post('/game-events/:eventId/claim', authenticateToken, claimEventReward)

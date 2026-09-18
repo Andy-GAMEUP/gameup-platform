@@ -15,6 +15,7 @@ const UPLOAD_BASE = path.join(process.cwd(), 'uploads')
 ensureDir(path.join(UPLOAD_BASE, 'games'))
 ensureDir(path.join(UPLOAD_BASE, 'thumbnails'))
 ensureDir(path.join(UPLOAD_BASE, 'banners'))
+ensureDir(path.join(UPLOAD_BASE, 'subicons'))
 ensureDir(path.join(UPLOAD_BASE, 'community'))
 ensureDir(path.join(UPLOAD_BASE, 'screenshots'))
 ensureDir(path.join(UPLOAD_BASE, 'certs'))
@@ -34,6 +35,8 @@ const storage = multer.diskStorage({
       cb(null, path.join(UPLOAD_BASE, 'thumbnails'))
     } else if (file.fieldname === 'bannerImage') {
       cb(null, path.join(UPLOAD_BASE, 'banners'))
+    } else if (file.fieldname === 'subIcon') {
+      cb(null, path.join(UPLOAD_BASE, 'subicons'))
     } else if (file.fieldname === 'certFile') {
       cb(null, path.join(UPLOAD_BASE, 'certs'))
     } else if (file.fieldname === 'communityImages') {
@@ -75,7 +78,7 @@ const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilt
     } else {
       cb(new Error('게임 파일은 HTML 또는 ZIP 형식만 가능합니다'))
     }
-  } else if (['thumbnail','bannerImage','communityImages','partnerImages','announcementImages','gameContentImages','screenshot','shopItemImage','shopCurrencyIcon','avatar','messageImage'].includes(file.fieldname)) {
+  } else if (['thumbnail','bannerImage','subIcon','communityImages','partnerImages','announcementImages','gameContentImages','screenshot','shopItemImage','shopCurrencyIcon','avatar','messageImage'].includes(file.fieldname)) {
     const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     const allowedMime = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
     const ext = path.extname(file.originalname).toLowerCase()
@@ -97,13 +100,14 @@ export const upload = multer({
   fileFilter,
   limits: {
     fileSize: MAX_FILE_SIZE,
-    files: 3
+    files: 4
   }
 })
 
 export const uploadFields = upload.fields([
   { name: 'thumbnail', maxCount: 1 },
   { name: 'bannerImage', maxCount: 1 },
+  { name: 'subIcon', maxCount: 1 },
   { name: 'certFile', maxCount: 1 },
 ])
 

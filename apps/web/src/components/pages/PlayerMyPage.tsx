@@ -1,36 +1,33 @@
 'use client'
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/useAuth'
-import playerService, { FavoriteGame, Activity, ActivityScoreItem } from '@/services/playerService'
+import playerService, { Activity, ActivityScoreItem } from '@/services/playerService'
 import { authService } from '@/services/authService'
 import MyInquiryTab from '@/components/MyInquiryTab'
-import { useUnreadInquiryCount } from '@/lib/useUnreadInquiryCount'
 import { gameService } from '@/services/gameService'
 import { FILTER_GENRES } from '@/constants/game'
 import MiniHomeManagementPage from '@/components/pages/MiniHomeManagementPage'
 import {
-  User, Heart, Activity as ActivityIcon, Star, Award,
+  Activity as ActivityIcon, Award,
   Edit2, Lock, Trash2, Check, X, Loader2, ChevronRight, Eye, EyeOff, HelpCircle, Building2, Camera,
   MessageCircleQuestion,
 } from 'lucide-react'
 import LevelBadge from '@/components/LevelBadge'
-import LevelProgressCard from '@/components/LevelProgressCard'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
+import TwoFactorSettings from '@/components/TwoFactorSettings'
 import { formatDate } from '@/lib/formatDate'
 
 const ACTIVITY_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
   play:      { label: '게임 플레이',  icon: '🎮', color: 'text-cyan-400'   },
   review:    { label: '리뷰 작성',   icon: '✍️', color: 'text-purple-400' },
-  favorite:  { label: '즐겨찾기 추가', icon: '❤️', color: 'text-pink-400'  },
-  unfavorite:{ label: '즐겨찾기 해제', icon: '💔', color: 'text-text-secondary' },
   helpful:   { label: '추천 표시',  icon: '👍', color: 'text-accent'  },
 }
 
 const GENRE_LIST = FILTER_GENRES.filter(g => g !== '전체')
-const PLACEHOLDER = 'https://images.unsplash.com/photo-1738071665033-7ba9885c2c20?w=400&q=80'
 
 interface MyQA {
   _id: string
@@ -66,7 +63,7 @@ const ACTIVITY_SCORE_CONFIG: Record<string, { label: string; icon: string }> = {
   admin_deduct:         { label: '관리자 차감',   icon: '❌' },
 }
 
-type Tab = 'favorites' | 'activity' | 'activityPoints' | 'qa' | 'profile' | 'inquiry' | 'security'
+type Tab = 'activity' | 'activityPoints' | 'qa' | 'profile' | 'inquiry' | 'security'
 
 function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   return (
@@ -81,9 +78,8 @@ function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
 
 export default function PlayerMyPage() {
   const { user, isAuthenticated, isLoading, logout, updateUser } = useAuth()
-  const unreadInquiryCount = useUnreadInquiryCount()
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('favorites')
+  const [tab, setTab] = useState<Tab>('profile')
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -95,14 +91,21 @@ export default function PlayerMyPage() {
     if (!isLoading && !isAuthenticated) router.replace('/login')
   }, [isAuthenticated, isLoading, router])
 
-  // ── 즐겨찾기 ──
-  const [favorites, setFavorites] = useState<FavoriteGame[]>([])
-  const [favTotal, setFavTotal] = useState(0)
+  // ── 계정 정보 탭 표시용: 가입일 / 최근 로그인 ──
+  const [accountMeta, setAccountMeta] = useState<{ createdAt?: string; lastLoginAt?: string }>({})
+  useEffect(() => {
+    if (!isAuthenticated) return
+    authService.getProfile()
+      .then((data) => {
+        const u = data.user ?? data
+        setAccountMeta({ createdAt: u.createdAt, lastLoginAt: u.lastLoginAt })
+      })
+      .catch(() => {})
+  }, [isAuthenticated])
 
   // ── 활동 ──
   const [activities, setActivities] = useState<Activity[]>([])
-  const [activityStats, setActivityStats] = useState({ playCount: 0, reviewCount: 0, favoriteCount: 0 })
-  const [followStats, setFollowStats] = useState({ followerCount: 0, followingCount: 0 })
+  const [activityStats, setActivityStats] = useState({ playCount: 0, reviewCount: 0 })
 
   // ── 활동포인트 ──
   const [activityScores, setActivityScores] = useState<ActivityScoreItem[]>([])
@@ -168,16 +171,9 @@ export default function PlayerMyPage() {
   const loadAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [favData, actData, fsData] = await Promise.all([
-        playerService.getMyFavorites({ limit: 12 }),
-        playerService.getMyActivity({ limit: 20 }),
-        playerService.getMyFollowStats(),
-      ])
-      setFavorites(favData.favorites)
-      setFavTotal(favData.total)
+      const actData = await playerService.getMyActivity({ limit: 20 })
       setActivities(actData.activities)
       setActivityStats(actData.stats)
-      setFollowStats(fsData)
     } catch (err) {
       console.error(err)
     } finally {
@@ -186,18 +182,6 @@ export default function PlayerMyPage() {
   }, [])
 
   useEffect(() => { loadAll() }, [loadAll])
-
-  const handleUnfavorite = async (gameId: string) => {
-    try {
-      await playerService.toggleFavorite(gameId)
-      setFavorites((prev) => prev.filter((f) => f.gameId._id !== gameId))
-      setFavTotal((prev) => prev - 1)
-      setActivityStats((prev) => ({ ...prev, favoriteCount: prev.favoriteCount - 1 }))
-      showToast('즐겨찾기에서 제거했습니다')
-    } catch {
-      showToast('오류가 발생했습니다', 'error')
-    }
-  }
 
   // ── 프로필 편집 ──
   const [profileForm, setProfileForm] = useState({
@@ -323,11 +307,10 @@ export default function PlayerMyPage() {
   const isCorporate = user?.memberType === 'corporate'
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'favorites', label: `즐겨찾기 (${favTotal})`, icon: <Heart className="w-4 h-4" /> },
+    { key: 'profile',   label: isCorporate ? '파트너 프로필' : '계정 정보', icon: isCorporate ? <Building2 className="w-4 h-4" /> : <Edit2 className="w-4 h-4" /> },
     { key: 'activity',  label: '활동 내역',               icon: <ActivityIcon className="w-4 h-4" /> },
     { key: 'activityPoints', label: '활동포인트',         icon: <Award className="w-4 h-4" /> },
     { key: 'qa',        label: `Q&A (${qaTotal})`,        icon: <HelpCircle className="w-4 h-4" /> },
-    { key: 'profile',   label: isCorporate ? '파트너 프로필' : '계정 정보', icon: isCorporate ? <Building2 className="w-4 h-4" /> : <Edit2 className="w-4 h-4" /> },
     { key: 'inquiry',   label: '문의하기',                   icon: <MessageCircleQuestion className="w-4 h-4" /> },
     { key: 'security',  label: '보안 설정',                icon: <Lock className="w-4 h-4" /> },
   ]
@@ -344,7 +327,7 @@ export default function PlayerMyPage() {
         <div className="relative overflow-hidden bg-gradient-to-br from-cyan-950 via-slate-900 to-blue-950 border border-white/10 rounded-2xl p-6 shadow-xl">
           <div className="absolute -top-20 -right-16 w-64 h-64 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-12 w-56 h-56 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
+          <div className="relative flex flex-col sm:flex-row items-start gap-5">
             <div className="relative flex-shrink-0">
               <div className="w-16 h-16 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-cyan-900/50 ring-2 ring-white/20 overflow-hidden">
                 {user?.profileImage ? (
@@ -366,128 +349,63 @@ export default function PlayerMyPage() {
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-white">{user?.username}</h1>
+              <h1 className="flex items-center gap-1.5 text-[22px] font-bold text-white">
+                {user?.username}
+                {user?.role === 'developer' && <OfficialBadge className="w-[19px] h-[19px]" />}
+                {user?.role === 'admin' && <AdminBadge className="w-[19px] h-[19px]" />}
+              </h1>
+              <div className="mt-[7.8px]">
                 <LevelBadge level={(user as any)?.level} size="md" />
-              </div>
-              <p className="text-cyan-200/70 text-sm">{user?.email}</p>
-              <p className="text-cyan-200/70 text-xs mt-0.5">활동점수: <span className="text-emerald-300 font-medium">{((user as any)?.activityScore || 0).toLocaleString()}</span>P</p>
-              {(user as any)?.bio && (
-                <p className="text-cyan-100/80 text-sm mt-1">{(user as any).bio}</p>
-              )}
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <span className="bg-white/10 backdrop-blur-sm text-cyan-200 border border-white/20 text-xs px-2.5 py-1 rounded-full font-medium">베타 테스터</span>
-                {((user as any)?.favoriteGenres || []).map((g: string) => (
-                  <span key={g} className="bg-white/5 backdrop-blur-sm text-cyan-100/70 border border-white/10 text-xs px-2.5 py-1 rounded-full">{g}</span>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-5 gap-4 text-center w-full sm:w-auto">
-              <div>
-                <p className="text-2xl font-bold text-cyan-300">{activityStats.playCount}</p>
-                <p className="text-white/50 text-xs mt-0.5">플레이</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-purple-300">{activityStats.reviewCount}</p>
-                <p className="text-white/50 text-xs mt-0.5">리뷰</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-pink-300">{activityStats.favoriteCount}</p>
-                <p className="text-white/50 text-xs mt-0.5">즐겨찾기</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-emerald-300">{followStats.followerCount}</p>
-                <p className="text-white/50 text-xs mt-0.5">팔로워</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-sky-300">{followStats.followingCount}</p>
-                <p className="text-white/50 text-xs mt-0.5">팔로잉</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 등급 진행 카드 */}
-        <LevelProgressCard
-          level={(user as any)?.level || 1}
-          activityScore={(user as any)?.activityScore || 0}
-        />
+        {/* 탭 메뉴 + 콘텐츠 */}
+        <div className="flex gap-6 items-start">
+          {/* 좌측 사이드 탭 */}
+          <div className="w-48 flex-shrink-0 space-y-1">
+            {TABS.map((t) => {
+              const disabled = t.key === 'inquiry' && user?.role === 'admin'
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => !disabled && setTab(t.key)}
+                  disabled={disabled}
+                  title={disabled ? '관리자 계정은 문의하기를 이용할 수 없습니다' : undefined}
+                  className={`w-full flex items-center gap-1.5 px-4 py-2.5 text-base font-medium border-l-2 whitespace-nowrap transition-colors ${
+                    disabled
+                      ? 'border-transparent text-text-muted opacity-40 cursor-not-allowed'
+                      : tab === t.key
+                      ? 'border-accent text-accent'
+                      : 'border-transparent text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {t.icon}{t.label}
+                </button>
+              )
+            })}
+          </div>
 
-        {/* 탭 메뉴 */}
-        <div className="flex gap-1 border-b border-line overflow-x-auto">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-base font-medium border-b-2 whitespace-nowrap transition-colors ${
-                tab === t.key
-                  ? 'border-accent text-accent'
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {t.icon}{t.label}
-              {t.key === 'inquiry' && unreadInquiryCount > 0 && (
-                <span className="w-1.5 h-1.5 rounded-full bg-danger" />
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* ─── 즐겨찾기 탭 ─── */}
-        {tab === 'favorites' && (
-          loading ? <div className="text-center py-16 text-text-muted"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div> :
-          favorites.length === 0 ? (
-            <div className="text-center py-16 text-text-muted">
-              <Heart className="w-12 h-12 mx-auto mb-3 opacity-20" />
-              <p>즐겨찾기한 게임이 없습니다</p>
-              <Link href="/" className="text-cyan-400 hover:text-cyan-300 text-sm mt-2 inline-flex items-center gap-1">
-                게임 둘러보기 <ChevronRight className="w-3 h-3" />
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {favorites.map((fav) => {
-                const g = fav.gameId
-                if (!g) return null
-                const imgUrl = g.thumbnail ? `/uploads/${g.thumbnail.replace('uploads/', '')}` : PLACEHOLDER
-                return (
-                  <div key={fav._id} className="bg-bg-secondary border border-line rounded-xl overflow-hidden group hover:border-line transition-colors">
-                    <div className="relative">
-                      <Image src={imgUrl} alt={g.title} width={400} height={225} className="w-full aspect-video object-cover" unoptimized />
-                      <button onClick={() => handleUnfavorite(g._id)}
-                        className="absolute top-2 right-2 bg-bg-secondary/80 rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-900/80"
-                        title="즐겨찾기 해제">
-                        <Heart className="w-3.5 h-3.5 fill-pink-400 text-pink-400" />
-                      </button>
-                    </div>
-                    <div className="p-3">
-                      <Link href={`/games/${g._id}`} className="text-text-primary text-sm font-medium hover:text-cyan-300 transition-colors line-clamp-1">{g.title}</Link>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-text-muted text-xs">{g.genre || '기타'}</span>
-                        <div className="flex items-center gap-0.5">
-                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                          <span className="text-yellow-400 text-xs">{(g.rating || 0).toFixed(1)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )
-        )}
+          {/* 우측 콘텐츠 */}
+          <div className="flex-1 min-w-0 space-y-6">
 
         {/* ─── 활동 내역 탭 ─── */}
         {tab === 'activity' && (
-          loading ? <div className="text-center py-16 text-text-muted"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div> :
-          activities.length === 0 ? (
-            <div className="text-center py-16 text-text-muted">
-              <ActivityIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
-              <p>활동 내역이 없습니다</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-text-secondary">플레이 <span className="text-cyan-400 font-semibold">{activityStats.playCount}</span></span>
+              <span className="text-sm text-text-secondary">리뷰 <span className="text-purple-400 font-semibold">{activityStats.reviewCount}</span></span>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {activities.map((act) => {
+            {loading ? <div className="text-center py-16 text-text-muted"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div> :
+            activities.length === 0 ? (
+              <div className="text-center py-16 text-text-muted">
+                <ActivityIcon className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p>활동 내역이 없습니다</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {activities.map((act) => {
                 const conf = ACTIVITY_CONFIG[act.type]
                 const g = act.gameId
                 return (
@@ -512,13 +430,26 @@ export default function PlayerMyPage() {
                   </div>
                 )
               })}
-            </div>
-          )
+              </div>
+            )}
+          </div>
         )}
 
         {/* ─── 활동포인트 탭 ─── */}
         {tab === 'activityPoints' && (
           <div className="space-y-4">
+            {/* 레벨 / 점수 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-bg-secondary border border-line rounded-xl p-4">
+                <p className="text-text-secondary text-sm">레벨</p>
+                <p className="text-text-primary text-xl font-bold mt-1">{`Lv.${(user as any)?.level ?? 1}`}</p>
+              </div>
+              <div className="bg-bg-secondary border border-line rounded-xl p-4">
+                <p className="text-text-secondary text-sm">점수</p>
+                <p className="text-text-primary text-xl font-bold mt-1">{((user as any)?.activityScore ?? 0).toLocaleString()}P</p>
+              </div>
+            </div>
+
             {/* 필터 */}
             <div className="flex items-center gap-2 flex-wrap">
               <select
@@ -678,11 +609,8 @@ export default function PlayerMyPage() {
         {tab === 'profile' && !isCorporate && (
           <div className="space-y-6">
             <div className="bg-bg-secondary border border-line rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <User className="w-5 h-5 text-accent" />
-                  <h2 className="text-lg font-semibold">기본 정보</h2>
-                </div>
+              <div className="flex items-center justify-between mb-6 pb-3 border-b border-line">
+                <h2 className="text-lg font-semibold">계정 정보</h2>
                 {!profileEditing ? (
                   <button onClick={() => setProfileEditing(true)}
                     className="flex items-center gap-1.5 text-base text-accent hover:text-accent-hover transition-colors">
@@ -703,79 +631,100 @@ export default function PlayerMyPage() {
                 )}
               </div>
 
+
               <div className="space-y-5">
 
                 {/* 사용자명 */}
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">사용자명</label>
-                  {profileEditing ? (
-                    <input
-                      type="text"
-                      value={profileForm.username}
-                      onChange={(e) => setProfileForm((p) => ({ ...p, username: e.target.value }))}
-                      maxLength={20}
-                      className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent transition-colors"
-                      placeholder="2~20자 사용자명"
-                    />
-                  ) : (
-                    <p className="text-text-primary bg-bg-tertiary/50 border border-line rounded-lg px-3 py-2.5">{user?.username}</p>
-                  )}
-                  <p className="text-xs text-text-muted mt-1">{profileForm.username.length}/20</p>
+                <div className="grid grid-cols-4 gap-4 items-start">
+                  <label className="text-text-secondary text-sm pt-2 col-span-1">사용자명</label>
+                  <div className="col-span-3">
+                    {profileEditing ? (
+                      <input
+                        type="text"
+                        value={profileForm.username}
+                        onChange={(e) => setProfileForm((p) => ({ ...p, username: e.target.value }))}
+                        maxLength={20}
+                        className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent transition-colors"
+                        placeholder="2~20자 사용자명"
+                      />
+                    ) : (
+                      <p className="text-text-primary bg-bg-tertiary/50 border border-line rounded-lg px-3 py-2.5">{user?.username}</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* 이메일 (읽기 전용) */}
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">이메일</label>
-                  <p className="text-text-secondary bg-bg-tertiary/50 border border-line rounded-lg px-3 py-2.5">{user?.email}</p>
+                <div className="grid grid-cols-4 gap-4 items-start">
+                  <label className="text-text-secondary text-sm pt-2 col-span-1">이메일</label>
+                  <div className="col-span-3">
+                    <input value={user?.email || ''} disabled readOnly className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed" />
+                  </div>
                 </div>
 
-                {/* 자기소개 */}
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">자기소개</label>
-                  {profileEditing ? (
-                    <textarea
-                      value={profileForm.bio}
-                      onChange={(e) => setProfileForm((p) => ({ ...p, bio: e.target.value }))}
-                      maxLength={200}
-                      rows={3}
-                      className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent transition-colors resize-none"
-                      placeholder="간단한 자기소개를 입력하세요 (최대 200자)"
-                    />
-                  ) : (
-                    <p className={`bg-bg-tertiary/50 border border-line rounded-lg px-3 py-2.5 min-h-[80px] ${profileForm.bio ? 'text-text-primary' : 'text-text-muted'}`}>
-                      {profileForm.bio || '자기소개가 없습니다'}
-                    </p>
-                  )}
-                  {profileEditing && <p className="text-xs text-text-muted mt-1">{profileForm.bio.length}/200</p>}
+                {/* 가입일 (읽기 전용) */}
+                <div className="grid grid-cols-4 gap-4 items-start">
+                  <label className="text-text-secondary text-sm pt-2 col-span-1">가입일</label>
+                  <div className="col-span-3">
+                    <input value={accountMeta.createdAt ? formatDate(accountMeta.createdAt) : '-'} disabled readOnly className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed" />
+                  </div>
+                </div>
+
+                {/* 최근 로그인 (읽기 전용) */}
+                <div className="grid grid-cols-4 gap-4 items-start">
+                  <label className="text-text-secondary text-sm pt-2 col-span-1">최근 로그인</label>
+                  <div className="col-span-3">
+                    <input value={accountMeta.lastLoginAt ? new Date(accountMeta.lastLoginAt).toLocaleString('ko-KR') : '-'} disabled readOnly className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed" />
+                  </div>
                 </div>
 
                 {/* 관심 장르 */}
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">관심 장르</label>
-                  <div className="flex flex-wrap gap-2">
-                    {GENRE_LIST.map((g) => {
-                      const selected = profileForm.favoriteGenres.includes(g)
-                      return (
-                        <button
-                          key={g}
-                          onClick={() => profileEditing && toggleGenre(g)}
-                          disabled={!profileEditing}
-                          className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors ${
-                            selected
-                              ? 'bg-accent text-text-primary'
-                              : profileEditing
-                              ? 'bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary border border-line'
-                              : 'bg-bg-tertiary/50 text-text-muted border border-line cursor-default'
-                          }`}
-                        >
-                          {g}
-                        </button>
-                      )
-                    })}
+                <div className="grid grid-cols-4 gap-4 items-start">
+                  <label className="text-text-secondary text-sm pt-2 col-span-1">관심 장르</label>
+                  <div className="col-span-3">
+                    <div className="flex flex-wrap gap-2">
+                      {GENRE_LIST.map((g) => {
+                        const selected = profileForm.favoriteGenres.includes(g)
+                        return (
+                          <button
+                            key={g}
+                            onClick={() => profileEditing && toggleGenre(g)}
+                            disabled={!profileEditing}
+                            className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors ${
+                              selected
+                                ? 'bg-accent text-text-primary'
+                                : profileEditing
+                                ? 'bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary border border-line'
+                                : 'bg-bg-tertiary/50 text-text-primary border border-line cursor-default'
+                            }`}
+                          >
+                            {g}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {!profileEditing && profileForm.favoriteGenres.length === 0 && (
+                      <p className="text-xs text-text-muted mt-1">선택된 장르가 없습니다</p>
+                    )}
                   </div>
-                  {!profileEditing && profileForm.favoriteGenres.length === 0 && (
-                    <p className="text-xs text-text-muted mt-1">선택된 장르가 없습니다</p>
-                  )}
+                </div>
+
+                {/* 자기소개 */}
+                <div className="grid grid-cols-4 gap-4 items-start">
+                  <label className="text-text-secondary text-sm pt-2 col-span-1">자기소개</label>
+                  <div className="col-span-3">
+                    {profileEditing ? (
+                      <textarea
+                        value={profileForm.bio}
+                        onChange={(e) => setProfileForm((p) => ({ ...p, bio: e.target.value }))}
+                        maxLength={200}
+                        rows={3}
+                        className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary focus:outline-none focus:border-accent transition-colors resize-none"
+                        placeholder="자신을 소개해주세요"
+                      />
+                    ) : (
+                      <p className="text-text-primary bg-bg-tertiary/50 border border-line rounded-lg px-3 py-2.5 whitespace-pre-wrap min-h-[2.75rem]">{profileForm.bio || '-'}</p>
+                    )}
+                  </div>
                 </div>
 
               </div>
@@ -788,11 +737,10 @@ export default function PlayerMyPage() {
 
         {/* ─── 보안 설정 탭 ─── */}
         {tab === 'security' && (
-          <div className="space-y-6">
+          <div className="space-y-6 max-w-[470px] mx-auto">
             {/* 비밀번호 변경 */}
             <div className="bg-bg-secondary border border-line rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Lock className="w-5 h-5 text-accent" />
+              <div className="flex items-center gap-2 mb-6 pb-3 border-b border-line">
                 <h2 className="text-lg font-semibold">비밀번호 변경</h2>
               </div>
 
@@ -841,24 +789,23 @@ export default function PlayerMyPage() {
               </div>
             </div>
 
+            {/* 2단계 인증 */}
+            <TwoFactorSettings />
+
             {/* 계정 삭제 */}
-            <div className="bg-bg-secondary border border-red-900/40 rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Trash2 className="w-5 h-5 text-red-400" />
-                <h2 className="text-lg font-semibold text-red-300">계정 삭제</h2>
-              </div>
-              <p className="text-text-secondary text-sm mb-4">
-                계정을 삭제하면 즐겨찾기, 리뷰, 활동 내역이 영구적으로 삭제되며, 작성한 게시글과 댓글은 '탈퇴한 회원'으로 표시됩니다. 이 작업은 되돌릴 수 없습니다.
-              </p>
+            <div className="flex justify-end">
               <button
                 onClick={() => setDeleteModal(true)}
-                className="flex items-center gap-2 border border-red-600 text-red-400 hover:bg-red-950 px-4 py-2 rounded-lg text-base font-medium transition-colors"
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-base font-medium transition-colors"
               >
                 <Trash2 className="w-4 h-4" /> 계정 삭제
               </button>
             </div>
           </div>
         )}
+
+          </div>
+        </div>
       </div>
 
       {/* 계정 삭제 확인 모달 */}

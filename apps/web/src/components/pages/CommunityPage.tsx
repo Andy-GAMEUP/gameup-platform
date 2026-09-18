@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 import PostCard, { ViewMode, communityTabHref, postBackNav } from '@/components/community/PostCard'
-import NoticeTypeBadge from '@/components/NoticeTypeBadge'
 import communityService from '@/services/communityService'
 import adminService, { CommunityBanner } from '@/services/adminService'
 import { authService } from '@/services/authService'
@@ -28,9 +29,9 @@ const NOTICE_SUB_TABS = [
 const CATEGORIES = [
   { value: 'home', label: '홈', icon: Home },
   { value: 'notice-hub', label: '공지사항', icon: Megaphone, subTabs: NOTICE_SUB_TABS },
-  { value: 'new-game-intro', label: '신작게임소개', icon: Sparkles },
-  { value: 'beta-game', label: '베타게임', icon: FlaskConical },
   { value: 'live-game', label: '라이브게임', icon: Gamepad2 },
+  { value: 'beta-game', label: '베타게임', icon: FlaskConical },
+  { value: 'new-game-intro', label: '신작게임소개', icon: Sparkles },
   { value: 'free', label: '자유게시판', icon: MessageCircle },
   { value: 'bookmarks', label: '내 커뮤니티', icon: Bookmark },
 ]
@@ -38,7 +39,7 @@ const CATEGORIES = [
 const CAT_GAME_SERVICE_TYPE: Record<string, string> = { 'beta-game': 'beta', 'live-game': 'live' }
 
 // 게임별 공지(RecentGameAnnouncement) 클릭 시 뒤로가기 라벨/목적지 — 게임이 있으면 사이드바에서 그 게임을 클릭했을 때(handleGameClick)와 동일한 채널(베타게임/라이브게임)의 자녀 탭으로, 없으면 "게임 공지" 탭으로
-const gameNoticeNav = (n: { game?: { _id: string; title: string; serviceType?: string } | null }) => {
+export const gameNoticeNav = (n: { game?: { _id: string; title: string; serviceType?: string } | null }) => {
   if (n.game) {
     const catChannel = n.game.serviceType === 'beta' ? 'beta-game' : n.game.serviceType === 'live' ? 'live-game' : 'notice-game'
     return { label: n.game.title, href: communityTabHref(catChannel, n.game) }
@@ -294,7 +295,8 @@ export default function CommunityPage() {
       handleCategoryClick(cat.value)
       return
     }
-    const subGames = cat.value === 'beta-game' ? betaGames : cat.value === 'live-game' ? liveGames : []
+    // 베타게임은 개별 게임 자녀 탭을 만들지 않고 하나로 모아서 보여준다 — 라이브게임만 첫 게임으로 바로 이동
+    const subGames = cat.value === 'live-game' ? liveGames : []
     if (subGames.length > 0) {
       const first = subGames[0]
       handleGameClick(first._id!, first.title, first.serviceType as string)
@@ -330,7 +332,17 @@ export default function CommunityPage() {
     queryFn: () => gameService.getAnnouncementsByGame(selectedGame!.id, { limit: 50 }),
     enabled: !!selectedGame?.id,
   })
-  const allGameAnnouncements = gameAnnouncementsData?.announcements ?? []
+  // 베타게임 탭은 개별 게임 자녀가 없으므로(하나로 모아서 보여줌), 모든 베타 게임의 공지를 합쳐서 가져온다 — 라이브게임(게임 선택 시)과 동일한 화면 구조 재사용
+  const { data: betaGameAnnouncementsData } = useQuery({
+    queryKey: ['gameAnnouncements', 'beta-all'],
+    queryFn: () => gameService.getRecentGameAnnouncements(50, 1, undefined, 'latest', 'beta'),
+    enabled: channel === 'beta-game' && !selectedGame,
+  })
+  const allGameAnnouncements = selectedGame
+    ? (gameAnnouncementsData?.announcements ?? [])
+    : channel === 'beta-game'
+      ? (betaGameAnnouncementsData?.announcements ?? [])
+      : []
   const ANN_PER_PAGE = 5
   const annTotalPages = Math.ceil(allGameAnnouncements.length / ANN_PER_PAGE)
   const gameAnnouncements = allGameAnnouncements.slice(annPage * ANN_PER_PAGE, (annPage + 1) * ANN_PER_PAGE)
@@ -366,6 +378,27 @@ export default function CommunityPage() {
     localStorage.setItem('community-view-mode', mode)
   }
 
+  // 게임 공지(라이브+베타 통합) 목록에서 게임의 서비스 타입을 표시하는 배지
+  const zoneBadge = (serviceType?: string | null) => {
+    if (serviceType !== 'live' && serviceType !== 'beta') return null
+    return (
+      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0 border ${
+        serviceType === 'live'
+          ? 'bg-cyan-500/5 text-cyan-700/70 dark:text-cyan-400/70 border-cyan-500/20'
+          : 'bg-emerald-500/5 text-emerald-700/70 dark:text-emerald-400/70 border-emerald-500/20'
+      }`}>
+        {serviceType === 'live' ? '라이브' : '베타'}
+      </span>
+    )
+  }
+
+  // 공지 작성자(개발사/관리자) 이름 옆 역할 체크배지 — 닉네임이 나오는 다른 모든 곳과 동일 규칙
+  const roleBadge = (role?: string | null) => {
+    if (role === 'developer') return <OfficialBadge />
+    if (role === 'admin') return <AdminBadge />
+    return null
+  }
+
   // 공지 대형 카드 (viewMode==='large'일 때 공지 목록에서 공용으로 사용)
   const renderNoticeLargeCard = (opts: {
     key: string
@@ -376,6 +409,8 @@ export default function CommunityPage() {
     views: number
     likes: number
     thumbnail?: string | null
+    gameTitle?: string | null
+    gameServiceType?: string | null
     onClick: () => void
   }) => (
     <div key={opts.key} onClick={opts.onClick}
@@ -391,7 +426,8 @@ export default function CommunityPage() {
       <div className="p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-1.5 min-w-0">
           <span className="text-text-primary text-[14.72px] font-medium truncate group-hover:text-accent transition-colors">{opts.title}</span>
-          <NoticeTypeBadge type={opts.type} className="flex-shrink-0" />
+          {opts.gameTitle && <span className="text-text-secondary text-xs flex-shrink-0 truncate max-w-[120px]">[{opts.gameTitle}]</span>}
+          {zoneBadge(opts.gameServiceType)}
           <div className="flex-1" />
           <span className="text-text-muted text-xs flex-shrink-0 tabular-nums">{opts.dateStr}</span>
         </div>
@@ -465,10 +501,11 @@ export default function CommunityPage() {
               const Icon = cat.icon
               const isHome = cat.value === 'home'
               const isBookmarks = cat.value === 'bookmarks'
-              const subGames = cat.value === 'beta-game' ? betaGames : cat.value === 'live-game' ? liveGames : []
+              const subGames = cat.value === 'live-game' ? liveGames : []
               const subTabs = cat.subTabs || []
               const bookmarkedEntries = isBookmarks ? visibleBookmarkedTabs : []
               const isActive = isCategoryActive(cat, channel, search, selectedGame, viaBookmarks)
+              // 베타게임은 개별 게임 자녀 탭 없이 하나로 모아서 보여준다 (docs/sidebar-tab-consistency-rule.md 예외 — 사용자 명시 요청, 2026-09-11)
               const hasSubGames = subGames.length > 0
               const hasSubItems = hasSubGames || subTabs.length > 0 || bookmarkedEntries.length > 0
               const isCollapsed = !!collapsedCats[cat.value]
@@ -644,7 +681,7 @@ export default function CommunityPage() {
               <div className="mb-6 bg-bg-secondary border border-line rounded-xl overflow-hidden flex flex-col">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line bg-bg-tertiary">
                   <Megaphone className="w-4 h-4 text-accent flex-shrink-0" />
-                  <span className="text-text-primary text-[16.8px] font-semibold">커뮤니티 공지</span>
+                  <span className="text-text-primary text-sm font-semibold">메인 공지</span>
                   <div className="flex-1" />
                   <button onClick={() => handleSubTabClick('notice-platform')} className="text-xs text-text-muted hover:text-accent transition-colors">더보기</button>
                 </div>
@@ -663,12 +700,11 @@ export default function CommunityPage() {
                         <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-text-primary text-[14.72px] font-medium truncate group-hover:text-accent transition-colors">{n.title}</span>
-                          <NoticeTypeBadge type={n.type} className="flex-shrink-0" />
                           <div className="flex-1" />
                           <span className="text-text-muted text-xs flex-shrink-0 tabular-nums">{dateStr}</span>
                         </div>
                         <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted">
-                          <span className="text-[13.2px] text-text-secondary">{n.authorId?.username ?? '게임업 관리자'}</span>
+                          <span className="flex items-center gap-1 text-[13.2px] text-text-secondary">{n.authorId?.username ?? '게임업 관리자'}{roleBadge(n.authorId?.role)}</span>
                           <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{n.views ?? 0}</span>
                           <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" />{n.likes?.length ?? 0}</span>
                         </div>
@@ -723,11 +759,11 @@ export default function CommunityPage() {
                       {totalNewGamePages > 1 && (
                         <>
                           <button onClick={() => setNewGamePage(i => (i - 1 + totalNewGamePages) % totalNewGamePages)}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 ring-2 ring-white/70 flex items-center justify-center text-white opacity-0 group-hover/newgame:opacity-100 transition-opacity">
+                            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white opacity-0 group-hover/newgame:opacity-100 transition-opacity">
                             <ChevronLeft className="w-5 h-5" />
                           </button>
                           <button onClick={() => setNewGamePage(i => (i + 1) % totalNewGamePages)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 ring-2 ring-white/70 flex items-center justify-center text-white opacity-0 group-hover/newgame:opacity-100 transition-opacity">
+                            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white opacity-0 group-hover/newgame:opacity-100 transition-opacity">
                             <ChevronRight className="w-5 h-5" />
                           </button>
                         </>
@@ -743,7 +779,7 @@ export default function CommunityPage() {
               <div className="w-[29.4%] ml-auto bg-bg-secondary border border-line rounded-xl overflow-hidden flex flex-col">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line bg-bg-tertiary flex-shrink-0">
                   <Flame className="w-4 h-4 text-accent flex-shrink-0" />
-                  <span className="text-text-primary text-sm font-semibold">커뮤니티 인기글</span>
+                  <span className="text-text-primary text-sm font-semibold">인기글</span>
                 </div>
                 <ul className="flex-1">
                   {hotPosts.map((p, i) => {
@@ -754,11 +790,13 @@ export default function CommunityPage() {
                         <span className="text-accent text-2xl font-extrabold flex-shrink-0 w-6 text-center leading-none">{i + 1}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-text-primary text-[14.72px] font-medium truncate group-hover:text-accent transition-colors">{p.title}</span>
+                            <span className="min-w-0 text-text-primary text-[14.72px] font-medium truncate group-hover:text-accent transition-colors">{p.title}</span>
+                            <span className="flex items-center gap-1 text-text-muted text-xs flex-shrink-0"><MessageSquare className="w-3 h-3" />{p.commentCount ?? 0}</span>
                           </div>
                           <div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
                             <span className="truncate">{nav.label}</span>
-                            <span className="flex items-center gap-1 text-accent font-semibold flex-shrink-0"><MessageSquare className="w-3 h-3" />{p.commentCount ?? 0}</span>
+                            <span className="flex items-center gap-1 flex-shrink-0"><Eye className="w-3 h-3" />{p.views ?? 0}</span>
+                            <span className="flex items-center gap-1 flex-shrink-0"><ThumbsUp className="w-3 h-3" />{p.likeCount ?? 0}</span>
                           </div>
                         </div>
                       </li>
@@ -795,7 +833,6 @@ export default function CommunityPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-text-primary text-[14.72px] font-medium truncate group-hover:text-accent transition-colors">{n.title}</span>
-                            <NoticeTypeBadge type={n.type} className="flex-shrink-0" />
                             <div className="flex-1" />
                             <span className="text-text-muted text-xs flex-shrink-0 tabular-nums">{dateStr}</span>
                           </div>
@@ -922,6 +959,7 @@ export default function CommunityPage() {
               <div className="mb-4 bg-bg-secondary border border-line rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line bg-bg-tertiary">
                   <Megaphone className="w-4 h-4 text-accent flex-shrink-0" />
+                  <span className="text-text-primary text-sm font-semibold">공지사항</span>
                 </div>
                 {viewMode === 'large' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
@@ -930,7 +968,7 @@ export default function CommunityPage() {
                       const noticeThumb = n.images?.[n.thumbnailIndex || 0] || n.images?.[0]
                       return renderNoticeLargeCard({
                         key: n._id, title: n.title, type: n.type, dateStr,
-                        authorNode: <span className="text-[13.2px] text-text-secondary">{n.authorId?.username ?? '게임업 관리자'}</span>,
+                        authorNode: <span className="flex items-center gap-1 text-[13.2px] text-text-secondary">{n.authorId?.username ?? '게임업 관리자'}{roleBadge(n.authorId?.role)}</span>,
                         views: n.views ?? 0, likes: n.likes?.length ?? 0,
                         thumbnail: noticeThumb ? (noticeThumb.startsWith('http') ? noticeThumb : `${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${noticeThumb}`) : undefined,
                         onClick: () => router.push(`/community/announcement/${n._id}?from=${encodeURIComponent('커뮤니티 공지')}&fromHref=${encodeURIComponent(communityTabHref('notice-platform'))}`),
@@ -953,12 +991,11 @@ export default function CommunityPage() {
                         <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-text-primary text-[14.72px] font-medium truncate group-hover:text-accent transition-colors">{n.title}</span>
-                          <NoticeTypeBadge type={n.type} className="flex-shrink-0" />
                           <div className="flex-1" />
                           <span className="text-text-muted text-xs flex-shrink-0 tabular-nums">{dateStr}</span>
                         </div>
                         <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted">
-                          <span className="text-[13.2px] text-text-secondary">{n.authorId?.username ?? '게임업 관리자'}</span>
+                          <span className="flex items-center gap-1 text-[13.2px] text-text-secondary">{n.authorId?.username ?? '게임업 관리자'}{roleBadge(n.authorId?.role)}</span>
                           <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{n.views ?? 0}</span>
                           <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" />{n.likes?.length ?? 0}</span>
                         </div>
@@ -1001,6 +1038,7 @@ export default function CommunityPage() {
               <div className="mb-4 bg-bg-secondary border border-line rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line bg-bg-tertiary">
                   <Megaphone className="w-4 h-4 text-accent flex-shrink-0" />
+                  <span className="text-text-primary text-sm font-semibold">공지사항</span>
                 </div>
                 {gameNotices.length === 0 ? (
                   <div className="p-16 text-center text-text-secondary">공지가 없습니다</div>
@@ -1014,7 +1052,9 @@ export default function CommunityPage() {
                       return renderNoticeLargeCard({
                         key: n._id, title: n.title, type: n.type, dateStr,
                         thumbnail: thumbSrc,
-                        authorNode: <span className="text-[13.2px] text-text-secondary">{n.developer?.username ?? '알 수 없는 개발사'}</span>,
+                        gameTitle: n.game?.title,
+                        gameServiceType: n.game?.serviceType,
+                        authorNode: <span className="flex items-center gap-1 text-[13.2px] text-text-secondary">{n.developer?.username ?? '알 수 없는 개발사'}{roleBadge(n.developer?.role)}</span>,
                         views: n.views ?? 0, likes: n.likes?.length ?? 0,
                         onClick: () => router.push(`/community/game-announcement/${n._id}?from=${encodeURIComponent(nNav.label)}&fromHref=${encodeURIComponent(nNav.href)}`),
                       })
@@ -1036,12 +1076,13 @@ export default function CommunityPage() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 min-w-0">
                               <span className="text-text-primary text-[14.72px] font-medium truncate group-hover:text-accent transition-colors">{n.title}</span>
-                              <NoticeTypeBadge type={n.type} className="flex-shrink-0" />
+                              {n.game?.title && <span className="text-xs text-text-secondary flex-shrink-0">[{n.game.title}]</span>}
+                              {zoneBadge(n.game?.serviceType)}
                               <div className="flex-1" />
                               <span className="text-text-muted text-xs flex-shrink-0 tabular-nums">{dateStr}</span>
                             </div>
                             <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted">
-                              <span className="text-[13.2px] text-text-secondary">{n.developer?.username ?? '알 수 없는 개발사'}</span>
+                              <span className="flex items-center gap-1 text-[13.2px] text-text-secondary">{n.developer?.username ?? '알 수 없는 개발사'}{roleBadge(n.developer?.role)}</span>
                               <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{n.views ?? 0}</span>
                               <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" />{n.likes?.length ?? 0}</span>
                             </div>
@@ -1079,19 +1120,25 @@ export default function CommunityPage() {
               </div>
             )}
 
-            {/* 게임 선택 시 해당 게임 공지 (3개씩 페이지네이션) */}
-            {selectedGame && allGameAnnouncements.length > 0 && (
+            {/* 게임 선택 시 해당 게임 공지 / 베타게임은 전체 베타 게임 공지를 동일 구조로 (3개씩 페이지네이션) */}
+            {(selectedGame || channel === 'beta-game') && allGameAnnouncements.length > 0 && (
               <div className="mb-4 bg-bg-secondary border border-line rounded-xl overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line bg-bg-tertiary">
                   <Megaphone className="w-4 h-4 text-accent flex-shrink-0" />
+                  <span className="text-text-primary text-sm font-semibold">공지사항</span>
                 </div>
                 <ul>
                   {gameAnnouncements.map((ann, i) => {
                     const dateStr = formatDate(ann.createdAt)
                     const ownThumb = ann.images?.[ann.thumbnailIndex || 0] || ann.images?.[0]
                     const thumbSrc = ownThumb ? (ownThumb.startsWith('http') ? ownThumb : `${process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''}${ownThumb}`) : null
+                    const rowGame = (ann as RecentGameAnnouncement).game
+                    const navLabel = selectedGame?.title ?? rowGame?.title ?? '커뮤니티'
+                    const navHref = selectedGame
+                      ? communityTabHref(channel || 'live-game', { _id: selectedGame.id, title: selectedGame.title, serviceType: selectedGame.serviceType })
+                      : communityTabHref('beta-game')
                     return (
-                      <li key={ann._id} onClick={() => router.push(`/community/game-announcement/${ann._id}?from=${encodeURIComponent(selectedGame?.title ?? '커뮤니티')}&fromHref=${encodeURIComponent(communityTabHref(channel || 'live-game', selectedGame ? { _id: selectedGame.id, title: selectedGame.title, serviceType: selectedGame.serviceType } : undefined))}`)}
+                      <li key={ann._id} onClick={() => router.push(`/community/game-announcement/${ann._id}?from=${encodeURIComponent(navLabel)}&fromHref=${encodeURIComponent(navHref)}`)}
                         className={`group flex items-center gap-3 px-4 py-3 hover:bg-bg-tertiary transition-colors cursor-pointer ${i !== 0 ? 'border-t border-line' : ''}`}>
                         {thumbSrc && (
                           <img src={thumbSrc} alt="" className="w-[52px] h-[52px] rounded-lg object-cover flex-shrink-0" />
@@ -1099,12 +1146,12 @@ export default function CommunityPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-text-primary text-[14.72px] font-medium truncate group-hover:text-accent transition-colors">{ann.title}</span>
-                            <NoticeTypeBadge type={ann.type} className="flex-shrink-0" />
+                            {!selectedGame && rowGame?.title && <span className="text-xs text-text-secondary flex-shrink-0">[{rowGame.title}]</span>}
                             <div className="flex-1" />
                             <span className="text-text-muted text-xs flex-shrink-0 tabular-nums">{dateStr}</span>
                           </div>
                           <div className="flex items-center gap-3 mt-1.5 text-xs text-text-muted">
-                            <span className="text-[13.2px] text-text-secondary">{(ann as RecentGameAnnouncement).developer?.username ?? '알 수 없는 개발사'}</span>
+                            <span className="flex items-center gap-1 text-[13.2px] text-text-secondary">{(ann as RecentGameAnnouncement).developer?.username ?? '알 수 없는 개발사'}{roleBadge((ann as RecentGameAnnouncement).developer?.role)}</span>
                             <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{(ann as RecentGameAnnouncement).views ?? 0}</span>
                             <span className="flex items-center gap-1"><ThumbsUp className="w-3 h-3" />{(ann as RecentGameAnnouncement).likes?.length ?? 0}</span>
                           </div>
@@ -1194,7 +1241,7 @@ export default function CommunityPage() {
                       }
                       const currentTabLabel = selectedGame?.title ?? TAB_LABELS[channel] ?? '커뮤니티'
                       return posts.map((post, idx) => (
-                        <PostCard key={post._id} post={post} currentUserId={user?.id} priority={idx === 0} viewMode={viewMode} onGameClick={handleGameClick} fromLabel={currentTabLabel} isFirstInList={idx === 0} />
+                        <PostCard key={post._id} post={post} currentUserId={user?.id} priority={idx === 0} viewMode={viewMode} onGameClick={handleGameClick} fromLabel={currentTabLabel} isFirstInList={idx === 0} gameTitleBadge={channel === 'beta-game' ? post.gameId?.title : undefined} />
                       ))
                     })()}
                   </>

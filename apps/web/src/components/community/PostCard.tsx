@@ -5,6 +5,7 @@ import { Eye, ThumbsUp, MessageSquare, Flame, Film } from 'lucide-react'
 import LevelBadge from '@/components/LevelBadge'
 import OfficialBadge from '@/components/OfficialBadge'
 import AdminBadge from '@/components/AdminBadge'
+import UserHoverCard from '@/components/UserHoverCard'
 import type { PostSummary } from '@/services/communityService'
 import { getRelativeTime } from '@/lib/relativeTime'
 import { formatDate } from '@/lib/formatDate'
@@ -38,6 +39,8 @@ interface PostCardProps {
   fromLabel?: string
   /** 소형(리스트형) 카드 전용: 목록의 첫 번째 항목이면 구분선을 생략 */
   isFirstInList?: boolean
+  /** 여러 게임이 섞여 나오는 목록(베타게임 탭 등)에서 제목 오른쪽에 "[게임제목]" 표시 */
+  gameTitleBadge?: string | null
 }
 
 export function communityTabHref(channel: string, gameId?: { _id: string; title: string; serviceType?: string }) {
@@ -63,7 +66,7 @@ export function postBackNav(post: { channel: string; gameId?: { _id: string; tit
   return { label, href }
 }
 
-export default function PostCard({ post, currentUserId, priority = false, viewMode = 'large', onGameClick, href, fromLabel, isFirstInList = false }: PostCardProps) {
+export default function PostCard({ post, currentUserId, priority = false, viewMode = 'large', onGameClick, href, fromLabel, isFirstInList = false, gameTitleBadge }: PostCardProps) {
   const ch = CHANNEL_MAP[post.channel] || CHANNEL_MAP.free
   const nav = postBackNav(post)
   const backLabel = fromLabel ?? nav.label
@@ -94,13 +97,20 @@ export default function PostCard({ post, currentUserId, priority = false, viewMo
             <span className="text-text-primary text-[14.72px] font-medium group-hover:text-accent transition-colors truncate">
               {post.title}
             </span>
-            <span className="flex items-center gap-0.5 text-xs text-accent font-semibold flex-shrink-0 bg-accent/10 px-1.5 py-0.5 rounded-full"><MessageSquare className="w-3 h-3" />{post.commentCount}</span>
+            {gameTitleBadge && <span className="text-xs text-text-secondary flex-shrink-0">[{gameTitleBadge}]</span>}
+            <span className="flex items-center gap-0.5 text-xs text-text-muted flex-shrink-0"><MessageSquare className="w-3 h-3" />{post.commentCount}</span>
             <div className="flex-1" />
             <span className="text-text-muted text-xs flex-shrink-0 tabular-nums">{dateStr}</span>
           </div>
           {/* 2줄: 닉네임 / 조회수 / 추천 */}
           <div className="flex items-center gap-2 mt-[5px] text-xs text-text-muted">
-            <span className="text-[13.2px] text-text-secondary">{post.author?.username}</span>
+            <UserHoverCard userId={post.author?._id} role={post.author?.role}>
+              <span className="flex items-center gap-0.5">
+                <span className="text-[13.2px] text-text-secondary">{post.author?.username}</span>
+                {post.author?.role === 'developer' && <OfficialBadge className="w-3 h-3" />}
+                {post.author?.role === 'admin' && <AdminBadge className="w-3 h-3" />}
+              </span>
+            </UserHoverCard>
             <span className="flex items-center gap-0.5"><Eye className="w-3 h-3" />{post.views.toLocaleString()}</span>
             <span className="flex items-center gap-0.5"><ThumbsUp className="w-3 h-3" />{post.likeCount}</span>
           </div>
@@ -133,17 +143,21 @@ export default function PostCard({ post, currentUserId, priority = false, viewMo
           <div>
             {/* 작성자 + 배지 */}
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              {post.author?.profileImage ? (
-                <img src={post.author.profileImage} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
-              ) : (
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
-                  post.author?.role === 'admin' ? 'bg-violet-600 text-text-primary' :
-                  post.author?.role === 'developer' ? 'bg-cyan-600 text-text-primary' : 'bg-accent text-text-inverse'
-                }`}>
-                  {(post.author?.username || '?')[0].toUpperCase()}
-                </div>
-              )}
-              <span className="text-xs font-medium text-text-primary">{post.author?.username}</span>
+              <UserHoverCard userId={post.author?._id} role={post.author?.role}>
+                <span className="flex items-center gap-2">
+                  {post.author?.profileImage ? (
+                    <img src={post.author.profileImage} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+                  ) : (
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${
+                      post.author?.role === 'admin' ? 'bg-violet-600 text-text-primary' :
+                      post.author?.role === 'developer' ? 'bg-cyan-600 text-text-primary' : 'bg-accent text-text-inverse'
+                    }`}>
+                      {(post.author?.username || '?')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-xs font-medium text-text-primary">{post.author?.username}</span>
+                </span>
+              </UserHoverCard>
               {post.author?.role === 'developer' ? <OfficialBadge /> : post.author?.role === 'admin' ? <AdminBadge /> : <LevelBadge level={post.author?.level} size="xs" />}
               <div className="flex-1" />
               <span className="text-[11px] text-text-secondary flex-shrink-0">{getRelativeTime(post.createdAt)}</span>
@@ -202,20 +216,27 @@ export default function PostCard({ post, currentUserId, priority = false, viewMo
           <span className="text-text-primary text-[14.72px] font-medium group-hover:text-accent transition-colors truncate min-w-0">
             {post.title}
           </span>
-          <span className="flex items-center gap-0.5 text-xs text-accent font-semibold flex-shrink-0 bg-accent/10 px-1.5 py-0.5 rounded-full"><MessageSquare className="w-3 h-3" />{post.commentCount}</span>
+          {gameTitleBadge && <span className="text-xs text-text-secondary flex-shrink-0">[{gameTitleBadge}]</span>}
+          <span className="flex items-center gap-0.5 text-xs text-text-muted flex-shrink-0"><MessageSquare className="w-3 h-3" />{post.commentCount}</span>
           <span className="text-text-muted text-xs ml-auto flex-shrink-0 whitespace-nowrap tabular-nums">{largeDateStr}</span>
         </div>
 
         {/* 2줄: 유저 아이콘 + 닉네임 */}
         <div className="flex items-center gap-2 mb-2">
-          {post.author?.profileImage ? (
-            <img src={post.author.profileImage} alt="" className="w-[22px] h-[22px] rounded-full object-cover flex-shrink-0" />
-          ) : (
-            <div className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 bg-accent text-text-inverse">
-              {(post.author?.username || '?')[0].toUpperCase()}
-            </div>
-          )}
-          <span className="text-[13.2px] text-text-secondary truncate">{post.author?.username}</span>
+          <UserHoverCard userId={post.author?._id} role={post.author?.role}>
+            <span className="flex items-center gap-2">
+              {post.author?.profileImage ? (
+                <img src={post.author.profileImage} alt="" className="w-[22px] h-[22px] rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-[22px] h-[22px] rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 bg-accent text-text-inverse">
+                  {(post.author?.username || '?')[0].toUpperCase()}
+                </div>
+              )}
+              <span className="text-[13.2px] text-text-secondary truncate">{post.author?.username}</span>
+              {post.author?.role === 'developer' && <OfficialBadge className="w-3.5 h-3.5" />}
+              {post.author?.role === 'admin' && <AdminBadge className="w-3.5 h-3.5" />}
+            </span>
+          </UserHoverCard>
         </div>
 
         <div className="border-t border-line my-2" />

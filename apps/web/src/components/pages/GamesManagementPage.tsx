@@ -1,11 +1,13 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Eye, Plus, Search, Star, RefreshCw, Settings, ChevronDown, ChevronUp } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Eye, Plus, Search, RefreshCw, Settings, Pin } from 'lucide-react'
 import { gameService } from '@/services/gameService'
 import DeleteGameModal from '@/components/DeleteGameModal'
 import GameApprovalStatusBadge from '@/components/GameApprovalStatusBadge'
 import { formatDate } from '@/lib/formatDate'
+import { useAuth } from '@/lib/useAuth'
 
 interface Game {
   _id: string
@@ -20,6 +22,7 @@ interface Game {
   testers?: number
   rating: number
   createdAt: string
+  startDate?: string | null
   betaEndDate?: string
   description?: string
   bannerImage?: string
@@ -43,20 +46,6 @@ const approvalLabel: Record<string, string> = {
   rejected: '심사 거부',
 }
 
-// 요구사항: 서비스 = 베타 / 라이브 / 종료
-const getServiceDisplay = (game: Game): { label: string; className: string } => {
-  if (game.status === 'archived' || game.serviceType === 'ended') {
-    return { label: '종료', className: 'bg-orange-500 text-white border border-white/90' }
-  }
-  if (game.serviceType === 'beta') {
-    return { label: '베타', className: 'bg-blue-500 text-white border border-white/90' }
-  }
-  if (game.serviceType === 'live' || game.status === 'published') {
-    return { label: '라이브', className: 'bg-accent text-white border border-white/90' }
-  }
-  return { label: '베타', className: 'bg-blue-500 text-white border border-white/90' }
-}
-
 // 요구사항: 수익모델 4종 - 무료, 광고, 유료, 프리미엄
 const monetizationLabel: Record<string, string> = {
   free:     '무료',
@@ -65,28 +54,24 @@ const monetizationLabel: Record<string, string> = {
   freemium: '프리미엄',
 }
 
-function GameCard({ game }: { game: Game }) {
-  const service = getServiceDisplay(game)
-  const isPrelaunch = game.status !== 'published'
+function GameCard({ game, pinned, onTogglePin }: { game: Game; pinned: boolean; onTogglePin: (id: string) => void }) {
   const thumbSrc = game.thumbnail
     ? (game.thumbnail.startsWith('http') || game.thumbnail.startsWith('/uploads/')
         ? game.thumbnail
         : `/uploads/thumbnails/${game.thumbnail.split('/').pop()}`)
     : null
+  const zoneTab = game.serviceType === 'beta' ? 'beta' : 'live'
 
   return (
     <div className="group flex flex-col rounded-xl bg-bg-secondary border-2 border-line/40 hover:border-accent hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
       {/* 썸네일 */}
-      <Link href={`/games-management/${game._id}/manage`} className="relative aspect-video bg-bg-tertiary overflow-hidden block cursor-pointer">
+      <Link href={`/games-management/${game._id}/manage?tab=${zoneTab}`} className="relative aspect-video bg-bg-tertiary overflow-hidden block cursor-pointer">
         {thumbSrc ? (
           <img src={thumbSrc} alt={game.title} className="absolute inset-0 w-full h-full object-cover"
             onError={(e) => { e.currentTarget.style.display = 'none' }} />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-3xl">🎮</div>
         )}
-        <span className={`absolute top-2 right-2 text-[9.36px] font-bold px-[4.32px] py-[1.44px] rounded ${service.className}`}>
-          {service.label}
-        </span>
       </Link>
 
       {/* 정보 */}
@@ -97,19 +82,31 @@ function GameCard({ game }: { game: Game }) {
               <p className="font-semibold text-text-primary text-[19.66px] leading-tight truncate">{game.title}</p>
             </div>
             <div className="flex-shrink-0 flex items-center gap-1.5">
-              {isPrelaunch ? (
-                <GameApprovalStatusBadge approvalStatus={game.approvalStatus} status={game.status} />
-              ) : (
-                game.rating > 0 && (
-                  <span className="flex items-center gap-0.5 text-[15.6px] text-yellow-400 font-medium">
-                    <Star className="w-3 h-3 fill-yellow-400" />
-                    {game.rating.toFixed(1)}
-                  </span>
-                )
-              )}
+              {game.serviceType !== 'beta' && <GameApprovalStatusBadge approvalStatus={game.approvalStatus} status={game.status} />}
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePin(game._id) }}
+                title={pinned ? '고정 해제' : '카드 고정'}
+                className={pinned ? 'text-text-primary' : 'text-text-muted hover:text-text-primary transition-colors'}
+              >
+                <Pin className={`w-3.5 h-3.5 ${pinned ? 'fill-current' : ''}`} />
+              </button>
             </div>
           </div>
         </div>
+
+        {/* 출시 정보 (베타존 전용) */}
+        {game.serviceType === 'beta' && (
+          <div className={`w-full text-center py-[3.21px] text-[12.64px] font-medium rounded-lg border border-black bg-white text-black ${
+            game.status !== 'published' && !(game.approvalStatus === 'approved' && game.startDate) ? 'opacity-50' : ''
+          }`}>
+            {game.status === 'published'
+              ? '플레이 중'
+              : game.approvalStatus === 'approved' && game.startDate
+              ? `${formatDate(game.startDate)} 자동 출시`
+              : '초안 작성 중'}
+          </div>
+        )}
 
         {/* 버튼 */}
         <div className="flex gap-1 mt-auto">
@@ -118,7 +115,7 @@ function GameCard({ game }: { game: Game }) {
               <Eye className="w-3 h-3" />미리보기
             </button>
           </Link>
-          <Link href={`/games-management/${game._id}/manage`} className="flex-1">
+          <Link href={`/games-management/${game._id}/manage?tab=${zoneTab}`} className="flex-1">
             <button className="w-full flex items-center justify-center gap-1 py-[3.21px] text-white bg-violet-500/70 hover:bg-violet-500 border border-violet-300 rounded-lg transition-colors text-[12.64px] font-medium">
               <Settings className="w-3 h-3" />관리
             </button>
@@ -129,58 +126,55 @@ function GameCard({ game }: { game: Game }) {
   )
 }
 
-function GameSection({
-  title, games, expanded, onToggleExpand, cardLimit, accent = 'green',
-}: {
-  title: string
-  games: Game[]
-  expanded: boolean
-  onToggleExpand: () => void
-  cardLimit: number
-  accent?: 'green' | 'blue'
-}) {
-  const visible = expanded ? games : games.slice(0, cardLimit)
-  const hasMore = games.length > cardLimit
-  const borderClass = accent === 'green' ? 'border-accent/20' : 'border-blue-400/20'
-
+function GameSection({ games, pinnedIds, onTogglePin }: { games: Game[]; pinnedIds: string[]; onTogglePin: (id: string) => void }) {
+  if (games.length === 0) return null
   return (
-    <div className={`rounded-xl border ${borderClass} bg-bg-secondary overflow-hidden`}>
-      {/* 헤더 */}
-      <div className="flex items-center justify-between px-5 py-[10.2px] border-b border-line/40">
-        <span className="text-[21.66px] font-bold text-text-primary">{title}</span>
-        <span className="self-end text-[13px] text-text-muted">{games.length}개</span>
-      </div>
-      {/* 카드 그리드 */}
-      <div className="p-5 bg-black/5 dark:bg-black/20">
-        {games.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {visible.map(game => <GameCard key={game._id} game={game} />)}
-          </div>
-        )}
-        {hasMore && (
-          <div className="flex justify-center mt-4">
-            <button
-              onClick={onToggleExpand}
-              className="flex items-center px-4 py-1.5 text-text-secondary border border-line rounded-full hover:border-accent hover:text-accent transition-colors"
-            >
-              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-          </div>
-        )}
-      </div>
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      {games.map(game => (
+        <GameCard key={game._id} game={game} pinned={pinnedIds.includes(game._id)} onTogglePin={onTogglePin} />
+      ))}
     </div>
   )
 }
 
 export default function GamesManagementPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const activeTab = searchParams.get('tab') === 'beta' ? 'beta' : 'live'
+  const { user } = useAuth()
+
   const [games, setGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [expandOperating, setExpandOperating] = useState(false)
-  const [expandPre, setExpandPre] = useState(false)
+  const [pinnedIds, setPinnedIds] = useState<string[]>([])
 
   const [deleteTarget, setDeleteTarget] = useState<Game | null>(null)
+
+  const pinnedStorageKey = `gm-pinned-games:${user?.id || 'guest'}`
+
+  useEffect(() => {
+    if (!user?.id) return
+    try {
+      const raw = localStorage.getItem(pinnedStorageKey)
+      setPinnedIds(raw ? JSON.parse(raw) : [])
+    } catch {
+      setPinnedIds([])
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id])
+
+  const togglePin = (id: string) => {
+    setPinnedIds(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      try { localStorage.setItem(pinnedStorageKey, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+
+  useEffect(() => {
+    if (!searchParams.get('tab')) router.replace('/games-management?tab=live')
+  }, [searchParams, router])
 
   const loadGames = async () => {
     setLoading(true)
@@ -198,16 +192,19 @@ export default function GamesManagementPage() {
 
   useEffect(() => { loadGames() }, [])
 
-  const searchedGames = games.filter(g => g.title.toLowerCase().includes(searchQuery.toLowerCase()))
-  const wasPublished = (g: Game) => g.status === 'published'
-  const operatingGames = searchedGames.filter(wasPublished)
-  const preGames = searchedGames.filter(g => !wasPublished(g))
-
-  const CARD_LIMIT = 15
-
   const isPending = (g: Game) => g.approvalStatus === 'pending' || g.approvalStatus === 'review'
-  const liveGames = games.filter(g => g.serviceType === 'live' || g.status === 'published')
-  const betaGames = games.filter(g => !liveGames.includes(g) && g.status !== 'archived' && g.serviceType !== 'ended')
+  const liveGames = games.filter(g => g.serviceType === 'live')
+  const betaGames = games.filter(g => g.serviceType === 'beta')
+  const tabGames = activeTab === 'beta' ? betaGames : liveGames
+
+  const searchedGames = tabGames
+    .filter(g => g.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    .slice()
+    .sort((a, b) => {
+      const aPinned = pinnedIds.includes(a._id) ? 1 : 0
+      const bPinned = pinnedIds.includes(b._id) ? 1 : 0
+      return bPinned - aPinned
+    })
 
   const stats = [
     { label: '전체 게임', value: games.length,                                              color: 'text-text-primary',  sub: null },
@@ -230,8 +227,7 @@ export default function GamesManagementPage() {
       {/* 헤더 */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-1">게임 관리</h1>
-          <p className="text-text-secondary">등록된 게임을 관리하세요</p>
+          <h1 className="text-3xl font-bold mb-1">{activeTab === 'beta' ? '베타존 게임' : '라이브존 게임'}</h1>
         </div>
       </div>
 
@@ -248,7 +244,7 @@ export default function GamesManagementPage() {
         <div className="flex items-center justify-center py-20 text-text-secondary">
           <RefreshCw className="w-5 h-5 animate-spin mr-2" /> 불러오는 중...
         </div>
-      ) : operatingGames.length === 0 && preGames.length === 0 ? (
+      ) : searchedGames.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 gap-5">
           <div className="text-6xl">🎮</div>
           <div className="text-center">
@@ -263,28 +259,7 @@ export default function GamesManagementPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-6">
-          {/* 운영 중 섹션 */}
-          <GameSection
-            title="운영 중"
-            games={operatingGames}
-            expanded={expandOperating}
-            onToggleExpand={() => setExpandOperating(p => !p)}
-            cardLimit={CARD_LIMIT}
-            accent="green"
-          />
-
-          {/* 출시 전 섹션 */}
-          <GameSection
-            title="출시 전"
-            games={preGames}
-            expanded={expandPre}
-            onToggleExpand={() => setExpandPre(p => !p)}
-            cardLimit={CARD_LIMIT}
-            accent="blue"
-          />
-
-        </div>
+        <GameSection games={searchedGames} pinnedIds={pinnedIds} onTogglePin={togglePin} />
       )}
 
       {deleteTarget && (

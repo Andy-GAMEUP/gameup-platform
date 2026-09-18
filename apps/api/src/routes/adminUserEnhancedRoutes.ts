@@ -9,7 +9,6 @@ import {
   grantActivityScore,
   grantPoints,
   bulkNotify,
-  resetUserPassword,
 } from '../controllers/adminUserController'
 import { authenticateToken, requireAdmin, requireAdminLevel } from '../middleware/auth'
 
@@ -23,13 +22,12 @@ router.get('/:id/detail', getUserDetail)
 router.get('/:id/posts', getUserPosts)
 
 // 알림 (Monitor 이상)
-router.post('/bulk-notify', requireAdminLevel('super', 'normal', 'monitor'), bulkNotify)
+router.post('/bulk-notify', requireAdminLevel('super', 'normal'), bulkNotify)
 
 // 수정 (Normal 이상)
 router.patch('/:id', requireAdminLevel('super', 'normal'), updateUser)
 router.post('/:id/activity-score', requireAdminLevel('super', 'normal'), grantActivityScore)
 router.post('/:id/points', requireAdminLevel('super', 'normal'), grantPoints)
-router.post('/:id/reset-password', requireAdminLevel('super', 'normal'), resetUserPassword)
 
 // 승인 (Super만)
 router.patch('/:id/approval', requireAdminLevel('super'), updateCorporateApproval)

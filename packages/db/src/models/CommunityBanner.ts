@@ -13,7 +13,7 @@ export interface ICommunityBanner extends Document {
   title?: string
   sortOrder: number
   isActive: boolean
-  position: 'community' | 'main' | 'event' | 'newgame'
+  position: 'community' | 'main' | 'recommend' | 'newgame'
   dailyStats: IBannerDailyStat[]
   createdAt: Date
   updatedAt: Date
@@ -36,7 +36,7 @@ const communityBannerSchema = new Schema<ICommunityBanner>(
     title:      { type: String, default: '' },
     sortOrder:  { type: Number, default: 0 },
     isActive:   { type: Boolean, default: true },
-    position:   { type: String, enum: ['community', 'main', 'event', 'newgame'], default: 'community' },
+    position:   { type: String, enum: ['community', 'main', 'recommend', 'newgame'], default: 'community' },
     dailyStats: { type: [dailyStatSchema], default: [] },
   },
   { timestamps: true }

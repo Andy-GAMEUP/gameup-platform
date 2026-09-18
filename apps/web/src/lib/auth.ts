@@ -11,6 +11,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: {},
         password: {},
+        totpCode: {},
       },
       authorize: async (credentials) => {
         const res = await fetch(`${process.env.API_URL || 'http://localhost:5000'}/api/users/login`, {
@@ -19,10 +20,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           body: JSON.stringify({
             email: credentials.email,
             password: credentials.password,
+            totpCode: credentials.totpCode || undefined,
           }),
         })
         if (!res.ok) return null
         const data = await res.json()
+        if (!data.user || !data.token) return null
         return {
           id: data.user.id,
           email: data.user.email,

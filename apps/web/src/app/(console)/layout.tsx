@@ -26,7 +26,7 @@ function ConsoleLayoutInner({ children }: { children: React.ReactNode }) {
   if (isLoading || !isAuthenticated) return null
   if (user?.role === 'admin' && !adminView) return null
   if (isPartner) return null
-  if (user?.role === 'admin' && adminView) return <>{children}</>
+  if (user?.role === 'admin' && adminView) return <div className="p-6">{children}</div>
   return <DeveloperLayout>{children}</DeveloperLayout>
 }
 

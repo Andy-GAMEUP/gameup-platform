@@ -55,7 +55,7 @@ export const getPartnerProfiles = async (req: AuthRequest, res: Response) => {
     const skip = (pageNum - 1) * limitNum
 
     const sortParam = String(sort || 'default')
-    const populateOpts = { path: 'userId', select: 'username memberType profileImage companyInfo.companyName companyInfo.companyCategory companyInfo.companyType companyInfo.businessType' }
+    const populateOpts = { path: 'userId', select: 'username role memberType profileImage companyInfo.companyName companyInfo.companyCategory companyInfo.companyType companyInfo.businessType' }
 
     let profiles
     if (sortParam === 'portfolio') {

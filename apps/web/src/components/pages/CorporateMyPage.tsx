@@ -3,11 +3,13 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import { useAuth } from '@/lib/useAuth'
-import { useUnreadInquiryCount } from '@/lib/useUnreadInquiryCount'
 import { authService } from '@/services/authService'
 import MyInquiryTab from '@/components/MyInquiryTab'
 import { COMPANY_TYPE_OPTIONS } from '@/components/pages/partner-profile/constants'
 import { formatPhoneNumber } from '@/lib/formatPhoneNumber'
+import TwoFactorSettings from '@/components/TwoFactorSettings'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 import { Loader2, Lock, Edit2, Check, X, Eye, EyeOff, Trash2, Camera, Building2, MessageCircleQuestion } from 'lucide-react'
 
 function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
@@ -30,7 +32,6 @@ const BUSINESS_TYPE_OPTIONS: { value: 'individual' | 'corporation'; label: strin
 
 export default function CorporateMyPage() {
   const { user, isAuthenticated, isLoading, logout, updateUser } = useAuth()
-  const unreadInquiryCount = useUnreadInquiryCount()
   const router = useRouter()
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const [tab, setTab] = useState<Tab>('account')
@@ -199,7 +200,7 @@ export default function CorporateMyPage() {
         <div className="relative overflow-hidden bg-gradient-to-br from-violet-950 via-slate-900 to-indigo-950 border border-white/10 rounded-2xl p-6 shadow-xl">
           <div className="absolute -top-20 -right-16 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -left-12 w-56 h-56 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-          <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
+          <div className="relative flex flex-col sm:flex-row items-start gap-5">
             <div className="relative flex-shrink-0">
               <div className="w-16 h-16 bg-gradient-to-br from-violet-400 to-indigo-500 rounded-full flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-violet-900/50 ring-2 ring-white/20 overflow-hidden">
                 {user?.profileImage ? (
@@ -221,45 +222,52 @@ export default function CorporateMyPage() {
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
             <div className="flex-1">
-              <h1 className="text-xl font-bold text-white">
+              <h1 className="flex items-center gap-1.5 text-[22px] font-bold text-white">
                 {companyInfo?.companyName || user?.username}
+                {user?.role === 'developer' && <OfficialBadge className="w-[19px] h-[19px]" />}
+                {user?.role === 'admin' && <AdminBadge className="w-[19px] h-[19px]" />}
               </h1>
-              <p className="text-violet-200/70 text-sm">{user?.email}</p>
-              <div className="flex flex-wrap items-center gap-2 mt-2">
-                <span className="bg-white/10 backdrop-blur-sm text-violet-200 border border-white/20 text-xs px-2.5 py-1 rounded-full font-medium">{roleLabel}</span>
+              <div className="mt-[7.8px]">
+                <span className="inline-flex items-center rounded-full bg-bg-tertiary border border-line text-text-secondary font-medium text-xs px-1.5 py-0.5">{roleLabel}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 탭 메뉴 */}
-        <div className="flex gap-1 border-b border-line overflow-x-auto">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-base font-medium border-b-2 whitespace-nowrap transition-colors ${
-                tab === t.key
-                  ? 'border-accent text-accent'
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
-              }`}
-            >
-              {t.icon}{t.label}
-              {t.key === 'inquiry' && unreadInquiryCount > 0 && (
-                <span className="w-1.5 h-1.5 rounded-full bg-danger" />
-              )}
-            </button>
-          ))}
-        </div>
+        {/* 탭 메뉴 + 콘텐츠 */}
+        <div className="flex gap-6 items-start">
+          {/* 좌측 사이드 탭 */}
+          <div className="w-48 flex-shrink-0 space-y-1">
+            {TABS.map((t) => {
+              const disabled = t.key === 'inquiry' && user?.role === 'admin'
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => !disabled && setTab(t.key)}
+                  disabled={disabled}
+                  title={disabled ? '관리자 계정은 문의하기를 이용할 수 없습니다' : undefined}
+                  className={`w-full flex items-center gap-1.5 px-4 py-2.5 text-base font-medium border-l-2 whitespace-nowrap transition-colors ${
+                    disabled
+                      ? 'border-transparent text-text-muted opacity-40 cursor-not-allowed'
+                      : tab === t.key
+                      ? 'border-accent text-accent'
+                      : 'border-transparent text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  {t.icon}{t.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* 우측 콘텐츠 */}
+          <div className="flex-1 min-w-0 space-y-6">
 
         {/* ─── 계정 정보 탭 ─── */}
         {tab === 'account' && (
           <div className="bg-bg-secondary border border-line rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-accent" />
-                <h2 className="text-lg font-semibold">계정 정보</h2>
-              </div>
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-line">
+              <h2 className="text-lg font-semibold">계정 정보</h2>
               {!accountEditing ? (
                 <button onClick={() => setAccountEditing(true)}
                   className="flex items-center gap-1.5 text-base text-accent hover:text-accent-hover transition-colors">
@@ -280,96 +288,115 @@ export default function CorporateMyPage() {
               )}
             </div>
 
+
             <div className="space-y-5">
               {/* 회사명 */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">회사명</label>
-                {accountEditing ? (
-                  <input value={accountForm.companyName} onChange={e => setAccountForm(p => ({ ...p, companyName: e.target.value }))} className={inputCls} />
-                ) : (
-                  <p className={viewCls}>{companyInfo?.companyName || '-'}</p>
-                )}
+              <div className="grid grid-cols-4 gap-4 items-start">
+                <label className="text-text-secondary text-sm pt-2 col-span-1">회사명</label>
+                <div className="col-span-3">
+                  {accountEditing ? (
+                    <input value={accountForm.companyName} onChange={e => setAccountForm(p => ({ ...p, companyName: e.target.value }))} className={inputCls} />
+                  ) : (
+                    <p className={viewCls}>{companyInfo?.companyName || '-'}</p>
+                  )}
+                </div>
               </div>
 
               {/* 담당자 (로그인 아이디) */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">담당자</label>
-                {accountEditing ? (
-                  <input value={accountForm.username} onChange={e => setAccountForm(p => ({ ...p, username: e.target.value }))} maxLength={20} className={inputCls} />
-                ) : (
-                  <p className={viewCls}>{user?.username}</p>
-                )}
+              <div className="grid grid-cols-4 gap-4 items-start">
+                <label className="text-text-secondary text-sm pt-2 col-span-1">담당자</label>
+                <div className="col-span-3">
+                  {accountEditing ? (
+                    <input value={accountForm.username} onChange={e => setAccountForm(p => ({ ...p, username: e.target.value }))} maxLength={20} className={inputCls} />
+                  ) : (
+                    <p className={viewCls}>{user?.username}</p>
+                  )}
+                </div>
               </div>
 
               {/* 이메일 (읽기 전용) */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">이메일</label>
-                <input value={user?.email || ''} disabled readOnly className={inputCls} />
+              <div className="grid grid-cols-4 gap-4 items-start">
+                <label className="text-text-secondary text-sm pt-2 col-span-1">이메일</label>
+                <div className="col-span-3">
+                  <input value={user?.email || ''} disabled readOnly className={inputCls} />
+                </div>
               </div>
 
               {/* 회사 웹사이트 */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">회사 웹사이트</label>
-                {accountEditing ? (
-                  <input value={accountForm.homepageUrl} onChange={e => setAccountForm(p => ({ ...p, homepageUrl: e.target.value }))} placeholder="https://" className={inputCls} />
-                ) : (
-                  <p className={viewCls}>{companyInfo?.homepageUrl || '-'}</p>
-                )}
+              <div className="grid grid-cols-4 gap-4 items-start">
+                <label className="text-text-secondary text-sm pt-2 col-span-1">회사 웹사이트</label>
+                <div className="col-span-3">
+                  {accountEditing ? (
+                    <input value={accountForm.homepageUrl} onChange={e => setAccountForm(p => ({ ...p, homepageUrl: e.target.value }))} placeholder="https://" className={inputCls} />
+                  ) : (
+                    <p className={viewCls}>{companyInfo?.homepageUrl || '-'}</p>
+                  )}
+                </div>
               </div>
 
               {/* 대표 연락처 */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">대표 연락처</label>
-                {accountEditing ? (
-                  <input value={accountForm.contactPhone} onChange={e => setAccountForm(p => ({ ...p, contactPhone: formatPhoneNumber(e.target.value) }))} placeholder="010-1234-5678" className={inputCls} />
-                ) : (
-                  <p className={viewCls}>{contactPerson?.phone || '-'}</p>
-                )}
+              <div className="grid grid-cols-4 gap-4 items-start">
+                <label className="text-text-secondary text-sm pt-2 col-span-1">대표 연락처</label>
+                <div className="col-span-3">
+                  {accountEditing ? (
+                    <input value={accountForm.contactPhone} onChange={e => setAccountForm(p => ({ ...p, contactPhone: formatPhoneNumber(e.target.value) }))} placeholder="010-1234-5678" className={inputCls} />
+                  ) : (
+                    <p className={viewCls}>{contactPerson?.phone || '-'}</p>
+                  )}
+                </div>
               </div>
 
               {/* 사업자등록번호 (읽기 전용) */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">사업자등록번호</label>
-                <input value={companyInfo?.businessNumber || ''} disabled readOnly className={inputCls} />
+              <div className="grid grid-cols-4 gap-4 items-start">
+                <label className="text-text-secondary text-sm pt-2 col-span-1">사업자등록번호</label>
+                <div className="col-span-3">
+                  <input value={companyInfo?.businessNumber || ''} disabled readOnly className={inputCls} />
+                </div>
               </div>
 
               {/* 사업자형태 (읽기 전용) */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">사업자형태</label>
-                <input value={BUSINESS_TYPE_OPTIONS.find(o => o.value === companyInfo?.businessType)?.label || ''} disabled readOnly className={inputCls} />
+              <div className="grid grid-cols-4 gap-4 items-start">
+                <label className="text-text-secondary text-sm pt-2 col-span-1">사업자형태</label>
+                <div className="col-span-3">
+                  <input value={BUSINESS_TYPE_OPTIONS.find(o => o.value === companyInfo?.businessType)?.label || ''} disabled readOnly className={inputCls} />
+                </div>
               </div>
 
               {/* 기업유형 (읽기 전용) */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">기업유형</label>
-                <input value={roleLabel} disabled readOnly className={inputCls} />
+              <div className="grid grid-cols-4 gap-4 items-start">
+                <label className="text-text-secondary text-sm pt-2 col-span-1">기업유형</label>
+                <div className="col-span-3">
+                  <input value={roleLabel} disabled readOnly className={inputCls} />
+                </div>
               </div>
 
               {/* 기업형태 */}
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">기업형태</label>
-                <div className="flex flex-wrap gap-2">
-                  {COMPANY_TYPE_OPTIONS.map(opt => {
-                    const selected = accountEditing ? accountForm.companyType.includes(opt.value) : companyTypes.includes(opt.value)
-                    return (
-                      <button key={opt.value}
-                        onClick={() => accountEditing && toggleCompanyType(opt.value)}
-                        disabled={!accountEditing}
-                        className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors ${
-                          selected
-                            ? 'bg-accent text-text-inverse'
-                            : accountEditing
-                            ? 'bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary border border-line'
-                            : 'bg-bg-tertiary/50 text-text-muted border border-line cursor-default'
-                        }`}>
-                        {opt.label}
-                      </button>
-                    )
-                  })}
+              <div className="grid grid-cols-4 gap-4 items-start">
+                <label className="text-text-secondary text-sm pt-2 col-span-1">기업형태</label>
+                <div className="col-span-3">
+                  <div className="flex flex-wrap gap-2">
+                    {COMPANY_TYPE_OPTIONS.map(opt => {
+                      const selected = accountEditing ? accountForm.companyType.includes(opt.value) : companyTypes.includes(opt.value)
+                      return (
+                        <button key={opt.value}
+                          onClick={() => accountEditing && toggleCompanyType(opt.value)}
+                          disabled={!accountEditing}
+                          className={`px-3 py-1.5 rounded-full text-base font-medium transition-colors ${
+                            selected
+                              ? 'bg-accent text-text-inverse'
+                              : accountEditing
+                              ? 'bg-bg-tertiary text-text-secondary hover:bg-line-light hover:text-text-primary border border-line'
+                              : 'bg-bg-tertiary/50 text-text-primary border border-line cursor-default'
+                          }`}>
+                          {opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {!accountEditing && companyTypes.filter(t => t !== 'developer').length === 0 && (
+                    <p className="text-xs text-text-muted mt-1">등록된 기업 형태 없음</p>
+                  )}
                 </div>
-                {!accountEditing && companyTypes.filter(t => t !== 'developer').length === 0 && (
-                  <p className="text-xs text-text-muted mt-1">등록된 기업 형태 없음</p>
-                )}
               </div>
             </div>
           </div>
@@ -380,50 +407,71 @@ export default function CorporateMyPage() {
 
         {/* ─── 보안 설정 탭 ─── */}
         {tab === 'security' && (
-          <div className="space-y-6">
-            <div className="bg-bg-secondary border border-line rounded-2xl p-6 space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Lock className="w-5 h-5" />비밀번호 변경
-              </h2>
-              {(['current', 'newPw', 'confirm'] as const).map((field) => {
-                const labels = { current: '현재 비밀번호', newPw: '새 비밀번호', confirm: '새 비밀번호 확인' }
-                const keys = { current: 'currentPassword', newPw: 'newPassword', confirm: 'confirmPassword' } as const
-                return (
-                  <div key={field}>
-                    <label className="block text-sm font-medium text-text-secondary mb-1">{labels[field]}</label>
+          <div className="space-y-6 max-w-[470px] mx-auto">
+            <div className="bg-bg-secondary border border-line rounded-2xl p-6">
+              <div className="flex items-center gap-2 mb-6 pb-3 border-b border-line">
+                <h2 className="text-lg font-semibold">비밀번호 변경</h2>
+              </div>
+
+              <div className="space-y-4 max-w-md">
+                {([
+                  { key: 'current', label: '현재 비밀번호', field: 'currentPassword' },
+                  { key: 'newPw',   label: '새 비밀번호 (8자 이상)',  field: 'newPassword' },
+                  { key: 'confirm', label: '새 비밀번호 확인', field: 'confirmPassword' },
+                ] as const).map(({ key, label, field }) => (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">{label}</label>
                     <div className="relative">
                       <input
-                        type={showPw[field] ? 'text' : 'password'}
-                        value={pwForm[keys[field]]}
-                        onChange={(e) => setPwForm(p => ({ ...p, [keys[field]]: e.target.value }))}
-                        className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-3 pr-10 text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                        type={showPw[key] ? 'text' : 'password'}
+                        value={pwForm[field]}
+                        onChange={(e) => setPwForm((p) => ({ ...p, [field]: e.target.value }))}
+                        className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 pr-10 text-text-primary focus:outline-none focus:border-accent transition-colors"
+                        placeholder="비밀번호 입력"
+                        onKeyDown={(e) => e.key === 'Enter' && handleChangePassword()}
                       />
-                      <button onClick={() => setShowPw(p => ({ ...p, [field]: !p[field] }))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary">
-                        {showPw[field] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      <button onClick={() => setShowPw((p) => ({ ...p, [key]: !p[key] }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary">
+                        {showPw[key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
-                )
-              })}
-              <button onClick={handleChangePassword} disabled={pwSaving}
-                className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-inverse font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2">
-                {pwSaving && <Loader2 className="w-4 h-4 animate-spin" />}비밀번호 변경
-              </button>
+                ))}
+
+                {pwForm.newPassword && pwForm.confirmPassword && (
+                  <p className={`text-xs flex items-center gap-1 ${pwForm.newPassword === pwForm.confirmPassword ? 'text-accent' : 'text-red-400'}`}>
+                    {pwForm.newPassword === pwForm.confirmPassword
+                      ? <><Check className="w-3 h-3" /> 비밀번호가 일치합니다</>
+                      : <><X className="w-3 h-3" /> 비밀번호가 일치하지 않습니다</>}
+                  </p>
+                )}
+
+                <button
+                  onClick={handleChangePassword}
+                  disabled={pwSaving}
+                  className="flex items-center gap-2 bg-accent hover:bg-accent-hover text-text-inverse px-5 py-2.5 rounded-lg text-base font-medium transition-colors disabled:opacity-50 mt-2"
+                >
+                  {pwSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
+                  비밀번호 변경
+                </button>
+              </div>
             </div>
 
-            <div className="bg-bg-secondary border border-line rounded-2xl p-6">
-              <h2 className="text-lg font-semibold text-danger mb-2 flex items-center gap-2">
-                <Trash2 className="w-5 h-5" />계정 삭제
-              </h2>
-              <p className="text-text-secondary text-sm mb-4">계정을 삭제하면 즐겨찾기, 리뷰, 활동 내역이 영구적으로 삭제되며, 작성한 게시글과 댓글은 &apos;탈퇴한 회원&apos;으로 표시됩니다. 이 작업은 되돌릴 수 없습니다.</p>
-              <button onClick={() => setDeleteModal(true)}
-                className="px-6 py-2.5 rounded-lg border border-danger text-danger hover:bg-danger/10 transition-colors text-base font-medium">
-                계정 삭제
+            <TwoFactorSettings />
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => setDeleteModal(true)}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-base font-medium transition-colors"
+              >
+                <Trash2 className="w-4 h-4" /> 계정 삭제
               </button>
             </div>
           </div>
         )}
+
+          </div>
+        </div>
       </div>
 
       {/* 계정 삭제 모달 */}

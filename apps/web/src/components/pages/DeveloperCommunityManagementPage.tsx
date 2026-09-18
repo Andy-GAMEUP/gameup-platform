@@ -9,7 +9,7 @@ import GameReviewManager from '@/components/GameReviewManager'
 import ConfirmModal from '@/components/ConfirmModal'
 
 interface GameOption { _id: string; title: string; thumbnail?: string }
-interface Announcement { _id: string; title: string; createdAt: string; type: string; priority: string; content: string; isPublished?: boolean }
+interface Announcement { _id: string; title: string; createdAt: string; priority: string; content: string; isPublished?: boolean }
 
 type Tab = 'announcements' | 'reviews'
 
@@ -17,13 +17,6 @@ const TAB_META: Record<Tab, { title: string; desc: string }> = {
   announcements: { title: '공지 작성', desc: '게임 이용자에게 보여줄 공지를 작성하고 관리하세요.' },
   reviews:       { title: '리뷰 관리', desc: '게임에 남겨진 리뷰를 확인하고 관리하세요.' },
 }
-
-const ANNOUNCEMENT_TYPE_OPTIONS = [
-  { value: 'notice', label: '공지' },
-  { value: 'update', label: '업데이트' },
-  { value: 'maintenance', label: '점검' },
-  { value: 'event', label: '이벤트' },
-]
 
 const PRIORITY_OPTIONS = [
   { value: 'high', label: '긴급' },
@@ -105,7 +98,7 @@ export default function DeveloperCommunityManagementPage() {
     if (!gameId) return
     await gameService.createGameAnnouncement(gameId, {
       title: data.title, content: data.content,
-      type: data.type, priority: data.priority,
+      priority: data.priority,
       images: data.images, thumbnailIndex: data.thumbnailIndex,
       isPublished: data.isPublished,
     })
@@ -115,7 +108,7 @@ export default function DeveloperCommunityManagementPage() {
     if (!gameId) return
     await gameService.updateGameAnnouncement(gameId, announcementId, {
       title: data.title, content: data.content,
-      type: data.type, priority: data.priority,
+      priority: data.priority,
       images: data.images, thumbnailIndex: data.thumbnailIndex,
       isPublished: data.isPublished,
     })
@@ -185,7 +178,6 @@ export default function DeveloperCommunityManagementPage() {
         <AnnouncementManager
           items={announcements}
           loading={announcementsLoading}
-          typeOptions={ANNOUNCEMENT_TYPE_OPTIONS}
           priorityOptions={PRIORITY_OPTIONS}
           onCreate={addAnnouncement}
           onUpdate={updateAnnouncement}

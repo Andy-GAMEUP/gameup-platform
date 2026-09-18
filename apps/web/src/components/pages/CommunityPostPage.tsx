@@ -7,6 +7,9 @@ import communityService, { PostSummary } from '@/services/communityService'
 import ConfirmModal from '@/components/ConfirmModal'
 import { useAuth } from '@/lib/useAuth'
 import Avatar from '@/components/community/Avatar'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
+import UserHoverCard from '@/components/UserHoverCard'
 import CommentSection from '@/components/community/CommentSection'
 import {
   ThumbsUp, Eye, ArrowLeft,
@@ -203,12 +206,18 @@ export default function CommunityPostPage() {
 
           {/* 작성자 정보 */}
           <div className="flex items-center gap-3 mb-5 pb-4 border-b border-line">
-            <Avatar username={post.author?.username||'?'} role={post.author?.role||''} profileImage={post.author?.profileImage} size={9} />
+            <UserHoverCard userId={post.author?._id} role={post.author?.role}>
+              <Avatar username={post.author?.username||'?'} role={post.author?.role||''} profileImage={post.author?.profileImage} size={9} />
+            </UserHoverCard>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-sm font-semibold ${post.author?.role==='admin'?'text-violet-700 dark:text-violet-300':post.author?.role==='developer'?'text-cyan-700 dark:text-cyan-300':'text-text-primary'}`}>
-                  {post.author?.username}
-                </span>
+                <UserHoverCard userId={post.author?._id} role={post.author?.role}>
+                  <span className="text-sm font-semibold text-text-primary">
+                    {post.author?.username}
+                  </span>
+                </UserHoverCard>
+                {post.author?.role === 'developer' && <OfficialBadge />}
+                {post.author?.role === 'admin' && <AdminBadge />}
               </div>
               <div className="flex items-center gap-3 mt-1">
                 <p className="text-text-secondary text-xs">{new Date(post.createdAt).toLocaleString('ko-KR')}</p>

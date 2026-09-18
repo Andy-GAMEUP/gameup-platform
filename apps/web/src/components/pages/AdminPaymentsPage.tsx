@@ -1,6 +1,6 @@
 'use client'
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { Search, Download, ChevronDown, LayoutGrid, RefreshCw } from 'lucide-react'
+import { Search, Download, ChevronDown, LayoutGrid } from 'lucide-react'
 import Image from 'next/image'
 import { gameService } from '@/services/gameService'
 import { adminService } from '@/services/adminService'
@@ -29,8 +29,12 @@ const STATUS_LABEL: Record<string, string> = {
   refunded:  '환불',
 }
 
+// 예전 규칙으로 저장된 결제 건은 productName 끝에 " (itemId/gameId)"가 붙어있어 표시에서 제거한다
+const cleanProductName = (name?: string) => (name || '').replace(/\s*\([0-9a-f]{24}\)$/i, '')
+
 export default function AdminPaymentsPage() {
   const [allGames,         setAllGames]         = useState<GameOption[]>([])
+  const [paidGames,        setPaidGames]        = useState<GameOption[]>([])
   const [developers,       setDevelopers]       = useState<DeveloperOption[]>([])
   const [developerId,      setDeveloperId]      = useState('')
   const [developerDropdownOpen, setDeveloperDropdownOpen] = useState(false)
@@ -38,8 +42,8 @@ export default function AdminPaymentsPage() {
   const [gameDropdownOpen, setGameDropdownOpen] = useState(false)
 
   const games = developerId
-    ? allGames.filter(g => String(g.developerId?._id) === developerId)
-    : allGames
+    ? paidGames.filter(g => String(g.developerId?._id) === developerId)
+    : paidGames
   const [period,           setPeriod]           = useState<Period>(() => (typeof window !== 'undefined' ? (localStorage.getItem('admin_payments_period') as Period) : null) ?? '30d')
   const [customFrom,       setCustomFrom]       = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('admin_payments_customFrom') : null) ?? toYMD(new Date(Date.now() - 29 * 86400000)))
   const [customTo,         setCustomTo]         = useState(() => (typeof window !== 'undefined' ? localStorage.getItem('admin_payments_customTo') : null) ?? toYMD(new Date()))
@@ -91,6 +95,9 @@ export default function AdminPaymentsPage() {
         }
       })
       setDevelopers(Array.from(devMap.values()).sort((a, b) => a.name.localeCompare(b.name)))
+    }).catch(() => {})
+    gameService.getPaymentGames().then(res => {
+      setPaidGames((res.games || []) as unknown as GameOption[])
     }).catch(() => {})
   }, [])
 
@@ -146,25 +153,24 @@ export default function AdminPaymentsPage() {
 
   const downloadCSV = () => {
     if (!payments.length) return
-    const headers = ['개발사명', '게임', '결제 일시', '주문번호', '주문자', '이메일', '상품 고유 ID', '상품명', '결제 금액', '결제 통화', '결제 수단', '결제 처리', '결제 상태', '결제 계정', '지급 계정', '지급 상태']
+    const headers = ['개발사명', '게임', '결제 일시', '결제 시각', '주문번호', '주문자', '이메일', '상품명', '프로덕트 네임', '결제 금액', '결제 통화', '결제 수단', '결제수단 상세', '결제 상태', '결제 완료 일시']
     const getDeveloper = (p: any) => (p.gameId as any)?.developerId?.companyInfo?.companyName || (p.gameId as any)?.developerId?.username || '-'
     const rows = payments.map((p: any) => [
       getDeveloper(p),
       (p.gameId as any)?.title || '',
-      new Date(p.createdAt).toLocaleString('ko-KR'),
+      formatDate(p.createdAt),
+      new Date(p.createdAt).toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       p.pgOrderId || '',
       (p.userId as any)?.username || '',
       (p.userId as any)?.email || '',
-      p.metadata?.itemId || '',
       p.metadata?.itemName || '',
+      cleanProductName(p.metadata?.productName),
       p.amount ?? '',
       p.currency || 'KRW',
       p.pgProvider || '',
-      p.metadata?.processType || '',
+      p.metadata?.paymentMethod || '',
       STATUS_LABEL[p.status] ?? p.status,
-      p.metadata?.paymentAccount || '',
-      p.metadata?.deliveryAccount || '',
-      p.metadata?.deliveryStatus || '',
+      p.metadata?.paidAt ? new Date(p.metadata.paidAt).toLocaleString('ko-KR') : '',
     ])
     const escape = (v: unknown) => {
       const s = String(v ?? '')
@@ -186,18 +192,18 @@ export default function AdminPaymentsPage() {
       {/* 헤더 + 기간/엑셀 같은 행 */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h2 className="text-2xl font-bold text-text-primary">결제 • 환불</h2>
+          <h2 className="text-2xl font-bold text-text-primary">결제</h2>
           <p className="text-text-secondary text-sm mt-1 truncate">
             전체 개발사의 결제 내역을 확인하고 관리할 수 있습니다.
           </p>
         </div>
-        {/* 기간 드롭다운 + 갱신 + 엑셀 */}
+        {/* 기간 드롭다운 + 엑셀 + 날짜 범위 */}
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="relative" ref={periodDropdownRef}>
               <button
                 onClick={() => setPeriodDropdownOpen(v => !v)}
-                className="flex items-center gap-2 px-3 py-2 border border-line rounded-md text-base bg-bg-tertiary text-text-primary hover:bg-bg-secondary transition-colors min-w-[100px] justify-between"
+                className="flex items-center gap-2 h-10 px-3 border border-line rounded-md text-sm bg-bg-tertiary text-text-primary hover:bg-bg-secondary transition-colors min-w-[100px] justify-between"
               >
                 <span>{PERIOD_OPTIONS.find(o => o.value === period)?.label ?? '기간'}</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${periodDropdownOpen ? 'rotate-180' : ''}`} />
@@ -217,7 +223,7 @@ export default function AdminPaymentsPage() {
                               setPeriodDropdownOpen(false)
                             }
                           }}
-                          className={`w-full text-left px-3 py-2 text-base transition-colors ${
+                          className={`w-full flex items-center h-10 text-left px-3 text-sm transition-colors ${
                             period === opt.value ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'
                           }`}
                         >
@@ -258,16 +264,10 @@ export default function AdminPaymentsPage() {
                 </div>
               )}
             </div>
-            {/* 갱신 */}
-            <button onClick={() => load(1)} disabled={loading}
-              className="flex items-center px-3 py-2 border border-line rounded-md text-base text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors"
-              title="새로고침">
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
             {/* 엑셀 내보내기 */}
             <div className="relative group">
               <button onClick={downloadCSV} disabled={!payments.length}
-                className="flex items-center px-3 py-2 border border-line rounded-md text-base text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors">
+                className="flex items-center justify-center h-10 w-10 border border-line rounded-md text-text-secondary hover:bg-bg-tertiary disabled:opacity-40 transition-colors">
                 <Download className="w-4 h-4" />
               </button>
               <div className="absolute right-0 top-full mt-1.5 px-2 py-1 bg-bg-primary border border-line rounded text-xs text-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
@@ -276,8 +276,6 @@ export default function AdminPaymentsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-accent">{periodLabel.label}</span>
-            <span className="text-xs text-text-muted">|</span>
             <span className="text-xs text-text-secondary">{periodLabel.from}</span>
             <span className="text-xs text-text-muted">~</span>
             <span className="text-xs text-text-secondary">{periodLabel.to}</span>
@@ -294,7 +292,7 @@ export default function AdminPaymentsPage() {
             <div className="relative" ref={developerDropdownRef}>
               <button
                 onClick={() => setDeveloperDropdownOpen(v => !v)}
-                className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-line rounded-md text-base text-text-primary hover:bg-bg-tertiary transition-colors min-w-[160px] justify-between"
+                className="flex items-center gap-2 h-10 px-3 bg-bg-secondary border border-line rounded-md text-sm text-text-primary hover:bg-bg-tertiary transition-colors min-w-[160px] justify-between"
               >
                 <span className="truncate">
                   {developerId ? (developers.find(d => d._id === developerId)?.name ?? '전체 개발사') : '전체 개발사'}
@@ -305,7 +303,7 @@ export default function AdminPaymentsPage() {
                 <div className="absolute left-0 top-full mt-1 bg-bg-primary border border-line rounded-md shadow-lg z-20 min-w-[160px] max-h-60 overflow-y-auto">
                   <button
                     onClick={() => { setDeveloperId(''); setDeveloperDropdownOpen(false) }}
-                    className={`w-full flex items-center px-3 py-2 text-base transition-colors ${developerId === '' ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
+                    className={`w-full flex items-center h-10 px-3 text-sm transition-colors ${developerId === '' ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
                   >
                     전체 개발사
                   </button>
@@ -313,7 +311,7 @@ export default function AdminPaymentsPage() {
                     <button
                       key={d._id}
                       onClick={() => { setDeveloperId(d._id); setDeveloperDropdownOpen(false) }}
-                      className={`w-full flex items-center px-3 py-2 text-base transition-colors truncate ${d._id === developerId ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
+                      className={`w-full flex items-center h-10 px-3 text-sm transition-colors truncate ${d._id === developerId ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
                     >
                       {d.name}
                     </button>
@@ -329,7 +327,7 @@ export default function AdminPaymentsPage() {
             <div className="relative" ref={gameDropdownRef}>
               <button
                 onClick={() => setGameDropdownOpen(v => !v)}
-                className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-line rounded-md text-base text-text-primary hover:bg-bg-tertiary transition-colors min-w-[180px] justify-between"
+                className="flex items-center gap-2 h-10 px-3 bg-bg-secondary border border-line rounded-md text-sm text-text-primary hover:bg-bg-tertiary transition-colors min-w-[180px] justify-between"
               >
                 {gameId === '' ? (
                   <span className="flex items-center gap-2">
@@ -355,7 +353,7 @@ export default function AdminPaymentsPage() {
                 <div className="absolute left-0 top-full mt-1 bg-bg-primary border border-line rounded-md shadow-lg z-20 min-w-[180px] max-h-60 overflow-y-auto">
                   <button
                     onClick={() => { setGameId(''); setGameDropdownOpen(false) }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-base transition-colors ${gameId === '' ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
+                    className={`w-full flex items-center gap-2 h-10 px-3 text-sm transition-colors ${gameId === '' ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
                   >
                     <span className="w-5 h-5 rounded bg-bg-secondary flex items-center justify-center flex-shrink-0">
                       <LayoutGrid className="w-3 h-3 text-text-muted" />
@@ -366,7 +364,7 @@ export default function AdminPaymentsPage() {
                     <button
                       key={g._id}
                       onClick={() => { setGameId(g._id); setGameDropdownOpen(false) }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-base transition-colors ${g._id === gameId ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
+                      className={`w-full flex items-center gap-2 h-10 px-3 text-sm transition-colors ${g._id === gameId ? 'bg-accent text-text-primary font-semibold' : 'text-text-secondary hover:bg-bg-tertiary'}`}
                     >
                       {g.thumbnail
                         ? <Image src={g.thumbnail} alt={g.title} width={20} height={20} className="w-5 h-5 rounded object-cover flex-shrink-0" unoptimized />
@@ -382,7 +380,7 @@ export default function AdminPaymentsPage() {
           <div>
             <p className="text-xs text-text-secondary mb-1">결제 수단</p>
             <select value={provider} onChange={e => setProvider(e.target.value)}
-              className="bg-bg-secondary border border-line rounded-md px-3 py-2 text-sm text-text-primary focus:outline-none">
+              className="h-10 bg-bg-secondary border border-line rounded-md px-3 text-sm text-text-primary focus:outline-none">
               <option value="all">전체</option>
               {providers.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
@@ -395,12 +393,12 @@ export default function AdminPaymentsPage() {
               <input value={search} onChange={e => setSearch(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && load(1)}
                 placeholder="상품명, 주문자로 검색..."
-                className="w-full bg-bg-secondary border border-line rounded-md pl-9 pr-3 py-2 text-sm text-text-primary placeholder-text-muted focus:outline-none" />
+                className="w-full h-10 bg-bg-secondary border border-line rounded-md pl-9 pr-3 text-sm text-text-primary placeholder-text-muted focus:outline-none" />
             </div>
           </div>
 
           <button onClick={() => load(1)} disabled={loading}
-            className="px-5 py-2 bg-accent text-text-inverse text-base font-semibold rounded-md hover:bg-accent-hover disabled:opacity-40 transition-colors">
+            className="h-10 px-5 bg-accent text-text-inverse text-sm font-semibold rounded-md hover:bg-accent-hover disabled:opacity-40 transition-colors">
             {loading ? '조회 중...' : '조회'}
           </button>
         </div>
@@ -420,24 +418,18 @@ export default function AdminPaymentsPage() {
         <div className="text-center py-16 text-text-muted text-sm">데이터가 없습니다.</div>
       ) : (
         <div className="bg-bg-secondary border border-line rounded-xl overflow-x-auto">
-          <table className="w-full text-sm text-text-primary min-w-[1800px]">
+          <table className="w-full text-sm text-text-primary min-w-[1350px]">
             <thead>
-              <tr className="border-b border-line bg-bg-tertiary/50 text-xs font-semibold text-text-secondary divide-x divide-line/30">
-                <th className="px-3 py-3 text-left whitespace-nowrap">개발사명</th>
+              <tr className="border-b border-line bg-bg-tertiary/50 text-xs font-semibold text-text-secondary divide-x divide-line">
                 <th className="px-3 py-3 text-left whitespace-nowrap">게임</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">결제 일시</th>
+                <th className="px-3 py-3 text-left w-[258px]">결제 일시</th>
                 <th className="px-3 py-3 text-left whitespace-nowrap">주문번호</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">주문자</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">상품 고유 ID</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">상품명</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">결제 금액</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">결제 통화</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">결제 수단</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">결제 처리</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">결제 상태</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">결제 계정</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">지급 계정</th>
-                <th className="px-3 py-3 text-left whitespace-nowrap">지급 상태</th>
+                <th className="px-3 py-3 text-left w-[127px]">주문자</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap w-[90px]">결제 금액</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap w-[80px]">결제 통화</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap w-[80px]">결제 수단</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap w-[100px]">결제수단 상세</th>
+                <th className="px-3 py-3 text-left whitespace-nowrap w-[80px]">결제 상태</th>
               </tr>
             </thead>
             <tbody>
@@ -446,37 +438,38 @@ export default function AdminPaymentsPage() {
                 const developer = (p.gameId as any)?.developerId
                 const developerName = developer?.companyInfo?.companyName || developer?.username || '-'
                 return (
-                  <tr key={p._id} className="border-b border-line/50 last:border-0 hover:bg-bg-tertiary/20 divide-x divide-line/30">
-                    <td className="px-3 py-3 text-text-secondary text-sm whitespace-nowrap">{developerName}</td>
+                  <tr key={p._id} className="border-b border-line/50 last:border-0 hover:bg-bg-tertiary/20 divide-x divide-line">
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-2">
                         {(p.gameId as any)?.thumbnail
-                          ? <Image src={(p.gameId as any).thumbnail} alt="" width={28} height={28} className="w-7 h-7 rounded object-cover flex-shrink-0" unoptimized />
-                          : <span className="w-7 h-7 rounded bg-bg-tertiary flex-shrink-0" />}
-                        <span className="text-sm text-text-primary truncate max-w-[120px]">{(p.gameId as any)?.title || '-'}</span>
+                          ? <Image src={(p.gameId as any).thumbnail} alt="" width={39} height={39} className="w-[39px] h-[39px] rounded object-cover flex-shrink-0" unoptimized />
+                          : <span className="w-[39px] h-[39px] rounded bg-bg-tertiary flex-shrink-0" />}
+                        <div className="min-w-0">
+                          <p className="text-sm text-text-secondary truncate max-w-[120px]">{(p.gameId as any)?.title || '-'}</p>
+                          <p className="text-sm text-text-secondary truncate max-w-[120px]">{developerName}</p>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-xs text-text-secondary">
-                      <p>{formatDate(p.createdAt)}</p>
-                      <p>{new Date(p.createdAt).toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}</p>
+                    <td className="px-3 py-3 w-[258px] break-words">
+                      <p className="text-sm text-text-secondary">결제 : {new Date(p.createdAt).toLocaleString('ko-KR')}</p>
+                      <p className="text-sm text-text-secondary">결제 완료 : {p.metadata?.paidAt ? new Date(p.metadata.paidAt).toLocaleString('ko-KR') : '-'}</p>
                     </td>
-                    <td className="px-3 py-3 font-mono text-xs text-text-muted">{p.pgOrderId || '-'}</td>
-                    <td className="px-3 py-3">
-                      <p className="font-medium">{(p.userId as any)?.username || '-'}</p>
-                      <p className="text-xs text-text-muted">{(p.userId as any)?.email || ''}</p>
+                    <td className="px-3 py-3 max-w-[380px] break-all">
+                      <p className="text-sm text-text-secondary">상품명 : {p.metadata?.itemName || '-'}</p>
+                      <p className="text-sm text-text-secondary">프로덕트 네임 : {cleanProductName(p.metadata?.productName) || '-'}</p>
+                      <p className="text-sm text-text-secondary">주문번호 : <span className="font-mono">{p.pgOrderId || '-'}</span></p>
                     </td>
-                    <td className="px-3 py-3 font-mono text-xs text-text-muted">{p.metadata?.itemId || '-'}</td>
-                    <td className="px-3 py-3 text-text-secondary">{p.metadata?.itemName || '-'}</td>
-                    <td className="px-3 py-3 font-semibold">{p.amount?.toLocaleString() ?? '-'}</td>
-                    <td className="px-3 py-3 text-text-secondary">{p.currency || 'KRW'}</td>
-                    <td className="px-3 py-3 text-text-secondary">{p.pgProvider || '-'}</td>
-                    <td className="px-3 py-3 text-text-secondary">{p.metadata?.processType || '-'}</td>
-                    <td className={`px-3 py-3 text-sm ${isRefund ? 'text-danger' : 'text-text-primary'}`}>
+                    <td className="px-3 py-3 w-[127px] break-words">
+                      <p className="text-sm text-text-secondary">{(p.userId as any)?.username || '-'}</p>
+                      <p className="text-sm text-text-secondary">{(p.userId as any)?.email || ''}</p>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-text-secondary">{p.amount?.toLocaleString() ?? '-'}</td>
+                    <td className="px-3 py-3 text-sm text-text-secondary">{p.currency || 'KRW'}</td>
+                    <td className="px-3 py-3 text-sm text-text-secondary">{p.pgProvider || '-'}</td>
+                    <td className="px-3 py-3 text-sm text-text-secondary">{p.metadata?.paymentMethod || '-'}</td>
+                    <td className={`px-3 py-3 text-sm ${isRefund ? 'text-danger' : 'text-text-secondary'}`}>
                       {STATUS_LABEL[p.status] ?? p.status}
                     </td>
-                    <td className="px-3 py-3 text-text-secondary text-xs">{p.metadata?.paymentAccount || '-'}</td>
-                    <td className="px-3 py-3 text-text-secondary text-xs">{p.metadata?.deliveryAccount || '-'}</td>
-                    <td className="px-3 py-3 text-text-secondary">{p.metadata?.deliveryStatus || '-'}</td>
                   </tr>
                 )
               })}

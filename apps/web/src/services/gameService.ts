@@ -2,6 +2,19 @@
 import apiClient from './api'
 import { Game } from '@gameup/types'
 
+export interface BetaTesterApplicant {
+  applicationId: string
+  appliedAt: string
+  user: { _id: string; username: string; email: string; profileImage?: string }
+}
+
+export interface BetaTesterUser {
+  applicationId: string
+  user: { _id: string; username: string; email: string; profileImage?: string }
+  game: { _id: string; title: string }
+  appliedAt?: string
+}
+
 export interface RecentGameAnnouncement {
   _id: string
   gameId: string
@@ -14,7 +27,7 @@ export interface RecentGameAnnouncement {
   likes: string[]
   createdAt: string
   game: { _id: string; title: string; thumbnail?: string; serviceType?: string } | null
-  developer: { _id: string; username: string; profileImage?: string } | null
+  developer: { _id: string; username: string; profileImage?: string; role?: string } | null
 }
 
 export const gameService = {
@@ -23,8 +36,43 @@ export const gameService = {
     return response.data
   },
 
+  getZoneRankings: async (zone: 'beta' | 'live', limit = 5) => {
+    const response = await apiClient.get<{ games: (Game & { rank: number; score: number })[]; computedAt: string | null }>('/games/rankings', { params: { zone, limit } })
+    return response.data
+  },
+
+  quickSearchGames: async (q: string, serviceType: 'beta' | 'live', limit = 8) => {
+    const response = await apiClient.get<{ games: Game[] }>('/games/quick-search', { params: { q, serviceType, limit } })
+    return response.data
+  },
+
   getGameById: async (id: string) => {
     const response = await apiClient.get<{ game: Game }>(`/games/${id}`)
+    return response.data
+  },
+
+  applyBetaTester: async (id: string) => {
+    const response = await apiClient.post<{ success: boolean; alreadyApplied?: boolean }>(`/games/${id}/beta-apply`)
+    return response.data
+  },
+
+  getBetaTesterGames: async () => {
+    const response = await apiClient.get<{ games: (Pick<Game, '_id' | 'title' | 'thumbnail' | 'testers' | 'maxTesters' | 'startDate' | 'endDate' | 'approvalStatus' | 'status'>)[] }>('/games/admin/beta-testers')
+    return response.data
+  },
+
+  getBetaTesterUsers: async (search?: string) => {
+    const response = await apiClient.get<{ users: BetaTesterUser[] }>('/games/admin/beta-testers/users', { params: search ? { search } : undefined })
+    return response.data
+  },
+
+  getBetaTesterApplicants: async (id: string) => {
+    const response = await apiClient.get<{ applicants: BetaTesterApplicant[] }>(`/games/${id}/beta-testers`)
+    return response.data
+  },
+
+  removeBetaTester: async (id: string, applicationId: string) => {
+    const response = await apiClient.delete<{ success: boolean }>(`/games/${id}/beta-testers/${applicationId}`)
     return response.data
   },
 
@@ -366,12 +414,12 @@ export const gameService = {
     return response.data
   },
 
-  createGameAnnouncement: async (gameId: string, data: { title: string; content: string; type: string; priority: string; startDate?: string; endDate?: string; images?: string[]; thumbnailIndex?: number; isPublished?: boolean }) => {
+  createGameAnnouncement: async (gameId: string, data: { title: string; content: string; priority: string; startDate?: string; endDate?: string; images?: string[]; thumbnailIndex?: number; isPublished?: boolean }) => {
     const response = await apiClient.post(`/games/${gameId}/announcements`, data)
     return response.data
   },
 
-  updateGameAnnouncement: async (gameId: string, announcementId: string, data: { title: string; content: string; type: string; priority: string; images?: string[]; thumbnailIndex?: number; isPublished?: boolean }) => {
+  updateGameAnnouncement: async (gameId: string, announcementId: string, data: { title: string; content: string; priority: string; images?: string[]; thumbnailIndex?: number; isPublished?: boolean }) => {
     const response = await apiClient.patch(`/games/${gameId}/announcements/${announcementId}`, data)
     return response.data
   },
@@ -414,8 +462,8 @@ export const gameService = {
     return response.data
   },
 
-  getRecentGameAnnouncements: async (limit = 15, page = 1, search?: string, sort?: string) => {
-    const response = await apiClient.get('/games/announcements/recent', { params: { limit, page, search, sort } })
+  getRecentGameAnnouncements: async (limit = 15, page = 1, search?: string, sort?: string, serviceType?: string) => {
+    const response = await apiClient.get('/games/announcements/recent', { params: { limit, page, search, sort, serviceType } })
     return response.data as { announcements: RecentGameAnnouncement[]; total: number; page: number; totalPages: number }
   },
 
@@ -464,5 +512,10 @@ export const gameService = {
   getPaymentProviders: async () => {
     const response = await apiClient.get('/games/developer/payment-providers')
     return response.data as { providers: string[] }
+  },
+
+  getPaymentGames: async () => {
+    const response = await apiClient.get('/games/developer/payment-games')
+    return response.data as { games: any[] }
   },
 }

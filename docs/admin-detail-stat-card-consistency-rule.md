@@ -21,7 +21,7 @@
 
 ## 현재 적용 대상
 
-- `apps/web/src/components/pages/AdminUserDetailPage.tsx` — 계정 정보 카드 (2026-09-04~07)
-  - 조회 전용(Field+Input disabled): 아이디, 이메일, 레벨, 가입일, 최근 로그인, 관심 장르(콤마 텍스트), 자기소개
+- `apps/web/src/components/pages/AdminUserDetailPage.tsx` — 계정 정보 카드 (2026-09-04~07, 2026-09-16 필드 추가)
+  - 조회 전용(Field+Input disabled): 아이디, 이메일, 레벨, 가입일, 최근 로그인, 관심 장르(콤마 텍스트), 자기소개, **플레이한 게임 수**(`PlayerActivityModel.distinct('gameId', {userId, type:'play'})` 개수), **참여한 베타 수**(`GameTesterApplicationModel.countDocuments({userId})`) — 둘 다 파생 집계값이라 수정 불가, 타일이 아니라 입력창 행으로 추가
   - 수정 가능(통계 타일): 활동점수, 캡코인 (적용 미정)
   - 계정 상태(정상/정지 배지 + 계정 중지·해제 버튼)는 카드 안이 아니라 화면 맨 아래 뒤로가기/저장 버튼과 같은 줄, 왼쪽에 배치

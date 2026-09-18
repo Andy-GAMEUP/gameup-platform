@@ -3,7 +3,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import adminService, { PublicAnnouncement } from '@/services/adminService'
-import NoticeTypeBadge from '@/components/NoticeTypeBadge'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 import { useAuth } from '@/lib/useAuth'
 import { ArrowLeft, Loader2, Shield, Eye, ThumbsUp, AlertTriangle, CheckCircle } from 'lucide-react'
 
@@ -123,7 +124,6 @@ export default function AnnouncementDetailPage() {
           {/* 제목 */}
           <div className="flex items-center gap-2 mb-4 flex-wrap">
             <h1 className="text-text-primary text-xl sm:text-2xl lg:text-3xl font-bold">{announcement.title}</h1>
-            <NoticeTypeBadge type={announcement.type} className="flex-shrink-0" />
           </div>
 
           {/* 작성자 */}
@@ -141,6 +141,8 @@ export default function AnnouncementDetailPage() {
                 <span className="text-violet-700 dark:text-violet-300 text-sm font-semibold">
                   {announcement.authorId?.username ?? '관리자'}
                 </span>
+                {announcement.authorId?.role === 'developer' && <OfficialBadge />}
+                {announcement.authorId?.role === 'admin' && <AdminBadge />}
               </div>
               <div className="flex items-center gap-3 mt-0.5">
                 <p className="text-text-secondary text-xs">{new Date(announcement.publishedAt ?? announcement.createdAt).toLocaleString('ko-KR')}</p>

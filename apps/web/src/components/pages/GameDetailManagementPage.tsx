@@ -3,11 +3,12 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import {
-  ChevronLeft, ChevronDown, Star, Users, MessageSquare, Download, Eye,
+  ChevronLeft, ChevronRight, ChevronDown, Star, Users, MessageSquare, Download, Eye,
   Globe, Upload, Image as ImageIcon, Film,
   Trash2, Save, Plus, Edit, ShoppingBag,
   DollarSign, Package, Megaphone, Play, Send, Check,
   Gift, Shield, Zap, Trophy, CreditCard, UserPlus, LogIn, Timer, Settings, BarChart2, X, Link2,
+  CheckCircle2, Circle,
 } from 'lucide-react'
 
 import Editor from '@/components/Editor'
@@ -18,9 +19,16 @@ import RequestReviewButton from '../RequestReviewButton'
 import ConfirmModal from '../ConfirmModal'
 import AlertModal from '../AlertModal'
 import GameApprovalStatusBadge from '../GameApprovalStatusBadge'
+import SocialLinkField, { isValidSocialLink } from '../SocialLinkField'
 import { useRouter } from 'next/navigation'
 import { FORM_GENRES, RATING_CLASS_ICON, CONTENT_DESCRIPTORS } from '@/constants/game'
 import { formatDate } from '@/lib/formatDate'
+import { getImageDimensions, sizeMismatchMessage } from '@/lib/imageDimensions'
+
+const ICON_SIZE = { width: 450, height: 450 }
+const BANNER_SIZE = { width: 1440, height: 617 } // 2026-09-17: 960×411에서 화질 저하 확인돼 1440×617로 재상향 — 흔한 노트북 해상도(1440px)에서는 업스케일 없이 표시, 1920보다는 여전히 작업 부담 적음
+const SCREENSHOT_SIZE = { width: 1920, height: 1080 }
+const SUB_ICON_SIZE = { width: 560, height: 252 } // 2026-09-17: 게임 상세 개발사 카드가 좌우 꽉 차게 커지면서(280×126) 최대 노출 크기 갱신, 2배 여유로 300×135 → 560×252 (20:9 유지)
 
 interface MediaItem { _id: string; type: 'screenshot' | 'video'; title: string; url: string; order: number; createdAt: string }
 interface ShopItem { _id: string; name: string; price: number; currency: string; type: string; paymentType?: 'cash' | 'capcoin'; currencyName?: string; currencyIconUrl?: string; currencyType: string; currencyId?: string; currencyAmount: number; bonusAmount: number; stock: string; sales: number; active: boolean; description: string; imageUrl: string; sortOrder: number; itemId?: string; names?: Record<string, string>; currencyNames?: Record<string, string>; isSpecial?: boolean; specialImageUrl?: string; country?: string; saleStatus?: 'registering' | 'reviewing' | 'on_sale' | 'rejected'; capcoinPrice?: number; capcoinName?: string; capcoinIconUrl?: string }
@@ -67,7 +75,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'media', label: '미디어' },
   { key: 'shop', label: '상품 등록' },
   { key: 'points', label: '포인트 보상' },
-  { key: 'dev-settings', label: '개발자 설정' },
 ]
 
 const POINT_TYPES = [
@@ -142,9 +149,14 @@ interface GameData {
   requirements?: string
   website?: string
   discord?: string
+  instagram?: string
+  twitter?: string
+  youtube?: string
+  gameDomain?: string
   isPublic?: boolean
   thumbnail?: string
   bannerImage?: string
+  subIcon?: string
   shopCurrencyIconUrl?: string
   shopCurrencyName?: string
   shopCurrencyNames?: Record<string, string>
@@ -177,6 +189,7 @@ export default function GameDetailManagementPage() {
   // ── 게임정보 편집 폼 상태 ─────────────────────────────────────
   const [editTitle, setEditTitle] = useState('')
   const [editGenre, setEditGenre] = useState('')
+  const [editGameDomain, setEditGameDomain] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editStartDate, setEditStartDate] = useState('')
@@ -186,8 +199,13 @@ export default function GameDetailManagementPage() {
   const [editRequirements, setEditRequirements] = useState('')
   const [editWebsite, setEditWebsite] = useState('')
   const [editDiscord, setEditDiscord] = useState('')
+  const [editInstagram, setEditInstagram] = useState('')
+  const [editTwitter, setEditTwitter] = useState('')
+  const [editYoutube, setEditYoutube] = useState('')
   const [editIsPublic, setEditIsPublic] = useState(true)
   const [editSaving, setEditSaving] = useState(false)
+  const [betaSubmitting, setBetaSubmitting] = useState(false)
+  const [showCancelReviewConfirm, setShowCancelReviewConfirm] = useState(false)
   const [iconUploading, setIconUploading] = useState(false)
   const iconInputRef = useRef<HTMLInputElement>(null)
   const [genreOpen, setGenreOpen] = useState(false)
@@ -196,6 +214,8 @@ export default function GameDetailManagementPage() {
   const [showLaunchConfirm, setShowLaunchConfirm] = useState(false)
   const [bannerUploading, setBannerUploading] = useState(false)
   const bannerInputRef = useRef<HTMLInputElement>(null)
+  const [subIconUploading, setSubIconUploading] = useState(false)
+  const subIconInputRef = useRef<HTMLInputElement>(null)
 
   const [screenshots, setScreenshots] = useState<MediaItem[]>([])
   const [videos, setVideos] = useState<MediaItem[]>([])
@@ -222,6 +242,7 @@ export default function GameDetailManagementPage() {
   const [showDeleteItemConfirm, setShowDeleteItemConfirm] = useState(false)
   const ssFileRef = useRef<HTMLInputElement>(null)
   const vidFileRef = useRef<HTMLInputElement>(null)
+  const ssScrollRef = useRef<HTMLDivElement>(null)
   const [newItem, setNewItem] = useState({ name: '', price: '', currency: 'KRW', type: '패키지', paymentType: 'cash' as 'cash' | 'capcoin', currencyName: '', currencyIconFile: null as File | null, currencyIconPreview: '', currencyType: '', currencyAmount: '', bonusAmount: '', stock: '무제한', description: '', country: 'KR', itemId: '', imageFile: null as File | null, imagePreview: '', isSpecial: false, specialImageFile: null as File | null, specialImagePreview: '', capcoinPrice: '', capcoinName: '', capcoinIconFile: null as File | null, capcoinIconPreview: '' })
   const [editImageFile, setEditImageFile] = useState<File | null>(null)
   const [editImagePreview, setEditImagePreview] = useState('')
@@ -287,6 +308,7 @@ export default function GameDetailManagementPage() {
         setGameData(g)
         setEditTitle(g.title || '')
         setEditGenre(g.genre || '')
+        setEditGameDomain(g.gameDomain || '')
         setEditNotes(g.notes || '')
         setEditDescription(g.description || '')
         setEditStartDate(g.startDate ? g.startDate.split('T')[0] : '')
@@ -296,6 +318,9 @@ export default function GameDetailManagementPage() {
         setEditRequirements(g.requirements || '')
         setEditWebsite(g.website || '')
         setEditDiscord(g.discord || '')
+        setEditInstagram(g.instagram || '')
+        setEditTwitter(g.twitter || '')
+        setEditYoutube(g.youtube || '')
         setEditIsPublic(g.status !== 'draft' && g.status !== 'archived')
         setCertRatingClass(g.ratingCertificate?.ratingClass || '')
         setCertNumber(g.ratingCertificate?.certNumber || '')
@@ -374,8 +399,6 @@ export default function GameDetailManagementPage() {
       loadPointPolicies()
       loadPointStats()
       loadBalance()
-    }
-    if (activeTab === 'dev-settings') {
       loadApiKeys()
     }
     if (activeTab === 'media') {
@@ -475,6 +498,12 @@ export default function GameDetailManagementPage() {
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !gameId) return
+    const dim = await getImageDimensions(file).catch(() => null)
+    if (!dim || dim.width < ICON_SIZE.width || dim.height < ICON_SIZE.height) {
+      setAlertMessage(sizeMismatchMessage(ICON_SIZE.width, ICON_SIZE.height, dim || undefined))
+      if (iconInputRef.current) iconInputRef.current.value = ''
+      return
+    }
     setIconUploading(true)
     try {
       const fd = new FormData()
@@ -484,7 +513,7 @@ export default function GameDetailManagementPage() {
       await triggerReReview()
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '아이콘 업로드에 실패했습니다'
-      alert(msg)
+      setAlertMessage(msg)
     }
     setIconUploading(false)
     if (iconInputRef.current) iconInputRef.current.value = ''
@@ -493,6 +522,12 @@ export default function GameDetailManagementPage() {
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !gameId) return
+    const dim = await getImageDimensions(file).catch(() => null)
+    if (!dim || dim.width < BANNER_SIZE.width || dim.height < BANNER_SIZE.height) {
+      setAlertMessage(sizeMismatchMessage(BANNER_SIZE.width, BANNER_SIZE.height, dim || undefined))
+      if (bannerInputRef.current) bannerInputRef.current.value = ''
+      return
+    }
     setBannerUploading(true)
     try {
       const fd = new FormData()
@@ -502,10 +537,34 @@ export default function GameDetailManagementPage() {
       await triggerReReview()
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '배너 업로드에 실패했습니다'
-      alert(msg)
+      setAlertMessage(msg)
     }
     setBannerUploading(false)
     if (bannerInputRef.current) bannerInputRef.current.value = ''
+  }
+
+  const handleSubIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !gameId) return
+    const dim = await getImageDimensions(file).catch(() => null)
+    if (!dim || dim.width < SUB_ICON_SIZE.width || dim.height < SUB_ICON_SIZE.height) {
+      setAlertMessage(sizeMismatchMessage(SUB_ICON_SIZE.width, SUB_ICON_SIZE.height, dim || undefined))
+      if (subIconInputRef.current) subIconInputRef.current.value = ''
+      return
+    }
+    setSubIconUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('subIcon', file)
+      const data = await gameService.updateGame(gameId, fd)
+      setGameData(prev => prev ? { ...prev, subIcon: (data.game as unknown as GameData).subIcon } : prev)
+      await triggerReReview()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '서브아이콘 업로드에 실패했습니다'
+      setAlertMessage(msg)
+    }
+    setSubIconUploading(false)
+    if (subIconInputRef.current) subIconInputRef.current.value = ''
   }
 
   const handleSaveAll = async () => {
@@ -515,6 +574,7 @@ export default function GameDetailManagementPage() {
       const fd = new FormData()
       fd.append('title', editTitle.trim())
       fd.append('genre', editGenre)
+      fd.append('gameDomain', editGameDomain.trim())
       fd.append('notes', editNotes)
       fd.append('description', editDescription.trim())
       fd.append('startDate', editStartDate)
@@ -524,6 +584,9 @@ export default function GameDetailManagementPage() {
       fd.append('requirements', editRequirements)
       fd.append('website', editWebsite)
       fd.append('discord', editDiscord)
+      fd.append('instagram', editInstagram)
+      fd.append('twitter', editTwitter)
+      fd.append('youtube', editYoutube)
       if (!editIsPublic) fd.append('status', 'draft')
       fd.append('ratingClass', certRatingClass)
       fd.append('certNumber', certNumber)
@@ -544,6 +607,33 @@ export default function GameDetailManagementPage() {
       alert(msg)
     }
     setEditSaving(false)
+  }
+
+  const handleBetaSubmit = async () => {
+    if (!gameId) return
+    setBetaSubmitting(true)
+    try {
+      await gameService.requestReview(gameId)
+      await reloadGameData()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      alert(msg || '베타존 신청에 실패했습니다.')
+    }
+    setBetaSubmitting(false)
+  }
+
+  const handleCancelReview = async () => {
+    if (!gameId) return
+    setShowCancelReviewConfirm(false)
+    setBetaSubmitting(true)
+    try {
+      await gameService.cancelReview(gameId)
+      await reloadGameData()
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      alert(msg || '심사 취소에 실패했습니다.')
+    }
+    setBetaSubmitting(false)
   }
 
   const triggerReReview = async () => {
@@ -596,6 +686,16 @@ export default function GameDetailManagementPage() {
     const selected = Array.from(e.target.files || [])
     if (!gameId || selected.length === 0) return
     const toAdd = selected.slice(0, 10 - screenshots.length)
+
+    for (const file of toAdd) {
+      const dim = await getImageDimensions(file).catch(() => null)
+      if (!dim || dim.width < SCREENSHOT_SIZE.width || dim.height < SCREENSHOT_SIZE.height) {
+        setAlertMessage(sizeMismatchMessage(SCREENSHOT_SIZE.width, SCREENSHOT_SIZE.height, dim || undefined))
+        e.target.value = ''
+        return
+      }
+    }
+
     try {
       for (const file of toAdd) {
         const title = file.name.replace(/\.[^.]+$/, '')
@@ -605,7 +705,7 @@ export default function GameDetailManagementPage() {
       await triggerReReview()
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || '등록에 실패했습니다'
-      alert(msg)
+      setAlertMessage(msg)
     }
     e.target.value = ''
   }
@@ -824,6 +924,7 @@ export default function GameDetailManagementPage() {
     return (
       editTitle !== (gameData.title || '') ||
       editGenre !== (gameData.genre || '') ||
+      editGameDomain !== (gameData.gameDomain || '') ||
       editNotes !== (gameData.notes || '') ||
       editDescription !== (gameData.description || '') ||
       editStartDate !== (gameData.startDate ? gameData.startDate.split('T')[0] : '') ||
@@ -831,9 +932,25 @@ export default function GameDetailManagementPage() {
       editMaxTesters !== (gameData.maxTesters ? String(gameData.maxTesters) : '') ||
       editTestType !== (gameData.testType || '') ||
       editWebsite !== (gameData.website || '') ||
-      editDiscord !== (gameData.discord || '')
+      editDiscord !== (gameData.discord || '') ||
+      editInstagram !== (gameData.instagram || '') ||
+      editTwitter !== (gameData.twitter || '') ||
+      editYoutube !== (gameData.youtube || '')
     )
-  }, [gameData, editTitle, editGenre, editNotes, editDescription, editStartDate, editEndDate, editMaxTesters, editTestType, editWebsite, editDiscord])
+  }, [gameData, editTitle, editGenre, editGameDomain, editNotes, editDescription, editStartDate, editEndDate, editMaxTesters, editTestType, editWebsite, editDiscord, editInstagram, editTwitter, editYoutube])
+
+  const hasInvalidSocialLink = (
+    !isValidSocialLink('website', editWebsite) ||
+    !isValidSocialLink('discord', editDiscord) ||
+    !isValidSocialLink('instagram', editInstagram) ||
+    !isValidSocialLink('twitter', editTwitter) ||
+    !isValidSocialLink('youtube', editYoutube)
+  )
+
+  const betaDurationDays = editStartDate && editEndDate
+    ? Math.round((new Date(editEndDate).getTime() - new Date(editStartDate).getTime()) / (1000 * 60 * 60 * 24))
+    : null
+  const betaDurationExceeded = betaDurationDays !== null && betaDurationDays > 60
 
   if (gameLoading) return (
     <div className="flex items-center justify-center h-64 text-text-secondary">불러오는 중...</div>
@@ -843,41 +960,44 @@ export default function GameDetailManagementPage() {
     <div className="flex items-center justify-center h-64 text-text-secondary">게임을 찾을 수 없습니다.</div>
   )
 
-  const serviceLabel: Record<string, string> = { beta: '베타', live: '라이브', ended: '종료' }
-
   const isUnderReview = !adminView && gameData.status !== 'published' && (gameData.approvalStatus === 'pending' || gameData.approvalStatus === 'review')
   const isWaitingLaunch = !adminView && gameData.status !== 'published' && gameData.approvalStatus === 'approved'
   const isEditLocked = isUnderReview || isWaitingLaunch
   const isLiveLocked = !adminView && gameData.status === 'published'
 
+  const savedBetaDurationDays = gameData.startDate && gameData.endDate
+    ? Math.round((new Date(gameData.endDate).getTime() - new Date(gameData.startDate).getTime()) / (1000 * 60 * 60 * 24))
+    : null
   const reviewChecks = {
     icon: !!gameData.thumbnail,
-    basicInfo: !!(gameData.title && gameData.genre && gameData.description),
+    basicInfo: gameData.serviceType === 'beta'
+      ? !!(gameData.title && gameData.genre && gameData.gameDomain && gameData.notes)
+      : !!(gameData.title && gameData.genre && gameData.description),
     heroBanner: !!gameData.bannerImage,
-    trailer: videos.length >= 1,
-    screenshots: screenshots.length >= 4,
-    rating: !!gameData.ratingCertificate?.ratingClass,
-    betaInfo: gameData.serviceType === 'live' || !!(gameData.startDate && gameData.endDate && gameData.maxTesters && gameData.testType),
+    trailer: gameData.serviceType === 'beta' || videos.length >= 1,
+    screenshots: gameData.serviceType === 'beta' || screenshots.length >= 4,
+    rating: gameData.serviceType === 'beta' || !!gameData.ratingCertificate?.ratingClass,
+    betaInfo: gameData.serviceType === 'live' || !!(gameData.startDate && gameData.endDate && gameData.maxTesters),
+    betaDuration: gameData.serviceType !== 'beta' || (savedBetaDurationDays !== null && savedBetaDurationDays > 0 && savedBetaDurationDays <= 60),
   }
   const canRequestReview = Object.values(reviewChecks).every(Boolean)
   const reviewBlockReasons = [
     !reviewChecks.icon && '게임 아이콘',
-    !reviewChecks.basicInfo && '기본 정보',
+    !reviewChecks.basicInfo && (gameData.serviceType === 'beta' ? '기본 정보 (제목/장르/URL/게임 설명)' : '기본 정보'),
     !reviewChecks.heroBanner && '히어로 배너',
     !reviewChecks.trailer && '트레일러 (최소 1개)',
     !reviewChecks.screenshots && '게임 스크린샷 (최소 4개)',
     !reviewChecks.rating && '연령 등급 지정',
     !reviewChecks.betaInfo && '베타 테스트 정보',
+    !reviewChecks.betaDuration && '테스트 기간 (최대 60일)',
   ].filter((v): v is string => !!v)
-  const reviewChecklist = [
-    { label: '게임 아이콘', done: reviewChecks.icon },
-    { label: '기본 정보', done: reviewChecks.basicInfo },
-    { label: '히어로 배너', done: reviewChecks.heroBanner },
-    { label: '트레일러 (최소 1개)', done: reviewChecks.trailer },
-    { label: '게임 스크린샷 (최소 4개)', done: reviewChecks.screenshots },
-    { label: '연령 등급 지정', done: reviewChecks.rating },
-    ...(gameData.serviceType !== 'live' ? [{ label: '베타 테스트 정보', done: reviewChecks.betaInfo }] : []),
-  ]
+  const visibleTabs = TABS.filter(t => gameData.serviceType !== 'beta' || !['rating', 'points', 'shop', 'media'].includes(t.key))
+  const mainTabs = [...visibleTabs.filter(t => t.key !== 'shop'), ...visibleTabs.filter(t => t.key === 'shop')]
+  const tabProgress: Partial<Record<TabKey, boolean>> = {
+    edit: reviewChecks.basicInfo && reviewChecks.heroBanner && reviewChecks.betaInfo,
+    rating: reviewChecks.rating,
+    media: reviewChecks.trailer && reviewChecks.screenshots && reviewChecks.icon,
+  }
 
   const isEditPriceCtx = editItemModal && editingItem !== null
   const priceModalPrice = isEditPriceCtx ? String(editingItem!.price) : newItem.price
@@ -887,8 +1007,282 @@ export default function GameDetailManagementPage() {
     calcPriceList(priceModalPrice, priceModalCurrency, exchangeRates).forEach(c => { priceModalMap[c.code] = String(c.price) })
   }
 
+  // 미디어 탭 카드들 — 라이브존/베타존 레이아웃이 달라 재사용을 위해 미리 구성해둔다 (2026-09-16, 라이브존만 아이콘을 기본 정보 탭에서 미디어 탭으로 이동)
+  const iconCard = (
+    <div className="rounded-2xl overflow-hidden border border-line bg-bg-secondary flex flex-col h-full w-[173px] flex-shrink-0">
+      <input
+        ref={iconInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={handleIconUpload}
+      />
+      <div className="px-5 py-4 border-b border-line">
+        <h2 className="text-sm font-bold leading-none">게임 아이콘</h2>
+      </div>
+      <div className="p-4 flex-1 flex items-center">
+        {gameData.thumbnail ? (
+          <div
+            className="relative w-full aspect-square rounded-xl overflow-hidden border border-line cursor-pointer group"
+            onClick={() => iconInputRef.current?.click()}
+          >
+            <img
+              src={
+                gameData.thumbnail.startsWith('http')
+                  ? gameData.thumbnail
+                  : gameData.thumbnail.startsWith('/uploads/')
+                    ? gameData.thumbnail
+                    : `/uploads/thumbnails/${gameData.thumbnail.split('/').pop()}`
+              }
+              alt="게임 아이콘"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium border border-white/20">
+                <Upload className="w-3.5 h-3.5" /> 변경
+              </div>
+            </div>
+            {iconUploading && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xs">업로드 중...</div>
+            )}
+          </div>
+        ) : (
+          <div
+            className="w-full aspect-square border-2 border-dashed border-line rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
+            onClick={() => iconInputRef.current?.click()}
+          >
+            {iconUploading ? (
+              <span className="text-xs">업로드 중...</span>
+            ) : (
+              <>
+                <ImageIcon className="w-6 h-6 opacity-40" />
+                <p className="text-xs">아이콘 업로드</p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="px-4 pb-4">
+        <p className="text-[11px] text-text-secondary">최소 크기 {ICON_SIZE.width}×{ICON_SIZE.height}px · 등록 가능 파일 PNG, JPG, WEBP</p>
+      </div>
+    </div>
+  )
+
+  const subIconCard = (
+    <div className="rounded-2xl overflow-hidden border border-line bg-bg-secondary flex flex-col h-[271px] w-[208px] flex-shrink-0">
+      <input
+        ref={subIconInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={handleSubIconUpload}
+      />
+      <div className="px-5 py-4 border-b border-line">
+        <h2 className="text-sm font-bold leading-none">서브아이콘</h2>
+      </div>
+      <div className="p-4 flex-1 flex items-center">
+        {gameData.subIcon ? (
+          <div
+            className="relative w-full aspect-[20/9] rounded-xl overflow-hidden border border-line cursor-pointer group"
+            onClick={() => subIconInputRef.current?.click()}
+          >
+            <img
+              src={gameData.subIcon.startsWith('/uploads/') ? gameData.subIcon : `/uploads/subicons/${gameData.subIcon.split('/').pop()}`}
+              alt="서브아이콘"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium border border-white/20">
+                <Upload className="w-3.5 h-3.5" /> 변경
+              </div>
+            </div>
+            {subIconUploading && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xs">업로드 중...</div>
+            )}
+          </div>
+        ) : (
+          <div
+            className="w-full aspect-[20/9] border-2 border-dashed border-line rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
+            onClick={() => subIconInputRef.current?.click()}
+          >
+            {subIconUploading ? (
+              <span className="text-xs">업로드 중...</span>
+            ) : (
+              <>
+                <ImageIcon className="w-6 h-6 opacity-40" />
+                <p className="text-xs">서브아이콘 업로드</p>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="px-4 pb-4">
+        <p className="text-[11px] text-text-secondary">최소 크기 {SUB_ICON_SIZE.width}×{SUB_ICON_SIZE.height}px · 등록 가능 파일 PNG, JPG, WEBP</p>
+      </div>
+    </div>
+  )
+
+  const heroBannerCard = (
+    <div className="rounded-2xl overflow-hidden border border-line bg-bg-secondary flex flex-col h-full">
+      <input
+        ref={bannerInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={handleBannerUpload}
+      />
+      <div className="px-5 py-4 border-b border-line">
+        <h2 className="text-sm font-bold leading-none">히어로 배너</h2>
+      </div>
+      <div className="p-4">
+        {gameData.bannerImage ? (
+          <div
+            className="relative w-full h-48 rounded-xl overflow-hidden border border-line cursor-pointer group"
+            onClick={() => bannerInputRef.current?.click()}
+          >
+            <img
+              src={gameData.bannerImage.startsWith('/uploads/') ? gameData.bannerImage : `/uploads/banners/${gameData.bannerImage.split('/').pop()}`}
+              alt="히어로 배너"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium border border-white/20">
+                <Upload className="w-3.5 h-3.5" /> 변경
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="w-full h-48 border-2 border-dashed border-line rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
+            onClick={() => bannerInputRef.current?.click()}
+          >
+            <ImageIcon className="w-6 h-6 opacity-40" />
+            <p className="text-xs">배너 업로드</p>
+          </div>
+        )}
+      </div>
+      <div className="px-4 pb-4">
+        <p className="text-[11px] text-text-secondary">최소 크기 1440×617px · 등록 가능 파일 PNG, JPG, WEBP</p>
+      </div>
+    </div>
+  )
+
+  const trailerCard = (
+    <div className="rounded-2xl border border-line bg-bg-secondary overflow-hidden flex flex-col h-full">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+        <div>
+          <h2 className="text-sm font-bold leading-none">트레일러 영상</h2>
+        </div>
+        <p className="text-xs text-text-muted">{videos.length} / 3</p>
+      </div>
+
+      <div className="p-4 space-y-3">
+        {mediaLoading ? (
+          <div className="text-center py-10 text-text-secondary text-sm">불러오는 중...</div>
+        ) : (
+          <div className="flex gap-2.5">
+            {videos.map((v, idx) => (
+              <div key={v._id} className="relative group flex-1 h-48 rounded-xl overflow-hidden border border-line bg-black">
+                <video
+                  src={`${UPLOADS_URL}${v.url}`}
+                  className="w-full h-full object-cover"
+                  muted
+                  preload="metadata"
+                  onLoadedMetadata={e => { (e.target as HTMLVideoElement).currentTime = 1 }}
+                />
+                <div className="absolute top-2 left-2 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] font-bold flex items-center justify-center z-10">
+                  {idx + 1}
+                </div>
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <button
+                    onClick={() => deleteVideo(v._id)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium border border-white/20 hover:bg-white/30 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> 삭제
+                  </button>
+                </div>
+              </div>
+            ))}
+            {Array.from({ length: 3 - videos.length }).map((_, i) => (
+              <div
+                key={`empty-${i}`}
+                className="flex-1 h-48 border-2 border-dashed border-line rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
+                onClick={() => vidFileRef.current?.click()}
+              >
+                <Film className="w-6 h-6 opacity-40" />
+                <p className="text-xs">트레일러 업로드 {videos.length + i + 1}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      <p className="text-[11px] text-text-secondary">등록 가능 파일 MP4, MOV, WEBM · 최소 1개 등록</p>
+      </div>
+    </div>
+  )
+
+  const screenshotCard = (
+    <div className="rounded-2xl border border-line bg-bg-secondary overflow-hidden flex-1 h-[271px] flex flex-col">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+        <h2 className="text-sm font-bold leading-none">게임 스크린샷</h2>
+        <p className="text-xs text-text-muted">{screenshots.length} / 10</p>
+      </div>
+
+      <div className="p-4 flex-1 flex flex-col">
+        {mediaLoading ? (
+          <div className="flex-1 flex items-center justify-center text-text-secondary text-sm">불러오는 중...</div>
+        ) : (
+          <div className="flex-1 flex items-center">
+            <div className="relative group/ss w-full">
+              <div ref={ssScrollRef} className="flex gap-2.5 overflow-x-auto scrollbar-hide scroll-smooth">
+                {screenshots.map(ss => (
+                  <div key={ss._id} className="relative group flex-shrink-0 w-[calc((100%-30px)/4)] aspect-video rounded-xl border border-line overflow-hidden">
+                    <img src={ss.url} alt={ss.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <button
+                        onClick={() => deleteScreenshot(ss._id)}
+                        className="flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-white text-[11px] font-medium border border-white/20 hover:bg-white/30 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" /> 삭제
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {Array.from({ length: screenshots.length < 10 ? Math.max(1, 4 - screenshots.length) : 0 }).map((_, i) => {
+                  const isRequired = screenshots.length >= 1 && screenshots.length < 4 && i < (4 - screenshots.length)
+                  return (
+                    <div
+                      key={`empty-${i}`}
+                      className={`flex-shrink-0 w-[calc((100%-30px)/4)] aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors ${isRequired ? '!border-red-500 text-red-400 hover:!border-red-400' : 'border-line text-text-muted hover:border-accent hover:text-accent'}`}
+                      onClick={() => ssFileRef.current?.click()}
+                    >
+                      <ImageIcon className="w-6 h-6 opacity-40" />
+                      <p className="text-xs">스크린샷 업로드 {screenshots.length + i + 1}</p>
+                    </div>
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => ssScrollRef.current?.scrollBy({ left: -ssScrollRef.current.clientWidth, behavior: 'smooth' })}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center opacity-0 group-hover/ss:opacity-100 transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5 text-white" />
+              </button>
+              <button
+                onClick={() => ssScrollRef.current?.scrollBy({ left: ssScrollRef.current.clientWidth, behavior: 'smooth' })}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center opacity-0 group-hover/ss:opacity-100 transition-colors"
+              >
+                <ChevronRight className="w-5 h-5 text-white" />
+              </button>
+            </div>
+          </div>
+        )}
+        <p className="text-[11px] text-text-secondary">최소 크기 1920×1080px · 등록 가능 파일 PNG, JPG, WEBP · 최소 4개 등록</p>
+      </div>
+    </div>
+  )
+
   return (
-    <div className="space-y-[10.56px] pt-[8.64px] px-[9.6px] pb-[9.6px]">
+    <div className="space-y-[10.56px] -mt-4 px-[9.6px] pb-[9.6px]">
 
       {/* 출시 확인 팝업 */}
       {showLaunchConfirm && (
@@ -920,66 +1314,106 @@ export default function GameDetailManagementPage() {
       )}
 
       <div>
-        <div className="flex items-center justify-between mb-[8.8px]">
-          <Link href="/games-management">
-            <button className="flex items-center gap-1 text-base text-text-secondary hover:text-text-primary transition-colors">
-              <ChevronLeft className="w-4 h-4" /> 게임 목록
-            </button>
-          </Link>
+        {!adminView && (
+          <div className="mb-[13.64px]">
+            <Link href={`/games-management?tab=${gameData.serviceType === 'beta' ? 'beta' : 'live'}`}>
+              <button className="flex items-center gap-1 text-base text-text-secondary hover:text-text-primary transition-colors">
+                <ChevronLeft className="w-4 h-4" /> 게임 목록
+              </button>
+            </Link>
+          </div>
+        )}
+        <div className="flex items-end gap-3">
+          <h1 className="text-3xl font-bold">{gameData.title}</h1>
+          <div className="flex items-center gap-2 pb-1">
+            <GameApprovalStatusBadge approvalStatus={gameData.approvalStatus} status={gameData.status} />
+          </div>
+        </div>
+        {gameData.serviceType === 'beta' ? (
+          <div className="w-[54%] flex items-stretch justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-sm text-text-secondary mt-2">베타존 등록을 위해 정보를 세팅해주세요.</p>
+              <p className="text-sm text-text-secondary">베타존 게임은 무료로 진행되고, 테스트 기간이 끝나면 유저 데이터는 초기화됩니다.</p>
+            </div>
+            {!isLiveLocked && !isWaitingLaunch && (
+              <button
+                onClick={isUnderReview ? () => setShowCancelReviewConfirm(true) : handleBetaSubmit}
+                disabled={betaSubmitting || (isUnderReview ? false : (!canRequestReview || adminView))}
+                title={
+                  isUnderReview ? '클릭하면 심사를 취소할 수 있습니다'
+                  : !canRequestReview && reviewBlockReasons.length > 0 ? `아직 준비되지 않았어요: ${reviewBlockReasons.join(', ')}`
+                  : undefined
+                }
+                className="flex-shrink-0 mt-2 flex items-center justify-center gap-2 px-4 rounded-md text-sm font-semibold transition-colors text-white bg-blue-600 hover:bg-blue-500 border border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4" /> {betaSubmitting ? (isUnderReview ? '취소 중...' : '신청 중...') : isUnderReview ? '심사 중' : '베타존 신청'}
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-text-secondary mt-2">게임의 설명을 제공해주세요.</p>
+            <p className="text-sm text-text-secondary">기본 정보, 등급 분류, 미디어는 심사를 위해서 꼭 추가해주셔야해요.</p>
+          </>
+        )}
+      </div>
+
+      {gameData.serviceType !== 'beta' && (
+        <div className="flex items-center gap-6 flex-wrap border-b border-line !mt-[14.78px]">
+          {mainTabs.map(t => {
+            const progress = tabProgress[t.key]
+            const isActive = activeTab === t.key
+            const tabError = showReviewErrors && progress === false
+            return (
+              <button key={t.key} onClick={() => setActiveTab(t.key)}
+                className={`relative flex items-center gap-1.5 pb-3 -mb-px text-base font-medium border-b-2 transition-colors ${
+                  isActive
+                    ? 'text-accent border-accent'
+                    : tabError
+                    ? 'text-red-400 border-transparent'
+                    : 'text-text-secondary border-transparent hover:text-text-primary'
+                }`}>
+                {progress !== undefined && (
+                  progress
+                    ? <CheckCircle2 className="w-4 h-4 text-accent" />
+                    : <Circle className="w-4 h-4 text-text-muted" />
+                )}
+                {t.label}
+              </button>
+            )
+          })}
           {gameData.status !== 'published' && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-2">
               <RequestReviewButton
                 gameId={gameId}
                 gameTitle={gameData.title}
                 approvalStatus={gameData.approvalStatus}
                 hasSnapshot={!!gameData.publishedSnapshot}
                 onSuccess={reloadGameData}
-                size="lg"
+                size="md"
                 color="violet"
                 extraDisabled={adminView || !canRequestReview}
                 extraDisabledTitle={adminView ? '관리자는 심사 등록할 수 없습니다' : undefined}
-                checklist={!adminView ? reviewChecklist : undefined}
+                checklist={undefined}
                 onDisabledClick={!canRequestReview && !adminView ? () => setShowReviewErrors(true) : undefined}
               />
               <button
                 onClick={adminView ? undefined : handleLaunchGame}
                 disabled={adminView || gameData.approvalStatus !== 'approved'}
                 title={adminView ? '관리자는 출시할 수 없습니다' : gameData.approvalStatus !== 'approved' ? '심사 완료 후 출시할 수 있습니다' : undefined}
-                className="flex items-center gap-2 px-6 py-3 rounded-lg text-base font-semibold transition-colors text-white bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-semibold transition-colors text-white bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Globe className="w-5 h-5" />
+                <Globe className="w-4 h-4" />
                 게임 출시
               </button>
             </div>
           )}
         </div>
-        <div className="flex items-end gap-3">
-          <h1 className="text-3xl font-bold">{gameData.title}</h1>
-          <div className="flex items-center gap-2 pb-1">
-            <span className="text-xs px-2 py-1 rounded-full bg-accent-light text-accent border border-accent-muted">
-              {serviceLabel[gameData.serviceType] || gameData.serviceType}
-            </span>
-            <GameApprovalStatusBadge approvalStatus={gameData.approvalStatus} status={gameData.status} />
-          </div>
-        </div>
-      </div>
+      )}
 
-      <div className="flex items-center gap-3 flex-wrap min-h-[48px]">
-        <div className="flex gap-1 bg-bg-secondary border border-line rounded-lg p-1 flex-wrap">
-          {TABS.map(t => {
-            const tabError = showReviewErrors && (
-              (t.key === 'edit'  && (!reviewChecks.basicInfo || !reviewChecks.heroBanner || !reviewChecks.betaInfo)) ||
-              (t.key === 'media' && (!reviewChecks.trailer   || !reviewChecks.screenshots || !reviewChecks.icon))
-            )
-            return (
-              <button key={t.key} onClick={() => setActiveTab(t.key)}
-                className={`px-4 py-2 text-base rounded-md transition-colors ${activeTab === t.key ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>
-                {t.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      {gameData.serviceType === 'beta' && (
+        <div className="border-b border-line !mt-[14.78px]" />
+      )}
 
       {/* ── 탭 콘텐츠 ── */}
       <div className="mt-[42.24px]">
@@ -990,158 +1424,37 @@ export default function GameDetailManagementPage() {
           <input ref={ssFileRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleSsFileChange} />
           <input ref={vidFileRef} type="file" accept="video/mp4,video/quicktime,video/webm,video/avi,.mp4,.mov,.webm,.avi" multiple className="hidden" onChange={handleVidFileChange} />
 
-          {/* ── 상단: 히어로 배너 + 트레일러 (게임 아이콘은 기본 정보 탭으로 이동) ──────────────────────── */}
-          <div className="grid grid-cols-[5fr_7fr] gap-5 items-stretch">
-
-            {/* 히어로 배너 */}
-            <div className="rounded-2xl overflow-hidden border border-line bg-bg-secondary flex flex-col h-full">
-              <input
-                ref={bannerInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                onChange={handleBannerUpload}
-              />
-              <div className="px-5 py-4 border-b border-line">
-                <h2 className="text-sm font-bold leading-none">히어로 배너</h2>
-              </div>
-              <div className="p-4">
-                {gameData.bannerImage ? (
-                  <div
-                    className="relative w-full h-48 rounded-xl overflow-hidden border border-line cursor-pointer group"
-                    onClick={() => bannerInputRef.current?.click()}
-                  >
-                    <img
-                      src={gameData.bannerImage.startsWith('/uploads/') ? gameData.bannerImage : `/uploads/banners/${gameData.bannerImage.split('/').pop()}`}
-                      alt="히어로 배너"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium border border-white/20">
-                        <Upload className="w-3.5 h-3.5" /> 변경
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className="w-full h-48 border-2 border-dashed border-line rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
-                    onClick={() => bannerInputRef.current?.click()}
-                  >
-                    <ImageIcon className="w-6 h-6 opacity-40" />
-                    <p className="text-xs">배너 업로드</p>
-                  </div>
-                )}
-              </div>
-              <div className="px-4 pb-4">
-                <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <p className="text-[11px] text-text-secondary">권장 1920×640px · PNG, JPG, WEBP · 최대 5MB</p>
-                </div>
-              </div>
-            </div>
-
-            {/* 트레일러 */}
-
-            <div className="rounded-2xl border border-line bg-bg-secondary overflow-hidden flex flex-col h-full">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-                <div>
-                  <h2 className="text-sm font-bold leading-none">트레일러 영상</h2>
-                </div>
-                <p className="text-xs text-text-muted">{videos.length} / 3</p>
+          {gameData.serviceType === 'live' ? (
+            <>
+              {/* ── 1행: 게임 아이콘 + 서브아이콘 + 게임 스크린샷 (라이브존 전용 — 게임 아이콘을 기본 정보 탭에서 이동) — 아이콘/서브아이콘은 기존 축소 크기(px) 고정, 스크린샷이 남는 폭을 전부 차지(flex-1)해서 우측 끝까지 채움 ──────────────────────── */}
+              <div className="flex gap-5 items-stretch w-full">
+                {iconCard}
+                {subIconCard}
+                {screenshotCard}
               </div>
 
-              <div className="p-4 space-y-3">
-                {mediaLoading ? (
-                  <div className="text-center py-10 text-text-secondary text-sm">불러오는 중...</div>
-                ) : (
-                  <div className="flex gap-2.5">
-                    {videos.map((v, idx) => (
-                      <div key={v._id} className="relative group flex-1 h-48 rounded-xl overflow-hidden border border-line bg-black">
-                        <video
-                          src={`${UPLOADS_URL}${v.url}`}
-                          className="w-full h-full object-cover"
-                          muted
-                          preload="metadata"
-                          onLoadedMetadata={e => { (e.target as HTMLVideoElement).currentTime = 1 }}
-                        />
-                        <div className="absolute top-2 left-2 w-5 h-5 rounded-full bg-black/60 text-white text-[10px] font-bold flex items-center justify-center z-10">
-                          {idx + 1}
-                        </div>
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                          <button
-                            onClick={() => deleteVideo(v._id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium border border-white/20 hover:bg-white/30 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" /> 삭제
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {Array.from({ length: 3 - videos.length }).map((_, i) => (
-                      <div
-                        key={`empty-${i}`}
-                        className="flex-1 h-48 border-2 border-dashed border-line rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
-                        onClick={() => vidFileRef.current?.click()}
-                      >
-                        <Film className="w-6 h-6 opacity-40" />
-                        <p className="text-xs">트레일러 업로드 {videos.length + i + 1}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                <p className="text-[11px] text-text-secondary">MP4, MOV, WEBM · 최대 500MB · <span className="text-yellow-400">최소 1개 필수</span></p>
+              {/* ── 2행: 히어로 배너 + 트레일러 ──────────────────────── */}
+              <div className="grid grid-cols-[5fr_7fr] gap-5 items-stretch">
+                {heroBannerCard}
+                {trailerCard}
               </div>
+            </>
+          ) : (
+            <>
+              {/* 베타존은 기존 레이아웃 그대로 유지(게임 아이콘은 기본 정보 탭에 남아있음) — 2026-09-16, "라이브존" 한정 지시였음 */}
+              {/* ── 1행: 히어로 배너 + 트레일러 ──────────────────────── */}
+              <div className="grid grid-cols-[5fr_7fr] gap-5 items-stretch">
+                {heroBannerCard}
+                {trailerCard}
               </div>
-            </div>
 
-          </div>{/* 상단 2열 end */}
-
-          {/* ── 하단: 게임 스크린샷 ──────────────────────── */}
-          <div className="rounded-2xl border border-line bg-bg-secondary overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-              <h2 className="text-sm font-bold leading-none">게임 스크린샷</h2>
-              <p className="text-xs text-text-muted">{screenshots.length} / 10</p>
-            </div>
-
-            <div className="p-4 space-y-3">
-              {mediaLoading ? (
-                <div className="text-center py-10 text-text-secondary text-sm">불러오는 중...</div>
-              ) : (
-                <div className="grid grid-cols-5 gap-2.5">
-                  {screenshots.map(ss => (
-                    <div key={ss._id} className="relative group aspect-video rounded-xl border border-line overflow-hidden">
-                      <img src={ss.url} alt={ss.title} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <button
-                          onClick={() => deleteScreenshot(ss._id)}
-                          className="flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-white text-[11px] font-medium border border-white/20 hover:bg-white/30 transition-colors"
-                        >
-                          <Trash2 className="w-3 h-3" /> 삭제
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {Array.from({ length: screenshots.length < 10 ? Math.max(1, 5 - screenshots.length) : 0 }).map((_, i) => {
-                    const isRequired = screenshots.length >= 1 && screenshots.length < 4 && i < (4 - screenshots.length)
-                    return (
-                      <div
-                        key={`empty-${i}`}
-                        className={`aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-colors ${isRequired ? '!border-red-500 text-red-400 hover:!border-red-400' : 'border-line text-text-muted hover:border-accent hover:text-accent'}`}
-                        onClick={() => ssFileRef.current?.click()}
-                      >
-                        <ImageIcon className="w-6 h-6 opacity-40" />
-                        <p className="text-xs">스크린샷 업로드 {screenshots.length + i + 1}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-              <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                <p className="text-[11px] text-text-secondary">권장 1920×1080px · PNG, JPG, WEBP · 최대 5MB · <span className="text-yellow-400">최소 4개 필수</span></p>
+              {/* ── 2행: 서브아이콘 + 게임 스크린샷 ──────────────────────── */}
+              <div className="grid grid-cols-[5fr_7fr] gap-5 items-stretch">
+                {subIconCard}
+                {screenshotCard}
               </div>
-            </div>
-          </div>
-
+            </>
+          )}
         </div>
       )}
 
@@ -1539,13 +1852,8 @@ export default function GameDetailManagementPage() {
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* 개발자 설정 탭 */}
-      {activeTab === 'dev-settings' && (
-        <div className="space-y-6">
-          {/* API Key 관리 */}
+          {/* API Key 관리 (개발자 설정 통합) */}
           <div className="bg-bg-secondary border border-line rounded-lg p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -1614,6 +1922,7 @@ export default function GameDetailManagementPage() {
       )}
 
       {/* 게임정보 편집 탭 (기본 정보 + 고급 편집 통합) */}
+
       {activeTab === 'edit' && (
         <div className="space-y-[9.6px]">
           <div className="flex items-start gap-6">
@@ -1623,152 +1932,229 @@ export default function GameDetailManagementPage() {
           <div className="space-y-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold">게임정보 편집</h2>
-                <p className="text-sm text-text-secondary mt-1">{isUnderReview ? '심사 중에는 기본 정보를 수정할 수 없습니다.' : isWaitingLaunch ? '출시 대기 중에는 기본 정보를 수정할 수 없습니다.' : isLiveLocked ? '운영 중인 게임은 기본 정보를 수정할 수 없습니다.' : '게임 기본 정보를 등록하세요.'}</p>
+                <h2 className="text-xl font-bold">메인정보</h2>
+                <p className="text-sm text-text-secondary mt-1">게임의 메인 정보를 등록하세요.</p>
+                <p className="text-sm text-text-secondary">출시 후에는 메인 정보는 수정할 수 없어요.</p>
               </div>
-              <button
-                onClick={handleSaveAll}
-                disabled={isEditLocked || editSaving}
-                className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-md text-base font-semibold transition-colors text-white bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="w-5 h-5" /> {editSaving ? '저장 중...' : '저장'}
-              </button>
+              {!(isLiveLocked && gameData.serviceType === 'beta') && (
+                <button
+                  onClick={handleSaveAll}
+                  disabled={isEditLocked || editSaving || hasInvalidSocialLink}
+                  className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-md text-base font-semibold transition-colors text-white bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-5 h-5" /> {editSaving ? '저장 중...' : '저장'}
+                </button>
+              )}
             </div>
 
             <div className="flex gap-4 items-stretch">
-              {/* 게임 아이콘 — 게임 제목/장르 4줄과 동일한 높이 */}
-              <div className="w-40 flex-shrink-0">
-                <input
-                  ref={iconInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={handleIconUpload}
-                />
-                {gameData.thumbnail ? (
-                  <div
-                    className="relative w-full h-full rounded-lg overflow-hidden border border-line cursor-pointer group"
-                    onClick={() => iconInputRef.current?.click()}
-                  >
-                    <img
-                      src={
-                        gameData.thumbnail.startsWith('http')
-                          ? gameData.thumbnail
-                          : gameData.thumbnail.startsWith('/uploads/')
+              {/* 게임 아이콘 — 베타존 전용 (라이브존은 미디어 탭으로 이동, 2026-09-16). 라이브존 게임 아이콘은 위 iconCard 참고 */}
+              {gameData.serviceType !== 'live' && (
+                <div className={`w-40 flex-shrink-0 flex flex-col gap-1 ${isEditLocked || isLiveLocked ? 'pointer-events-none opacity-50' : ''}`}>
+                  <input
+                    ref={iconInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    onChange={handleIconUpload}
+                  />
+                  {gameData.thumbnail ? (
+                    <div
+                      className="relative w-full flex-1 min-h-0 rounded-lg overflow-hidden border border-line cursor-pointer group"
+                      onClick={() => iconInputRef.current?.click()}
+                    >
+                      <img
+                        src={
+                          gameData.thumbnail.startsWith('http')
                             ? gameData.thumbnail
-                            : `/uploads/thumbnails/${gameData.thumbnail.split('/').pop()}`
-                      }
-                      alt="게임 아이콘"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                      <div className="flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-white text-[11px] font-medium border border-white/20">
-                        <Upload className="w-3 h-3" /> 변경
+                            : gameData.thumbnail.startsWith('/uploads/')
+                              ? gameData.thumbnail
+                              : `/uploads/thumbnails/${gameData.thumbnail.split('/').pop()}`
+                        }
+                        alt="게임 아이콘"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <div className="flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-lg text-white text-[11px] font-medium border border-white/20">
+                          <Upload className="w-3 h-3" /> 변경
+                        </div>
                       </div>
+                      {iconUploading && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xs">업로드 중...</div>
+                      )}
                     </div>
-                    {iconUploading && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xs">업로드 중...</div>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    className="w-full h-full border-2 border-dashed border-line rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
-                    onClick={() => iconInputRef.current?.click()}
-                  >
-                    {iconUploading ? (
-                      <span className="text-[11px]">업로드 중...</span>
-                    ) : (
-                      <>
-                        <ImageIcon className="w-5 h-5 opacity-40" />
-                        <p className="text-[11px]">게임 아이콘</p>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div
+                      className="w-full flex-1 min-h-0 border-2 border-dashed border-line rounded-lg flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
+                      onClick={() => iconInputRef.current?.click()}
+                    >
+                      {iconUploading ? (
+                        <span className="text-[11px]">업로드 중...</span>
+                      ) : (
+                        <>
+                          <ImageIcon className="w-5 h-5 opacity-40" />
+                          <p className="text-[11px]">게임 아이콘</p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-text-muted text-center flex-shrink-0">최소 크기 {ICON_SIZE.width}×{ICON_SIZE.height}px</p>
+                </div>
+              )}
 
               <div className={`flex-1 space-y-4 ${isEditLocked || isLiveLocked ? 'pointer-events-none opacity-50' : ''}`}>
-                <div>
-                  <label className={labelCls}>게임 제목</label>
-                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className={inputCls} disabled={isLiveLocked} />
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className={labelCls}>게임 제목</label>
+                    <input value={editTitle} onChange={e => setEditTitle(e.target.value)} className={inputCls} disabled={isLiveLocked} />
+                  </div>
+                  <div className="w-36 flex-shrink-0">
+                    <label className={labelCls}>게임 장르</label>
+                    <div className="relative" ref={genreRef}>
+                      <button
+                        type="button"
+                        onClick={() => !isLiveLocked && setGenreOpen(o => !o)}
+                        disabled={isLiveLocked}
+                        className={`${inputCls} flex items-center justify-between w-full text-left`}
+                      >
+                        <span className={editGenre ? 'text-text-primary' : 'text-text-muted'}>{editGenre || '장르 선택'}</span>
+                        <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform ${genreOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {genreOpen && (
+                        <div className="absolute left-0 top-full mt-1 w-full bg-bg-primary border border-line rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                          <div
+                            className="px-3 py-2 text-sm text-text-muted hover:bg-bg-tertiary cursor-pointer"
+                            onClick={() => { setEditGenre(''); setGenreOpen(false) }}
+                          >
+                            장르 선택
+                          </div>
+                          {FORM_GENRES.map(g => (
+                            <div
+                              key={g}
+                              onClick={() => { setEditGenre(g); setGenreOpen(false) }}
+                              className={`px-3 py-2 text-sm cursor-pointer hover:bg-bg-tertiary ${editGenre === g ? 'bg-accent/10 text-accent font-medium' : 'text-text-primary'}`}
+                            >
+                              {g}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label className={labelCls}>게임 장르</label>
-                  <div className="relative" ref={genreRef}>
-                    <button
-                      type="button"
-                      onClick={() => !isLiveLocked && setGenreOpen(o => !o)}
-                      disabled={isLiveLocked}
-                      className={`${inputCls} flex items-center justify-between w-full text-left`}
-                    >
-                      <span className={editGenre ? 'text-text-primary' : 'text-text-muted'}>{editGenre || '장르 선택'}</span>
-                      <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform ${genreOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {genreOpen && (
-                      <div className="absolute left-0 top-full mt-1 w-full bg-bg-primary border border-line rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
-                        <div
-                          className="px-3 py-2 text-sm text-text-muted hover:bg-bg-tertiary cursor-pointer"
-                          onClick={() => { setEditGenre(''); setGenreOpen(false) }}
-                        >
-                          장르 선택
-                        </div>
-                        {FORM_GENRES.map(g => (
-                          <div
-                            key={g}
-                            onClick={() => { setEditGenre(g); setGenreOpen(false) }}
-                            className={`px-3 py-2 text-sm cursor-pointer hover:bg-bg-tertiary ${editGenre === g ? 'bg-accent/10 text-accent font-medium' : 'text-text-primary'}`}
-                          >
-                            {g}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <label className={labelCls}>게임 URL</label>
+                  <input value={editGameDomain} onChange={e => setEditGameDomain(e.target.value)} placeholder="https://mygame.com" className={inputCls} disabled={isLiveLocked} />
                 </div>
               </div>
             </div>
           </div>
 
           {/* 베타 테스트 정보 — 게임정보 편집 카드와 동일 폭, 2단 레이아웃 */}
-          {gameData.serviceType !== 'live' && <div className={`pt-6 border-t border-line space-y-4 ${isEditLocked ? 'pointer-events-none opacity-50' : ''}`}>
+          {gameData.serviceType !== 'live' && <div className={`pt-6 border-t border-line space-y-4 ${isEditLocked || isLiveLocked ? 'pointer-events-none opacity-50' : ''}`}>
             <div>
-              <h2 className="text-xl font-bold">베타 테스트 정보</h2>
-              <p className="text-sm text-text-secondary mt-1">베타 테스트 기간, 모집 인원을 설정하세요.</p>
+              <h2 className="text-xl font-bold">테스트 기간</h2>
+              <p className="text-sm text-text-secondary mt-1">베타 테스트 기간 설정은 최대 60일까지 가능합니다.</p>
+              <p className="text-sm text-text-secondary">테스트 준비 기간이 필요하기 때문에 시작일은 오늘부터 2~3주 뒤로 설정해주세요.</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-[1fr_1fr_100px] gap-4">
               <div>
                 <label className={labelCls}>시작일</label>
                 <input type="date" value={editStartDate} onChange={e => setEditStartDate(e.target.value)} onClick={e => e.currentTarget.showPicker?.()} className={`${inputCls} cursor-pointer`} />
               </div>
               <div>
                 <label className={labelCls}>종료일</label>
-                <input type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} onClick={e => e.currentTarget.showPicker?.()} className={`${inputCls} cursor-pointer`} />
+                <input type="date" value={editEndDate} onChange={e => setEditEndDate(e.target.value)} onClick={e => e.currentTarget.showPicker?.()} className={`${inputCls} cursor-pointer ${betaDurationExceeded ? 'border-red-400' : ''}`} />
               </div>
               <div>
-                <label className={labelCls}>최대 테스터 수</label>
-                <input type="number" placeholder="1000" value={editMaxTesters} onChange={e => setEditMaxTesters(e.target.value)} className={inputCls} />
+                <label className={labelCls}>테스트 기간</label>
+                <div className={`${inputCls} flex items-center justify-center font-semibold ${betaDurationExceeded ? 'border-red-400 text-red-400' : 'text-text-primary'}`}>
+                  {betaDurationDays !== null ? `${betaDurationDays}일` : '-'}
+                </div>
               </div>
-              <div>
-                <label className={labelCls}>테스트 유형</label>
-                <select value={editTestType} onChange={e => setEditTestType(e.target.value)} className={inputCls}>
-                  <option value="">유형 선택</option>
-                  <option value="closed">비공개 베타</option>
-                  <option value="open">공개 베타</option>
-                  <option value="alpha">알파 테스트</option>
-                </select>
-              </div>
+            </div>
+            {betaDurationExceeded && (
+              <p className="text-xs text-red-400">최대 기간이 넘었습니다.</p>
+            )}
+          </div>}
+
+          {/* 최대 테스터 수 — 테스트 기간과 분리 */}
+          {gameData.serviceType !== 'live' && <div className={`pt-6 border-t border-line space-y-4 ${isEditLocked || isLiveLocked ? 'pointer-events-none opacity-50' : ''}`}>
+            <div>
+              <h2 className="text-xl font-bold">목표 테스터 수</h2>
+              <p className="text-sm text-text-secondary mt-1">모집 가능 최대 테스터 수는 1만명입니다.</p>
+              <p className="text-sm text-text-secondary">등록이 확정된 테스터만 시작일 시 게임을 플레이 할 수 있습니다.</p>
+            </div>
+            <div>
+              <input type="number" placeholder="최대 10,000명 (숫자로만 입력)" value={editMaxTesters} onChange={e => setEditMaxTesters(e.target.value)} className={`${inputCls} w-full`} />
             </div>
           </div>}
 
-          {/* 게임 설명 — 운영(라이브) 중에도 수정 가능 */}
-          <div className={`pt-6 border-t border-line space-y-4 ${isEditLocked ? 'pointer-events-none opacity-50' : ''}`}>
-            <h2 className="text-xl font-bold">게임 설명</h2>
-            <div>
-              <label className={labelCls}>짧은 설명 <span className="text-text-muted">(최대 100자)</span></label>
-              <input value={editDescription} onChange={e => setEditDescription(e.target.value)} maxLength={100} className={inputCls} />
+          {/* 히어로 배너 — 베타존 게임 전용, 미디어 탭 없이 여기서 바로 관리 */}
+          {gameData.serviceType === 'beta' && (
+            <div className={`pt-6 border-t border-line space-y-4 ${isEditLocked || isLiveLocked ? 'pointer-events-none opacity-50' : ''}`}>
+              <input
+                ref={bannerInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handleBannerUpload}
+              />
+              <div>
+                <h2 className="text-xl font-bold">히어로 배너</h2>
+                <p className="text-sm text-text-secondary mt-1">최소 크기 1440×617px · 등록 가능 파일 PNG, JPG, WEBP</p>
+              </div>
+              <div>
+                {gameData.bannerImage ? (
+                  <div
+                    className="relative w-full h-48 rounded-xl overflow-hidden border border-line cursor-pointer group"
+                    onClick={() => bannerInputRef.current?.click()}
+                  >
+                    <img
+                      src={gameData.bannerImage.startsWith('/uploads/') ? gameData.bannerImage : `/uploads/banners/${gameData.bannerImage.split('/').pop()}`}
+                      alt="히어로 배너"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg text-white text-xs font-medium border border-white/20">
+                        <Upload className="w-3.5 h-3.5" /> 변경
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="w-full h-48 border-2 border-dashed border-line rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-accent text-text-muted hover:text-accent transition-colors"
+                    onClick={() => bannerInputRef.current?.click()}
+                  >
+                    <ImageIcon className="w-6 h-6 opacity-40" />
+                    <p className="text-xs">배너 업로드</p>
+                  </div>
+                )}
+              </div>
             </div>
+          )}
+
+          {/* 게임 설명 — 운영(라이브) 중에도 수정 가능하지만, 베타존은 운영 중이면 잠금 */}
+          <div className={`pt-6 border-t border-line space-y-4 ${isEditLocked || (isLiveLocked && gameData.serviceType === 'beta') ? 'pointer-events-none opacity-50' : ''}`}>
             <div>
-              <label className={labelCls}>게임 설명</label>
+              <h2 className="text-xl font-bold">게임 설명</h2>
+              {gameData.serviceType === 'beta' ? (
+                <p className="text-sm text-text-secondary mt-1">게임을 알릴 설명을 간단히 적어주세요.</p>
+              ) : (
+                <>
+                  <p className="text-sm text-text-secondary mt-1">게임의 설명을 적어주세요.</p>
+                  <p className="text-sm text-text-secondary">출시 후에도 수정 가능하니 편하게 작성해주세요.</p>
+                </>
+              )}
+            </div>
+            {gameData.serviceType !== 'beta' && (
+              <div>
+                <label className={labelCls}>짧은 설명 <span className="text-text-muted">(최대 60자)</span></label>
+                <input value={editDescription} onChange={e => setEditDescription(e.target.value)} maxLength={60} className={inputCls} />
+              </div>
+            )}
+            <div>
+              {gameData.serviceType !== 'beta' && <label className={labelCls}>자세한 설명</label>}
               <Editor content={editNotes} onChange={setEditNotes} placeholder="게임에 대해 자세히 설명해주세요"
                 onImageUpload={async (file) => {
                   const result = await gameService.uploadGameContentImages(gameId, [file])
@@ -1779,21 +2165,21 @@ export default function GameDetailManagementPage() {
             </div>
           </div>
 
-          {/* 추가 정보 */}
-          <div className={`pt-6 border-t border-line space-y-4 ${isEditLocked ? 'pointer-events-none opacity-50' : ''}`}>
-            <div>
-              <h2 className="text-xl font-bold">추가 정보</h2>
-              <p className="text-sm text-text-secondary mt-1">공식 웹사이트, 커뮤니티 링크를 등록하세요.</p>
+          {/* 추가 정보 — 베타존은 제외 */}
+          {gameData.serviceType !== 'beta' && (
+            <div className={`pt-6 border-t border-line space-y-4 ${isEditLocked ? 'pointer-events-none opacity-50' : ''}`}>
+              <div>
+                <h2 className="text-xl font-bold">추가 정보</h2>
+                <p className="text-sm text-text-secondary mt-1">운영 중인 플랫폼 링크를 등록하세요.</p>
+                <p className="text-sm text-text-secondary">링크가 없어도 심사 통과는 되지만 다른 링크를 등록할 경우 심사 거부 사유가 됩니다.</p>
+              </div>
+              <SocialLinkField platform="website" value={editWebsite} onChange={setEditWebsite} labelCls={labelCls} inputCls={inputCls} />
+              <SocialLinkField platform="discord" value={editDiscord} onChange={setEditDiscord} labelCls={labelCls} inputCls={inputCls} />
+              <SocialLinkField platform="twitter" value={editTwitter} onChange={setEditTwitter} labelCls={labelCls} inputCls={inputCls} />
+              <SocialLinkField platform="youtube" value={editYoutube} onChange={setEditYoutube} labelCls={labelCls} inputCls={inputCls} />
+              <SocialLinkField platform="instagram" value={editInstagram} onChange={setEditInstagram} labelCls={labelCls} inputCls={inputCls} />
             </div>
-            <div>
-              <label className={labelCls}>공식 웹사이트</label>
-              <input value={editWebsite} onChange={e => setEditWebsite(e.target.value)} placeholder="https://..." className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls}>디스코드 서버</label>
-              <input value={editDiscord} onChange={e => setEditDiscord(e.target.value)} placeholder="https://discord.gg/..." className={inputCls} />
-            </div>
-          </div>
+          )}
           </div>
           </div>
 
@@ -1821,6 +2207,7 @@ export default function GameDetailManagementPage() {
               <div>
                 <h2 className="text-xl font-bold">연령 등급 지정</h2>
                 <p className="text-sm text-text-secondary mt-1">게임의 연령 등급을 지정 후 증명하세요.</p>
+                <p className="text-sm text-text-secondary">출시 후에는 등급 변경을 할 수 없으니 정확히 등록해주세요.</p>
               </div>
               <button
                 onClick={handleSaveAll}
@@ -1974,6 +2361,16 @@ export default function GameDetailManagementPage() {
           handleSubmitForApproval()
         }}
         onCancel={() => setShowSubmitApprovalConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={showCancelReviewConfirm}
+        title="심사 취소"
+        message="심사를 취소하고 정보를 다시 수정하시겠습니까?"
+        confirmLabel="심사 취소"
+        danger
+        onConfirm={handleCancelReview}
+        onCancel={() => setShowCancelReviewConfirm(false)}
       />
 
       <ConfirmModal
@@ -2172,7 +2569,7 @@ export default function GameDetailManagementPage() {
                     setNewItem(p => ({ ...p, capcoinIconFile: file, capcoinIconPreview: URL.createObjectURL(file) }))
                   }} />
                   <input
-                    type="text" placeholder="예: 캡포인트, 도전 코인"
+                    type="text" placeholder="예: 미션 토큰, 도전 코인"
                     value={newItem.capcoinName}
                     onChange={e => setNewItem(p => ({ ...p, capcoinName: e.target.value }))}
                     className={`${inputCls} flex-1`}
@@ -2436,7 +2833,7 @@ export default function GameDetailManagementPage() {
                       setEditCapcoinIconPreview(URL.createObjectURL(file))
                     }} />
                     <input
-                      type="text" placeholder="예: 캡포인트, 도전 코인"
+                      type="text" placeholder="예: 미션 토큰, 도전 코인"
                       value={editingItem.capcoinName ?? ''}
                       onChange={e => setEditingItem(p => p ? { ...p, capcoinName: e.target.value } : null)}
                       className={`${inputCls} flex-1`}

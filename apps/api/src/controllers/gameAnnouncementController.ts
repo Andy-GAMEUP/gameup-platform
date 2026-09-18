@@ -22,7 +22,7 @@ export const getPublicGameAnnouncements = async (req: AuthRequest, res: Response
       .lean()
 
     const developerIds = [...new Set(announcements.map(a => a.developerId.toString()))]
-    const developers = await UserModel.find({ _id: { $in: developerIds } }).select('_id username profileImage').lean()
+    const developers = await UserModel.find({ _id: { $in: developerIds } }).select('_id username profileImage role').lean()
     const developerMap = Object.fromEntries(developers.map(d => [d._id.toString(), d]))
     const result = announcements.map(a => ({ ...a, game: game || null, developer: developerMap[a.developerId.toString()] || null }))
 
@@ -53,7 +53,7 @@ export const getGameAnnouncementById = async (req: AuthRequest, res: Response) =
     const game = await GameModel.findById(announcement.gameId)
       .select('_id title thumbnail serviceType')
       .lean()
-    const developer = await UserModel.findById(announcement.developerId).select('_id username profileImage').lean()
+    const developer = await UserModel.findById(announcement.developerId).select('_id username profileImage role').lean()
 
     res.json({ announcement: { ...announcement, game, developer } })
   } catch {
@@ -67,9 +67,14 @@ export const getRecentGameAnnouncements = async (req: Request, res: Response) =>
     const page = Math.max(1, Number(req.query.page) || 1)
     const search = String(req.query.search || '').trim()
     const sort = String(req.query.sort || 'latest')
+    const serviceType = String(req.query.serviceType || '').trim()
 
     const filter: Record<string, unknown> = { deletedAt: null, isPublished: { $ne: false } }
     if (search) filter.title = { $regex: search, $options: 'i' }
+    if (serviceType === 'beta' || serviceType === 'live') {
+      const gamesOfType = await GameModel.find({ serviceType }).select('_id').lean()
+      filter.gameId = { $in: gamesOfType.map(g => g._id) }
+    }
     const sortObj: Record<string, 1 | -1> = sort === 'latest' ? { createdAt: -1 } : { views: -1 }
 
     const total = await GameAnnouncementModel.countDocuments(filter)
@@ -86,7 +91,7 @@ export const getRecentGameAnnouncements = async (req: Request, res: Response) =>
     const gameMap = Object.fromEntries(games.map(g => [g._id.toString(), g]))
 
     const developerIds = [...new Set(announcements.map(a => a.developerId.toString()))]
-    const developers = await UserModel.find({ _id: { $in: developerIds } }).select('_id username profileImage').lean()
+    const developers = await UserModel.find({ _id: { $in: developerIds } }).select('_id username profileImage role').lean()
     const developerMap = Object.fromEntries(developers.map(d => [d._id.toString(), d]))
 
     const result = announcements.map(a => ({

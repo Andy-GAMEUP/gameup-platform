@@ -99,7 +99,7 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
 
 // Super: 모든 권한
 // Normal: 승인/삭제 제외 모든 권한
-// Monitor: 조회 + 공지사항/알림 작성만 가능
+// Monitor: 조회만 가능 (쓰기/수정/삭제/승인 전부 불가)
 export const requireAdminLevel = (...levels: Array<'super' | 'normal' | 'monitor'>) => {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user || req.user.role !== 'admin') {
@@ -117,6 +117,29 @@ export const requireAdminLevel = (...levels: Array<'super' | 'normal' | 'monitor
     // adminLevel 미설정 admin은 super로 처리 (기존 계정 하위 호환)
     if (!userLevel) userLevel = 'super'
     if (!levels.includes(userLevel)) {
+      return res.status(403).json({ message: '해당 작업에 대한 권한이 없습니다' })
+    }
+    next()
+  }
+}
+
+// developer/admin이 함께 쓰는 라우트(내 게임 관리 등)에서, 호출자가 admin이면서 주어진 등급에 해당할 때만 차단.
+// admin이 아닌 역할(developer 등)은 그대로 통과 — 자기 자원에 대한 권한은 requireRole이 이미 보장.
+export const blockAdminLevel = (...blockedLevels: Array<'super' | 'normal' | 'monitor'>) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user || req.user.role !== 'admin') {
+      return next()
+    }
+    let userLevel = req.user.adminLevel
+    if (!userLevel) {
+      try {
+        const dbUser = await User.findById(req.user.id).select('adminLevel').lean()
+        userLevel = (dbUser as any)?.adminLevel || null
+        if (userLevel) req.user.adminLevel = userLevel
+      } catch { /* noop */ }
+    }
+    if (!userLevel) userLevel = 'super'
+    if (blockedLevels.includes(userLevel)) {
       return res.status(403).json({ message: '해당 작업에 대한 권한이 없습니다' })
     }
     next()

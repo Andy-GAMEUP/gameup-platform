@@ -115,7 +115,10 @@ export const playerService = {
     const res = await apiClient.get('/player/played-games')
     return res.data as { gameIds: string[] }
   },
-
+  getMyRecentGames: async (serviceType: 'beta' | 'live', limit = 20) => {
+    const res = await apiClient.get('/player/recent-games', { params: { serviceType, limit } })
+    return res.data as { games: { _id: string; title: string; thumbnail?: string; subIcon?: string; lastPlayedAt: string }[] }
+  },
   toggleFollow: async (userId: string) => {
     const res = await apiClient.post(`/users/${userId}/follow`)
     return res.data as { following: boolean; followerCount: number; followingCount: number }

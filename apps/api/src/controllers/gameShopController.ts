@@ -69,6 +69,9 @@ export const createGameShopItem = async (req: AuthRequest, res: Response) => {
     const game = await verifyGameOwner(gameId, req.user.id, req.user.role)
     if (!game) return res.status(403).json({ message: '권한이 없거나 게임을 찾을 수 없습니다' })
 
+    const duplicate = await GameShopItemModel.findOne({ gameId, name: name.trim() })
+    if (duplicate) return res.status(400).json({ message: '이미 같은 이름의 상품이 등록되어 있습니다' })
+
     const count = await GameShopItemModel.countDocuments({ gameId })
 
     const files = req.files as Record<string, Express.Multer.File[]> | undefined
@@ -133,6 +136,11 @@ export const updateGameShopItem = async (req: AuthRequest, res: Response) => {
     const hasFileUpdate = !!(req.files && Object.keys(req.files as object).length > 0)
     if ((isContentUpdate || hasFileUpdate) && item.saleStatus === 'on_sale' && req.user.role !== 'admin') {
       return res.status(400).json({ message: '판매 중인 상품은 수정할 수 없습니다' })
+    }
+
+    if (name !== undefined && name.trim() !== item.name) {
+      const duplicate = await GameShopItemModel.findOne({ gameId, name: name.trim(), _id: { $ne: item._id } })
+      if (duplicate) return res.status(400).json({ message: '이미 같은 이름의 상품이 등록되어 있습니다' })
     }
 
     if (name !== undefined) item.name = name.trim()

@@ -11,14 +11,16 @@ import apiClient from '@/services/api'
 import LevelBadge from '@/components/LevelBadge'
 import OfficialBadge from '@/components/OfficialBadge'
 import AdminBadge from '@/components/AdminBadge'
+import UserHoverCard from '@/components/UserHoverCard'
 import ConfirmModal from '@/components/ConfirmModal'
 import StarRating from '@/components/StarRating'
+import { SocialIcon, type SocialPlatform } from '@/components/SocialLinkField'
 import { RATING_DESCRIPTIONS, RATING_CLASS_ICON, CONTENT_DESCRIPTORS } from '@/constants/game'
 
 interface GameQA {
   _id: string
   gameId: string
-  userId: { _id: string; username: string; profileImage?: string }
+  userId: { _id: string; username: string; profileImage?: string; role?: string }
   developerId: { _id: string; username: string; profileImage?: string }
   question: string
   answer?: string
@@ -26,6 +28,7 @@ interface GameQA {
   createdAt: string
 }
 import TossPaymentModal from '@/components/TossPaymentModal'
+import { paymentService } from '@/services/paymentService'
 import { formatDate } from '@/lib/formatDate'
 
 const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
@@ -116,6 +119,9 @@ export default function PlayerGameDetailPage() {
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [playStartTime, setPlayStartTime] = useState<number | null>(null)
+  const [applying, setApplying] = useState(false)
+  // 베타존 미신청 유저가 Q&A/평점을 클릭했을 때 "신청 필요" 팝업에 담아둘 이후 동작(신청 완료 시 이어서 실행)
+  const [pendingBetaAction, setPendingBetaAction] = useState<(() => void) | null>(null)
 
   // Q&A
   const [qas, setQAs] = useState<GameQA[]>([])
@@ -123,6 +129,9 @@ export default function PlayerGameDetailPage() {
   const [qaPage, setQAPage] = useState(1)
   const [qaQuestion, setQaQuestion] = useState('')
   const [qaSubmitting, setQaSubmitting] = useState(false)
+
+  // 개발사의 다른 게임(라이브존) / 아직 시작 안 한 다른 베타존 게임(베타존)
+  const [devGames, setDevGames] = useState<{ _id?: string; title: string; thumbnail?: string; genre?: string; startDate?: string | Date }[]>([])
 
   // 스크린샷 & 동영상
   const [screenshots, setScreenshots] = useState<{ _id: string; title: string; url: string; order: number }[]>([])
@@ -152,7 +161,10 @@ export default function PlayerGameDetailPage() {
     open: boolean
     itemName: string
     amount: number
+    itemId?: string
   }>({ open: false, itemName: '', amount: 0 })
+  const [newplayPurchasing, setNewplayPurchasing] = useState<string | null>(null)
+  const [newplayError, setNewplayError] = useState<{ key: string; message: string } | null>(null)
 
   type CapcoinModalItem = typeof shopItems[number] & { currencyName?: string; currencyIconUrl?: string }
   const [capcoinModal, setCapcoinModal] = useState<{
@@ -251,6 +263,31 @@ export default function PlayerGameDetailPage() {
     } catch { /* ignore */ }
   }, [id])
 
+  useEffect(() => {
+    if (!game) { setDevGames([]); return }
+
+    // 베타존 — 아직 테스트 시작 전인 다른 베타 게임을 시작일 임박 순으로 보여줌("다른 베타 신청하기")
+    if (game.serviceType === 'beta') {
+      gameService.getAllGames({ serviceType: 'beta', limit: 50 })
+        .then(data => {
+          const now = new Date()
+          const upcoming = (data.games || [])
+            .filter((g: any) => g._id && g._id !== id && g.startDate && new Date(g.startDate) > now)
+            .sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+          setDevGames(upcoming)
+        })
+        .catch(() => setDevGames([]))
+      return
+    }
+
+    // 라이브존 — 기존대로 같은 개발사의 다른 게임("개발사 다른 게임 즐기기")
+    const developerId = typeof game.developerId === 'object' ? (game.developerId as any)._id : null
+    if (!developerId) { setDevGames([]); return }
+    gameService.getAllGames({ developerId, limit: 50 })
+      .then(data => setDevGames((data.games || []).filter((g: any) => g._id && g._id !== id)))
+      .catch(() => setDevGames([]))
+  }, [game, id])
+
   useEffect(() => { loadGame() }, [loadGame])
   useEffect(() => { loadReviews() }, [loadReviews])
   useEffect(() => { loadMyReview() }, [loadMyReview])
@@ -291,6 +328,32 @@ const handlePlay = async () => {
     setHasPlayed(true)
     setIsPlaying(true)
     setPlayStartTime(Date.now())
+  }
+
+  const handleApplyBetaTester = async () => {
+    if (!isAuthenticated) { router.push('/login'); return }
+    if (!game || applying) return
+    setApplying(true)
+    try {
+      const result = await gameService.applyBetaTester(id!)
+      if (result.success) {
+        setGame((prev) => prev ? { ...prev, hasApplied: true, testers: (Number(prev.testers) || 0) + (result.alreadyApplied ? 0 : 1) } : prev)
+      }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      alert(msg || '베타존 신청에 실패했습니다.')
+    } finally {
+      setApplying(false)
+    }
+  }
+
+  // 베타존 미신청 유저가 Q&A/평점 같은 신청 전용 기능을 누르면, 바로 진행하지 않고 "신청 필요" 팝업부터 띄운다
+  const withBetaApplyGuard = (action: () => void) => {
+    if (game?.serviceType === 'beta' && game?.hasApplied !== true) {
+      setPendingBetaAction(() => action)
+      return
+    }
+    action()
   }
 
   const handleStopPlay = async () => {
@@ -360,9 +423,31 @@ const handlePlay = async () => {
   }
 
   // ── 결제 핸들러 ───────────────────────────────────────────────
-  const handlePurchase = (itemName: string, amount: number) => {
+  // Toss (보조 결제수단) — 기존과 동일하게 모달을 연다
+  const handlePurchase = (itemName: string, amount: number, itemId?: string) => {
     if (!isAuthenticated) { router.push('/login'); return }
-    setPaymentModal({ open: true, itemName, amount })
+    setPaymentModal({ open: true, itemName, amount, itemId })
+  }
+
+  // 뉴플레이 (메인 결제수단) — 결제 생성 후 뉴플레이 결제 페이지로 즉시 리다이렉트
+  const handleNewPlayPurchase = async (key: string, itemId?: string) => {
+    if (!isAuthenticated) { router.push('/login'); return }
+    if (!id || newplayPurchasing) return
+    setNewplayPurchasing(key)
+    setNewplayError(null)
+    try {
+      const { paymentUrl } = await paymentService.createOrder({ gameId: id, itemId, provider: 'newplay' })
+      if (paymentUrl) {
+        window.location.href = paymentUrl
+        return
+      }
+      setNewplayError({ key, message: '뉴플레이 결제 페이지를 불러오지 못했습니다.' })
+      setNewplayPurchasing(null)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setNewplayError({ key, message: msg || '뉴플레이 결제 연결에 실패했습니다.' })
+      setNewplayPurchasing(null)
+    }
   }
 
   const handleCapcoinPurchase = async (item: typeof shopItems[number], currencyName: string, currencyIconUrl: string) => {
@@ -393,6 +478,8 @@ const avgRating = game ? (game.rating as number) || 0 : 0
     ? toAbsUrl(rawThumb)
     : GENRE_IMG[(game?.genre as string) || ''] || GENRE_IMG.default
   const bannerUrl = rawBanner ? toAbsUrl(rawBanner) : thumbUrl
+  const rawSubIcon = game?.subIcon as string | undefined
+  const subIconUrl = rawSubIcon ? toAbsUrl(rawSubIcon) : thumbUrl
   const gameFileUrl = game?.gameFile ? `/${(game.gameFile as string)}` : null
   const rawDomain = (game?.gameDomain as string) || null
   const gameDomainUrl = rawDomain
@@ -400,12 +487,17 @@ const avgRating = game ? (game.rating as number) || 0 : 0
     : null
   const monetization = (game?.monetization as string) || 'free'
   const gamePrice = (game?.price as number) || 0
+  // 베타존은 신청(hasApplied)한 유저만 리뷰/Q&A를 작성할 수 있음 — 라이브존은 이 제한 대상 아님
+  const canWriteInBeta = game?.serviceType !== 'beta' || game?.hasApplied === true
+  const testStartDateVal = game?.startDate ? new Date(game.startDate as string) : null
+  const testStartCutoff = testStartDateVal ? new Date(testStartDateVal.getFullYear(), testStartDateVal.getMonth(), testStartDateVal.getDate()) : null
+  const isTestStarted = testStartCutoff ? new Date() >= testStartCutoff : false
 
   const TABS = [
     { key: 'overview',  label: '게임 소개' },
     { key: 'shop',      label: '상점' },
     { key: 'challenge', label: '챌린지' },
-    { key: 'qna',       label: `개발사 Q&A (${qaTotal})` }
+    { key: 'qna',       label: '개발사 Q&A' }
   ] as const
 
   if (loading) {
@@ -420,6 +512,115 @@ const avgRating = game ? (game.rating as number) || 0 : 0
   if (!game) return null
 
   const lightboxShots = screenshots.filter(s => s.url)
+
+  // 베타존 전용 — 게임 설명 위, 좌측 컬럼 전체 폭에 아이콘+텍스트를 한 줄로 배치 (라이브존은 별도 마크업 유지)
+  const renderBetaDevInfoCard = () => (
+    <div className="relative bg-bg-secondary border border-line rounded-xl p-2.5">
+      <button
+        onClick={() => withBetaApplyGuard(() => setActiveTab('qna'))}
+        className="absolute top-2 right-2 px-[9.6px] py-[4.8px] rounded-md text-[14.4px] font-semibold text-text-secondary bg-bg-tertiary/40 border border-line hover:bg-bg-tertiary transition-colors"
+      >
+        Q&A
+      </button>
+      <div className="flex items-start gap-3">
+        <img src={subIconUrl} alt="" className="w-[18.29%] h-auto rounded-lg flex-shrink-0" />
+        <div className="space-y-2 text-sm flex-1 min-w-0">
+          {game.developerId != null && typeof game.developerId === 'object' && (
+            <div className="flex items-start gap-1.5">
+              <span className="text-text-secondary w-20 flex-shrink-0 whitespace-nowrap">개발사</span>
+              <span className="text-text-primary truncate">
+                {(game.developerId as any).companyInfo?.companyName || (game.developerId as any).username}
+              </span>
+            </div>
+          )}
+          <div className="flex items-start gap-1.5">
+            <span className="text-text-secondary w-20 flex-shrink-0 whitespace-nowrap">장르</span>
+            <span className="text-text-primary">{game.genre as string || '-'}</span>
+          </div>
+          <div className="flex items-start gap-1.5">
+            <span className="text-text-secondary w-20 flex-shrink-0 whitespace-nowrap">테스트 시작</span>
+            <span className="text-text-primary">{game.startDate ? formatDate(game.startDate as string) : '-'}</span>
+          </div>
+          <div className="flex items-start gap-1.5">
+            <span className="text-text-secondary w-20 flex-shrink-0 whitespace-nowrap">테스트 기간</span>
+            <span className="text-text-primary">
+              {game.startDate && game.endDate
+                ? Math.round((new Date(game.endDate as string).getTime() - new Date(game.startDate as string).getTime()) / (1000 * 60 * 60 * 24))
+                : '-'}일
+            </span>
+          </div>
+          <div className="flex items-start gap-1.5">
+            <span className="text-text-secondary w-20 flex-shrink-0 whitespace-nowrap">모집 인원</span>
+            <span className="text-text-primary">
+              {(Number(game.testers) || 0).toLocaleString()}
+              {Number(game.maxTesters) > 0 ? ` / ${Number(game.maxTesters).toLocaleString()}명` : '명'}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3">{renderPlayButton()}</div>
+    </div>
+  )
+
+  // 게임 시작/베타존 신청 버튼 — 베타존은 위 카드 안으로, 라이브존은 사이드바에 그대로 유지
+  const renderPlayButton = () => {
+    if (game.status === 'archived' || !(gameDomainUrl || gameFileUrl)) return null
+
+    const playButton = (
+      <button
+        onClick={() => {
+          const url = gameDomainUrl || (gameFileUrl ? `${typeof window !== 'undefined' ? window.location.origin : ''}${gameFileUrl}` : null)
+          if (url) window.open(url, '_blank', 'noopener,noreferrer')
+          handlePlay().catch(() => {})
+        }}
+        className="w-full py-3 bg-accent hover:bg-accent-hover text-text-inverse font-semibold rounded-xl transition-colors text-lg"
+      >
+        게임 시작
+      </button>
+    )
+
+    if (game.serviceType !== 'beta') return playButton
+
+    const testersNum = Number(game.testers) || 0
+    const maxTestersNum = Number(game.maxTesters) || 0
+    const isFull = maxTestersNum > 0 && testersNum >= maxTestersNum
+    const hasApplied = game.hasApplied === true
+
+    if (hasApplied) {
+      if (isTestStarted) return playButton
+      return (
+        <div className="w-full py-3 bg-bg-tertiary/[58%] border border-line rounded-xl text-text-secondary font-semibold text-center text-lg">
+          신청 완료!
+        </div>
+      )
+    }
+
+    if (isFull) {
+      return (
+        <div className="w-full py-3 bg-bg-tertiary/[58%] border border-line rounded-xl text-text-secondary font-semibold text-center text-lg">
+          모집 완료
+        </div>
+      )
+    }
+
+    if (isTestStarted) {
+      return (
+        <div className="w-full py-3 bg-bg-tertiary/[58%] border border-line rounded-xl text-text-secondary font-semibold text-center text-lg">
+          신청 마감
+        </div>
+      )
+    }
+
+    return (
+      <button
+        onClick={handleApplyBetaTester}
+        disabled={applying}
+        className="w-full py-3 bg-accent hover:bg-accent-hover disabled:opacity-60 text-text-inverse font-semibold rounded-xl transition-colors text-lg"
+      >
+        {applying ? '신청 중...' : '베타존 신청'}
+      </button>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -465,44 +666,38 @@ const avgRating = game ? (game.rating as number) || 0 : 0
         </div>
       )}
 
-      {/* Hero Banner */}
-      <div className="relative h-64 md:h-80 overflow-hidden">
+      {/* Hero Banner — 업로드 요구 비율(1920×823, 21:9)과 항상 일치하도록 고정 높이 대신 aspect-ratio 사용 */}
+      <div className="relative w-full aspect-[21/9] overflow-hidden">
         <Image src={bannerUrl} alt={game.title as string} fill className="object-cover" unoptimized />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
-        {/* 중앙 텍스트 */}
-        <div className="absolute inset-x-0 bottom-6 max-w-7xl mx-auto px-6">
-          <div className="flex items-center">
-            <h1 className="font-bold text-white drop-shadow-lg" style={{ fontSize: '58px' }}>{game.title as string}</h1>
-            <div className="flex-1 flex justify-center pr-[20%]">
-              {game.status !== 'archived' && (gameDomainUrl || gameFileUrl) && (
-                <button
-                  onClick={() => {
-                    const url = gameDomainUrl || (gameFileUrl ? `${typeof window !== 'undefined' ? window.location.origin : ''}${gameFileUrl}` : null)
-                    if (url) window.open(url, '_blank', 'noopener,noreferrer')
-                    handlePlay().catch(() => {})
-                  }}
-                  className="px-[52px] py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-900/50" style={{ fontSize: '23px' }}
-                >
-                  게임 시작
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <div className="absolute inset-0 bg-gray-500/[60.9375%]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-white from-0% via-white/80 via-40% to-transparent to-80%" />
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-line bg-bg-primary/80 sticky top-0 z-10">
+      {/* 제목/게임 시작 버튼부터 리뷰 끝까지 하나의 그룹 — 그룹 전체를 히어로 이미지 높이의 80%만큼 위로 겹쳐 올림 (90%에서 10% 내림) */}
+      <div className="relative z-10" style={{ marginTop: '-34.2858vw' }}>
+        <div className="max-w-7xl mx-auto px-6 pb-6">
+          <div className="flex items-center gap-3">
+            <h1 className="font-bold text-white drop-shadow-lg" style={{ fontSize: '58px' }}>{game.title as string}</h1>
+            {game.serviceType === 'beta' && (
+              <span className="bg-accent text-white font-bold text-2xl rounded-lg px-4 drop-shadow-lg" style={{ paddingTop: '3.8px', paddingBottom: '3.8px' }}>베타</span>
+            )}
+          </div>
+        </div>
+
+        {/* Tabs — 배경 폭을 콘텐츠 카드 실제 폭(grid 안쪽 영역)에 정확히 맞춤 — 베타존은 탭 바 자체를 없앰(Q&A 카드의 "게임 소개로 돌아가기"로 대체) */}
+        {game.serviceType !== 'beta' && (
+        <div className="sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6">
+        <div className="inline-block w-fit bg-black/40 backdrop-blur-md rounded-xl">
           <div className="flex gap-0">
             {TABS.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-5 py-3 text-base font-medium border-b-2 transition-colors ${
+                className={`px-5 py-3 text-base font-medium rounded-lg transition-colors ${
                   activeTab === tab.key
-                    ? 'border-accent text-accent'
-                    : 'border-transparent text-text-secondary hover:text-text-primary'
+                    ? 'bg-white/25 text-white font-bold'
+                    : 'text-white/60 hover:text-white'
                 }`}
               >
                 {tab.label}
@@ -510,26 +705,39 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             ))}
           </div>
         </div>
+        </div>
       </div>
+        )}
 
-      <div ref={tabContentRef} className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+      <div ref={tabContentRef} className="max-w-7xl mx-auto px-6 pt-1.5 pb-6 space-y-6">
 
         {/* ── 게임 소개 탭 ── */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[11fr_4fr] gap-6">
+          <div className={`grid grid-cols-1 lg:grid-cols-[11fr_3.2fr] ${game.serviceType === 'beta' ? 'gap-3' : 'gap-6'}`}>
             {/* CTA 버튼 - 전체 너비 */}
             {monetization === 'paid' && gamePrice > 0 && (
-              <div className="lg:col-span-2 flex justify-center">
+              <div className="lg:col-span-2 flex flex-col items-center gap-2">
+                <button
+                  onClick={() => handleNewPlayPurchase('game')}
+                  disabled={newplayPurchasing === 'game'}
+                  className="w-[50%] bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 disabled:opacity-60 text-text-primary py-3.5 rounded-xl font-semibold text-base transition-all shadow-lg shadow-yellow-900/30"
+                >
+                  {newplayPurchasing === 'game' ? '연결 중...' : `💰 ₩${gamePrice.toLocaleString()} 구매하기`}
+                </button>
+                {newplayError?.key === 'game' && (
+                  <p className="text-xs text-red-400">{newplayError.message}</p>
+                )}
                 <button
                   onClick={() => handlePurchase(`${game.title as string} 정식 구매`, gamePrice)}
-                  className="w-[50%] bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-text-primary py-3.5 rounded-xl font-semibold text-base transition-all shadow-lg shadow-yellow-900/30"
+                  className="text-xs text-text-muted hover:text-text-secondary underline transition-colors"
                 >
-                  💰 ₩{gamePrice.toLocaleString()} 구매하기
+                  Toss로 결제
                 </button>
               </div>
             )}
 
-            {/* 스크린샷 + 게임설명 (왼쪽 컬럼) */}
+            {/* 스크린샷 + 게임설명 (왼쪽 컬럼) + 사이드바 — 베타존은 이 둘을 flex row로 묶어 좌우 카드 사이 빈 공간 없이 gap-3만 남도록 함(라이브는 contents로 기존 grid 배치 그대로 유지) */}
+            <div className={game.serviceType === 'beta' ? 'lg:col-span-2 flex flex-col lg:flex-row lg:justify-center gap-3 items-start' : 'contents'}>
             {(() => {
               const videoEntries = videos.map(v => ({ kind: 'video' as const, _id: v._id, title: v.title, url: v.url }))
               const shotEntries = screenshots.filter(s => s.url).map(s => ({ kind: 'screenshot' as const, _id: s._id, title: s.title, url: s.url }))
@@ -537,10 +745,11 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               const selected = mediaList[selectedShotIdx]
               const UPLOADS_BASE = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
               return (
-            <div className="space-y-6">
+            <div className={game.serviceType === 'beta' ? 'space-y-3 lg:grow-0 lg:shrink-0 lg:basis-[53.7%] w-full' : 'space-y-6'}>
+            {game.serviceType !== 'beta' && (
             <div className="bg-bg-secondary border border-line rounded-xl overflow-hidden">
               {mediaList.length === 0 ? (
-                <div className="p-5">
+                <div className="p-2.5">
                   <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                     {[1, 2, 3].map((i) => (
                       <div key={i} className="aspect-video rounded-lg bg-bg-tertiary/50 border border-line/40 flex flex-col items-center justify-center gap-1.5">
@@ -551,7 +760,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                   </div>
                 </div>
               ) : (
-                <div className="p-5 flex gap-4 h-[437px]">
+                <div className="p-2.5 flex gap-4 h-[437px]">
                   {/* 왼쪽: 메인 뷰 */}
                   <div className="flex-1 rounded-xl overflow-hidden bg-bg-tertiary border border-line/50">
                     {selected?.kind === 'video' ? (
@@ -588,9 +797,9 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                     {mediaList.map((item, i) => (
                       <div
                         key={item._id || i}
-                        className={`flex-shrink-0 rounded-lg overflow-hidden cursor-pointer border-2 transition-all duration-150 relative ${
+                        className={`flex-shrink-0 rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-150 relative ${
                           i === selectedShotIdx
-                            ? 'border-accent shadow-sm shadow-accent/30'
+                            ? 'border-accent'
                             : 'border-transparent hover:border-line'
                         }`}
                         style={{ aspectRatio: '16/9' }}
@@ -618,10 +827,14 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 </div>
               )}
             </div>
+            )}
+
+            {/* 개발사 · 장르 · 게임 소개 — 베타존만 게임 설명 위로 이동, 아이콘은 원본 비율 그대로(크롭 없음). 2026-09-17 폭 30% 축소(부모 flex 아이템 기준 w-full) */}
+            {game.serviceType === 'beta' && <div className="w-full">{renderBetaDevInfoCard()}</div>}
 
             {/* 게임 설명 */}
-            <div className="bg-bg-secondary border border-line rounded-xl p-6 min-h-[500px]">
-              <p className="text-text-primary font-bold mb-3" style={{ fontSize: '30px' }}>게임 설명</p>
+            <div className={`bg-bg-secondary border border-line rounded-xl p-2.5 min-h-[500px] ${game.serviceType === 'beta' ? 'w-full' : ''}`}>
+              <p className="text-text-primary font-semibold mb-3" style={{ fontSize: '18px' }}>게임 설명</p>
               <div className="text-text-secondary leading-relaxed
                 [&_h2]:text-text-primary [&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2
                 [&_h3]:text-text-primary [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_h3]:mb-1.5
@@ -643,34 +856,47 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               )
             })()}
 
-            <div className="space-y-4">
-              {/* 개발사 · 장르 · 등급 */}
-              <div className="bg-bg-secondary border border-line rounded-xl p-5 space-y-4">
-                {game.developerId != null && typeof game.developerId === 'object' && (
-                  <div className="flex items-center gap-3">
-                    <img src={thumbUrl} alt=""
-                      className="w-11 h-11 rounded-lg object-cover flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-text-muted text-xs">개발사</p>
-                      <p className="text-text-primary font-semibold text-sm truncate">
-                        {(game.developerId as any).companyInfo?.companyName || (game.developerId as any).username}
-                      </p>
+            {/* 좌우 카드 사이 간격 전용 스페이서 — 카드/사이드바 폭은 그대로 두고 간격만 3.5배 좁힘(2026-09-17) */}
+            {game.serviceType === 'beta' && <div className="hidden lg:block lg:grow-0 lg:shrink-0 lg:basis-[0.34%]" />}
+
+            <div className={game.serviceType === 'beta' ? 'space-y-2 lg:grow-0 lg:shrink-0 lg:basis-[22.32%] w-full' : 'space-y-4'}>
+              {/* 개발사 · 장르 · 게임 소개 — 베타존은 좌측으로 옮겨서 여기선 렌더링 안 함(레이아웃도 베타존과 달라 공용 함수 대신 그대로 유지) */}
+              {game.serviceType !== 'beta' && (
+                <div className="bg-bg-secondary border border-line rounded-xl p-2.5 space-y-4">
+                  <div className="space-y-2 text-sm">
+                    {game.developerId != null && typeof game.developerId === 'object' && (
+                      <div className="space-y-2">
+                        <img src={subIconUrl} alt=""
+                          className="w-full aspect-[20/9] rounded-lg object-cover" />
+                        <div className="flex items-start gap-3">
+                          <span className="text-text-secondary w-16 flex-shrink-0">개발사</span>
+                          <span className="text-text-primary font-semibold truncate">
+                            {(game.developerId as any).companyInfo?.companyName || (game.developerId as any).username}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-start gap-3">
+                      <span className="text-text-secondary w-16 flex-shrink-0">장르</span>
+                      <span className="text-text-primary">{game.genre as string || '-'}</span>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="text-text-secondary w-16 flex-shrink-0">게임 소개</span>
+                      <span className="text-text-primary leading-relaxed line-clamp-4 overflow-hidden">
+                        {(game.description as string) || ''}
+                      </span>
                     </div>
                   </div>
-                )}
-                {game.description ? (
-                  <p className="text-text-secondary text-sm leading-relaxed">{game.description as string}</p>
-                ) : null}
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-text-secondary">장르</span>
-                  <span className="text-text-primary">{game.genre as string || '-'}</span>
                 </div>
-              </div>
+              )}
+
+              {/* 게임 시작 — 베타존은 왼쪽 개발사 카드 안으로 옮겨서 여기선 렌더링 안 함 */}
+              {game.serviceType !== 'beta' && renderPlayButton()}
 
               {/* 별점 */}
               <div
-                onClick={() => reviewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                className="group bg-bg-secondary border border-line rounded-xl p-5 cursor-pointer hover:bg-bg-tertiary/30 transition-colors"
+                onClick={() => withBetaApplyGuard(() => reviewSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))}
+                className="group bg-bg-secondary border border-line rounded-xl p-2.5 cursor-pointer hover:bg-bg-tertiary transition-colors"
               >
                 <div className="flex items-center gap-1">
                   <StarRating value={Math.round(avgRating)} />
@@ -684,7 +910,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 const cert = (game as any).ratingCertificate
                 if (!cert?.ratingClass || !cert?.isVerified) return null
                 return (
-                  <div className="bg-bg-secondary border border-line rounded-xl p-5 space-y-3">
+                  <div className="bg-bg-secondary border border-line rounded-xl p-2.5 space-y-3">
                     <p className="text-text-primary font-semibold" style={{ fontSize: '18px' }}>이용 등급</p>
                     <p className="text-text-primary font-bold text-sm">{cert.ratingClass}</p>
                     <p className="text-text-secondary text-sm leading-relaxed">{RATING_DESCRIPTIONS[cert.ratingClass] || ''}</p>
@@ -702,9 +928,68 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 )
               })()}
 
+              {/* 개발사 다른 게임 즐기기(라이브존) / 다른 베타 신청하기(베타존) */}
+              {devGames.length > 0 && (
+                <div className="bg-bg-secondary border border-line rounded-xl p-2.5 space-y-2">
+                  <p className="text-text-primary font-semibold" style={{ fontSize: '18px' }}>
+                    {game.serviceType === 'beta' ? '다른 베타 신청하기' : '개발사 다른 게임 즐기기'}
+                  </p>
+                  <div className="max-h-[300px] overflow-y-auto space-y-1">
+                    {devGames.map(g => (
+                      <Link
+                        key={g._id}
+                        href={`/games/${g._id}`}
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-bg-tertiary transition-colors"
+                      >
+                        <div className="w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden border border-line bg-bg-tertiary">
+                          {g.thumbnail && (
+                            <img src={toAbsUrl(g.thumbnail)} alt={g.title} className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-text-primary truncate">{g.title}</p>
+                          <p className="text-xs text-text-muted truncate">{g.genre || '기타'}</p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 개발사 만나기 */}
+              {(() => {
+                const links = (['website', 'discord', 'twitter', 'youtube', 'instagram'] as SocialPlatform[])
+                  .map(platform => ({ platform, url: ((game as any)[platform] as string) || '' }))
+                  .filter(l => l.url.trim())
+                if (links.length === 0) return null
+                return (
+                  <div className="bg-bg-secondary border border-line rounded-xl p-2.5 space-y-3">
+                    <p className="text-text-primary font-semibold" style={{ fontSize: '18px' }}>개발사 만나기</p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {links.map(l => (
+                        <a
+                          key={l.platform}
+                          href={l.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-9 h-9 flex items-center justify-center rounded-lg bg-bg-tertiary border border-line hover:border-accent transition-colors"
+                        >
+                          <SocialIcon platform={l.platform} className="w-5 h-5" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+
+            </div>
             </div>
 
             <div ref={reviewSectionRef} className="lg:col-span-2 border-t-2 border-bg-muted scroll-mt-24" />
+
+            {/* 리뷰+별점분포 영역 — 베타존은 위쪽 카드 영역과 동일한 폭/간격 비율로 맞춤(2026-09-17) */}
+            <div className={game.serviceType === 'beta' ? 'lg:col-span-2 flex flex-col lg:flex-row lg:justify-center gap-3 items-start' : 'contents'}>
+            <div className={game.serviceType === 'beta' ? 'space-y-3 lg:grow-0 lg:shrink-0 lg:basis-[53.7%] w-full' : 'contents'}>
 
             {/* 리뷰 섹션 - 버튼/필터 줄 */}
             <div className="space-y-3">
@@ -714,27 +999,33 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2.5">
-              {isAuthenticated && (myReview || hasPlayed) && !showReviewForm && (
+              {isAuthenticated && canWriteInBeta && !showReviewForm && (
                 <div className="relative group">
                   <button
-                    onClick={() => { if (user?.role === 'player') setShowReviewForm(true) }}
-                    disabled={user?.role !== 'player'}
+                    onClick={() => { if (user?.role === 'player' && (myReview || hasPlayed)) setShowReviewForm(true) }}
+                    disabled={user?.role !== 'player' || !(myReview || hasPlayed)}
                     className={`flex items-center gap-1.5 text-sm font-bold px-5 py-2.5 rounded-lg transition-opacity ${
-                      user?.role === 'player'
+                      user?.role === 'player' && (myReview || hasPlayed)
                         ? 'text-text-inverse bg-accent-hover hover:opacity-90'
                         : 'text-text-muted bg-bg-tertiary cursor-not-allowed opacity-60'
                     }`}
                   >
-                    {!myReview && user?.role === 'player' && (
+                    {!myReview && user?.role === 'player' && (myReview || hasPlayed) && (
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                       </svg>
                     )}
                     {myReview ? '리뷰 수정' : '리뷰 작성'}
                   </button>
-                  {user?.role !== 'player' && (
+                  {(user?.role !== 'player' || !(myReview || hasPlayed)) && (
                     <div className="absolute left-0 top-full mt-2 hidden group-hover:block z-10 w-56 bg-bg-secondary border border-line rounded-lg p-3 text-xs text-text-secondary leading-relaxed">
-                      {user?.role === 'developer' ? '기업 회원은 리뷰를 작성할 수 없습니다.' : '관리자는 리뷰를 작성할 수 없습니다.'}
+                      {user?.role === 'developer'
+                        ? '기업 회원은 리뷰를 작성할 수 없습니다.'
+                        : user?.role === 'admin'
+                        ? '관리자는 리뷰를 작성할 수 없습니다.'
+                        : game.serviceType === 'beta' && !isTestStarted
+                        ? `테스트 시작일(${game.startDate ? formatDate(game.startDate as string) : ''})부터 리뷰 작성이 가능합니다.`
+                        : '게임을 플레이한 후 리뷰를 작성할 수 있습니다.'}
                     </div>
                   )}
                 </div>
@@ -794,7 +1085,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               </div>
             </div>
             </div>
-            <div className="hidden lg:block" />
+            {game.serviceType !== 'beta' && <div className="hidden lg:block" />}
 
             {/* 리뷰 카드 영역 - 별점 분포와 상단을 맞춤 */}
             <div className="space-y-5">
@@ -834,8 +1125,8 @@ const avgRating = game ? (game.rating as number) || 0 : 0
 
             {reviews.length === 0 ? (
               <div
-                onClick={() => { if (isAuthenticated && user?.role === 'player' && (myReview || hasPlayed) && !showReviewForm) setShowReviewForm(true) }}
-                className={`bg-bg-secondary border border-line rounded-xl p-10 text-center text-text-muted ${isAuthenticated && user?.role === 'player' && (myReview || hasPlayed) && !showReviewForm ? 'cursor-pointer hover:bg-bg-tertiary/30 hover:text-text-primary transition-colors' : ''}`}
+                onClick={() => { if (isAuthenticated && user?.role === 'player' && (myReview || hasPlayed) && canWriteInBeta && !showReviewForm) setShowReviewForm(true) }}
+                className={`bg-bg-secondary border border-line rounded-xl p-10 text-center text-text-muted ${isAuthenticated && user?.role === 'player' && (myReview || hasPlayed) && canWriteInBeta && !showReviewForm ? 'cursor-pointer hover:bg-bg-tertiary/30 hover:text-text-primary transition-colors' : ''}`}
               >
                 아직 리뷰가 없습니다. 첫 번째 리뷰를 작성해보세요!
               </div>
@@ -848,16 +1139,20 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                     <div key={review._id} className={`rounded-xl p-5 border ${tc.bg}`}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          {review.userId?.profileImage ? (
-                            <img src={toAbsUrl(review.userId.profileImage)} alt="" className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
-                          ) : (
-                            <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-base font-bold text-text-inverse flex-shrink-0">
-                              {(review.userId?.username || '?')[0].toUpperCase()}
-                            </div>
-                          )}
+                          <UserHoverCard userId={review.userId?._id} role={review.userId?.role}>
+                            {review.userId?.profileImage ? (
+                              <img src={toAbsUrl(review.userId.profileImage)} alt="" className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-base font-bold text-text-inverse flex-shrink-0">
+                                {(review.userId?.username || '?')[0].toUpperCase()}
+                              </div>
+                            )}
+                          </UserHoverCard>
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-1.5">
-                              <span className="text-text-primary text-sm font-medium">{review.userId?.username || '익명'}</span>
+                              <UserHoverCard userId={review.userId?._id} role={review.userId?.role}>
+                                <span className="text-text-primary text-sm font-medium">{review.userId?.username || '익명'}</span>
+                              </UserHoverCard>
                               {review.userId?.role === 'developer' ? <OfficialBadge /> : review.userId?.role === 'admin' ? <AdminBadge /> : <LevelBadge level={review.userId?.level} size="xs" />}
                             </div>
                             <div className="flex items-center gap-2">
@@ -897,9 +1192,12 @@ const avgRating = game ? (game.rating as number) || 0 : 0
               </div>
             )}
             </div>
+            </div>
+
+            {game.serviceType === 'beta' && <div className="hidden lg:block lg:grow-0 lg:shrink-0 lg:basis-[0.34%]" />}
 
             {/* 별점 분포 */}
-            <div className="self-start bg-bg-secondary border border-line rounded-xl p-5 space-y-4">
+            <div className={`self-start bg-bg-secondary border border-line rounded-xl p-2.5 space-y-4 ${game.serviceType === 'beta' ? 'lg:grow-0 lg:shrink-0 lg:basis-[22.32%] w-full' : ''}`}>
               <p className="text-text-primary font-semibold" style={{ fontSize: '18px' }}>별점 분포</p>
 
               <div className="flex items-center gap-3 pb-4 border-b border-line">
@@ -926,36 +1224,61 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 })}
               </div>
             </div>
+            </div>
           </div>
         )}
 
         {/* ── 개발사 Q&A 탭 ── */}
         {activeTab === 'qna' && (
           <div className="space-y-5">
-            <div className="bg-bg-secondary border border-line rounded-xl p-6">
-              <p className="text-text-primary font-bold mb-4" style={{ fontSize: '30px' }}>개발사 Q&A</p>
+            <div className="bg-bg-secondary border border-line rounded-xl p-2.5">
+              {game.serviceType === 'beta' && (
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className="flex items-center gap-1 text-text-secondary hover:text-text-primary text-sm mb-3 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  게임 소개로 돌아가기
+                </button>
+              )}
+              <p className="text-text-primary font-semibold mb-4" style={{ fontSize: '18px' }}>개발사 Q&A</p>
 
               {/* 질문 작성 폼 */}
-              {isAuthenticated ? (
+              {isAuthenticated && canWriteInBeta ? (
                 <div className="mb-6">
+                  {game.serviceType === 'beta' && !isTestStarted && (
+                    <p className="text-text-muted text-xs mb-2">
+                      테스트 시작일({game.startDate ? formatDate(game.startDate as string) : ''})부터 질문 작성이 가능합니다.
+                    </p>
+                  )}
                   <textarea
                     value={qaQuestion}
                     onChange={(e) => setQaQuestion(e.target.value)}
                     placeholder="개발사에게 궁금한 점을 질문하세요..."
                     rows={3}
                     maxLength={1000}
-                    className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-3 text-text-primary text-sm placeholder-text-muted resize-none focus:outline-none focus:border-cyan-500"
+                    disabled={game.serviceType === 'beta' && !isTestStarted}
+                    className={`w-full bg-bg-tertiary border border-line rounded-lg px-4 py-3 text-text-primary text-sm placeholder-text-muted resize-none focus:outline-none focus:border-cyan-500 ${game.serviceType === 'beta' && !isTestStarted ? 'opacity-60 cursor-not-allowed' : ''}`}
                   />
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-text-muted text-xs">{qaQuestion.length}/1000</span>
                     <button
                       onClick={handleQASubmit}
-                      disabled={qaSubmitting || !qaQuestion.trim()}
+                      disabled={qaSubmitting || !qaQuestion.trim() || (game.serviceType === 'beta' && !isTestStarted)}
                       className="bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-text-primary text-base px-5 py-2 rounded-lg font-medium transition-colors"
                     >
                       {qaSubmitting ? '전송 중...' : '질문하기'}
                     </button>
                   </div>
+                </div>
+              ) : isAuthenticated ? (
+                <div className="mb-6 bg-bg-tertiary/50 border border-line rounded-lg p-4 text-center">
+                  <p className="text-text-secondary text-sm mb-2">Q&A를 작성하려면 베타존 신청이 필요합니다</p>
+                  <button onClick={handleApplyBetaTester} disabled={applying} className="text-cyan-400 hover:underline text-sm disabled:opacity-50">
+                    {applying ? '신청 중...' : '베타존 신청하기'}
+                  </button>
                 </div>
               ) : (
                 <div className="mb-6 bg-bg-tertiary/50 border border-line rounded-lg p-4 text-center">
@@ -973,14 +1296,18 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                     <div key={qa._id} className="border border-line rounded-lg overflow-hidden">
                       <div className="bg-bg-tertiary/50 p-4">
                         <div className="flex items-center gap-2 mb-2">
-                          {qa.userId?.profileImage ? (
-                            <img src={toAbsUrl(qa.userId.profileImage)} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                          ) : (
-                            <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center text-[10px] font-bold text-text-inverse">
-                              {(qa.userId?.username || '?')[0].toUpperCase()}
-                            </div>
-                          )}
-                          <span className="text-text-primary text-sm font-medium">{qa.userId?.username || '익명'}</span>
+                          <UserHoverCard userId={qa.userId?._id} role={qa.userId?.role}>
+                            <span className="flex items-center gap-2">
+                              {qa.userId?.profileImage ? (
+                                <img src={toAbsUrl(qa.userId.profileImage)} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                              ) : (
+                                <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center text-[10px] font-bold text-text-inverse">
+                                  {(qa.userId?.username || '?')[0].toUpperCase()}
+                                </div>
+                              )}
+                              <span className="text-text-primary text-sm font-medium">{qa.userId?.username || '익명'}</span>
+                            </span>
+                          </UserHoverCard>
                           <span className="text-text-muted text-xs">{formatDate(qa.createdAt)}</span>
                         </div>
                         <p className="text-text-secondary text-sm">{qa.question}</p>
@@ -1049,11 +1376,49 @@ const avgRating = game ? (game.rating as number) || 0 : 0
         {/* ── 상점 탭 ── */}
         {activeTab === 'shop' && (
           <div className="relative space-y-5">
+            {/* 옵션 메뉴 — 카드 우측 상단 안쪽에 고정 */}
+            <div className="absolute top-4 right-4 z-10" ref={shopMenuRef}>
+              <button
+                onClick={() => { if (!isAuthenticated) { router.push('/login'); return } setShopMenuOpen(v => !v) }}
+                className="flex flex-col items-center justify-center gap-1.5 w-11 h-11 rounded-xl border-2 bg-white border-black hover:bg-gray-100 transition-all"
+              >
+                <span className="block w-5 h-0.5 bg-black"></span>
+                <span className="block w-5 h-0.5 bg-black"></span>
+                <span className="block w-5 h-0.5 bg-black"></span>
+              </button>
+              {shopMenuOpen && (
+                <div className="absolute right-0 top-13 z-50 w-72 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
+                  {/* 헤더 */}
+                  <div className="px-5 py-4 border-b border-gray-200">
+                    <span className="text-sm font-semibold text-gray-800">{user?.email || '-'}</span>
+                  </div>
+                  {/* 메뉴 항목 */}
+                  <button onClick={() => { setShopMenuOpen(false); setPaymentHistoryOpen(true); loadPaymentHistory() }} className="w-full text-left px-5 py-4 text-base text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors">결제내역</button>
+                  <button onClick={() => { setShopMenuOpen(false); setCurrencyHistoryOpen(true); loadPaymentHistory() }} className="w-full text-left px-5 py-4 text-base text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors">재화내역</button>
+                  <button
+                    onClick={() => {
+                      setShopMenuOpen(false)
+                      const body = [
+                        `* Game: ${game?.title as string}`,
+                        `* Game User ID: ${user?.id || ''}`,
+                        `* Game Nickname: ${user?.username || ''}`,
+                        `* User Agent: ${navigator.userAgent}`,
+                      ].join('\n')
+                      window.location.href = `mailto:cs@newplay.store?body=${encodeURIComponent(body)}`
+                    }}
+                    className="w-full text-left px-5 py-4 text-base text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    1대1 문의
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* 서브탭 */}
             {(() => {
               const hasCashTab = shopItems.some(i => (i as { paymentType?: string }).paymentType !== 'capcoin')
               const hasCapcoinTab = shopItems.some(i => (i as { paymentType?: string }).paymentType === 'capcoin')
-              return (
+              return (hasCashTab || hasCapcoinTab) && (
             <div className="flex items-stretch gap-3">
               {hasCashTab && (
               <button
@@ -1079,28 +1444,6 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                 <span className="text-lg font-bold text-white drop-shadow-none" style={{ textShadow: '3px 3px 0px rgba(0,0,0,1)', WebkitTextStroke: '0.5px rgba(0,0,0,0.3)' }}>챌린지 보상</span>
               </button>
               )}
-              <div className="ml-auto relative" ref={shopMenuRef}>
-                <button
-                  onClick={() => setShopMenuOpen(v => !v)}
-                  className="flex flex-col items-center justify-center gap-1.5 w-11 h-11 rounded-xl border-2 bg-white border-black hover:bg-gray-100 transition-all"
-                >
-                  <span className="block w-5 h-0.5 bg-black"></span>
-                  <span className="block w-5 h-0.5 bg-black"></span>
-                  <span className="block w-5 h-0.5 bg-black"></span>
-                </button>
-                {shopMenuOpen && (
-                  <div className="absolute right-0 top-13 z-50 w-72 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden">
-                    {/* 헤더 */}
-                    <div className="px-5 py-4 border-b border-gray-200">
-                      <span className="text-sm font-semibold text-gray-800">{user?.email || '-'}</span>
-                    </div>
-                    {/* 메뉴 항목 */}
-                    <button onClick={() => { setShopMenuOpen(false); setPaymentHistoryOpen(true); loadPaymentHistory() }} className="w-full text-left px-5 py-4 text-base text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors">결제내역</button>
-                    <button onClick={() => { setShopMenuOpen(false); setCurrencyHistoryOpen(true); loadPaymentHistory() }} className="w-full text-left px-5 py-4 text-base text-gray-700 hover:bg-gray-50 border-b border-gray-100 transition-colors">재화내역</button>
-<button className="w-full text-left px-5 py-4 text-base text-gray-700 hover:bg-gray-50 transition-colors">1대1 문의</button>
-                  </div>
-                )}
-              </div>
             </div>
               )
             })()}
@@ -1201,12 +1544,22 @@ const avgRating = game ? (game.rating as number) || 0 : 0
                         )}
                         <p className="text-sm font-medium text-text-primary">{amountLabel}</p>
                       </div>
-                      <div className="p-4 mt-auto">
+                      <div className="p-4 mt-auto space-y-1.5">
                         <button
-                          onClick={() => handlePurchase(item.name, item.price)}
-                          className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-white font-bold rounded-lg transition-colors text-base"
+                          onClick={() => handleNewPlayPurchase(item._id, item._id)}
+                          disabled={newplayPurchasing === item._id}
+                          className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 disabled:opacity-60 text-white font-bold rounded-lg transition-colors text-base"
                         >
-                          {currencySymbol}{item.price.toLocaleString()}
+                          {newplayPurchasing === item._id ? '연결 중...' : `${currencySymbol}${item.price.toLocaleString()}`}
+                        </button>
+                        {newplayError?.key === item._id && (
+                          <p className="text-xs text-red-400 text-center">{newplayError.message}</p>
+                        )}
+                        <button
+                          onClick={() => handlePurchase(item.name, item.price, item._id)}
+                          className="w-full text-xs text-text-muted hover:text-text-secondary underline transition-colors"
+                        >
+                          Toss로 결제
                         </button>
                       </div>
                     </div>
@@ -1224,6 +1577,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             <p className="text-text-secondary">챌린지 기능은 준비 중입니다</p>
           </div>
         )}
+        </div>
       </div>
 
       {/* ── 특별 상품 팝업 ── */}
@@ -1274,11 +1628,23 @@ const avgRating = game ? (game.rating as number) || 0 : 0
             {/* 구매 버튼 */}
             <div className="px-6 pb-6 pt-2">
               <button
-                onClick={() => { handlePurchase(specialPopupItem.name, specialPopupItem.price); setSpecialPopupItem(null) }}
-                className="w-full py-3.5 rounded-xl font-extrabold text-base text-white shadow-lg transition-all active:scale-95"
+                onClick={() => handleNewPlayPurchase(specialPopupItem._id, specialPopupItem._id)}
+                disabled={newplayPurchasing === specialPopupItem._id}
+                className="w-full py-3.5 rounded-xl font-extrabold text-base text-white shadow-lg transition-all active:scale-95 disabled:opacity-60"
                 style={{ background: 'linear-gradient(180deg, #38bdf8 0%, #0284c7 100%)', boxShadow: '0 4px 0 #0369a1' }}
               >
-                {specialPopupItem.currency === 'KRW' ? '₩' : specialPopupItem.currency === 'USD' ? '$' : '€'}{specialPopupItem.price.toLocaleString()}
+                {newplayPurchasing === specialPopupItem._id
+                  ? '연결 중...'
+                  : `${specialPopupItem.currency === 'KRW' ? '₩' : specialPopupItem.currency === 'USD' ? '$' : '€'}${specialPopupItem.price.toLocaleString()}`}
+              </button>
+              {newplayError?.key === specialPopupItem._id && (
+                <p className="text-center text-xs text-red-400 mt-2">{newplayError.message}</p>
+              )}
+              <button
+                onClick={() => { handlePurchase(specialPopupItem.name, specialPopupItem.price, specialPopupItem._id); setSpecialPopupItem(null) }}
+                className="w-full text-center text-xs text-gray-400 hover:text-gray-500 underline mt-2 transition-colors"
+              >
+                Toss로 결제
               </button>
               {specialPopupItem.stock !== undefined && (
                 <p className="text-center text-xs text-gray-400 mt-2">
@@ -1414,6 +1780,7 @@ const avgRating = game ? (game.rating as number) || 0 : 0
           gameName={game.title as string}
           itemName={paymentModal.itemName}
           amount={paymentModal.amount}
+          itemId={paymentModal.itemId}
           onClose={() => setPaymentModal({ open: false, itemName: '', amount: 0 })}
         />
       )}
@@ -1590,6 +1957,20 @@ const avgRating = game ? (game.rating as number) || 0 : 0
           handleDeleteReview()
         }}
         onCancel={() => setShowDeleteReviewConfirm(false)}
+      />
+
+      <ConfirmModal
+        isOpen={pendingBetaAction !== null}
+        title="베타존 신청 필요"
+        message="이 기능은 베타존 신청 후 이용할 수 있습니다. 지금 신청하시겠습니까?"
+        confirmLabel="신청하기"
+        onConfirm={async () => {
+          const action = pendingBetaAction
+          setPendingBetaAction(null)
+          await handleApplyBetaTester()
+          action?.()
+        }}
+        onCancel={() => setPendingBetaAction(null)}
       />
     </div>
   )

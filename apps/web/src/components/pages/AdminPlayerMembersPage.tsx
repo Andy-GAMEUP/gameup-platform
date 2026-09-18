@@ -4,6 +4,7 @@ import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
 import adminService from '@/services/adminService'
 import { Loader2, Search, UserCircle, X } from 'lucide-react'
+import { formatDate } from '@/lib/formatDate'
 
 interface IndividualMember {
   _id: string
@@ -159,8 +160,8 @@ export default function AdminPlayerMembersPage() {
                     <th className="text-left text-text-primary font-medium px-4 py-3 border-r border-line/20">No.</th>
                     <th className="text-left text-text-primary font-medium px-4 py-3 border-r border-line/20">닉네임</th>
                     <th className="text-left text-text-primary font-medium px-4 py-3 border-r border-line/20">이메일</th>
-                    <th className="text-left text-text-primary font-medium px-4 py-3 border-r border-line/20">등록일시</th>
-                    <th className="text-left text-text-primary font-medium px-4 py-3 border-r border-line/20">마지막 접속</th>
+                    <th className="text-left text-text-primary font-medium px-4 py-3 border-r border-line/20">가입일</th>
+                    <th className="text-left text-text-primary font-medium px-4 py-3 border-r border-line/20">최근 로그인</th>
                     <th className="text-left text-text-primary font-medium px-4 py-3 border-r border-line/20">소속 기업</th>
                     <th className="text-left text-text-primary font-medium px-4 py-3 border-r border-line/20">상태</th>
                     <th className="text-left text-text-primary font-medium px-4 py-3">회원 정보</th>
@@ -174,8 +175,8 @@ export default function AdminPlayerMembersPage() {
                       <td className="text-text-primary px-4 py-3 border-r border-line/20">{(page - 1) * limit + i + 1}</td>
                       <td className="text-text-primary px-4 py-3 font-medium border-r border-line/20">{m.nickname || m.username}</td>
                       <td className="text-text-primary px-4 py-3 border-r border-line/20">{m.email}</td>
-                      <td className="text-text-primary px-4 py-3 text-sm border-r border-line/20">{new Date(m.createdAt).toLocaleString('ko-KR')}</td>
-                      <td className="text-text-primary px-4 py-3 text-sm border-r border-line/20">{m.lastLoginAt ? new Date(m.lastLoginAt).toLocaleString('ko-KR') : '-'}</td>
+                      <td className="text-text-primary px-4 py-3 text-sm border-r border-line/20">{formatDate(m.createdAt)}</td>
+                      <td className="text-text-primary px-4 py-3 text-sm border-r border-line/20">{m.lastLoginAt ? formatDate(m.lastLoginAt) : '-'}</td>
                       <td className="text-text-primary px-4 py-3 text-sm border-r border-line/20">{m.companyName || '-'}</td>
                       <td className={`px-4 py-3 font-medium text-sm border-r border-line/20 ${statusColor(m)}`}>{statusLabel(m)}</td>
                       <td className="px-4 py-3">

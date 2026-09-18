@@ -50,6 +50,7 @@ import { errorHandler, notFound } from './middleware/errorHandler'
 import { initSocket } from './socket'
 import { startCleanupJob } from './jobs/cleanupDeletedContent'
 import { startCloseExpiredProjectsJob } from './jobs/closeExpiredProjects'
+import { startZoneRankingJob } from './jobs/updateZoneRankings'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -86,7 +87,12 @@ app.use(globalLimiter)
 
 
 // ── 일반 미들웨어 ─────────────────────────────────────────────────
-app.use(express.json({ limit: '10mb' }))
+// verify 콜백으로 원본 body(raw)를 보존 — 뉴플레이 웹훅 서명(HMAC)은 파싱된
+// JSON이 아니라 원본 바이트 기준으로 계산되므로 검증 시 필요
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, _res, buf) => { (req as express.Request & { rawBody?: Buffer }).rawBody = buf },
+}))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // ── 정적 파일 ─────────────────────────────────────────────────────
@@ -162,6 +168,7 @@ server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`)
   startCleanupJob()
   startCloseExpiredProjectsJob()
+  startZoneRankingJob()
 })
 
 export default server

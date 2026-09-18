@@ -7,6 +7,8 @@ import Navbar from '@/components/Navbar'
 import partnerService, { PartnerProfile } from '@/services/partnerService'
 import { useQuery } from '@tanstack/react-query'
 import { Users, ChevronLeft, ChevronRight, Loader2, FileText } from 'lucide-react'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 
 export default function PartnerDirectoryPage() {
   const router = useRouter()
@@ -98,7 +100,11 @@ function PartnerCard({ partner, onClick }: { partner: PartnerProfile; onClick: (
 
       {/* 이름 + 슬로건 + 태그 */}
       <div className="flex-1 min-w-0">
-        <p className="text-text-primary font-semibold text-base group-hover:text-cyan-300 transition-colors truncate">{username}</p>
+        <p className="flex items-center gap-1 text-text-primary font-semibold text-base group-hover:text-cyan-300 transition-colors truncate">
+          {username}
+          {role === 'developer' && <OfficialBadge />}
+          {role === 'admin' && <AdminBadge />}
+        </p>
         <p className="text-text-secondary text-sm mt-0.5 truncate">{partner.slogan || '파트너 채널'}</p>
         {partner.selectedTopics.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">

@@ -60,6 +60,11 @@ export interface IUser extends Document {
   contactPerson?: IContactPerson
   adminMemo?: string
   lastLoginAt?: Date
+  failedLoginAttempts?: number
+  lockUntil?: Date
+  twoFactorEnabled?: boolean
+  twoFactorSecret?: string
+  twoFactorBackupCodes?: string[]
   createdAt: Date
   updatedAt: Date
 }
@@ -192,6 +197,11 @@ const userSchema = new Schema<IUser>(
     approvedAt: { type: Date },
     adminMemo: { type: String },
     lastLoginAt: { type: Date },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date },
+    twoFactorEnabled: { type: Boolean, default: false },
+    twoFactorSecret: { type: String, select: false },
+    twoFactorBackupCodes: { type: [String], default: undefined, select: false },
   },
   {
     timestamps: true

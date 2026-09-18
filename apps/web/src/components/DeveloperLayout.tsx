@@ -12,7 +12,7 @@ import {
   LayoutDashboard, Gamepad2, Users, MessageSquare, BarChart3, Settings,
   Bell, ChevronLeft, ChevronRight, ChevronDown, LogOut, Plus, Handshake,
   LineChart, Repeat2, DollarSign, UserPlus, Crown, TrendingUp, CreditCard,
-  Megaphone, Star,
+  Megaphone, Star, Rocket, FlaskConical,
 } from 'lucide-react'
 
 export default function DeveloperLayout({ children }: { children: React.ReactNode }) {
@@ -81,8 +81,13 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
 
   const navItems: NavItem[] = [
     { path: '/dashboard',       label: '대시보드',   icon: <LayoutDashboard className="w-5 h-5" /> },
-    { path: '/games-management', label: '게임 관리', icon: <Gamepad2        className="w-5 h-5" /> },
-    { path: '/testers',         label: '테스터 관리', icon: <Users           className="w-5 h-5" /> },
+    {
+      path: '/games-management', label: '게임 관리', icon: <Gamepad2 className="w-5 h-5" />,
+      children: [
+        { tab: 'live', label: '라이브존', icon: <Rocket        className="w-4 h-4" /> },
+        { tab: 'beta', label: '베타존',   icon: <FlaskConical  className="w-4 h-4" /> },
+      ],
+    },
     {
       path: '/community-management', label: '게임 운영', icon: <Megaphone className="w-5 h-5" />,
       children: [
@@ -103,7 +108,7 @@ export default function DeveloperLayout({ children }: { children: React.ReactNod
         { tab: 'ltvcalc',   label: 'LTV 계산',  icon: <TrendingUp  className="w-4 h-4" /> },
       ],
     },
-    { path: '/payments', label: '결제 / 환불', icon: <CreditCard className="w-5 h-5" /> },
+    { path: '/payments', label: '결제', icon: <CreditCard className="w-5 h-5" /> },
     { path: '/proposals',       label: '제안 관리',   icon: <Handshake className="w-5 h-5" /> },
     { path: '/settings',        label: '회사 정보',   icon: <Settings  className="w-5 h-5" /> },
   ]

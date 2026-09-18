@@ -6,6 +6,8 @@ import { UserPlus, X } from 'lucide-react'
 import { partnerService } from '@/services/partnerService'
 import { usePartnerProfileCtx } from './PartnerProfileContext'
 import { formatDate } from '@/lib/formatDate'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 
 export default function TeamSection() {
   const { id, partner, isOwnProfile } = usePartnerProfileCtx()
@@ -99,8 +101,10 @@ export default function TeamSection() {
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-bg-tertiary transition-colors text-left"
                   >
-                    <div className="w-7 h-7 rounded-full bg-accent/40 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                      {u.username[0]?.toUpperCase()}
+                    <div className="w-7 h-7 rounded-full bg-accent/40 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 overflow-hidden">
+                      {u.profileImage
+                        ? <img src={u.profileImage} alt="" className="w-full h-full object-cover" />
+                        : u.username[0]?.toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <p className="text-text-primary text-sm font-medium">{u.username}</p>
@@ -138,7 +142,11 @@ export default function TeamSection() {
                   : m.userId.username?.[0]?.toUpperCase()}
               </div>
               <div>
-                <p className="text-text-primary text-sm font-medium">{m.userId.username}</p>
+                <p className="flex items-center gap-1 text-text-primary text-sm font-medium">
+                  {m.userId.username}
+                  {m.userId.role === 'developer' && <OfficialBadge />}
+                  {m.userId.role === 'admin' && <AdminBadge />}
+                </p>
                 <p className="text-text-muted text-xs">{formatDate(m.addedAt)} 추가됨</p>
               </div>
             </div>

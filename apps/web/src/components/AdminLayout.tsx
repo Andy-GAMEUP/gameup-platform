@@ -11,7 +11,7 @@ import {
   Shield, UserPlus, Handshake, Tags,
   Smartphone, Globe, Calendar, FileCheck, ImageIcon, Bell, Package,
   BarChart3, PieChart, UserCircle, Building2, Award, Activity, FileText, Gift, Flag,
-  MessageCircle, ShieldBan, Trash2, CreditCard, Calculator, LogOut, Sparkles, MessageCircleQuestion,
+  MessageCircle, ShieldBan, Trash2, CreditCard, LogOut, Sparkles, MessageCircleQuestion,
 } from 'lucide-react'
 
 interface AdminLayoutProps { children: ReactNode }
@@ -31,12 +31,24 @@ const navItems: NavItem[] = [
     label: '게임 관리',
     icon: Gamepad2,
     children: [
-      { path: '/admin/games', label: '게임 관리', icon: Gamepad2, exact: true },
+      { path: '/admin/games?service=live', label: '라이브 게임', icon: Gamepad2 },
+      { path: '/admin/games?service=beta', label: '베타 게임', icon: Gamepad2 },
+      { path: '/admin/beta-testers', label: '베타 테스터 관리', icon: Users },
       { path: '/admin/game-deletion-logs', label: '삭제 게임 관리', icon: Trash2 },
     ],
   },
-  { path: '/admin/payments', label: '결제 / 환불', icon: CreditCard },
-  { path: '/admin/settlements', label: '정산', icon: Calculator },
+  {
+    path: '/admin/users',
+    label: '계정 관리',
+    icon: Users,
+    children: [
+      { path: '/admin/members/new_account', label: '기업회원', icon: Building2 },
+      { path: '/admin/members/players', label: '게임회원', icon: UserCircle },
+      { path: '/admin/members/admins', label: '관리자', icon: Shield },
+      { path: '/admin/members/deleted', label: '탈퇴 회원', icon: Trash2 },
+    ],
+  },
+  { path: '/admin/payments', label: '결제', icon: CreditCard },
   { path: '/admin/notifications', label: '알림', icon: Bell },
   { path: '/admin/inquiries', label: '문의하기 관리', icon: MessageCircleQuestion },
   { path: '/admin/community?tab=banner', label: '배너 관리', icon: ImageIcon },
@@ -94,17 +106,6 @@ const navItems: NavItem[] = [
       { path: '/admin/analytics/menu', label: '메뉴별 통계', icon: PieChart },
     ],
   },
-  {
-    path: '/admin/users',
-    label: '계정 관리',
-    icon: Users,
-    children: [
-      { path: '/admin/members/new_account', label: '기업회원', icon: Building2 },
-      { path: '/admin/members/players', label: '게임회원', icon: UserCircle },
-      { path: '/admin/members/admins', label: '관리자', icon: Shield },
-      { path: '/admin/members/deleted', label: '탈퇴 회원', icon: Trash2 },
-    ],
-  },
 ]
 
 function matchPath(path: string, pname: string, sparams: URLSearchParams) {
@@ -144,8 +145,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   }, [isLoading, user, router])
 
-  if (!isLoading && (!user || user.role !== 'admin')) return null
-
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {}
     navItems.forEach(item => {
@@ -156,6 +155,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     })
     return init
   })
+
+  if (!isLoading && (!user || user.role !== 'admin')) return null
 
   const toggleMenu = (path: string) => {
     setOpenMenus(prev => ({ ...prev, [path]: !prev[path] }))

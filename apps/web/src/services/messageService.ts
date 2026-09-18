@@ -5,6 +5,7 @@ export interface ChatRoom {
   _id: string; participants: { _id: string; username: string; profileImage?: string; role?: string; companyInfo?: { companyCategory?: string; companyType?: string[] } }[]
   lastMessage: string; lastMessageAt: string; createdAt: string
   title?: string; content?: string; imageUrl?: string; category?: string; status?: 'open' | 'in_progress' | 'closed'
+  hasUnread?: boolean
 }
 export interface ChatMessage {
   _id: string; roomId: string; senderId: { _id: string; username: string; profileImage?: string; role?: string }

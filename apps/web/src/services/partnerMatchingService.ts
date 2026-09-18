@@ -7,6 +7,7 @@ export interface PartnerMatchingProfile {
   userId: {
     _id: string
     username: string
+    role?: string
     profileImage?: string
     companyInfo?: {
       companyName: string
@@ -84,7 +85,7 @@ export interface PartnerProjectItem {
 export interface ProjectInquiryItem {
   _id: string
   projectId: string
-  authorId: { _id: string; username: string; partnerChannelId?: string | null }
+  authorId: { _id: string; username: string; role?: string; partnerChannelId?: string | null }
   content: string
   parentId: string | null
   isSecret: boolean

@@ -3,10 +3,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminLayout from '@/components/AdminLayout'
+import Modal from '@/components/Modal'
 import ConfirmModal from '@/components/ConfirmModal'
 import AlertModal from '@/components/AlertModal'
 import adminService from '@/services/adminService'
-import { Loader2, ArrowLeft, Save, Pencil, X, FileText, Ban, KeyRound, Copy } from 'lucide-react'
+import { useAuth } from '@/lib/useAuth'
+import { Loader2, ArrowLeft, Save, Pencil, X, Ban, ShieldPlus } from 'lucide-react'
 import { formatDate } from '@/lib/formatDate'
 
 interface RecentPost {
@@ -54,6 +56,8 @@ interface UserDetail {
   contactPerson?: ContactPerson
   adminLevel?: 'super' | 'normal' | 'monitor'
   adminGrantedAt?: string
+  gamesPlayedCount?: number
+  betaApplicationsCount?: number
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -89,9 +93,15 @@ const COMPANY_TYPE_LABELS: Record<string, string> = {
 }
 
 const LEVEL_LABELS: Record<string, { label: string; cls: string }> = {
-  super:   { label: 'Super',   cls: 'bg-accent-light text-accent-text border-accent-muted' },
-  normal:  { label: 'Normal',  cls: 'bg-blue-600/20 text-blue-300 border-blue-500/30' },
-  monitor: { label: 'Monitor', cls: 'bg-bg-muted/30 text-text-secondary border-line/30' },
+  super:   { label: '최고 관리자', cls: 'bg-accent-light text-accent-text border-accent-muted' },
+  normal:  { label: '일반 관리자', cls: 'bg-blue-600/20 text-blue-300 border-blue-500/30' },
+  monitor: { label: '모니터',     cls: 'bg-bg-muted/30 text-text-secondary border-line/30' },
+}
+
+const LEVEL_DESCRIPTIONS: Record<'super' | 'normal' | 'monitor', string> = {
+  super: '모든 권한을 가집니다.',
+  normal: '승인·삭제를 제외한 대부분의 관리 작업이 가능합니다.',
+  monitor: '조회만 가능합니다. (등록/수정/삭제/승인 전부 불가)',
 }
 
 export default function AdminUserDetailPage({ id }: { id: string }) {
@@ -121,10 +131,13 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
   const [banConfirm, setBanConfirm] = useState(false)
   const [banSubmitting, setBanSubmitting] = useState(false)
 
-  // 비밀번호 초기화
-  const [resetPwConfirm, setResetPwConfirm] = useState(false)
-  const [resetPwSubmitting, setResetPwSubmitting] = useState(false)
-  const [tempPassword, setTempPassword] = useState<string | null>(null)
+  // 관리자 선임
+  const { user: currentUser } = useAuth()
+  const [appointLevel, setAppointLevel] = useState<'super' | 'normal' | 'monitor'>('monitor')
+  const [appointModal, setAppointModal] = useState(false)
+  const [appointSubmitting, setAppointSubmitting] = useState(false)
+  const [revokeConfirm, setRevokeConfirm] = useState(false)
+  const [revokeSubmitting, setRevokeSubmitting] = useState(false)
 
   // 커뮤니티 게시글 페이지네이션
   const [posts, setPosts] = useState<RecentPost[]>([])
@@ -149,9 +162,10 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
       .then(res => {
         const raw = res?.data ?? res
         const user = raw?.user ?? raw
-        const d = { ...user } as UserDetail
+        const d = { ...user, gamesPlayedCount: raw?.gamesPlayedCount, betaApplicationsCount: raw?.betaApplicationsCount } as UserDetail
         setDetail(d)
         setForm({ ...d })
+        if (d.adminLevel) setAppointLevel(d.adminLevel)
         setPosts(raw?.recentPosts ?? [])
         setPostsTotal(raw?.postsTotal ?? 0)
         setPostsPage(1)
@@ -221,17 +235,36 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
     }
   }
 
-  const handleResetPassword = async () => {
-    setResetPwSubmitting(true)
+  const handleAppointAdmin = async () => {
+    const wasAdmin = detail?.role === 'admin'
+    setAppointSubmitting(true)
     try {
-      const res = await adminService.resetUserPassword(id)
-      const raw = res?.data ?? res
-      setResetPwConfirm(false)
-      setTempPassword(raw?.tempPassword ?? null)
-    } catch {
-      setAlertMessage('비밀번호 초기화 중 오류가 발생했습니다.')
+      await adminService.updateUserRole(id, 'admin', appointLevel)
+      setAppointModal(false)
+      fetchDetail()
+      setAlertMessage(wasAdmin ? '관리자 등급이 변경되었습니다.' : '관리자로 등록되었습니다.')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } }
+      setAlertMessage(e?.response?.data?.message || (wasAdmin ? '등급 변경에 실패했습니다.' : '관리자 등록에 실패했습니다.'))
     } finally {
-      setResetPwSubmitting(false)
+      setAppointSubmitting(false)
+    }
+  }
+
+  const handleRevokeAdmin = async () => {
+    if (!detail) return
+    setRevokeSubmitting(true)
+    try {
+      const originalRole = detail.memberType === 'corporate' || detail.companyInfo?.companyName ? 'developer' : 'player'
+      await adminService.updateUserRole(id, originalRole)
+      setRevokeConfirm(false)
+      fetchDetail()
+      setAlertMessage('관리자에서 제외되었습니다.')
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } }
+      setAlertMessage(e?.response?.data?.message || '관리자 제외에 실패했습니다.')
+    } finally {
+      setRevokeSubmitting(false)
     }
   }
 
@@ -251,7 +284,8 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
 
   const viewType: 'admin' | 'corporate' | 'individual' =
     detail.role === 'admin' ? 'admin' : detail.memberType === 'corporate' ? 'corporate' : 'individual'
-  const adminLevel = detail.adminLevel ? LEVEL_LABELS[detail.adminLevel] : null
+  // 관리자로 선임되어도 원래 계정 유형(기업/개인)에 따른 계정 정보 필드는 그대로 보여준다
+  const originalType: 'corporate' | 'individual' = detail.memberType === 'corporate' ? 'corporate' : 'individual'
 
   const TITLE_BY_TYPE: Record<typeof viewType, string> = {
     admin: '관리자 계정 상세정보',
@@ -262,28 +296,28 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
   const accountInfoCard = (
     <div className="flex-1 bg-bg-secondary border border-line rounded-xl p-6 space-y-5">
       <h3 className="text-text-primary font-semibold border-b border-line pb-3">계정 정보</h3>
-      {viewType === 'corporate' && (
+      {originalType === 'corporate' && (
         <Field label="회사명">
           <Input value={form.companyInfo?.companyName ?? ''} onChange={() => {}} disabled />
         </Field>
       )}
-      <Field label={viewType === 'corporate' ? '담당자' : '아이디(사용자명)'}>
+      <Field label={originalType === 'corporate' ? '담당자' : '아이디(사용자명)'}>
         <Input value={form.username ?? ''} onChange={() => {}} disabled />
       </Field>
       <Field label="이메일">
         <Input value={form.email ?? ''} onChange={() => {}} disabled />
       </Field>
-      {viewType === 'corporate' && (
+      {originalType === 'corporate' && (
         <Field label="회사 웹사이트">
           <Input value={form.companyInfo?.homepageUrl ?? ''} onChange={() => {}} disabled />
         </Field>
       )}
-      {viewType === 'corporate' && (
+      {originalType === 'corporate' && (
         <Field label="대표 연락처">
           <Input value={detail.contactPerson?.phone || '-'} onChange={() => {}} disabled />
         </Field>
       )}
-      {viewType === 'corporate' && (
+      {originalType === 'corporate' && (
         <>
           <Field label="사업자 등록번호">
             <Input value={detail.companyInfo?.businessNumber || '-'} onChange={() => {}} disabled />
@@ -296,7 +330,15 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
             />
           </Field>
           <Field label="기업 유형">
-            <Input value={detail.companyInfo?.companyCategory === 'partner' ? '파트너' : '개발사'} onChange={() => {}} disabled />
+            <Input
+              value={(() => {
+                const cat = detail.companyInfo?.companyCategory
+                const isDeveloper = cat === 'developer' || (!cat && detail.companyInfo?.companyType?.includes('developer'))
+                return isDeveloper ? '개발사' : '파트너'
+              })()}
+              onChange={() => {}}
+              disabled
+            />
           </Field>
           <Field label="기업 형태">
             <Input
@@ -309,34 +351,38 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
           </Field>
         </>
       )}
-      {viewType === 'individual' && (
+      {originalType === 'individual' && (
         <Field label="레벨">
           <Input value={`Lv.${detail.level ?? 1}`} onChange={() => {}} disabled />
         </Field>
       )}
       <Field label="가입일">
-        <Input value={detail.createdAt ? formatDate(detail.createdAt) : '-'} onChange={() => {}} disabled />
+        <Input value={detail.createdAt ? new Date(detail.createdAt).toLocaleString('ko-KR') : '-'} onChange={() => {}} disabled />
       </Field>
       <Field label="최근 로그인">
         <Input value={detail.lastLoginAt ? new Date(detail.lastLoginAt).toLocaleString('ko-KR') : '-'} onChange={() => {}} disabled />
       </Field>
-      {viewType === 'individual' && (
+      {originalType === 'individual' && (
         <Field label="관심 장르">
           <Input value={detail.favoriteGenres && detail.favoriteGenres.length > 0 ? detail.favoriteGenres.join(', ') : '-'} onChange={() => {}} disabled />
         </Field>
       )}
-      {viewType === 'individual' && (
+      {originalType === 'individual' && (
         <Field label="자기소개">
-          <textarea
-            value={detail.bio ?? ''}
-            onChange={() => {}}
-            disabled
-            rows={4}
-            className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent disabled:opacity-60 resize-none"
-          />
+          <Input value={detail.bio || '-'} onChange={() => {}} disabled />
         </Field>
       )}
-      {viewType === 'individual' && (
+      {originalType === 'individual' && (
+        <Field label="플레이한 게임 수">
+          <Input value={`${(detail.gamesPlayedCount ?? 0).toLocaleString()}개`} onChange={() => {}} disabled />
+        </Field>
+      )}
+      {originalType === 'individual' && (
+        <Field label="참여한 베타 수">
+          <Input value={`${(detail.betaApplicationsCount ?? 0).toLocaleString()}개`} onChange={() => {}} disabled />
+        </Field>
+      )}
+      {originalType === 'individual' && (
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-bg-tertiary/50 border border-line rounded-xl p-4">
             <div className="flex items-center justify-between mb-1">
@@ -378,84 +424,65 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
         {/* 계정 정보 (기업회원은 기업 정보 포함) */}
         {accountInfoCard}
 
-        {viewType === 'admin' && (
-          <div className="bg-bg-secondary border border-line rounded-xl p-6 space-y-5">
-            <h3 className="text-text-primary font-semibold border-b border-line pb-3">관리자 권한 정보</h3>
-            <Field label="권한 등급">
-              {adminLevel ? (
-                <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${adminLevel.cls}`}>{adminLevel.label}</span>
-              ) : <span className="text-text-muted text-sm">-</span>}
-            </Field>
-            <Field label="권한 부여일">
-              <span className="text-text-primary text-sm">{detail.adminGrantedAt ? formatDate(detail.adminGrantedAt) : '-'}</span>
-            </Field>
+        {/* 커뮤니티 게시글 (관리자로 선임되어도 원래 작성한 게시물은 그대로 보여준다) */}
+        <div className="bg-bg-secondary border border-line rounded-xl p-6 space-y-4">
+          <div className="flex items-center gap-2 border-b border-line pb-3">
+            <h3 className="text-text-primary font-semibold">커뮤니티 게시글</h3>
+            <span className="ml-auto text-xs text-text-secondary">{postsTotal.toLocaleString()}개 등록</span>
           </div>
-        )}
-
-        {/* 커뮤니티 게시글 */}
-        {viewType !== 'admin' && (
-          <div className="bg-bg-secondary border border-line rounded-xl p-6 space-y-4">
-            <div className="flex items-center gap-2 border-b border-line pb-3">
-              <FileText className="w-4 h-4 text-text-secondary" />
-              <h3 className="text-text-primary font-semibold">커뮤니티 게시글</h3>
-              <span className="ml-auto text-xs text-text-secondary">{postsTotal.toLocaleString()}개 등록</span>
+          {posts.length > 0 ? (
+            <div className="space-y-2">
+              {posts.map(post => (
+                <Link key={post._id} href={`/community/${post._id}`} target="_blank"
+                  className="flex items-center gap-3 bg-bg-tertiary/50 hover:bg-bg-tertiary rounded-lg px-4 py-3 transition-colors group">
+                  <span className="text-text-primary text-sm truncate flex-1 group-hover:text-accent-text transition-colors">
+                    {post.title}
+                  </span>
+                  <span className="text-text-muted text-xs flex-shrink-0">
+                    조회 {post.views} · 댓글 {post.commentCount}
+                  </span>
+                  <span className="text-text-muted text-xs flex-shrink-0">
+                    {formatDate(post.createdAt)}
+                  </span>
+                </Link>
+              ))}
             </div>
-            {posts.length > 0 ? (
-              <div className="space-y-2">
-                {posts.map(post => (
-                  <Link key={post._id} href={`/community/${post._id}`} target="_blank"
-                    className="flex items-center gap-3 bg-bg-tertiary/50 hover:bg-bg-tertiary rounded-lg px-4 py-3 transition-colors group">
-                    <span className="text-text-primary text-sm truncate flex-1 group-hover:text-accent-text transition-colors">
-                      {post.title}
-                    </span>
-                    <span className="text-text-muted text-xs flex-shrink-0">
-                      조회 {post.views} · 댓글 {post.commentCount}
-                    </span>
-                    <span className="text-text-muted text-xs flex-shrink-0">
-                      {formatDate(post.createdAt)}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-text-muted text-sm text-center py-4">작성한 게시물이 없습니다</p>
-            )}
-            {postsTotalPages > 1 && (
-              <div className="flex justify-center gap-1 pt-2">
-                <button onClick={() => fetchPosts(Math.max(1, postsPage - 1))} disabled={postsPage === 1}
-                  className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">이전</button>
-                {Array.from({ length: Math.min(postsTotalPages, 7) }, (_, i) => {
-                  const p = Math.max(1, Math.min(postsPage - 3, postsTotalPages - 6)) + i
-                  return p <= postsTotalPages ? (
-                    <button key={p} onClick={() => fetchPosts(p)}
-                      className={`px-3 py-1.5 text-base rounded-lg ${postsPage === p ? 'bg-slate-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>{p}</button>
-                  ) : null
-                })}
-                <button onClick={() => fetchPosts(Math.min(postsTotalPages, postsPage + 1))} disabled={postsPage === postsTotalPages}
-                  className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
-              </div>
-            )}
+          ) : (
+            <p className="text-text-muted text-sm text-center py-4">작성한 게시물이 없습니다</p>
+          )}
+          {postsTotalPages > 1 && (
+            <div className="flex justify-center gap-1 pt-2">
+              <button onClick={() => fetchPosts(Math.max(1, postsPage - 1))} disabled={postsPage === 1}
+                className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">이전</button>
+              {Array.from({ length: Math.min(postsTotalPages, 7) }, (_, i) => {
+                const p = Math.max(1, Math.min(postsPage - 3, postsTotalPages - 6)) + i
+                return p <= postsTotalPages ? (
+                  <button key={p} onClick={() => fetchPosts(p)}
+                    className={`px-3 py-1.5 text-base rounded-lg ${postsPage === p ? 'bg-slate-600 text-text-primary' : 'bg-bg-tertiary text-text-secondary hover:bg-line-light'}`}>{p}</button>
+                ) : null
+              })}
+              <button onClick={() => fetchPosts(Math.min(postsTotalPages, postsPage + 1))} disabled={postsPage === postsTotalPages}
+                className="px-3 py-1.5 text-base rounded-lg bg-bg-tertiary text-text-secondary hover:bg-line-light disabled:opacity-40">다음</button>
+            </div>
+          )}
+        </div>
+
+        {!(viewType === 'admin' && detail.adminLevel === 'super') && (
+          <div className="flex justify-end">
+            <button onClick={() => setBanConfirm(true)}
+              className={`px-[18px] py-[9px] rounded-lg text-base font-semibold text-white transition-all flex items-center gap-2 ${
+                detail.isActive !== false
+                  ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500'
+                  : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500'
+              }`}>
+              <Ban className="w-4 h-4" />
+              {detail.isActive !== false ? '계정 중지' : '중지 해제'}
+            </button>
           </div>
         )}
-
-        <div className="flex justify-start">
-          <button onClick={() => setResetPwConfirm(true)}
-            className="px-[18px] py-[9px] rounded-lg text-base font-semibold bg-bg-tertiary border border-line text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-all flex items-center gap-2">
-            <KeyRound className="w-4 h-4" />
-            비밀번호 초기화
-          </button>
-          <button onClick={() => setBanConfirm(true)}
-            className={`ml-auto px-[18px] py-[9px] rounded-lg text-base font-semibold text-white transition-all flex items-center gap-2 ${
-              detail.isActive !== false
-                ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500'
-                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500'
-            }`}>
-            <Ban className="w-4 h-4" />
-            {detail.isActive !== false ? '계정 중지' : '중지 해제'}
-          </button>
-        </div>
         </div>
 
+        <div className="space-y-6">
         {/* 관리자 메모 */}
         <div className="bg-bg-secondary border border-line rounded-xl pt-6 px-6 pb-[10px]">
           <h3 className="text-text-primary font-semibold border-b border-line pb-3 mb-3">관리자 메모</h3>
@@ -474,6 +501,49 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
               저장
             </button>
           </div>
+        </div>
+
+        {/* 관리자 선임 / 등급 변경 (최고 관리자만) */}
+        {currentUser?.adminLevel === 'super' && (
+          <div className="bg-bg-secondary border border-line rounded-xl p-6 space-y-4">
+            <h3 className="text-text-primary font-semibold border-b border-line pb-3">관리자 등급 관리</h3>
+            <p className="text-text-secondary text-sm">
+              {viewType === 'admin'
+                ? '이 관리자의 등급을 변경합니다.'
+                : '이 회원을 관리자로 등록하고 등급을 지정합니다. 등록 시 관리자 목록에 표시됩니다.'}
+            </p>
+            {detail.adminLevel && (
+              <Field label="관리자 등급">
+                <Input value={LEVEL_LABELS[detail.adminLevel].label} onChange={() => {}} disabled />
+              </Field>
+            )}
+            {viewType === 'admin' && (
+              <Field label="권한 부여일">
+                <Input value={detail.adminGrantedAt ? formatDate(detail.adminGrantedAt) : '-'} onChange={() => {}} disabled />
+              </Field>
+            )}
+            {detail.adminLevel && (
+              <Field label="권한 내용">
+                <div className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm whitespace-pre-line break-words">
+                  {LEVEL_DESCRIPTIONS[detail.adminLevel]}
+                </div>
+              </Field>
+            )}
+            <div className="flex justify-end gap-2">
+              {viewType === 'admin' && (
+                <button onClick={() => setRevokeConfirm(true)}
+                  className="px-5 py-[7px] border border-red-600 text-red-400 hover:bg-red-950 rounded-xl text-base font-medium transition-colors flex items-center gap-2">
+                  관리자 제외
+                </button>
+              )}
+              <button onClick={() => setAppointModal(true)}
+                className="px-5 py-[7px] bg-slate-600 hover:bg-slate-500 border border-slate-500 text-white rounded-xl text-base font-medium transition-colors flex items-center gap-2">
+                <ShieldPlus className="w-4 h-4" />
+                {viewType === 'admin' ? '등급 변경' : '관리자 등록'}
+              </button>
+            </div>
+          </div>
+        )}
         </div>
         </div>
       </div>
@@ -535,44 +605,48 @@ export default function AdminUserDetailPage({ id }: { id: string }) {
         onCancel={() => setBanConfirm(false)}
       />
 
-      <ConfirmModal
-        isOpen={resetPwConfirm}
-        title="비밀번호 초기화"
-        message={`${detail.username}님의 비밀번호를 초기화하고 임시 비밀번호를 발급합니다.\n무조건 회원님의 요청이 있을 경우에만 초기화!`}
-        confirmLabel="초기화"
-        danger
-        onConfirm={handleResetPassword}
-        onCancel={() => setResetPwConfirm(false)}
-      />
-
-      {tempPassword && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4" onClick={() => setTempPassword(null)}>
-          <div className="w-full max-w-sm bg-bg-card border border-line rounded-xl shadow-2xl p-5" onClick={e => e.stopPropagation()}>
-            <h3 className="text-text-primary font-semibold mb-1.5">임시 비밀번호 발급됨</h3>
-            <p className="text-text-secondary text-sm mb-3">
-              이 비밀번호는 다시 확인할 수 없습니다. 지금 복사해서 회원님에게 직접(카카오톡/전화 등) 전달하세요.
-            </p>
-            <div className="flex items-center gap-2 bg-bg-tertiary border border-line rounded-lg px-3 py-2 mb-5">
-              <span className="flex-1 font-mono text-text-primary text-sm select-all">{tempPassword}</span>
-              <button
-                onClick={() => { navigator.clipboard.writeText(tempPassword); setAlertMessage('복사되었습니다.') }}
-                className="text-text-secondary hover:text-text-primary transition-colors" title="복사">
-                <Copy className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setTempPassword(null)}
-                className="px-4 py-2 rounded-lg text-base font-medium bg-bg-tertiary hover:bg-bg-hover text-text-primary transition-colors">
-                취소
-              </button>
-              <button onClick={() => setTempPassword(null)}
-                className="px-4 py-2 rounded-lg text-base font-medium bg-red-600 hover:bg-red-500 text-white transition-colors">
-                초기화 완료
-              </button>
-            </div>
+      <Modal isOpen={appointModal} onClose={() => setAppointModal(false)}
+        title={viewType === 'admin' ? '관리자 등급 변경' : '관리자 등록'} size="sm">
+        <div className="space-y-4">
+          <p className="text-text-secondary text-sm">
+            {viewType === 'admin'
+              ? `${detail.username}님의 관리자 등급을 변경합니다.`
+              : `${detail.username}님을 관리자로 등록합니다. 지정할 등급을 선택해주세요.`}
+          </p>
+          <Field label="관리자 등급">
+            <select
+              value={appointLevel}
+              onChange={e => setAppointLevel(e.target.value as 'super' | 'normal' | 'monitor')}
+              className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-text-primary text-sm focus:outline-none focus:border-accent"
+            >
+              <option value="super">최고 관리자</option>
+              <option value="normal">일반 관리자</option>
+              <option value="monitor">모니터</option>
+            </select>
+          </Field>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setAppointModal(false)}
+              className="px-4 py-2 text-base text-text-secondary border border-line rounded-lg hover:bg-bg-tertiary transition-colors">
+              취소
+            </button>
+            <button onClick={handleAppointAdmin} disabled={appointSubmitting}
+              className="flex items-center gap-2 px-4 py-2 text-base bg-slate-600 hover:bg-slate-500 border border-slate-500 text-white rounded-lg transition-colors disabled:opacity-50">
+              {appointSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {viewType === 'admin' ? '변경' : '등록'}
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
+
+      <ConfirmModal
+        isOpen={revokeConfirm}
+        title="관리자 제외"
+        message={`${detail.username}님의 관리자 권한을 해제하고 원래 역할로 되돌리시겠습니까?`}
+        confirmLabel="관리자 제외"
+        danger
+        onConfirm={handleRevokeAdmin}
+        onCancel={() => setRevokeConfirm(false)}
+      />
 
       <AlertModal
         isOpen={!!alertMessage}

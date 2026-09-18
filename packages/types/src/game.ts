@@ -22,6 +22,7 @@ export interface Game {
   developerId: string
   thumbnail?: string
   bannerImage?: string
+  subIcon?: string
   gameFile?: string
   gameDomain?: string
   genre?: string
@@ -47,8 +48,12 @@ export interface Game {
   trailer?: string
   website?: string
   discord?: string
+  instagram?: string
+  twitter?: string
+  youtube?: string
   notes?: string
   testers?: number
+  hasApplied?: boolean
   betaEndDate?: Date
   suspendReason?: string
   suspendedAt?: Date

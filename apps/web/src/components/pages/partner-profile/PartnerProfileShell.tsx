@@ -13,6 +13,8 @@ import { AlertTriangle, Globe, EyeOff, Loader2 } from 'lucide-react'
 import { PartnerProfileContext } from './PartnerProfileContext'
 import { PartnerData } from './constants'
 import ConfirmModal from '@/components/ConfirmModal'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 
 export default function PartnerProfileShell({ children }: { children: React.ReactNode }) {
   const params = useParams()
@@ -288,7 +290,7 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
   const partnerUser = partner.userId
   const username = partner.displayNameOverride || (partnerUser as any)?.companyInfo?.companyName || partnerUser?.username || '?'
   const profileImage = partner.profileImage || partnerUser?.profileImage
-  const companyCategoryLabel = isDeveloperCompany ? '개발사' : '파트너'
+  const companyCategoryLabel = isDeveloperCompany ? '개발사' : '파트너사'
 
   const isProfileIncomplete = isOwnProfile && !partner.introduction
 
@@ -303,7 +305,6 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
     },
     {
       key: 'manageTeam', label: '팀원 관리', href: `${manageBase}/team`,
-      isNew: manageCounts.manageTeam > (manageSeen.manageTeam ?? manageCounts.manageTeam),
     },
   ]
 
@@ -377,11 +378,13 @@ export default function PartnerProfileShell({ children }: { children: React.Reac
                 {/* Name + badges */}
                 <div className="flex items-center flex-wrap gap-2 mb-2">
                   <h1 className="text-2xl font-bold text-white">{username}</h1>
+                  {partnerUser?.role === 'developer' && <OfficialBadge className="w-[19px] h-[19px]" />}
+                  {partnerUser?.role === 'admin' && <AdminBadge className="w-[19px] h-[19px]" />}
                 </div>
 
                 {/* Company category */}
                 <div className="flex items-center flex-wrap gap-2 mt-1">
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30">
+                  <span className="inline-flex items-center rounded-full bg-bg-tertiary border border-line text-text-secondary font-medium text-xs px-1.5 py-0.5">
                     {companyCategoryLabel}
                   </span>
                 </div>

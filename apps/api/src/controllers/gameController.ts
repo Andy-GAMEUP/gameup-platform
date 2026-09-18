@@ -1,7 +1,7 @@
 import { Response } from 'express'
 import fs from 'fs'
 import path from 'path'
-import { GameModel as Game, UserModel as User, GameDeletionLogModel as GameDeletionLog, PaymentModel as Payment, GameMediaModel as GameMedia } from '@gameup/db'
+import { GameModel as Game, UserModel as User, GameDeletionLogModel as GameDeletionLog, PaymentModel as Payment, GameMediaModel as GameMedia, GameRankingModel, GameTesterApplicationModel as GameTesterApplication } from '@gameup/db'
 import { AuthRequest } from '../middleware/auth'
 import { grantGameAccessPoint } from '../services/pointService'
 
@@ -9,8 +9,13 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
   try {
     const { status, genre, search, sort = 'newest', page = 1, limit = 12, serviceType, featuredNew, developerId, includeDeleted, ids } = req.query
 
+    // 관리자이거나 본인 게임을 조회하는 경우 — 심사 상태와 무관하게 전부 볼 수 있어야 하므로, 아래 공개용 승인 안전장치를 건너뜀
+    const isPrivileged = req.user?.role === 'admin' || (!!req.user && !!developerId && developerId === req.user.id)
+
+    // 공개 목록의 기본 노출 상태는 getGameById와 동일하게 'published'/'beta' 둘 다 공개로 취급한다
+    // (베타 게임은 심사 승인 후에도 status가 'beta'에 머무르고 별도로 'published'로 바뀌지 않으므로, 'published'만 필터링하면 베타존에서 누락됨)
     const filter: Record<string, unknown> = {
-      status: 'published',
+      status: { $in: ['published', 'beta'] },
     }
 
     if (includeDeleted !== 'true') {
@@ -43,9 +48,7 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
 
     if (status && status !== 'all') {
       // 🔒 비공개 상태(draft/pending/review/archived 등) 조회는 본인 게임이거나 관리자일 때만 허용
-      const isAdmin = req.user?.role === 'admin'
-      const isOwnerQuery = !!req.user && !!developerId && developerId === req.user.id
-      if (isAdmin || isOwnerQuery) {
+      if (isPrivileged) {
         filter.status = status
       }
     }
@@ -97,6 +100,8 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
     const processedGames = games
       .map(g => applySnapshot((g as any).toObject()))
       .filter(g => !serviceType || serviceType === 'all' || g.serviceType === serviceType)
+      // 🔒 심사 승인 이력이 전혀 없는(한 번도 approved였던 적 없는) 게임은 공개 목록에서 제외 — 최초 심사 승인이 곧 공개 활성화 시점
+      .filter(g => isPrivileged || g.approvalStatus === 'approved' || !!g.publishedSnapshot)
 
     res.json({
       success: true,
@@ -111,6 +116,103 @@ export const getAllGames = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get games error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 메인페이지 베타존/라이브존 순위 — 매일 09:00(KST) 배치(apps/api/src/jobs/updateZoneRankings.ts)로 미리 계산된 값을 조회만 함
+export const getZoneRankings = async (req: AuthRequest, res: Response) => {
+  try {
+    const zone = String(req.query.zone || '').trim()
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 5))
+    if (zone !== 'beta' && zone !== 'live') {
+      return res.status(400).json({ message: 'zone은 beta 또는 live여야 합니다' })
+    }
+
+    const rankings = await GameRankingModel.find({ zone }).sort({ rank: 1 }).limit(limit).lean()
+    const gameIds = rankings.map(r => r.gameId)
+    const games = await Game.find({ _id: { $in: gameIds } }).select('_id title thumbnail rating genre serviceType').lean()
+    const gameMap = Object.fromEntries(games.map(g => [g._id.toString(), g]))
+
+    const result = rankings
+      .map(r => {
+        const game = gameMap[r.gameId.toString()]
+        return game ? { ...game, rank: r.rank, score: r.score } : null
+      })
+      .filter(Boolean)
+
+    res.json({ games: result, computedAt: rankings[0]?.computedAt || null })
+  } catch (error) {
+    console.error('Get zone rankings error:', error)
+    res.status(500).json({ message: '순위 조회에 실패했습니다' })
+  }
+}
+
+// 헤더 검색창 드롭다운 전용 — 게임 카드 목록은 건드리지 않고 검색 결과만 따로 내려줌
+// 라이브존: 결제 매출 높은 순 / 베타존: 아직 시작 안 한 테스트 우선 + 시작일 가까운 순
+export const quickSearchGames = async (req: AuthRequest, res: Response) => {
+  try {
+    const { q, serviceType, limit } = req.query
+    if (serviceType !== 'beta' && serviceType !== 'live') {
+      return res.status(400).json({ message: 'serviceType은 beta 또는 live여야 합니다' })
+    }
+    const take = Math.min(20, Math.max(1, Number(limit) || 8))
+    const filter: Record<string, unknown> = {
+      isDeleted: { $ne: true },
+      status: { $in: ['published', 'beta'] },
+      serviceType,
+    }
+    if (q) {
+      const safeQ = (q as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      filter.$or = [
+        { title: { $regex: safeQ, $options: 'i' } },
+        { description: { $regex: safeQ, $options: 'i' } },
+        { genre: { $regex: safeQ, $options: 'i' } },
+      ]
+    }
+
+    const games = await Game.find(filter)
+      .select('_id title thumbnail subIcon genre rating testers maxTesters startDate endDate')
+      .limit(50)
+      .lean()
+
+    let sorted = games
+    if (serviceType === 'live') {
+      const revenues = await Payment.aggregate([
+        { $match: { gameId: { $in: games.map(g => g._id) }, status: 'completed' } },
+        { $group: { _id: '$gameId', total: { $sum: '$amount' } } },
+      ])
+      const revenueMap = new Map(revenues.map((r: any) => [r._id.toString(), r.total]))
+      sorted = [...games].sort((a: any, b: any) =>
+        (revenueMap.get(b._id.toString()) || 0) - (revenueMap.get(a._id.toString()) || 0)
+      )
+    } else {
+      const now = Date.now()
+      const phaseRank = (g: any) => {
+        const start = g.startDate ? new Date(g.startDate).getTime() : null
+        const end = g.endDate ? new Date(g.endDate).getTime() : null
+        if (end && now > end) return 2 // 종료
+        if (start && now >= start) return 1 // 진행 중
+        return 0 // 시작 전 (최우선)
+      }
+      const isFull = (g: any) => (g.maxTesters || 0) > 0 && (g.testers || 0) >= g.maxTesters
+      sorted = [...games].sort((a: any, b: any) => {
+        const rankDiff = phaseRank(a) - phaseRank(b)
+        if (rankDiff !== 0) return rankDiff
+        // 시작 전 그룹 안에서는 모집 완료된 게임을 맨 아래로 밀어냄
+        if (phaseRank(a) === 0) {
+          const fullDiff = Number(isFull(a)) - Number(isFull(b))
+          if (fullDiff !== 0) return fullDiff
+        }
+        const aStart = a.startDate ? new Date(a.startDate).getTime() : Infinity
+        const bStart = b.startDate ? new Date(b.startDate).getTime() : Infinity
+        return aStart - bStart
+      })
+    }
+
+    res.json({ games: sorted.slice(0, take) })
+  } catch (error) {
+    console.error('Quick search games error:', error)
+    res.status(500).json({ message: '검색에 실패했습니다' })
   }
 }
 
@@ -142,14 +244,152 @@ export const getGameById = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
     }
 
-    if (!isOwner && ['published', 'beta'].includes(gameObj.status) && gameObj.approvalStatus !== 'approved' && gameObj.publishedSnapshot) {
-      const merged = { ...gameObj, ...gameObj.publishedSnapshot, _id: gameObj._id, developerId: gameObj.developerId, status: gameObj.status, approvalStatus: gameObj.approvalStatus, suspendedAt: gameObj.suspendedAt, approvedAt: gameObj.approvedAt, approvedBy: gameObj.approvedBy, publishedSnapshot: gameObj.publishedSnapshot, createdAt: gameObj.createdAt, updatedAt: gameObj.updatedAt }
-      return res.json({ success: true, game: merged })
+    // 베타존 신청 여부 (로그인 유저, 본인 신청 기록 존재 여부)
+    let hasApplied = false
+    if (req.user?.id) {
+      hasApplied = !!(await GameTesterApplication.exists({ gameId: id, userId: req.user.id }))
     }
 
-    res.json({ success: true, game })
+    if (!isOwner && ['published', 'beta'].includes(gameObj.status) && gameObj.approvalStatus !== 'approved' && gameObj.publishedSnapshot) {
+      const merged = { ...gameObj, ...gameObj.publishedSnapshot, _id: gameObj._id, developerId: gameObj.developerId, status: gameObj.status, approvalStatus: gameObj.approvalStatus, suspendedAt: gameObj.suspendedAt, approvedAt: gameObj.approvedAt, approvedBy: gameObj.approvedBy, publishedSnapshot: gameObj.publishedSnapshot, createdAt: gameObj.createdAt, updatedAt: gameObj.updatedAt }
+      return res.json({ success: true, game: { ...merged, hasApplied } })
+    }
+
+    res.json({ success: true, game: { ...gameObj, hasApplied } })
   } catch (error) {
     console.error('Get game error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 베타존 참가 신청 — 선착순 즉시 확정. 목표 인원 마감 직전 동시 신청은 전부 받아준다(엄격한 동시성 잠금 없음, 의도된 정책)
+export const applyBetaTester = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+    const { id } = req.params
+    const game = await Game.findById(id)
+    if (!game || game.isDeleted) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+    if (game.serviceType !== 'beta') return res.status(400).json({ message: '베타 게임만 신청할 수 있습니다' })
+    if (game.approvalStatus !== 'approved') return res.status(400).json({ message: '아직 심사 승인 전입니다' })
+
+    if (game.startDate) {
+      const cutoff = new Date(game.startDate)
+      cutoff.setHours(0, 0, 0, 0)
+      if (new Date() >= cutoff) return res.status(400).json({ message: '신청이 마감되었습니다' })
+    }
+
+    const existing = await GameTesterApplication.findOne({ gameId: id, userId: req.user.id })
+    if (existing) return res.json({ success: true, alreadyApplied: true })
+
+    if (game.maxTesters && game.maxTesters > 0) {
+      const currentCount = await GameTesterApplication.countDocuments({ gameId: id })
+      if (currentCount >= game.maxTesters) return res.status(400).json({ message: '모집이 마감되었습니다' })
+    }
+
+    await GameTesterApplication.create({ gameId: id, userId: req.user.id })
+    await Game.findByIdAndUpdate(id, { $inc: { testers: 1 } })
+
+    res.json({ success: true })
+  } catch (error: any) {
+    if (error?.code === 11000) return res.json({ success: true, alreadyApplied: true })
+    console.error('Apply beta tester error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 관리자 — 베타존 게임별 테스터 모집 현황 목록 (선착순 확정 방식이라 승인 대기 개념은 없음)
+export const getBetaTesterGames = async (_req: AuthRequest, res: Response) => {
+  try {
+    const games = await Game.find({ serviceType: 'beta', isDeleted: { $ne: true } })
+      .select('_id title thumbnail testers maxTesters startDate endDate approvalStatus status')
+      .sort({ createdAt: -1 })
+      .lean()
+    res.json({ success: true, games })
+  } catch (error) {
+    console.error('Get beta tester games error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 관리자 — 특정 게임의 베타 테스터 신청자 목록
+export const getBetaTesterApplicants = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const applications = await GameTesterApplication.find({ gameId: id })
+      .populate('userId', 'username email profileImage')
+      .sort({ appliedAt: -1 })
+      .lean()
+
+    const applicants = applications
+      .filter((a: any) => a.userId)
+      .map((a: any) => ({
+        applicationId: a._id,
+        appliedAt: a.appliedAt,
+        user: a.userId,
+      }))
+
+    res.json({ success: true, applicants })
+  } catch (error) {
+    console.error('Get beta tester applicants error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 관리자 — 베타 테스터를 유저 단위로 묶은 목록 (게임명/유저명 검색, 편지 발송용 체크리스트)
+export const getBetaTesterUsers = async (req: AuthRequest, res: Response) => {
+  try {
+    const { search } = req.query
+    // 유저당 하나로 합쳐서 보여주던 것을, 동일 유저가 게임을 여러 개 등록했으면 유저+게임 조합별로 행을 따로 보여주도록 변경(2026-09-16) — $group 제거
+    const rows = await GameTesterApplication.aggregate([
+      { $lookup: { from: 'games', localField: 'gameId', foreignField: '_id', as: 'game' } },
+      { $unwind: '$game' },
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+      { $unwind: '$user' },
+      {
+        $project: {
+          _id: 0,
+          applicationId: '$_id',
+          user: { _id: '$user._id', username: '$user.username', email: '$user.email', profileImage: '$user.profileImage' },
+          game: { _id: '$game._id', title: '$game.title' },
+          appliedAt: 1,
+        },
+      },
+      { $sort: { 'user.username': 1, appliedAt: -1 } },
+    ])
+
+    let users = rows
+    if (search) {
+      const safeSearch = (search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const re = new RegExp(safeSearch, 'i')
+      users = rows.filter((r: any) =>
+        re.test(r.user.username) || re.test(r.game.title)
+      )
+    }
+
+    res.json({ success: true, users })
+  } catch (error) {
+    console.error('Get beta tester users error:', error)
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 관리자 — 베타 테스터 신청 제외(강제 취소)
+export const removeBetaTester = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id, applicationId } = req.params
+    const application = await GameTesterApplication.findOne({ _id: applicationId, gameId: id })
+    if (!application) return res.status(404).json({ message: '신청 내역을 찾을 수 없습니다' })
+
+    await application.deleteOne()
+    const game = await Game.findByIdAndUpdate(id, { $inc: { testers: -1 } }, { new: true })
+    if (game && game.testers < 0) {
+      game.testers = 0
+      await game.save()
+    }
+
+    res.json({ success: true })
+  } catch (error) {
+    console.error('Remove beta tester error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }
 }
@@ -163,26 +403,30 @@ export const createGame = async (req: AuthRequest, res: Response) => {
     const { title, description, genre, price, isPaid, status, monetization, serviceType, gameDomain, startDate, endDate, maxTesters, testType, requirements } = req.body
     const files = req.files as { [fieldname: string]: Express.Multer.File[] }
 
-    if (!title?.trim()) {
-      return res.status(400).json({ message: '제목은 필수입니다' })
+    let resolvedTitle = title?.trim()
+    if (!resolvedTitle) {
+      const drafts = await Game.find({ developerId: req.user.id, title: { $regex: /^신규 초안 \d+$/ } }).select('title').lean()
+      const nextNum = drafts.reduce((max, g) => {
+        const n = Number(g.title.match(/\d+$/)?.[0] || 0)
+        return Math.max(max, n)
+      }, 0) + 1
+      resolvedTitle = `신규 초안 ${nextNum}`
     }
 
-    if (!gameDomain?.trim()) {
-      return res.status(400).json({ message: '게임 도메인(URL)은 필수입니다' })
-    }
-
-    try {
-      new URL(gameDomain.trim())
-    } catch {
-      return res.status(400).json({ message: '유효한 URL 형식으로 입력해주세요 (예: https://mygame.com)' })
+    if (gameDomain?.trim()) {
+      try {
+        new URL(gameDomain.trim())
+      } catch {
+        return res.status(400).json({ message: '유효한 URL 형식으로 입력해주세요 (예: https://mygame.com)' })
+      }
     }
 
     const gameData: Record<string, unknown> = {
-      title: title.trim(),
+      title: resolvedTitle,
       description: description?.trim() || '',
       genre: genre || '',
       developerId: req.user.id,
-      gameDomain: gameDomain.trim(),
+      gameDomain: gameDomain?.trim() || '',
       price: isPaid === 'true' ? Math.max(0, Number(price) || 0) : 0,
       isPaid: isPaid === 'true',
       status: status || 'beta',
@@ -202,6 +446,9 @@ export const createGame = async (req: AuthRequest, res: Response) => {
     }
     if (files && files.bannerImage) {
       gameData.bannerImage = '/uploads/banners/' + files.bannerImage[0].filename
+    }
+    if (files && files.subIcon) {
+      gameData.subIcon = '/uploads/subicons/' + files.subIcon[0].filename
     }
 
     const game = await Game.create(gameData)
@@ -238,7 +485,7 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
       title, description, genre, price, isPaid, status,
       serviceType, monetization, platform, engine,
       startDate, endDate, maxTesters, testType, requirements,
-      trailer, website, discord, notes,
+      trailer, website, discord, instagram, twitter, youtube, notes,
       requestReview, gameDomain
     } = req.body
     const files = req.files as { [fieldname: string]: Express.Multer.File[] }
@@ -272,8 +519,22 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
     if (testType !== undefined) (game as any).testType = testType
     if (requirements !== undefined) (game as any).requirements = requirements
     if (trailer !== undefined) (game as any).trailer = trailer
-    if (website !== undefined) (game as any).website = website
-    if (discord !== undefined) (game as any).discord = discord
+
+    const SOCIAL_LINK_RULES: { field: string; value: unknown; test: RegExp; message: string }[] = [
+      { field: 'website', value: website, test: /^https?:\/\/.+/i, message: '유효한 URL 형식으로 입력해주세요 (예: https://...)' },
+      { field: 'discord', value: discord, test: /^https?:\/\/(www\.)?(discord\.gg|discord\.com)\/.+/i, message: 'discord.gg 또는 discord.com 링크만 입력할 수 있습니다' },
+      { field: 'instagram', value: instagram, test: /^https?:\/\/(www\.)?instagram\.com\/.+/i, message: 'instagram.com 링크만 입력할 수 있습니다' },
+      { field: 'twitter', value: twitter, test: /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/.+/i, message: 'x.com(트위터) 링크만 입력할 수 있습니다' },
+      { field: 'youtube', value: youtube, test: /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+/i, message: 'youtube.com 링크만 입력할 수 있습니다' },
+    ]
+    for (const rule of SOCIAL_LINK_RULES) {
+      if (rule.value === undefined) continue
+      const trimmed = String(rule.value).trim()
+      if (trimmed && !rule.test.test(trimmed)) {
+        return res.status(400).json({ message: rule.message })
+      }
+      (game as any)[rule.field] = trimmed
+    }
     if (notes !== undefined) (game as any).notes = notes
     if (gameDomain !== undefined) {
       if (gameDomain.trim()) {
@@ -339,11 +600,21 @@ export const updateGame = async (req: AuthRequest, res: Response) => {
       game.bannerImage = '/uploads/banners/' + files.bannerImage[0].filename
     }
 
+    if (files && files.subIcon) {
+      if (game.subIcon) {
+        const oldPath = game.subIcon.startsWith('/uploads/')
+          ? path.join(process.cwd(), game.subIcon.slice(1))
+          : game.subIcon
+        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath)
+      }
+      game.subIcon = '/uploads/subicons/' + files.subIcon[0].filename
+    }
+
     // 출시 중인 게임 기본 정보 수정 → 스냅샷도 동기화 (즉시 반영)
     if (game.status === 'published' && game.approvalStatus === 'approved') {
       const snap = (game as any).publishedSnapshot as Record<string, unknown> | undefined
       if (snap) {
-        const syncFields = ['title', 'description', 'genre', 'thumbnail', 'bannerImage', 'trailer', 'website', 'discord', 'notes', 'platform', 'engine', 'startDate', 'endDate', 'maxTesters', 'testType', 'requirements', 'gameDomain', 'monetization']
+        const syncFields = ['title', 'description', 'genre', 'thumbnail', 'bannerImage', 'subIcon', 'trailer', 'website', 'discord', 'instagram', 'twitter', 'youtube', 'notes', 'platform', 'engine', 'startDate', 'endDate', 'maxTesters', 'testType', 'requirements', 'gameDomain', 'monetization']
         for (const f of syncFields) {
           const val = (game as any)[f]
           if (val !== undefined) snap[f] = val
@@ -381,6 +652,14 @@ export const deleteGame = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ message: '인증이 필요합니다' })
+    }
+
+    if (req.user.role === 'admin') {
+      // adminLevel 미설정 admin은 super로 처리 (기존 계정 하위 호환, requireAdminLevel과 동일 규칙)
+      const callerLevel = req.user.adminLevel || 'super'
+      if (callerLevel !== 'super') {
+        return res.status(403).json({ message: '게임 삭제는 최고 관리자만 가능합니다' })
+      }
     }
 
     const { id } = req.params
@@ -559,9 +838,10 @@ export const restoreGame = async (req: AuthRequest, res: Response) => {
           fs.renameSync(src, absPath)
         }
       }
-      const snap = snapshot as { thumbnail?: string; bannerImage?: string; gameFile?: string }
+      const snap = snapshot as { thumbnail?: string; bannerImage?: string; subIcon?: string; gameFile?: string }
       if (snap.thumbnail) restoreFile(snap.thumbnail)
       if (snap.bannerImage) restoreFile(snap.bannerImage)
+      if (snap.subIcon) restoreFile(snap.subIcon)
       if (snap.gameFile) restoreFile(snap.gameFile)
     }
 
@@ -612,6 +892,23 @@ export const getPaymentProviders = async (req: AuthRequest, res: Response) => {
       pgProvider: { $exists: true, $ne: '' },
     })
     res.json({ success: true, providers: providers.filter(Boolean).sort() })
+  } catch (error) {
+    res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+export const getPaymentGames = async (req: AuthRequest, res: Response) => {
+  try {
+    const gameQuery = req.user?.role === 'admin'
+      ? {}
+      : { developerId: req.user?.id }
+    const games = await Game.find(gameQuery).select('_id')
+    const gameIds = games.map(g => g._id)
+    const paidGameIds = await Payment.distinct('gameId', { gameId: { $in: gameIds } })
+    const paidGames = await Game.find({ _id: { $in: paidGameIds } })
+      .select('title thumbnail developerId')
+      .populate('developerId', 'username companyInfo')
+    res.json({ success: true, games: paidGames })
   } catch (error) {
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
   }

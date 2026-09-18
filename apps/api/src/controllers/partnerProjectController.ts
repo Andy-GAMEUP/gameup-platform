@@ -760,7 +760,7 @@ export const getProjectInquiries = async (req: AuthRequest, res: Response) => {
     const isProjectOwner = !!viewerId && String(project.ownerId) === String(viewerId)
 
     const rows = await ProjectInquiry.find({ projectId: id })
-      .populate('authorId', 'username')
+      .populate('authorId', 'username role')
       .sort({ createdAt: 1 })
 
     const authorIds = [...new Set(rows.map((row) => String(row.authorId?._id || row.authorId)))]

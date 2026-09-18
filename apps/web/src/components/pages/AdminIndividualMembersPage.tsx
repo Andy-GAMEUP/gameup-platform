@@ -223,7 +223,7 @@ export default function AdminIndividualMembersPage() {
                     <th className="text-right text-text-secondary font-medium px-4 py-3">포인트</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3">접속일시</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3">상태</th>
-                    <th className="text-left text-text-secondary font-medium px-4 py-3">등록일시</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3">가입일</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3">상세</th>
                   </tr>
                 </thead>

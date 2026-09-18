@@ -205,6 +205,38 @@ export const getMyPlayedGameIds = async (req: AuthRequest, res: Response) => {
   }
 }
 
+// 내가 최근에 플레이한 게임 목록 (존별, 최근 플레이 순) — 베타존/라이브존 "플레이 중인 게임" 줄에서 사용
+export const getMyRecentGames = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user!.id
+    const { serviceType, limit } = req.query
+    if (serviceType !== 'beta' && serviceType !== 'live') {
+      return res.status(400).json({ message: 'serviceType은 beta 또는 live여야 합니다' })
+    }
+    const take = Math.min(30, Math.max(1, Number(limit) || 20))
+
+    const rows = await PlayerActivity.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId), type: 'play' } },
+      { $group: { _id: '$gameId', lastPlayedAt: { $max: '$createdAt' } } },
+      { $sort: { lastPlayedAt: -1 } },
+      { $limit: take * 3 },
+      { $lookup: { from: 'games', localField: '_id', foreignField: '_id', as: 'game' } },
+      { $unwind: '$game' },
+      { $match: {
+          'game.isDeleted': { $ne: true },
+          'game.serviceType': serviceType,
+          'game.status': { $in: ['published', 'beta'] },
+      } },
+      { $limit: take },
+      { $project: { _id: '$game._id', title: '$game.title', thumbnail: '$game.thumbnail', subIcon: '$game.subIcon', lastPlayedAt: 1 } },
+    ])
+
+    res.json({ games: rows })
+  } catch {
+    res.status(500).json({ message: '최근 플레이 게임 조회 실패' })
+  }
+}
+
 export const toggleFavorite = toggleScrap
 export const getMyFavorites = getMyGameScraps
 export const checkFavorites = checkScraps

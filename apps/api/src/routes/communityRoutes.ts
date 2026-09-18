@@ -7,7 +7,7 @@ import {
   getReportedPosts, adminUpdatePostStatus, getCommunityStats,
   uploadCommunityImages, toggleCommentDislike
 } from '../controllers/communityController'
-import { authenticateToken, requireAdmin, optionalAuth } from '../middleware/auth'
+import { authenticateToken, requireAdmin, requireAdminLevel, optionalAuth } from '../middleware/auth'
 import { communityUpload } from '../middleware/upload'
 
 const router = Router()
@@ -40,6 +40,6 @@ router.post('/comments/:id/report', reportComment)
 
 // 관리자 전용
 router.get('/admin/reported', requireAdmin, getReportedPosts)
-router.patch('/admin/posts/:id/status', requireAdmin, adminUpdatePostStatus)
+router.patch('/admin/posts/:id/status', requireAdmin, requireAdminLevel('super', 'normal'), adminUpdatePostStatus)
 
 export default router

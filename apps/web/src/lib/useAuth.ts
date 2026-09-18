@@ -44,10 +44,23 @@ export function useAuth() {
     user,
     isAuthenticated: status === 'authenticated',
     isLoading: status === 'loading',
-    login: async (email: string, password: string) => {
+    login: async (email: string, password: string, totpCode?: string) => {
+      const res = await fetch('/api/users/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, totpCode }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.message || '이메일 또는 비밀번호가 올바르지 않습니다')
+      }
+      if (data.requires2FA) {
+        throw Object.assign(new Error(data.message || '2단계 인증 코드를 입력해주세요'), { requires2FA: true })
+      }
       const result = await signIn('credentials', {
         email,
         password,
+        totpCode,
         redirect: false,
       })
       if (result?.error) throw new Error(result.error)

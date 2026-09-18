@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import AdminLayout from '@/components/AdminLayout'
 import ConfirmModal from '@/components/ConfirmModal'
+import AlertModal from '@/components/AlertModal'
 import adminService from '@/services/adminService'
 import { Loader2, Save, FileText } from 'lucide-react'
 
@@ -21,16 +22,17 @@ export default function AdminTermsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showSaveConfirm, setShowSaveConfirm] = useState(false)
+  const [alertMessage, setAlertMessage] = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      adminService.getTerms('privacy').catch(() => ({ content: '' })),
-      adminService.getTerms('service').catch(() => ({ content: '' })),
+      adminService.getTerms('privacy').catch(() => ({ terms: [] })),
+      adminService.getTerms('service').catch(() => ({ terms: [] })),
     ]).then(([p, s]) => {
       setContents({
-        privacy: (p?.content ?? p?.data?.content ?? '') as string,
-        service: (s?.content ?? s?.data?.content ?? '') as string,
+        privacy: (p?.terms?.[0]?.content ?? '') as string,
+        service: (s?.terms?.[0]?.content ?? '') as string,
       })
     }).finally(() => setLoading(false))
   }, [])
@@ -39,9 +41,8 @@ export default function AdminTermsPage() {
     setSaving(true)
     try {
       await adminService.updateTerms(activeTab, contents[activeTab])
-      alert('저장되었습니다.')
     } catch {
-      alert('저장 중 오류가 발생했습니다.')
+      setAlertMessage('저장 중 오류가 발생했습니다.')
     } finally {
       setSaving(false)
     }
@@ -54,32 +55,34 @@ export default function AdminTermsPage() {
           <div className="flex items-center gap-3">
             <FileText className="w-5 h-5 text-accent-text" />
             <h2 className="text-text-primary text-xl font-bold">약관 관리</h2>
-            <button
-              onClick={() => setShowSaveConfirm(true)}
-              disabled={saving || loading}
-              className="ml-auto px-5 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-base transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              저장
-            </button>
           </div>
           <p className="text-text-muted text-sm mt-1">서비스 이용약관과 개인정보처리방침을 관리합니다</p>
         </div>
 
-        <div className="flex gap-1 border-b border-line">
-          {TABS.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2.5 text-base font-medium transition-colors border-b-2 -mb-px ${
-                activeTab === tab.key
-                  ? 'text-accent-text border-red-500'
-                  : 'text-text-secondary border-transparent hover:text-text-primary'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex items-center justify-between border-b border-line">
+          <div className="flex gap-1">
+            {TABS.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-2.5 text-base font-medium transition-colors border-b-2 -mb-px ${
+                  activeTab === tab.key
+                    ? 'text-accent-text border-red-500'
+                    : 'text-text-secondary border-transparent hover:text-text-primary'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowSaveConfirm(true)}
+            disabled={saving || loading}
+            className="mb-2 px-5 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-xl text-base transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            저장
+          </button>
         </div>
 
         {loading ? (
@@ -87,28 +90,13 @@ export default function AdminTermsPage() {
             <Loader2 className="w-8 h-8 animate-spin text-text-secondary" />
           </div>
         ) : (
-          <div className="space-y-4">
-            <p className="text-text-secondary text-sm">
-              현재 편집 중: <span className="text-text-primary font-medium">{TABS.find(t => t.key === activeTab)?.label}</span>
-            </p>
-            <Editor
-              content={contents[activeTab]}
-              onChange={(html) => setContents(prev => ({ ...prev, [activeTab]: html }))}
-              placeholder="약관 내용을 입력하세요..."
-            />
-          </div>
+          <Editor
+            key={activeTab}
+            content={contents[activeTab]}
+            onChange={(html) => setContents(prev => ({ ...prev, [activeTab]: html }))}
+            placeholder="약관 내용을 입력하세요..."
+          />
         )}
-
-        <div className="flex justify-end">
-          <button
-            onClick={() => setShowSaveConfirm(true)}
-            disabled={saving || loading}
-            className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-text-primary rounded-xl text-base transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            저장
-          </button>
-        </div>
       </div>
 
       <ConfirmModal
@@ -121,6 +109,12 @@ export default function AdminTermsPage() {
           handleSave()
         }}
         onCancel={() => setShowSaveConfirm(false)}
+      />
+
+      <AlertModal
+        isOpen={!!alertMessage}
+        message={alertMessage || ''}
+        onConfirm={() => setAlertMessage(null)}
       />
     </AdminLayout>
   )

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from 'recharts'
 import { formatDate } from '@/lib/formatDate'
+import { getImageDimensions, sizeMismatchMessage } from '@/lib/imageDimensions'
 
 // ────────── 타입 ──────────
 
@@ -75,7 +76,7 @@ function ConfirmModal({ msg, onConfirm, onCancel, danger = true }: {
 
 // ────────── 게임 선택기 ──────────
 
-function GameSelectorInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function GameSelectorInput({ value, onChange, serviceType }: { value: string; onChange: (v: string) => void; serviceType?: string }) {
   const [search, setSearch] = useState('')
   const [games, setGames] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -94,11 +95,13 @@ function GameSelectorInput({ value, onChange }: { value: string; onChange: (v: s
   useEffect(() => {
     if (!open) return
     setLoading(true)
-    adminService.getAllGames({ search: search || undefined, limit: 20 })
+    // 베타존 참가자 모집 배너용 게임 선택기 — 심사 승인 + 아직 시작(모집) 전인 베타 게임만 노출
+    const extra = serviceType === 'beta' ? { approvalStatus: 'approved', notStarted: 'true' } : {}
+    adminService.getAllGames({ search: search || undefined, limit: 20, serviceType, ...extra })
       .then(d => setGames(d.games || []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [search, open])
+  }, [search, open, serviceType])
 
   const selectedId = value.match(/^\/games\/([^/]+)$/)?.[1]
 
@@ -176,7 +179,14 @@ function BannerSection({
   onToggleActive,
   onDelete,
   onEdit,
+  onReorder,
   gameSelector,
+  gameServiceTypeFilter,
+  gameHeroBanner,
+  gameHeroBannerLabel = '아이콘',
+  unlimited,
+  requiredSize,
+  showToast,
 }: {
   title: string
   subtitle: string
@@ -197,7 +207,20 @@ function BannerSection({
   onToggleActive: (b: CommunityBanner) => void
   onDelete: (id: string) => void
   onEdit: (id: string, data: { title: string; linkUrl: string; file?: File }) => void
+  onReorder: (reordered: CommunityBanner[]) => void
   gameSelector?: boolean
+  // 게임 선택기에서 특정 serviceType(예: 'beta')의 게임만 검색되도록 제한
+  gameServiceTypeFilter?: string
+  // 이미지를 직접 안 올리고, 연결한 게임이 등록한 이미지(아이콘 또는 히어로 배너)를 자동으로 쓰는 모드 — 이미지 업로드/이름 입력 UI를 숨김
+  // 2026-09-16: 베타존 참가자 모집은 히어로 배너(Game.bannerImage) 재사용 → 게임 아이콘(Game.thumbnail) 재사용으로 변경(카드 표시 크기 대비 원본이 과도하게 커서 대역폭 낭비)
+  gameHeroBanner?: boolean
+  // gameHeroBanner 모드에서 안내 문구에 쓸 이미지 종류 이름 (기본값 '아이콘', 추천게임은 '히어로 배너')
+  gameHeroBannerLabel?: string
+  // 등록 개수 제한 없음(추천 소형, 베타존 참가자 모집) — 기본은 최대 5개 제한
+  unlimited?: boolean
+  // 이 값이 있으면 정확히 이 픽셀 크기가 아닌 이미지는 업로드를 막음
+  requiredSize?: { width: number; height: number }
+  showToast: (msg: string, ok?: boolean) => void
 }) {
   const [statPeriod, setStatPeriod] = useState<1 | 7 | 30 | null>(7)
   const [customFrom, setCustomFrom] = useState('')
@@ -205,6 +228,16 @@ function BannerSection({
   const [customOpen, setCustomOpen] = useState(false)
   const customRef = useRef<HTMLDivElement>(null)
   const [chartBannerId, setChartBannerId] = useState<string | null>(null)
+
+  // 클릭으로 순서를 한 칸씩 위/아래로 이동
+  const moveItem = (index: number, dir: -1 | 1) => {
+    const target = index + dir
+    if (target < 0 || target >= banners.length) return
+    const reordered = [...banners]
+    const [moved] = reordered.splice(index, 1)
+    reordered.splice(target, 0, moved)
+    onReorder(reordered)
+  }
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -268,8 +301,16 @@ function BannerSection({
   }, [gameSelector, banners])
 
   const [addPreview, setAddPreview] = useState<string>('')
-  const handleAddFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] || null
+    if (f && requiredSize) {
+      const dim = await getImageDimensions(f).catch(() => null)
+      if (!dim || dim.width < requiredSize.width || dim.height < requiredSize.height) {
+        showToast(sizeMismatchMessage(requiredSize.width, requiredSize.height, dim || undefined), false)
+        e.target.value = ''
+        return
+      }
+    }
     onFileChange(f)
     setAddPreview(f ? URL.createObjectURL(f) : '')
   }
@@ -296,9 +337,17 @@ function BannerSection({
     onEdit(editId, { title: editTitle, linkUrl: editLinkUrl, ...(editFile ? { file: editFile } : {}) })
     cancelEdit()
   }
-  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEditFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     if (!f) return
+    if (requiredSize) {
+      const dim = await getImageDimensions(f).catch(() => null)
+      if (!dim || dim.width < requiredSize.width || dim.height < requiredSize.height) {
+        showToast(sizeMismatchMessage(requiredSize.width, requiredSize.height, dim || undefined), false)
+        e.target.value = ''
+        return
+      }
+    }
     setEditFile(f)
     setEditPreview(URL.createObjectURL(f))
   }
@@ -314,37 +363,52 @@ function BannerSection({
               </button>
             </div>
             <div className="p-5 space-y-4">
-              <input ref={editFileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleEditFileChange} />
-              <div>
-                <label className="text-xs text-text-muted block mb-1.5">이미지</label>
-                <div
-                  className="relative w-full h-40 rounded-xl overflow-hidden border-2 border-dashed border-line bg-bg-tertiary flex items-center justify-center cursor-pointer hover:border-accent transition-colors group"
-                  onClick={() => editFileRef.current?.click()}
-                >
-                  <img
-                    src={editPreview || `${UPLOADS_URL}${editBanner.imageUrl}`}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Upload className="w-6 h-6 text-white" />
+              {!gameHeroBanner && (
+                <>
+                  <input ref={editFileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleEditFileChange} />
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1.5">이미지</label>
+                    <div
+                      className="relative w-full h-40 rounded-xl overflow-hidden border-2 border-dashed border-line bg-bg-tertiary flex items-center justify-center cursor-pointer hover:border-accent transition-colors group"
+                      onClick={() => editFileRef.current?.click()}
+                    >
+                      <img
+                        src={editPreview || `${UPLOADS_URL}${editBanner.imageUrl}`}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Upload className="w-6 h-6 text-white" />
+                      </div>
+                    </div>
+                    {editFile && <p className="text-xs text-text-muted mt-1">{editFile.name}</p>}
+                    {requiredSize && (
+                      <p className="text-[11px] text-text-muted mt-1">최소 크기 {requiredSize.width}×{requiredSize.height}px 이상</p>
+                    )}
                   </div>
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1.5">이름</label>
+                    <input
+                      value={editTitle}
+                      onChange={e => setEditTitle(e.target.value)}
+                      placeholder="배너 제목"
+                      className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                </>
+              )}
+              {gameHeroBanner && (
+                <div className="flex items-center gap-3">
+                  <div className="w-20 h-12 rounded-lg overflow-hidden border border-line bg-bg-tertiary flex-shrink-0">
+                    <img src={`${UPLOADS_URL}${editBanner.imageUrl}`} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <p className="text-xs text-text-muted">게임을 바꾸면 이미지({gameHeroBannerLabel})도 그 게임 것으로 자동으로 바뀝니다.</p>
                 </div>
-                {editFile && <p className="text-xs text-text-muted mt-1">{editFile.name}</p>}
-              </div>
-              <div>
-                <label className="text-xs text-text-muted block mb-1.5">이름</label>
-                <input
-                  value={editTitle}
-                  onChange={e => setEditTitle(e.target.value)}
-                  placeholder="배너 제목"
-                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent"
-                />
-              </div>
+              )}
               <div>
                 <label className="text-xs text-text-muted block mb-1.5">{gameSelector ? '연결 게임' : '링크 URL'}</label>
                 {gameSelector
-                  ? <GameSelectorInput value={editLinkUrl} onChange={setEditLinkUrl} />
+                  ? <GameSelectorInput value={editLinkUrl} onChange={setEditLinkUrl} serviceType={gameServiceTypeFilter} />
                   : <input
                       value={editLinkUrl}
                       onChange={e => setEditLinkUrl(e.target.value)}
@@ -371,37 +435,47 @@ function BannerSection({
               </button>
             </div>
             <div className="p-5 space-y-4">
-              <input type="file" ref={addFileRef} accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleAddFileChange} />
-              <div>
-                <label className="text-xs text-text-muted block mb-1.5">이미지 *</label>
-                <div
-                  className="relative w-full h-40 rounded-xl overflow-hidden border-2 border-dashed border-line bg-bg-tertiary flex items-center justify-center cursor-pointer hover:border-accent transition-colors group"
-                  onClick={() => addFileRef.current?.click()}
-                >
-                  {addPreview
-                    ? <img src={addPreview} alt="" className="w-full h-full object-cover" />
-                    : <div className="flex flex-col items-center gap-2 text-text-muted group-hover:text-text-secondary transition-colors">
-                        <Upload className="w-8 h-8" />
-                        <span className="text-xs">클릭하여 이미지 선택</span>
-                      </div>
-                  }
-                  {addPreview && (
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Upload className="w-6 h-6 text-white" />
+              {!gameHeroBanner && (
+                <>
+                  <input type="file" ref={addFileRef} accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={handleAddFileChange} />
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1.5">이미지 *</label>
+                    <div
+                      className="relative w-full h-40 rounded-xl overflow-hidden border-2 border-dashed border-line bg-bg-tertiary flex items-center justify-center cursor-pointer hover:border-accent transition-colors group"
+                      onClick={() => addFileRef.current?.click()}
+                    >
+                      {addPreview
+                        ? <img src={addPreview} alt="" className="w-full h-full object-cover" />
+                        : <div className="flex flex-col items-center gap-2 text-text-muted group-hover:text-text-secondary transition-colors">
+                            <Upload className="w-8 h-8" />
+                            <span className="text-xs">클릭하여 이미지 선택</span>
+                          </div>
+                      }
+                      {addPreview && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Upload className="w-6 h-6 text-white" />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                {formFile && <p className="text-xs text-text-muted mt-1">{formFile.name}</p>}
-              </div>
-              <div>
-                <label className="text-xs text-text-muted block mb-1.5">이름 (선택)</label>
-                <input value={formTitle} onChange={e => onTitleChange(e.target.value)} placeholder="배너 제목"
-                  className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
-              </div>
+                    {formFile && <p className="text-xs text-text-muted mt-1">{formFile.name}</p>}
+                    {requiredSize && (
+                      <p className="text-[11px] text-text-muted mt-1">최소 크기 {requiredSize.width}×{requiredSize.height}px 이상</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1.5">이름 (선택)</label>
+                    <input value={formTitle} onChange={e => onTitleChange(e.target.value)} placeholder="배너 제목"
+                      className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
+                  </div>
+                </>
+              )}
+              {gameHeroBanner && (
+                <p className="text-xs text-text-muted">게임을 선택하면 그 게임에 등록된 이미지({gameHeroBannerLabel})와 이름이 메인 페이지에 자동으로 표시됩니다.</p>
+              )}
               <div>
                 <label className="text-xs text-text-muted block mb-1.5">{gameSelector ? '연결 게임 *' : '링크 URL (선택)'}</label>
                 {gameSelector
-                  ? <GameSelectorInput value={formLinkUrl} onChange={onLinkChange} />
+                  ? <GameSelectorInput value={formLinkUrl} onChange={onLinkChange} serviceType={gameServiceTypeFilter} />
                   : <input value={formLinkUrl} onChange={e => onLinkChange(e.target.value)} placeholder="https://..."
                       className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent" />
                 }
@@ -409,7 +483,7 @@ function BannerSection({
             </div>
             <div className="flex justify-end gap-2 px-5 py-4 border-t border-line">
               <button onClick={handleCancelAdd} className="px-4 py-1.5 border border-line text-text-secondary hover:bg-bg-tertiary rounded-lg text-base transition-colors">취소</button>
-              <button onClick={onAdd} disabled={uploading || !formFile || (!!gameSelector && !formLinkUrl)}
+              <button onClick={onAdd} disabled={uploading || (!gameHeroBanner && !formFile) || (!!gameSelector && !formLinkUrl)}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium disabled:opacity-50 transition-colors">
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} 등록
               </button>
@@ -423,12 +497,11 @@ function BannerSection({
           <h3 className="text-text-primary font-semibold">{title}</h3>
           <p className="text-text-muted text-xs mt-0.5">{subtitle}</p>
         </div>
-        {banners.length < 5 && (
-          <button onClick={onToggleAddForm}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium transition-colors">
-            <Plus className="w-4 h-4" /> 배너 추가
-          </button>
-        )}
+        <button onClick={onToggleAddForm} disabled={!unlimited && banners.length >= 5}
+          title={!unlimited && banners.length >= 5 ? '최대 5개까지 등록 가능합니다' : undefined}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-accent hover:bg-accent-hover text-white rounded-lg text-base font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent">
+          <Plus className="w-4 h-4" /> 배너 추가
+        </button>
       </div>
 
 
@@ -491,6 +564,7 @@ function BannerSection({
                 <th className="text-left py-2 px-3 font-medium w-16">그래프</th>
                 <th className="text-left py-2 px-3 font-medium w-16">수정</th>
                 <th className="text-left py-2 px-3 font-medium w-16">삭제</th>
+                <th className="text-left py-2 px-3 font-medium w-16">순서 변경</th>
               </tr>
             </thead>
             <tbody>
@@ -503,7 +577,13 @@ function BannerSection({
                       <img src={`${UPLOADS_URL}${b.imageUrl}`} alt="" className="w-full h-full object-cover" />
                     </div>
                   </td>
-                  <td className="py-3 px-3 text-text-primary">{b.title || <span className="text-text-muted">-</span>}</td>
+                  <td className="py-3 px-3 text-text-primary">
+                    {(() => {
+                      if (b.title) return b.title
+                      const id = gameSelector ? b.linkUrl?.match(/^\/games\/([^/]+)$/)?.[1] : undefined
+                      return (id && gameNamesMap[id]) || <span className="text-text-muted">-</span>
+                    })()}
+                  </td>
                   <td className="py-3 px-3">
                     {gameSelector
                       ? (() => {
@@ -550,10 +630,22 @@ function BannerSection({
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
+                  <td className="py-3 px-3">
+                    <div className="flex flex-col gap-0.5">
+                      <button onClick={() => moveItem(i, -1)} disabled={i === 0}
+                        className="p-0.5 text-text-muted hover:text-accent hover:bg-accent/10 rounded disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors">
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => moveItem(i, 1)} disabled={i === banners.length - 1}
+                        className="p-0.5 text-text-muted hover:text-accent hover:bg-accent/10 rounded disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors">
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
                 {chartBannerId === b._id && (
                   <tr className="border-b border-line bg-bg-tertiary/50">
-                    <td colSpan={12} className="px-4 py-4">
+                    <td colSpan={13} className="px-4 py-4">
                       <div className="flex items-center gap-2 mb-3">
                         <BarChart2 className="w-4 h-4 text-accent" />
                         <span className="text-sm font-medium text-text-primary">{b.title || '배너'} — {statPeriod === 1 ? '오늘' : statPeriod !== null ? `최근 ${statPeriod}일` : `${customFrom} ~ ${customTo}`}</span>
@@ -626,15 +718,15 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
   const [mainFormFile, setMainFormFile] = useState<File | null>(null)
   const mainAddFileRef = useRef<HTMLInputElement>(null)
 
-  const [eventBanners, setEventBanners] = useState<CommunityBanner[]>([])
-  const [eventLoading, setEventLoading] = useState(true)
-  const [eventUploading, setEventUploading] = useState(false)
-  const [eventConfirm, setEventConfirm] = useState<{ id: string } | null>(null)
-  const [eventAddForm, setEventAddForm] = useState(false)
-  const [eventFormLinkUrl, setEventFormLinkUrl] = useState('')
-  const [eventFormTitle, setEventFormTitle] = useState('')
-  const [eventFormFile, setEventFormFile] = useState<File | null>(null)
-  const eventAddFileRef = useRef<HTMLInputElement>(null)
+  const [recommendBanners, setRecommendBanners] = useState<CommunityBanner[]>([])
+  const [recommendLoading, setRecommendLoading] = useState(true)
+  const [recommendUploading, setRecommendUploading] = useState(false)
+  const [recommendConfirm, setRecommendConfirm] = useState<{ id: string } | null>(null)
+  const [recommendAddForm, setRecommendAddForm] = useState(false)
+  const [recommendFormLinkUrl, setRecommendFormLinkUrl] = useState('')
+  const [recommendFormTitle, setRecommendFormTitle] = useState('')
+  const [recommendFormFile, setRecommendFormFile] = useState<File | null>(null)
+  const recommendAddFileRef = useRef<HTMLInputElement>(null)
 
   // 신작 배너 상태
   const [newGameBanners, setNewGameBanners] = useState<CommunityBanner[]>([])
@@ -665,13 +757,13 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
     finally { setMainLoading(false) }
   }, [])
 
-  const loadEvent = useCallback(async () => {
-    setEventLoading(true)
+  const loadRecommend = useCallback(async () => {
+    setRecommendLoading(true)
     try {
-      const data = await adminService.getAllEventBanners()
-      setEventBanners(data.banners)
+      const data = await adminService.getAllRecommendBanners()
+      setRecommendBanners(data.banners)
     } catch { /* silent */ }
-    finally { setEventLoading(false) }
+    finally { setRecommendLoading(false) }
   }, [])
 
   const loadNewGame = useCallback(async () => {
@@ -683,7 +775,15 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
     finally { setNewGameLoading(false) }
   }, [])
 
-  useEffect(() => { load(); loadMain(); loadEvent(); loadNewGame() }, [load, loadMain, loadEvent, loadNewGame])
+  useEffect(() => { load(); loadMain(); loadRecommend(); loadNewGame() }, [load, loadMain, loadRecommend, loadNewGame])
+
+  // 드래그로 순서 바꾸면 sortOrder를 전부 다시 매겨서 저장 — 모든 배너 탭 공용
+  const makeReorderHandler = (loadFn: () => void) => async (reordered: CommunityBanner[]) => {
+    try {
+      await Promise.all(reordered.map((b, idx) => adminService.updateCommunityBanner(b._id, { sortOrder: idx })))
+      loadFn()
+    } catch { showToast('순서 변경 실패', false) }
+  }
 
   const handleAdd = async () => {
     if (!formFile) { showToast('이미지를 선택해주세요', false); return }
@@ -743,32 +843,32 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
     } catch { showToast('삭제 실패', false) }
   }
 
-  const handleEventAdd = async () => {
-    if (!eventFormFile) { showToast('이미지를 선택해주세요', false); return }
-    setEventUploading(true)
+  const handleRecommendAdd = async () => {
+    if (!recommendFormLinkUrl) { showToast('연결할 게임을 선택해주세요', false); return }
+    setRecommendUploading(true)
     try {
-      await adminService.uploadEventBanner(eventFormFile, { linkUrl: eventFormLinkUrl, title: eventFormTitle })
+      await adminService.uploadRecommendBanner(recommendFormLinkUrl, { title: recommendFormTitle })
       showToast('배너가 등록되었습니다')
-      setEventAddForm(false); setEventFormFile(null); setEventFormLinkUrl(''); setEventFormTitle('')
-      loadEvent()
+      setRecommendAddForm(false); setRecommendFormFile(null); setRecommendFormLinkUrl(''); setRecommendFormTitle('')
+      loadRecommend()
     } catch (e: any) {
       showToast(e?.response?.data?.message || '업로드 실패', false)
-    } finally { setEventUploading(false) }
+    } finally { setRecommendUploading(false) }
   }
 
-  const handleEventToggleActive = async (b: CommunityBanner) => {
+  const handleRecommendToggleActive = async (b: CommunityBanner) => {
     try {
       await adminService.updateCommunityBanner(b._id, { isActive: !b.isActive })
-      loadEvent()
+      loadRecommend()
     } catch { showToast('변경 실패', false) }
   }
 
-  const handleEventDelete = async () => {
-    if (!eventConfirm) return
+  const handleRecommendDelete = async () => {
+    if (!recommendConfirm) return
     try {
-      await adminService.deleteCommunityBanner(eventConfirm.id)
+      await adminService.deleteCommunityBanner(recommendConfirm.id)
       showToast('삭제되었습니다')
-      setEventConfirm(null); loadEvent()
+      setRecommendConfirm(null); loadRecommend()
     } catch { showToast('삭제 실패', false) }
   }
 
@@ -780,18 +880,18 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
     try { await adminService.updateCommunityBanner(id, data); showToast('수정되었습니다'); loadMain() }
     catch { showToast('수정 실패', false) }
   }
-  const handleEventEdit = async (id: string, data: { title: string; linkUrl: string; file?: File }) => {
-    try { await adminService.updateCommunityBanner(id, data); showToast('수정되었습니다'); loadEvent() }
+  const handleRecommendEdit = async (id: string, data: { title: string; linkUrl: string; file?: File }) => {
+    try { await adminService.updateCommunityBanner(id, data); showToast('수정되었습니다'); loadRecommend() }
     catch { showToast('수정 실패', false) }
   }
 
   const handleNewGameAdd = async () => {
-    if (!newGameFormFile) { showToast('이미지를 선택해주세요', false); return }
+    if (!newGameFormLinkUrl) { showToast('연결할 게임을 선택해주세요', false); return }
     setNewGameUploading(true)
     try {
-      await adminService.uploadNewGameBanner(newGameFormFile, { linkUrl: newGameFormLinkUrl, title: newGameFormTitle })
+      await adminService.uploadNewGameBanner(newGameFormLinkUrl, { title: newGameFormTitle })
       showToast('배너가 등록되었습니다')
-      setNewGameAddForm(false); setNewGameFormFile(null); setNewGameFormLinkUrl(''); setNewGameFormTitle('')
+      setNewGameAddForm(false); setNewGameFormLinkUrl(''); setNewGameFormTitle('')
       loadNewGame()
     } catch (e: any) {
       showToast(e?.response?.data?.message || '업로드 실패', false)
@@ -814,20 +914,20 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
     catch { showToast('수정 실패', false) }
   }
 
-  const [bannerTab, setBannerTab] = useState<'main' | 'community' | 'event' | 'newgame'>('main')
+  const [bannerTab, setBannerTab] = useState<'main' | 'community' | 'recommend' | 'newgame'>('main')
 
   const BANNER_TABS = [
-    { key: 'main'      as const, label: '메인_배너' },
-    { key: 'community' as const, label: '커뮤니티_배너' },
-    { key: 'event'     as const, label: '메인_이벤트' },
-    { key: 'newgame'   as const, label: '메인_신작' },
+    { key: 'main'          as const, label: '메인_배너' },
+    { key: 'community'     as const, label: '커뮤니티_배너' },
+    { key: 'recommend'     as const, label: '메인_추천게임' },
+    { key: 'newgame'       as const, label: '메인_베타존참가자모집' },
   ]
 
   return (
     <div className="space-y-5">
       {confirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleDelete} onCancel={() => setConfirm(null)} />}
       {mainConfirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleMainDelete} onCancel={() => setMainConfirm(null)} />}
-      {eventConfirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleEventDelete} onCancel={() => setEventConfirm(null)} />}
+      {recommendConfirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleRecommendDelete} onCancel={() => setRecommendConfirm(null)} />}
       {newGameConfirm && <ConfirmModal msg="배너를 삭제하시겠습니까?" onConfirm={handleNewGameDelete} onCancel={() => setNewGameConfirm(null)} />}
 
       {/* 배너 종류 탭 */}
@@ -847,7 +947,7 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
       {bannerTab === 'main' && (
         <BannerSection
           title="메인 탭 배너"
-          subtitle="메인 페이지 상단에 표시됩니다 · 최대 5개 · 자동 롤링"
+          subtitle="자동 롤링 · 최대 5개 · 최소 크기 1920×284px · 이미지 업로드"
           banners={mainBanners}
           loading={mainLoading}
           uploading={mainUploading}
@@ -865,13 +965,16 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
           onToggleActive={handleMainToggleActive}
           onDelete={id => setMainConfirm({ id })}
           onEdit={handleMainEdit}
+          onReorder={makeReorderHandler(loadMain)}
+          requiredSize={{ width: 1920, height: 284 }}
+          showToast={showToast}
         />
       )}
 
       {bannerTab === 'newgame' && (
         <BannerSection
-          title="메인_신작 배너"
-          subtitle="메인 페이지 신작 게임 섹션에 표시됩니다 · 최대 5개 · 자동 롤링"
+          title="메인_베타존 참가자 모집 배너"
+          subtitle="왼쪽부터 등록 순서대로 표시 · 등록 개수 제한 없음 · 게임 선택(아이콘 자동, 최소 크기 450×450px)"
           banners={newGameBanners}
           loading={newGameLoading}
           uploading={newGameUploading}
@@ -889,14 +992,19 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
           onToggleActive={handleNewGameToggleActive}
           onDelete={id => setNewGameConfirm({ id })}
           onEdit={handleNewGameEdit}
+          onReorder={makeReorderHandler(loadNewGame)}
           gameSelector
+          gameServiceTypeFilter="beta"
+          gameHeroBanner
+          unlimited
+          showToast={showToast}
         />
       )}
 
       {bannerTab === 'community' && (
         <BannerSection
           title="커뮤니티 홈 배너"
-          subtitle="커뮤니티 홈 상단에 표시됩니다 · 최대 5개 · 자동 롤링"
+          subtitle="자동 롤링 · 최대 5개 · 최소 크기 1920×334px · 이미지 업로드"
           banners={banners}
           loading={loading}
           uploading={uploading}
@@ -914,44 +1022,47 @@ function BannerTab({ showToast }: { showToast: (msg: string, ok?: boolean) => vo
           onToggleActive={handleToggleActive}
           onDelete={id => setConfirm({ id })}
           onEdit={handleEdit}
+          onReorder={makeReorderHandler(load)}
+          requiredSize={{ width: 1920, height: 334 }}
+          showToast={showToast}
         />
       )}
 
-      {bannerTab === 'event' && (
+      {bannerTab === 'recommend' && (
         <BannerSection
-          title="이벤트 박스 배너"
-          subtitle="메인 페이지 이벤트 박스에 표시됩니다 · 최대 5개 · 자동 롤링"
-          banners={eventBanners}
-          loading={eventLoading}
-          uploading={eventUploading}
-          addForm={eventAddForm}
-          formFile={eventFormFile}
-          formTitle={eventFormTitle}
-          formLinkUrl={eventFormLinkUrl}
-          addFileRef={eventAddFileRef}
-          onToggleAddForm={() => setEventAddForm(v => !v)}
-          onFileChange={setEventFormFile}
-          onTitleChange={setEventFormTitle}
-          onLinkChange={setEventFormLinkUrl}
-          onAdd={handleEventAdd}
-          onCancelAdd={() => { setEventAddForm(false); setEventFormFile(null); setEventFormLinkUrl(''); setEventFormTitle('') }}
-          onToggleActive={handleEventToggleActive}
-          onDelete={id => setEventConfirm({ id })}
-          onEdit={handleEventEdit}
+          title="메인_추천게임 배너"
+          subtitle="등록 순서대로 표시, 좌우 화살표로 이동 · 최대 5개 · 게임 선택(히어로 배너 자동, 최소 크기 1920×823px)"
+          banners={recommendBanners}
+          loading={recommendLoading}
+          uploading={recommendUploading}
+          addForm={recommendAddForm}
+          formFile={recommendFormFile}
+          formTitle={recommendFormTitle}
+          formLinkUrl={recommendFormLinkUrl}
+          addFileRef={recommendAddFileRef}
+          onToggleAddForm={() => setRecommendAddForm(v => !v)}
+          onFileChange={setRecommendFormFile}
+          onTitleChange={setRecommendFormTitle}
+          onLinkChange={setRecommendFormLinkUrl}
+          onAdd={handleRecommendAdd}
+          onCancelAdd={() => { setRecommendAddForm(false); setRecommendFormFile(null); setRecommendFormLinkUrl(''); setRecommendFormTitle('') }}
+          onToggleActive={handleRecommendToggleActive}
+          onDelete={id => setRecommendConfirm({ id })}
+          onEdit={handleRecommendEdit}
+          onReorder={makeReorderHandler(loadRecommend)}
+          gameSelector
+          gameHeroBanner
+          gameHeroBannerLabel="히어로 배너"
+          unlimited={false}
+          showToast={showToast}
         />
       )}
+
     </div>
   )
 }
 
 // ────────── 탭 2: 공지사항 관리 ──────────
-
-const ANNOUNCEMENT_TYPE_OPTIONS = [
-  { value: 'notice', label: '공지' },
-  { value: 'event', label: '이벤트' },
-  { value: 'maintenance', label: '점검' },
-  { value: 'update', label: '업데이트' },
-]
 
 const ANNOUNCEMENT_PRIORITY_OPTIONS = [
   { value: 'urgent', label: '긴급' },
@@ -1006,7 +1117,6 @@ function AnnouncementsTab({ showToast }: { showToast: (msg: string, ok?: boolean
       <AnnouncementManager
         items={items}
         loading={loading}
-        typeOptions={ANNOUNCEMENT_TYPE_OPTIONS}
         priorityOptions={ANNOUNCEMENT_PRIORITY_OPTIONS}
         onCreate={handleCreate}
         onUpdate={handleUpdate}

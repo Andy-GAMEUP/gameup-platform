@@ -28,8 +28,8 @@
 |------|------|------|
 | 게임 상세 페이지(`/games/[id]`) 사이드바 "별점" 카드 | `apps/web/src/components/pages/PlayerGameDetailPage.tsx` | 기준(원본) — `avgRating`/`reviewTotal` 표시, `text-yellow-400 font-bold` 숫자 + `(N개 리뷰)` |
 | 게임 상세 페이지 리뷰 목록/작성 폼의 별점 입력 | `apps/web/src/components/pages/PlayerGameDetailPage.tsx` | `onChange` 전달해 입력형으로 사용 |
-| 베타존 카드 (`/betazone`) | `apps/web/src/components/pages/BetazonePage.tsx` | `game-card-consistency-rule.md`의 게임 카드 그룹과 동일 위치, `size={3.5}` |
-| 라이브게임 카드 (`/live_games`) | `apps/web/src/components/pages/LiveGamesPage.tsx` | 위와 동일 |
+| 라이브게임 카드 (`/live_games`) | `apps/web/src/components/pages/LiveGamesPage.tsx` | `game-card-consistency-rule.md`의 게임 카드 그룹과 동일 위치, `size={3.5}` |
+| 메인페이지 "추천 게임" 카드 | `apps/web/src/components/pages/MainPage.tsx` | `size={3}`, 별점 옆에 `· 참여 {playCount}` 추가(2026-09-11) |
 
 ## 발견/변경 이력
 
@@ -38,3 +38,5 @@
 2. 베타존/라이브게임 카드의 별점을 기존 `lucide-react`의 `Star` 아이콘 직접 렌더링 방식에서 공용 `StarRating` 컴포넌트로 교체, 숫자 색상도 `text-text-secondary` → `text-yellow-400 font-bold`로 통일 ("평점 디자인이랑 칼라, 밖에 카드에 평점이랑 통일시켜" 요청).
 3. 위 통일 과정에서 카드 배경(`bg-bg-tertiary`)과 빈 별 색(`fill-bg-tertiary`)이 같아 별이 안 보이는 문제를 발견 → 컴포넌트 자체의 빈 별 색을 배경 비의존적인 `fill-text-muted/40`으로 수정 (모든 사용처에 자동 반영).
 4. 사용자가 "이후에도 평점 어디 들어갈 때 있으면 같은 디자인으로 하나 수정하면 다른 것도 동일하게 수정해" 요청 — 이 규칙 문서 자체가 그 요청에 따른 것 (`badge-consistency-rule.md`, `game-card-consistency-rule.md`와 동일한 패턴).
+
+**2026-09-15**: 베타존 카드(`BetazonePage.tsx`)를 베타 테스트 모집 전용 레이아웃(시작/진행/종료 상태, 참여·목표 인원, 참가 버튼)으로 전면 개편하면서 별점 표시를 완전히 제거함 — `game-card-consistency-rule.md`의 "2026-09-15 예외" 참고. 라이브게임 카드는 그대로 유지.

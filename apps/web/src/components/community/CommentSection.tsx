@@ -10,6 +10,9 @@ import {
   AlertTriangle, RotateCcw, Award,
 } from 'lucide-react'
 import Avatar from './Avatar'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
+import UserHoverCard from '@/components/UserHoverCard'
 
 export interface CommentSectionUser {
   id: string
@@ -405,12 +408,18 @@ function CommentBlock({
     <div className={pinned ? 'bg-orange-500/[0.06] border border-orange-500/25 rounded-xl px-3' : isReply ? 'ml-8 border-l-2 border-line pl-4' : ''}>
       <div className="py-3">
         <div className="flex items-start gap-3">
-          <Avatar username={comment.author?.username||'?'} role={comment.author?.role||''} profileImage={comment.author?.profileImage} size={8} />
+          <UserHoverCard userId={comment.author?._id} role={comment.author?.role}>
+            <Avatar username={comment.author?.username||'?'} role={comment.author?.role||''} profileImage={comment.author?.profileImage} size={8} />
+          </UserHoverCard>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className={`text-sm font-semibold ${comment.author?.role==='admin'?'text-violet-700 dark:text-violet-300':comment.author?.role==='developer'?'text-cyan-700 dark:text-cyan-300':'text-text-primary'}`}>
-                {comment.author?.username}
-              </span>
+              <UserHoverCard userId={comment.author?._id} role={comment.author?.role}>
+                <span className="text-sm font-semibold text-text-primary">
+                  {comment.author?.username}
+                </span>
+              </UserHoverCard>
+              {comment.author?.role === 'developer' && <OfficialBadge />}
+              {comment.author?.role === 'admin' && <AdminBadge />}
               <span className="text-text-secondary text-xs">{getRelativeTime(comment.createdAt)}</span>
               {isBest && (
                 <span className="flex items-center gap-0.5 text-[11px] font-semibold text-orange-500 bg-orange-500/10 px-1.5 py-0.5 rounded-full">

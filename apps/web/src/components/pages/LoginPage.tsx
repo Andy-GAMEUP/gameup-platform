@@ -2,9 +2,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Mail, Lock, AlertCircle, Loader2 } from 'lucide-react'
+import { Mail, Lock, AlertCircle, Loader2, X } from 'lucide-react'
 import Image from 'next/image'
 import { useAuth } from '@/lib/useAuth'
+import { authService } from '@/services/authService'
+import AlertModal from '@/components/AlertModal'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -13,6 +15,29 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const [serverError, setServerError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const [requires2FA, setRequires2FA] = useState(false)
+  const [totpCode, setTotpCode] = useState('')
+
+  const [showForgotModal, setShowForgotModal] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotSubmitting, setForgotSubmitting] = useState(false)
+  const [forgotResultMessage, setForgotResultMessage] = useState<string | null>(null)
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim()) return
+    setForgotSubmitting(true)
+    try {
+      const data = await authService.forgotPassword(forgotEmail.trim())
+      setShowForgotModal(false)
+      setForgotEmail('')
+      setForgotResultMessage(data.message)
+    } catch {
+      setForgotResultMessage('요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+    } finally {
+      setForgotSubmitting(false)
+    }
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -32,11 +57,15 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
+    if (!requires2FA && !validate()) return
+    if (requires2FA && !totpCode.trim()) {
+      setServerError('인증 코드를 입력해주세요')
+      return
+    }
     setLoading(true)
     setServerError('')
     try {
-      await login(formData.email, formData.password)
+      await login(formData.email, formData.password, requires2FA ? totpCode.trim() : undefined)
       const res = await fetch('/api/auth/session')
       const session = await res.json()
       const role = session?.user?.role
@@ -68,6 +97,12 @@ export default function LoginPage() {
       }
       else router.push('/games')
     } catch (error: any) {
+      if (error.requires2FA) {
+        setRequires2FA(true)
+        setTotpCode('')
+        setServerError('')
+        return
+      }
       const msg = error.message
       const friendlyMsg = (msg === 'CredentialsSignin' || msg === 'Configuration')
         ? '이메일 또는 비밀번호가 올바르지 않습니다'
@@ -120,39 +155,74 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">이메일</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="example@email.com"
-                  className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.email ? 'border-red-500' : 'border-line'}`}
-                />
-              </div>
-              {errors.email && <p className="mt-1 text-xs text-danger">{errors.email}</p>}
-            </div>
+            {!requires2FA ? (
+              <>
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">이메일</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="example@email.com"
+                      className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.email ? 'border-red-500' : 'border-line'}`}
+                    />
+                  </div>
+                  {errors.email && <p className="mt-1 text-xs text-danger">{errors.email}</p>}
+                </div>
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-text-secondary mb-2">비밀번호</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                {/* Password */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-text-secondary">비밀번호</label>
+                    <button
+                      type="button"
+                      onClick={() => { setForgotEmail(formData.email); setShowForgotModal(true) }}
+                      className="text-xs text-text-muted hover:text-accent transition-colors"
+                    >
+                      비밀번호를 잊으셨나요?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
+                    <input
+                      type="password"
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="••••••••"
+                      className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.password ? 'border-red-500' : 'border-line'}`}
+                    />
+                  </div>
+                  {errors.password && <p className="mt-1 text-xs text-danger">{errors.password}</p>}
+                </div>
+              </>
+            ) : (
+              /* 2단계 인증 코드 */
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-2">인증 앱의 6자리 코드를 입력해주세요</label>
                 <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className={`w-full bg-bg-tertiary border rounded-lg pl-10 pr-4 py-3 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors ${errors.password ? 'border-red-500' : 'border-line'}`}
+                  type="text"
+                  inputMode="numeric"
+                  autoFocus
+                  maxLength={8}
+                  value={totpCode}
+                  onChange={(e) => { setTotpCode(e.target.value.replace(/[^0-9]/g, '')); setServerError('') }}
+                  placeholder="6자리 숫자 (백업 코드는 8자리)"
+                  className="w-full bg-bg-tertiary border border-line rounded-lg px-4 py-3 text-text-primary placeholder-text-muted tracking-widest focus:outline-none focus:ring-2 focus:ring-accent transition-colors"
                 />
+                <button
+                  type="button"
+                  onClick={() => { setRequires2FA(false); setTotpCode(''); setServerError('') }}
+                  className="mt-2 text-xs text-text-muted hover:text-accent transition-colors"
+                >
+                  ← 다시 로그인하기
+                </button>
               </div>
-              {errors.password && <p className="mt-1 text-xs text-danger">{errors.password}</p>}
-            </div>
+            )}
 
             {/* Submit */}
             <button
@@ -161,11 +231,12 @@ export default function LoginPage() {
               className="w-full bg-accent hover:bg-accent-hover disabled:bg-green-800 disabled:cursor-not-allowed text-text-primary font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               {loading ? (
-                <><Loader2 className="w-5 h-5 animate-spin" /> 로그인 중...</>
-              ) : '로그인'}
+                <><Loader2 className="w-5 h-5 animate-spin" /> {requires2FA ? '확인 중...' : '로그인 중...'}</>
+              ) : (requires2FA ? '확인' : '로그인')}
             </button>
           </form>
 
+          {!requires2FA && (
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -192,8 +263,10 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+          )}
 
           {/* Test Accounts */}
+          {!requires2FA && (
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
@@ -242,8 +315,48 @@ export default function LoginPage() {
               ))}
             </div>
           </div>
+          )}
         </div>
       </div>
+
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={() => setShowForgotModal(false)}>
+          <div className="w-full max-w-sm bg-bg-secondary border border-line rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-text-primary font-semibold">비밀번호 찾기</h3>
+              <button onClick={() => setShowForgotModal(false)} className="text-text-muted hover:text-text-primary transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-text-secondary text-sm mb-4">
+              가입하신 이메일을 입력하시면 임시 비밀번호를 보내드립니다.
+            </p>
+            <input
+              type="email"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              placeholder="example@email.com"
+              onKeyDown={(e) => e.key === 'Enter' && handleForgotPassword()}
+              className="w-full bg-bg-tertiary border border-line rounded-lg px-3 py-2.5 text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors mb-4"
+            />
+            <button
+              onClick={handleForgotPassword}
+              disabled={!forgotEmail.trim() || forgotSubmitting}
+              className="w-full flex items-center justify-center gap-2 bg-accent hover:bg-accent-hover disabled:opacity-50 text-text-inverse font-semibold py-2.5 rounded-lg transition-colors"
+            >
+              {forgotSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              임시 비밀번호 받기
+            </button>
+          </div>
+        </div>
+      )}
+
+      <AlertModal
+        isOpen={!!forgotResultMessage}
+        title="비밀번호 찾기"
+        message={forgotResultMessage || ''}
+        onConfirm={() => setForgotResultMessage(null)}
+      />
     </div>
   )
 }

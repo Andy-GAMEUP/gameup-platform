@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 
 // 🔒 JWT_SECRET 환경변수 미설정 시 서버 시작 차단
 const getJwtSecret = (): string => {
@@ -44,4 +45,10 @@ export const generateToken = (payload: {
 export const verifyToken = (token: string) => {
   const JWT_SECRET = getJwtSecret()
   return jwt.verify(token, JWT_SECRET)
+}
+
+// 임시 비밀번호 생성 (8자+ 영문/숫자/특수문자 정책 충족 보장) — 관리자 초기화 / 본인 비밀번호 찾기 공용
+export const generateTempPassword = (): string => {
+  const digits = Array.from({ length: 4 }, () => crypto.randomInt(10)).join('')
+  return `Gameup!${digits}`
 }

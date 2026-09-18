@@ -32,10 +32,12 @@ export interface CommunityBanner {
   title: string
   sortOrder: number
   isActive: boolean
-  position: 'community' | 'main' | 'event'
+  position: 'community' | 'main' | 'recommend' | 'newgame'
   dailyStats: BannerDailyStat[]
   createdAt: string
   updatedAt: string
+  // linkUrl이 "/games/:id"인 배너(게임 선택형)에 한해 서버가 채워주는 연결 게임 정보 — 베타존 참가자 모집의 이름/모집 현황 표시용
+  game?: { _id: string; title: string; testers?: number; maxTesters?: number; startDate?: string } | null
 }
 
 export interface AdminStats {
@@ -294,8 +296,8 @@ export const adminService = {
     return res.data
   },
 
-  updateUserRole: async (id: string, role: string) => {
-    const res = await apiClient.patch(`/admin/users/${id}/role`, { role })
+  updateUserRole: async (id: string, role: string, adminLevel?: 'super' | 'normal' | 'monitor') => {
+    const res = await apiClient.patch(`/admin/users/${id}/role`, { role, ...(adminLevel && { adminLevel }) })
     return res.data
   },
 
@@ -309,7 +311,7 @@ export const adminService = {
     return res.data
   },
 
-  getAllGames: async (params?: { page?: number; limit?: number; status?: string; approvalStatus?: string; search?: string; serviceType?: string; suspended?: string }) => {
+  getAllGames: async (params?: { page?: number; limit?: number; status?: string; approvalStatus?: string; search?: string; serviceType?: string; suspended?: string; notStarted?: string; sortBy?: string; sortOrder?: string }) => {
     const res = await apiClient.get('/admin/games', { params })
     return res.data
   },
@@ -324,10 +326,10 @@ export const adminService = {
     return res.data as { banners: CommunityBanner[] }
   },
 
-  uploadNewGameBanner: async (file: File, extra?: { linkUrl?: string; title?: string }) => {
+  // 베타존 참가자 모집 배너 — 이미지를 직접 안 올리고, 연결한 게임이 등록한 게임 아이콘(Game.thumbnail)을 서버가 자동으로 사용
+  uploadNewGameBanner: async (linkUrl: string, extra?: { title?: string }) => {
     const form = new FormData()
-    form.append('bannerImage', file)
-    if (extra?.linkUrl) form.append('linkUrl', extra.linkUrl)
+    form.append('linkUrl', linkUrl)
     if (extra?.title) form.append('title', extra.title)
     form.append('position', 'newgame')
     const res = await apiClient.post('/admin/community/banners', form, {
@@ -510,22 +512,22 @@ export const adminService = {
     return res.data as { banner: CommunityBanner }
   },
 
-  getEventBanners: async () => {
-    const res = await apiClient.get('/admin/community/banners?position=event')
+  getRecommendBanners: async () => {
+    const res = await apiClient.get('/admin/community/banners?position=recommend')
     return res.data as { banners: CommunityBanner[] }
   },
 
-  getAllEventBanners: async () => {
-    const res = await apiClient.get('/admin/community/banners/all?position=event')
+  getAllRecommendBanners: async () => {
+    const res = await apiClient.get('/admin/community/banners/all?position=recommend')
     return res.data as { banners: CommunityBanner[] }
   },
 
-  uploadEventBanner: async (file: File, extra?: { linkUrl?: string; title?: string }) => {
+  // 추천게임 배너 — 이미지를 직접 안 올리고, 연결한 게임이 등록한 히어로 배너(Game.bannerImage)를 서버가 자동으로 사용
+  uploadRecommendBanner: async (linkUrl: string, extra?: { title?: string }) => {
     const form = new FormData()
-    form.append('bannerImage', file)
-    if (extra?.linkUrl) form.append('linkUrl', extra.linkUrl)
+    form.append('linkUrl', linkUrl)
     if (extra?.title) form.append('title', extra.title)
-    form.append('position', 'event')
+    form.append('position', 'recommend')
     const res = await apiClient.post('/admin/community/banners', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
@@ -586,9 +588,6 @@ export const adminService = {
 
   grantPoints: (id: string, data: GrantPointsData) =>
     apiClient.post(`/admin/users-enhanced/${id}/points`, data).then(r => r.data),
-
-  resetUserPassword: (id: string) =>
-    apiClient.post(`/admin/users-enhanced/${id}/reset-password`).then(r => r.data),
 
   bulkNotify: (data: BulkNotifyData) =>
     apiClient.post('/admin/users-enhanced/bulk-notify', data).then(r => r.data),

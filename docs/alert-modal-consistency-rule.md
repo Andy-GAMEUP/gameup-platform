@@ -31,7 +31,8 @@ setAlertMessage('저장되었습니다.')
 />
 ```
 
-## 적용 현황 (2026-08-19)
+## 적용 현황 (2026-09-08 갱신)
 
-- `GameDetailManagementPage.tsx`의 "저장되었습니다." 알림 2곳에 최초 적용.
-- 나머지 76곳의 `alert()`은 아직 미적용 상태 — 사용자가 개별 화면을 지목하면 그때 `AlertModal`로 교체.
+- `GameDetailManagementPage.tsx`의 "저장되었습니다." 알림 2곳에 최초 적용 (2026-08-19).
+- `AdminTermsPage.tsx`의 저장 성공/실패 알림 2곳에 적용 (2026-09-08).
+- 나머지 다수의 `alert()`은 아직 미적용 상태 — 사용자가 개별 화면을 지목하면 그때 `AlertModal`로 교체.

@@ -28,7 +28,19 @@ export const getMyRooms = async (req: AuthRequest, res: Response) => {
     if (req.user!.role === 'admin') {
       rooms = rooms.filter((r) => r.participants.some((p: any) => p.role === 'admin'))
     }
-    res.json({ rooms })
+    // 방별 안읽음 여부 — 상대방이 보낸 메시지 중 아직 안 읽은 게 있는 방만 표시
+    const unreadRoomIds = new Set(
+      (await MessageModel.distinct('roomId', {
+        roomId: { $in: rooms.map((r) => r._id) },
+        senderId: { $ne: userId },
+        isRead: false,
+      })).map((id) => id.toString())
+    )
+    const roomsWithUnread = rooms.map((r) => ({
+      ...r.toObject(),
+      hasUnread: unreadRoomIds.has((r._id as any).toString()),
+    }))
+    res.json({ rooms: roomsWithUnread })
   } catch {
     res.status(500).json({ message: '채팅방 목록 조회 실패' })
   }

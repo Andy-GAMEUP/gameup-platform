@@ -13,6 +13,8 @@ import {
   Clock, FileText, ListChecks, MessageCircle, Milestone, CheckCircle2, ArrowLeft, Sparkles,
 } from 'lucide-react'
 import { formatDate } from '@/lib/formatDate'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   recruiting: { text: '모집중', color: 'bg-green-500/20 text-green-400' },
@@ -140,6 +142,8 @@ export default function PartnerMatchingProjectDetailPage() {
               {q.authorId?.username?.charAt(0)?.toUpperCase() || '?'}
             </span>
             {q.authorId?.username}
+            {q.authorId?.role === 'developer' && <OfficialBadge />}
+            {q.authorId?.role === 'admin' && <AdminBadge />}
             {q.isSecret && <span title="비밀글">🔒</span>}
             {q.isHidden && <span className="text-xs text-red-400 font-normal">(등록회사에 의해서 숨김 처리됨)</span>}
           </span>

@@ -13,6 +13,7 @@ interface TossPaymentModalProps {
   gameName: string
   itemName: string
   amount: number
+  itemId?: string
 }
 
 export default function TossPaymentModal({
@@ -22,6 +23,7 @@ export default function TossPaymentModal({
   gameName,
   itemName,
   amount,
+  itemId,
 }: TossPaymentModalProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -31,19 +33,20 @@ export default function TossPaymentModal({
     setError('')
 
     try {
-      // 1. 서버에 주문 생성
-      const { orderId } = await paymentService.createOrder({ gameId, amount, gameName, itemName })
+      // 1. 서버에 주문 생성 (금액/상품명은 서버가 DB 기준으로 재확정)
+      const { orderId, amount: confirmedAmount, productName } = await paymentService.createOrder({ gameId, itemId, provider: 'toss' })
+      const orderAmount = confirmedAmount ?? amount
 
       // 2. 토스페이먼츠 SDK 초기화
       const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY)
       const payment = tossPayments.payment({ customerKey: ANONYMOUS })
 
-      // 3. 결제 요청 (토스 결제 페이지로 이동)
+      // 3. 결제 요청 (토스 결제 페이지로 이동) — orderName도 서버가 확정한 productName 사용 (게임명/ID 포함, 클라이언트 입력 무시)
       await payment.requestPayment({
         method: 'CARD',
-        amount: { currency: 'KRW', value: amount },
+        amount: { currency: 'KRW', value: orderAmount },
         orderId,
-        orderName: itemName,
+        orderName: productName || itemName,
         successUrl: `${window.location.origin}/payment/success`,
         failUrl: `${window.location.origin}/payment/fail`,
       })

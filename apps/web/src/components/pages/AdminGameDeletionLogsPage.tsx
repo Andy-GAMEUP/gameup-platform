@@ -125,21 +125,12 @@ export default function AdminGameDeletionLogsPage() {
   return (
     <AdminLayout>
     <div className="space-y-6 p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold mb-1 flex items-center gap-2">
-            <Trash2 className="w-6 h-6 text-red-400" />
-            삭제 게임 관리
-          </h1>
-          <p className="text-text-muted text-sm mt-1">개발자 포털에서 삭제된 게임을 검토하고 처리합니다</p>
-        </div>
-        <button
-          onClick={load}
-          className="flex items-center gap-2 px-3 py-2 border border-line hover:bg-bg-tertiary rounded-md text-base text-text-secondary"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          새로고침
-        </button>
+      <div>
+        <h1 className="text-3xl font-bold mb-1 flex items-center gap-2">
+          <Trash2 className="w-6 h-6 text-red-400" />
+          삭제 게임 관리
+        </h1>
+        <p className="text-text-muted text-sm mt-1">개발자 포털에서 삭제된 게임을 검토하고 처리합니다</p>
       </div>
 
       <div className="bg-bg-secondary border border-line rounded-lg p-4">
@@ -194,8 +185,6 @@ export default function AdminGameDeletionLogsPage() {
                 <tr className="border-b border-line bg-bg-tertiary/50 divide-x divide-line/30">
                   <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">게임명</th>
                   <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">개발사</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">삭제 유저</th>
-                  <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">삭제 그룹</th>
                   <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">삭제일시</th>
                   <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">커뮤니티 탭</th>
                   <th className="px-4 py-3 text-left text-sm text-text-secondary font-medium whitespace-nowrap">게임 복구</th>
@@ -210,16 +199,6 @@ export default function AdminGameDeletionLogsPage() {
                       {log.gameGenre && <p className="text-xs text-text-muted">{normalizeGenre(log.gameGenre)}</p>}
                     </td>
                     <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">{log.developerCompanyName || log.developerUsername || '-'}</td>
-                    <td className="px-4 py-3 text-sm whitespace-nowrap">
-                      <p className="text-text-primary">{log.deletedByUsername || '-'}</p>
-                      <p className="text-xs text-text-muted">{log.deletedByEmail || '-'}</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 text-sm font-medium whitespace-nowrap ${log.deletedByRole === 'admin' ? 'text-red-400' : 'text-blue-400'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${log.deletedByRole === 'admin' ? 'bg-red-400' : 'bg-blue-400'}`} />
-                        {log.deletedByRole === 'admin' ? '관리자' : '개발사'}
-                      </span>
-                    </td>
                     <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                       {new Date(log.deletedAt).toLocaleString('ko-KR')}
                     </td>

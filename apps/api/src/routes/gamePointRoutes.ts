@@ -11,7 +11,7 @@ import {
   deleteGamePolicy,
   developerTogglePolicy,
 } from '../controllers/gamePointController'
-import { authenticateToken, requireRole } from '../middleware/auth'
+import { authenticateToken, requireRole, blockAdminLevel } from '../middleware/auth'
 import { authenticateApiKey } from '../middleware/apiKeyAuth'
 
 const router = Router()
@@ -26,10 +26,10 @@ router.get('/game-points/:gameId/policies', getGamePolicies)
 
 // ─── 개발사 콘솔 API ─────────────────────────────────────────────
 router.get('/games/:gameId/point-policies', authenticateToken, requireRole('developer', 'admin'), getMyGamePolicies)
-router.post('/games/:gameId/point-policies', authenticateToken, requireRole('developer', 'admin'), upsertGamePolicy)
-router.post('/games/:gameId/point-policies/submit', authenticateToken, requireRole('developer', 'admin'), submitPoliciesForApproval)
-router.delete('/games/:gameId/point-policies/:type', authenticateToken, requireRole('developer', 'admin'), deleteGamePolicy)
-router.put('/games/:gameId/point-policies/:type/toggle', authenticateToken, requireRole('developer', 'admin'), developerTogglePolicy)
+router.post('/games/:gameId/point-policies', authenticateToken, requireRole('developer', 'admin'), blockAdminLevel('monitor'), upsertGamePolicy)
+router.post('/games/:gameId/point-policies/submit', authenticateToken, requireRole('developer', 'admin'), blockAdminLevel('monitor'), submitPoliciesForApproval)
+router.delete('/games/:gameId/point-policies/:type', authenticateToken, requireRole('developer', 'admin'), blockAdminLevel('monitor', 'normal'), deleteGamePolicy)
+router.put('/games/:gameId/point-policies/:type/toggle', authenticateToken, requireRole('developer', 'admin'), blockAdminLevel('monitor'), developerTogglePolicy)
 
 // ─── 개발사/관리자: 통계 및 로그 ─────────────────────────────────
 router.get('/game-points/:gameId/stats', authenticateToken, requireRole('developer', 'admin'), getGameStats)

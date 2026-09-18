@@ -9,6 +9,7 @@ import {
   Globe, X,
 } from 'lucide-react'
 import { useAuth } from '@/lib/useAuth'
+import Modal from '@/components/Modal'
 import { authService } from '@/services/authService'
 import { formatPhoneNumber } from '@/lib/formatPhoneNumber'
 import Image from 'next/image'
@@ -74,6 +75,7 @@ export default function RegisterPage() {
   const [privacyTerms, setPrivacyTerms] = useState('')
   const [agreedService, setAgreedService] = useState(false)
   const [agreedPrivacy, setAgreedPrivacy] = useState(false)
+  const [viewingTerms, setViewingTerms] = useState<'service' | 'privacy' | null>(null)
 
 
   // Steps: 1=회원유형, 2=약관동의, 3=계정 생성+기업 확인+기업 유형
@@ -408,7 +410,7 @@ export default function RegisterPage() {
                 ) : (
                   <>
                     {/* 서비스 이용약관 */}
-                    <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
@@ -418,17 +420,17 @@ export default function RegisterPage() {
                         />
                         <span className="text-text-primary text-sm font-medium">서비스 이용약관 동의</span>
                       </label>
-                      <div className="bg-bg-tertiary border border-line rounded-lg p-3 max-h-40 overflow-y-auto text-text-secondary text-xs leading-relaxed">
-                        {serviceTerms ? (
-                          <div dangerouslySetInnerHTML={{ __html: serviceTerms }} />
-                        ) : (
-                          <p>서비스 이용약관이 등록되지 않았습니다.</p>
-                        )}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setViewingTerms('service')}
+                        className="text-xs text-text-secondary hover:text-accent underline underline-offset-2 transition-colors flex-shrink-0"
+                      >
+                        보기
+                      </button>
                     </div>
 
                     {/* 개인정보 수집 및 이용 동의 */}
-                    <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
@@ -438,13 +440,13 @@ export default function RegisterPage() {
                         />
                         <span className="text-text-primary text-sm font-medium">개인정보 수집 및 이용 동의</span>
                       </label>
-                      <div className="bg-bg-tertiary border border-line rounded-lg p-3 max-h-40 overflow-y-auto text-text-secondary text-xs leading-relaxed">
-                        {privacyTerms ? (
-                          <div dangerouslySetInnerHTML={{ __html: privacyTerms }} />
-                        ) : (
-                          <p>개인정보 수집 및 이용 약관이 등록되지 않았습니다.</p>
-                        )}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setViewingTerms('privacy')}
+                        className="text-xs text-text-secondary hover:text-accent underline underline-offset-2 transition-colors flex-shrink-0"
+                      >
+                        보기
+                      </button>
                     </div>
 
                     {/* 전체 동의 */}
@@ -492,6 +494,21 @@ export default function RegisterPage() {
               )}
             </button>
           </div>
+
+          <Modal
+            isOpen={viewingTerms !== null}
+            onClose={() => setViewingTerms(null)}
+            title={viewingTerms === 'service' ? '서비스 이용약관' : '개인정보 수집 및 이용'}
+            size="lg"
+          >
+            <div className="text-text-secondary text-sm leading-relaxed">
+              {viewingTerms === 'service' ? (
+                serviceTerms ? <div dangerouslySetInnerHTML={{ __html: serviceTerms }} /> : <p>서비스 이용약관이 등록되지 않았습니다.</p>
+              ) : viewingTerms === 'privacy' ? (
+                privacyTerms ? <div dangerouslySetInnerHTML={{ __html: privacyTerms }} /> : <p>개인정보 수집 및 이용 약관이 등록되지 않았습니다.</p>
+              ) : null}
+            </div>
+          </Modal>
           </>
         )}
 

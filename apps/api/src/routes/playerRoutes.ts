@@ -14,7 +14,8 @@ import {
   recordPlay,
   updatePlaySession,
   getMyActivity,
-  getMyPlayedGameIds
+  getMyPlayedGameIds,
+  getMyRecentGames
 } from '../controllers/playerController'
 import { authenticateToken, requireRole } from '../middleware/auth'
 
@@ -30,6 +31,7 @@ router.post('/player/favorites/check', authenticateToken, checkFavorites)
 router.get('/player/scraps', authenticateToken, getMyAllScraps)
 router.get('/player/activity', authenticateToken, getMyActivity)
 router.get('/player/played-games', authenticateToken, getMyPlayedGameIds)
+router.get('/player/recent-games', authenticateToken, getMyRecentGames)
 
 // ── 쓰기 (플레이어 전용) ──
 const playerOnly = [authenticateToken, requireRole('player')]

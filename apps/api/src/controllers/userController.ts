@@ -1,13 +1,19 @@
 import { Response } from 'express'
 import fs from 'fs'
 import path from 'path'
-import { UserModel as User, ScrapModel as Scrap, PlayerActivityModel as PlayerActivity, ReviewModel as Review, UserDeletionLogModel } from '@gameup/db'
-import { hashPassword, comparePassword, generateToken } from '../services/authService'
+import { UserModel as User, ScrapModel as Scrap, PlayerActivityModel as PlayerActivity, ReviewModel as Review, UserDeletionLogModel, PostModel } from '@gameup/db'
+import { hashPassword, comparePassword, generateToken, generateTempPassword } from '../services/authService'
 import { verifyTurnstileToken } from '../services/turnstileService'
 import { checkBusinessNumber } from '../services/businessNumberService'
+import { sendTempPasswordEmail } from '../services/emailService'
+import { generateTotpSecret, generateTotpQrCode, verifyTotpCode, generateBackupCodes, hashBackupCodes, consumeBackupCode } from '../services/totpService'
 import { AuthRequest } from '../middleware/auth'
 
 const BUSINESS_NUMBER_REGEX = /^\d{3}-\d{2}-\d{5}$/
+
+// 계정 잠금 정책: 로그인 5회 연속 실패 시 15분간 잠금
+const MAX_LOGIN_ATTEMPTS = 5
+const LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000
 
 // 비밀번호 정책: 8자 이상 + 영문/숫자/특수문자 모두 포함
 const isValidPassword = (password: string) =>
@@ -172,25 +178,43 @@ export const verifyBusinessNumber = async (req: AuthRequest, res: Response) => {
 
 export const login = async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password } = req.body
+    const { email, password, totpCode } = req.body
 
     if (!email || !password) {
-      return res.status(400).json({ 
-        message: '이메일과 비밀번호는 필수입니다' 
+      return res.status(400).json({
+        message: '이메일과 비밀번호는 필수입니다'
       })
     }
 
-    const user = await User.findOne({ email })
+    const user = await User.findOne({ email }).select('+twoFactorSecret +twoFactorBackupCodes')
 
     if (!user) {
-      return res.status(401).json({ 
-        message: '이메일 또는 비밀번호가 올바르지 않습니다' 
+      return res.status(401).json({
+        message: '이메일 또는 비밀번호가 올바르지 않습니다'
+      })
+    }
+
+    if (user.lockUntil && user.lockUntil.getTime() > Date.now()) {
+      const remainingMin = Math.ceil((user.lockUntil.getTime() - Date.now()) / 60000)
+      return res.status(403).json({
+        message: `로그인 시도 횟수를 초과하여 계정이 잠겼습니다. ${remainingMin}분 후 다시 시도해주세요.`
       })
     }
 
     const isPasswordValid = await comparePassword(password, user.password!)
 
     if (!isPasswordValid) {
+      const attempts = (user.failedLoginAttempts || 0) + 1
+      if (attempts >= MAX_LOGIN_ATTEMPTS) {
+        await User.findByIdAndUpdate(user._id, {
+          failedLoginAttempts: 0,
+          lockUntil: new Date(Date.now() + LOGIN_LOCK_DURATION_MS)
+        })
+        return res.status(403).json({
+          message: '로그인 시도 횟수를 초과하여 계정이 15분간 잠겼습니다.'
+        })
+      }
+      await User.findByIdAndUpdate(user._id, { failedLoginAttempts: attempts })
       return res.status(401).json({
         message: '이메일 또는 비밀번호가 올바르지 않습니다'
       })
@@ -202,7 +226,25 @@ export const login = async (req: AuthRequest, res: Response) => {
       })
     }
 
-    await User.findByIdAndUpdate(user._id, { lastLoginAt: new Date() })
+    if (user.twoFactorEnabled) {
+      if (!totpCode) {
+        return res.json({ success: false, requires2FA: true, message: '2단계 인증 코드를 입력해주세요' })
+      }
+
+      let verified = verifyTotpCode(user.twoFactorSecret!, totpCode)
+      if (!verified && user.twoFactorBackupCodes?.length) {
+        const remaining = await consumeBackupCode(user.twoFactorBackupCodes, totpCode)
+        if (remaining) {
+          verified = true
+          await User.findByIdAndUpdate(user._id, { twoFactorBackupCodes: remaining })
+        }
+      }
+      if (!verified) {
+        return res.status(401).json({ message: '인증 코드가 올바르지 않습니다' })
+      }
+    }
+
+    await User.findByIdAndUpdate(user._id, { lastLoginAt: new Date(), failedLoginAttempts: 0, lockUntil: null })
 
     const token = generateToken({
       id: user._id.toString(),
@@ -239,6 +281,38 @@ export const login = async (req: AuthRequest, res: Response) => {
   }
 }
 
+// 로그인 화면 "비밀번호를 잊으셨나요?" — 본인이 직접 요청하는 셀프 비밀번호 초기화
+// 계정 존재 여부를 노출하지 않기 위해 이메일이 없거나 발송 실패해도 항상 동일한 성공 메시지를 반환한다
+export const forgotPassword = async (req: AuthRequest, res: Response) => {
+  const GENERIC_MESSAGE = '입력하신 이메일로 가입된 계정이 있다면, 임시 비밀번호를 보내드렸습니다.'
+  try {
+    const { email } = req.body
+    if (!email) {
+      return res.status(400).json({ message: '이메일을 입력해주세요' })
+    }
+
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.json({ message: GENERIC_MESSAGE })
+    }
+
+    const tempPassword = generateTempPassword()
+    const hashedPassword = await hashPassword(tempPassword)
+
+    try {
+      await sendTempPasswordEmail(user.email, user.username, tempPassword)
+    } catch {
+      return res.json({ message: GENERIC_MESSAGE })
+    }
+
+    await User.findByIdAndUpdate(user._id, { password: hashedPassword, failedLoginAttempts: 0, lockUntil: null })
+    res.json({ message: GENERIC_MESSAGE })
+  } catch (error) {
+    console.error('Forgot password error:', error)
+    res.json({ message: GENERIC_MESSAGE })
+  }
+}
+
 export const getProfile = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -269,13 +343,45 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
         points: user.points || 0,
         profileImage: user.profileImage || null,
         bookmarkedTabs: user.bookmarkedTabs || [],
+        twoFactorEnabled: user.twoFactorEnabled || false,
         createdAt: user.createdAt,
-        updatedAt: user.updatedAt
+        updatedAt: user.updatedAt,
+        lastLoginAt: user.lastLoginAt
       }
     })
   } catch (error) {
     console.error('Get profile error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 커뮤니티 등에서 다른 유저를 호버/클릭했을 때 보여줄 공개 프로필 (본인 여부 무관, 로그인만 하면 조회 가능)
+export const getPublicProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params
+    const user = await User.findById(userId).select('username profileImage level activityScore bio')
+    if (!user) {
+      return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    }
+
+    const [gamesPlayedIds, postsCount, reviewsCount] = await Promise.all([
+      PlayerActivity.distinct('gameId', { userId, type: 'play' }),
+      PostModel.countDocuments({ author: userId, status: 'active' }),
+      Review.countDocuments({ userId }),
+    ])
+
+    res.json({
+      username: user.username,
+      profileImage: user.profileImage || null,
+      level: user.level || 1,
+      activityScore: user.activityScore || 0,
+      bio: user.bio || '',
+      gamesPlayedCount: gamesPlayedIds.length,
+      postsCount,
+      reviewsCount,
+    })
+  } catch {
+    res.status(500).json({ message: '프로필 조회 실패' })
   }
 }
 
@@ -412,6 +518,86 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Change password error:', error)
     res.status(500).json({ message: '서버 오류가 발생했습니다' })
+  }
+}
+
+// 마이페이지 보안 탭 "2단계 인증 사용" — 시크릿 생성 후 QR/수동입력키 반환 (아직 활성화 안 됨, enableTwoFactor로 코드 확인해야 켜짐)
+export const setupTwoFactor = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+
+    const user = await User.findById(req.user.id).select('email twoFactorEnabled')
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({ message: '이미 2단계 인증이 활성화되어 있습니다' })
+    }
+
+    const secret = generateTotpSecret()
+    const qrCode = await generateTotpQrCode(user.email, secret)
+    await User.findByIdAndUpdate(user._id, { twoFactorSecret: secret })
+
+    res.json({ success: true, secret, qrCode })
+  } catch (error) {
+    console.error('2FA setup error:', error)
+    res.status(500).json({ message: '2단계 인증 설정 중 오류가 발생했습니다' })
+  }
+}
+
+// 인증 앱에 등록한 코드를 확인해 실제로 활성화. 백업 코드 10개를 이때 발급(평문은 이 응답에서만 보임)
+export const enableTwoFactor = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+    const { code } = req.body
+    if (!code) return res.status(400).json({ message: '인증 코드를 입력해주세요' })
+
+    const user = await User.findById(req.user.id).select('+twoFactorSecret twoFactorEnabled')
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+    if (user.twoFactorEnabled) {
+      return res.status(400).json({ message: '이미 2단계 인증이 활성화되어 있습니다' })
+    }
+    if (!user.twoFactorSecret) {
+      return res.status(400).json({ message: '먼저 2단계 인증 설정을 시작해주세요' })
+    }
+    if (!verifyTotpCode(user.twoFactorSecret, code)) {
+      return res.status(401).json({ message: '인증 코드가 올바르지 않습니다' })
+    }
+
+    const backupCodes = generateBackupCodes()
+    const hashedBackupCodes = await hashBackupCodes(backupCodes)
+    await User.findByIdAndUpdate(user._id, {
+      twoFactorEnabled: true,
+      twoFactorBackupCodes: hashedBackupCodes,
+    })
+
+    res.json({ success: true, message: '2단계 인증이 활성화되었습니다', backupCodes })
+  } catch (error) {
+    console.error('2FA enable error:', error)
+    res.status(500).json({ message: '2단계 인증 활성화 중 오류가 발생했습니다' })
+  }
+}
+
+// 마이페이지 보안 탭 "사용 해제" — 회원탈퇴와 동일하게 비밀번호로 본인 확인
+export const disableTwoFactor = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: '인증이 필요합니다' })
+    const { password } = req.body
+    if (!password) return res.status(400).json({ message: '비밀번호를 입력해주세요' })
+
+    const user = await User.findById(req.user.id).select('password twoFactorEnabled')
+    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
+
+    const isValid = await comparePassword(password, user.password!)
+    if (!isValid) return res.status(401).json({ message: '비밀번호가 올바르지 않습니다' })
+
+    await User.findByIdAndUpdate(user._id, {
+      twoFactorEnabled: false,
+      $unset: { twoFactorSecret: '', twoFactorBackupCodes: '' },
+    })
+
+    res.json({ success: true, message: '2단계 인증이 해제되었습니다' })
+  } catch (error) {
+    console.error('2FA disable error:', error)
+    res.status(500).json({ message: '2단계 인증 해제 중 오류가 발생했습니다' })
   }
 }
 

@@ -119,17 +119,24 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
 export const updateUserRole = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params
-    const { role } = req.body
+    const { role, adminLevel } = req.body
     if (!['developer', 'player', 'admin'].includes(role))
       return res.status(400).json({ message: '유효하지 않은 역할입니다' })
-    const targetUser = await User.findById(id).select('memberType')
+    const targetUser = await User.findById(id).select('memberType role')
     if (!targetUser) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
-    if (role === 'admin' && targetUser.memberType === 'corporate') {
-      return res.status(403).json({ message: '기업회원 계정은 관리자로 변경할 수 없습니다' })
+    if (role === 'admin') {
+      // adminLevel 미설정 admin은 super로 처리 (기존 계정 하위 호환, requireAdminLevel과 동일 규칙)
+      const callerLevel = req.user?.adminLevel || 'super'
+      if (callerLevel !== 'super') {
+        return res.status(403).json({ message: '관리자 선임은 최고 관리자만 가능합니다' })
+      }
+      if (!adminLevel || !['super', 'normal', 'monitor'].includes(adminLevel)) {
+        return res.status(400).json({ message: '유효하지 않은 관리자 등급입니다' })
+      }
     }
     const update = role === 'admin'
-      ? { $set: { role, adminGrantedAt: new Date() } }
-      : { $set: { role }, $unset: { adminGrantedAt: '' } }
+      ? { $set: { role, adminLevel, ...(targetUser.role !== 'admin' && { adminGrantedAt: new Date() }) } }
+      : { $set: { role }, $unset: { adminGrantedAt: '', adminLevel: '' } }
     const user = await User.findByIdAndUpdate(id, update, { new: true }).select('-password')
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
     res.json({ message: '역할이 변경되었습니다', user })
@@ -248,9 +255,13 @@ export const getPendingGames = async (req: AuthRequest, res: Response) => {
 }
 
 // ── 전체 게임 목록 (관리자) ───────────────────────────────────────
+const GAME_SORT_FIELDS = new Set(['startDate', 'endDate', 'testers', 'maxTesters', 'updatedAt'])
+
 export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
   try {
-    const { page = 1, limit = 20, status, approvalStatus, search, serviceType, excludePublished } = req.query
+    const { page = 1, limit = 20, status, approvalStatus, search, serviceType, excludePublished, notStarted, sortBy, sortOrder } = req.query
+    const sortDir = sortOrder === 'asc' ? 1 : -1
+    const sortField = GAME_SORT_FIELDS.has(sortBy as string) || sortBy === 'testPeriod' ? (sortBy as string) : 'updatedAt'
     const filter: Record<string, unknown> = { isDeleted: { $ne: true } }
     if (status) filter.status = status
     if (excludePublished === 'true') filter.status = { $ne: 'published' }
@@ -259,6 +270,11 @@ export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
       filter.approvalStatus = { $in: ['pending', 'review'] }
     } else if (approvalStatus) {
       filter.approvalStatus = approvalStatus
+    }
+    // 아직 시작(모집) 기간이 되지 않은 게임만 — 베타존 참가자 모집 배너의 게임 선택기에서 사용
+    const andConditions: Record<string, unknown>[] = []
+    if (notStarted === 'true') {
+      andConditions.push({ $or: [{ startDate: { $exists: false } }, { startDate: null }, { startDate: { $gt: new Date() } }] })
     }
     if (search) {
       const safeSearch = (search as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -269,23 +285,43 @@ export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
         ]
       }).select('_id')
       const developerIds = matchedUsers.map(u => u._id)
-      filter.$or = [
-        { title: { $regex: safeSearch, $options: 'i' } },
-        { genre: { $regex: safeSearch, $options: 'i' } },
-        { developerId: { $in: developerIds } },
-      ]
+      andConditions.push({
+        $or: [
+          { title: { $regex: safeSearch, $options: 'i' } },
+          { genre: { $regex: safeSearch, $options: 'i' } },
+          { developerId: { $in: developerIds } },
+        ]
+      })
     }
+    if (andConditions.length === 1) Object.assign(filter, andConditions[0])
+    else if (andConditions.length > 1) filter.$and = andConditions
     const total = await Game.countDocuments(filter)
-    const games = await Game.find(filter)
-      .populate('developerId', 'username email companyInfo')
-      .sort({ updatedAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit))
+
+    let games: any[]
+    if (sortField === 'testPeriod') {
+      // 테스트 기간(종료일 - 시작일, 일수) — Game 문서에 저장된 값이 아니라 계산 후 정렬해야 함
+      games = await Game.aggregate([
+        { $match: filter },
+        { $addFields: { testPeriodDays: { $cond: [{ $and: ['$startDate', '$endDate'] }, { $divide: [{ $subtract: ['$endDate', '$startDate'] }, 1000 * 60 * 60 * 24] }, null] } } },
+        { $sort: { testPeriodDays: sortDir } },
+        { $skip: (Number(page) - 1) * Number(limit) },
+        { $limit: Number(limit) },
+        { $lookup: { from: 'users', localField: 'developerId', foreignField: '_id', as: 'developer' } },
+        { $unwind: { path: '$developer', preserveNullAndEmptyArrays: true } },
+        { $addFields: { developerId: { _id: '$developer._id', username: '$developer.username', email: '$developer.email', companyInfo: '$developer.companyInfo' } } },
+        { $project: { developer: 0, testPeriodDays: 0 } },
+      ])
+    } else {
+      games = await Game.find(filter)
+        .populate('developerId', 'username email companyInfo')
+        .sort({ [sortField]: sortDir })
+        .skip((Number(page) - 1) * Number(limit))
+        .limit(Number(limit))
+    }
 
     const allIds = await Game.find({ isDeleted: { $ne: true } }, '_id').sort({ _id: 1 }).lean()
     const rankMap = new Map(allIds.map((g, i) => [(g._id as any).toString(), i + 1]))
 
-    const gameIds = games.map(g => (g._id as any).toString())
     const reviewingCounts = await GameShopItemModel.aggregate([
       { $match: { gameId: { $in: games.map(g => g._id) }, saleStatus: 'reviewing' } },
       { $group: { _id: '$gameId', count: { $sum: 1 } } },
@@ -293,7 +329,7 @@ export const getAllGamesAdmin = async (req: AuthRequest, res: Response) => {
     const reviewingMap = new Map(reviewingCounts.map((r: any) => [r._id.toString(), r.count]))
 
     const gamesWithNo = games.map(g => ({
-      ...(g as any).toObject(),
+      ...(typeof (g as any).toObject === 'function' ? (g as any).toObject() : g),
       gameNo: rankMap.get((g._id as any).toString()) || 0,
       shopReviewingCount: reviewingMap.get((g._id as any).toString()) || 0,
     }))
@@ -850,7 +886,7 @@ export const getPublicAnnouncements = async (req: AuthRequest, res: Response) =>
       deletedAt: null,
       $or: [{ expiresAt: { $gt: now } }, { expiresAt: { $exists: false } }]
     })
-      .populate('authorId', 'username')
+      .populate('authorId', 'username role profileImage')
       .sort({ publishedAt: -1 })
       .limit(100)
     res.json({ announcements })

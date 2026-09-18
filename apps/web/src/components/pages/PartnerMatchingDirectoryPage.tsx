@@ -8,6 +8,8 @@ import partnerMatchingService, { PartnerMatchingProfile } from '@/services/partn
 import MiniHomeCreateModal from '@/components/MiniHomeCreateModal'
 import { COMPANY_TYPE_LABELS } from '@/components/pages/partner-profile/constants'
 import { isEmptyRichText, stripRichText } from '@/lib/richText'
+import OfficialBadge from '@/components/OfficialBadge'
+import AdminBadge from '@/components/AdminBadge'
 
 const companyTypeOptions = Object.entries(COMPANY_TYPE_LABELS)
   .filter(([value]) => value !== 'developer')
@@ -240,6 +242,8 @@ export default function PartnerMatchingDirectoryPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-xl font-bold text-text-primary truncate group-hover:text-accent transition-colors">{displayName}</h3>
+                    {profile.userId?.role === 'developer' && <OfficialBadge />}
+                    {profile.userId?.role === 'admin' && <AdminBadge />}
                     {profile.isVerified && (
                       <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full flex-shrink-0 bg-accent-light text-accent">
                         <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">

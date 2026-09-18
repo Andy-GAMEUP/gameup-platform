@@ -1,15 +1,7 @@
 import { Response } from 'express'
-import crypto from 'crypto'
 import { AuthRequest } from '../middleware/auth'
-import { UserModel, ActivityScoreModel, PointHistoryModel, LevelModel, NotificationModel, PostModel, PartnerModel } from '@gameup/db'
+import { UserModel, ActivityScoreModel, PointHistoryModel, LevelModel, NotificationModel, PostModel, PartnerModel, PlayerActivityModel, GameTesterApplicationModel } from '@gameup/db'
 import { emitToUser } from '../socket'
-import { hashPassword } from '../services/authService'
-
-// 관리자 비밀번호 초기화용 임시 비밀번호 생성 (8자+ 영문/숫자/특수문자 정책 충족 보장)
-function generateTempPassword(): string {
-  const digits = Array.from({ length: 4 }, () => crypto.randomInt(10)).join('')
-  return `Gameup!${digits}`
-}
 
 export const getIndividualMembers = async (req: AuthRequest, res: Response) => {
   try {
@@ -158,16 +150,18 @@ export const getUserDetail = async (req: AuthRequest, res: Response) => {
     if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
 
     const postFilter = { author: id, status: 'active' }
-    const [recentPosts, postsTotal] = await Promise.all([
+    const [recentPosts, postsTotal, gamesPlayedIds, betaApplicationsCount] = await Promise.all([
       PostModel.find(postFilter)
         .select('title channel views commentCount createdAt')
         .sort({ createdAt: -1 })
         .limit(10)
         .lean(),
       PostModel.countDocuments(postFilter),
+      PlayerActivityModel.distinct('gameId', { userId: id, type: 'play' }),
+      GameTesterApplicationModel.countDocuments({ userId: id }),
     ])
 
-    res.json({ user, recentPosts, postsTotal })
+    res.json({ user, recentPosts, postsTotal, gamesPlayedCount: gamesPlayedIds.length, betaApplicationsCount })
   } catch {
     res.status(500).json({ message: '사용자 상세 조회 실패' })
   }
@@ -273,21 +267,6 @@ export const updateCorporateApproval = async (req: AuthRequest, res: Response) =
   }
 }
 
-export const resetUserPassword = async (req: AuthRequest, res: Response) => {
-  try {
-    const { id } = req.params
-    const user = await UserModel.findById(id)
-    if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다' })
-
-    const tempPassword = generateTempPassword()
-    const hashedPassword = await hashPassword(tempPassword)
-    await UserModel.findByIdAndUpdate(id, { password: hashedPassword })
-
-    res.json({ message: '임시 비밀번호가 발급되었습니다', tempPassword })
-  } catch {
-    res.status(500).json({ message: '비밀번호 초기화 실패' })
-  }
-}
 
 export const grantActivityScore = async (req: AuthRequest, res: Response) => {
   try {

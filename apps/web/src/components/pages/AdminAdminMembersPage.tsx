@@ -16,12 +16,20 @@ interface AdminMember {
   lastLoginAt: string
   createdAt: string
   memberType?: string
-  isPartner?: boolean
-  companyInfo?: { companyName?: string }
+  companyInfo?: { companyName?: string; companyCategory?: 'developer' | 'partner'; companyType?: string[] }
 }
 
 const getOriginalRole = (m: AdminMember) =>
   m.memberType === 'corporate' || m.companyInfo?.companyName ? 'developer' : 'player'
+
+const getMemberTypeLabel = (m: AdminMember) => {
+  if (m.memberType === 'corporate' || m.companyInfo?.companyName) {
+    const cat = m.companyInfo?.companyCategory
+    const isDeveloper = cat === 'developer' || (!cat && m.companyInfo?.companyType?.includes('developer'))
+    return isDeveloper ? '개발사' : '파트너'
+  }
+  return '게임 회원'
+}
 
 interface BulkModalState {
   open: boolean
@@ -29,9 +37,9 @@ interface BulkModalState {
 }
 
 const LEVEL_LABELS: Record<string, { label: string; cls: string }> = {
-  super:   { label: 'Super',   cls: 'bg-accent-light text-accent-text border-accent-muted' },
-  normal:  { label: 'Normal',  cls: 'bg-blue-600/20 text-blue-300 border-blue-500/30' },
-  monitor: { label: 'Monitor', cls: 'bg-bg-muted/30 text-text-secondary border-line/30' },
+  super:   { label: '최고 관리자', cls: 'bg-accent-light text-accent-text border-accent-muted' },
+  normal:  { label: '일반 관리자', cls: 'bg-blue-600/20 text-blue-300 border-blue-500/30' },
+  monitor: { label: '모니터',     cls: 'bg-bg-muted/30 text-text-secondary border-line/30' },
 }
 
 export default function AdminAdminMembersPage() {
@@ -111,8 +119,8 @@ export default function AdminAdminMembersPage() {
   }
 
   const totalPages = Math.ceil(total / 20) || 1
-  const getStatusLabel = (m: AdminMember) => m.isActive !== false ? '정상' : '정지'
-  const statusColor = (s: string) => s === '정상' ? 'text-emerald-400' : s === '정지' ? 'text-accent-text' : 'text-text-secondary'
+  const getStatusLabel = (m: AdminMember) => m.isActive === false ? '정지' : '활성'
+  const statusColor = (m: AdminMember) => m.isActive === false ? 'text-accent-text' : 'text-text-primary'
 
   return (
     <AdminLayout>
@@ -148,37 +156,38 @@ export default function AdminAdminMembersPage() {
                     <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">No.</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">닉네임</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">이메일</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">회원 유형</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">가입일시</th>
                     <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">관리자 등급 일시</th>
-                    <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">회원 정보</th>
-                    <th className="text-left text-text-secondary font-medium px-4 py-3">관리</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">상태</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3 border-r border-line/20">관리 등급</th>
+                    <th className="text-left text-text-secondary font-medium px-4 py-3">회원 정보</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {data.length === 0 ? (
-                    <tr><td colSpan={7} className="text-center text-text-secondary py-12">데이터가 없습니다</td></tr>
+                    <tr><td colSpan={9} className="text-center text-text-secondary py-12">데이터가 없습니다</td></tr>
                   ) : data.map((m, i) => (
                     <tr key={m._id} className="hover:bg-bg-tertiary/50 transition-colors">
                       <td className="text-text-secondary px-4 py-3 border-r border-line/20">{(page - 1) * 20 + i + 1}</td>
                       <td className="text-text-primary px-4 py-3 font-medium border-r border-line/20">{m.username}</td>
                       <td className="text-text-secondary px-4 py-3 border-r border-line/20">{m.email}</td>
+                      <td className="text-text-secondary px-4 py-3 border-r border-line/20">{getMemberTypeLabel(m)}</td>
                       <td className="text-text-secondary px-4 py-3 text-xs border-r border-line/20">{new Date(m.createdAt).toLocaleString('ko-KR')}</td>
                       <td className="text-text-secondary px-4 py-3 text-xs border-r border-line/20">
                         {m.adminGrantedAt ? new Date(m.adminGrantedAt).toLocaleString('ko-KR') : '-'}
                       </td>
-                      <td className="px-4 py-3 border-r border-line/20">
+                      <td className={`px-4 py-3 font-medium text-sm border-r border-line/20 ${statusColor(m)}`}>
+                        {getStatusLabel(m)}
+                      </td>
+                      <td className="text-text-primary px-4 py-3 border-r border-line/20">
+                        {m.adminLevel && LEVEL_LABELS[m.adminLevel] ? LEVEL_LABELS[m.adminLevel].label : '-'}
+                      </td>
+                      <td className="px-4 py-3">
                         <Link href={`/admin/users-enhanced/${m._id}`}
                           className="px-3 py-1 rounded-md text-base font-medium bg-blue-600 hover:bg-blue-500 border border-blue-500 text-white transition-colors whitespace-nowrap">
                           보기
                         </Link>
-                      </td>
-                      <td className="px-4 py-3">
-                        <button
-                          onClick={() => setRevokeModal({ open: true, member: m })}
-                          className="px-2 py-1 bg-accent-light hover:bg-accent-light/80 text-accent-text text-base rounded transition-colors border border-accent-muted"
-                        >
-                          권한 해제
-                        </button>
                       </td>
                     </tr>
                   ))}

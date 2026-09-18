@@ -49,7 +49,14 @@ function ExpandSection({ label, icon: Icon, count, children }: {
   )
 }
 
-interface WriteGame { _id: string; title: string; thumbnail?: string }
+interface WriteGame { _id: string; title: string; thumbnail?: string; endDate?: string }
+
+// 베타 게임은 운영(테스트) 종료일이 지난 게임을 드롭다운 정렬에서 아래로 보낸다
+function sortBetaGames(games: WriteGame[]): WriteGame[] {
+  const now = Date.now()
+  const isEnded = (g: WriteGame) => !!g.endDate && new Date(g.endDate).getTime() < now
+  return [...games].sort((a, b) => Number(isEnded(a)) - Number(isEnded(b)))
+}
 
 export default function CommunityWritePage() {
   const { id } = useParams<{ id?: string }>()
@@ -77,6 +84,10 @@ export default function CommunityWritePage() {
   const [chanOpen, setChanOpen]     = useState(false)
   const chanRef = useRef<HTMLDivElement>(null)
   const chanInputRef = useRef<HTMLInputElement>(null)
+  const [gameSearch, setGameSearch] = useState('')
+  const [gameSearchOpen, setGameSearchOpen] = useState(false)
+  const gameSearchRef = useRef<HTMLDivElement>(null)
+  const gameSearchInputRef = useRef<HTMLInputElement>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]           = useState('')
   const [isPublished, setIsPublished] = useState(true)
@@ -90,7 +101,7 @@ export default function CommunityWritePage() {
   const UPLOADS_URL = process.env.NEXT_PUBLIC_UPLOADS_URL ?? ''
 
   useEffect(() => {
-    gameService.getAllGames({ serviceType: 'beta', limit: 100 }).then(d => setBetaGames((d.games ?? []) as WriteGame[])).catch(() => {})
+    gameService.getAllGames({ serviceType: 'beta', limit: 100 }).then(d => setBetaGames(sortBetaGames((d.games ?? []) as WriteGame[]))).catch(() => {})
     gameService.getAllGames({ serviceType: 'live', limit: 100 }).then(d => setLiveGames((d.games ?? []) as WriteGame[])).catch(() => {})
   }, [])
 
@@ -165,6 +176,9 @@ export default function CommunityWritePage() {
       if (chanRef.current && !chanRef.current.contains(e.target as Node)) {
         setChanOpen(false); setChanSearch('')
       }
+      if (gameSearchRef.current && !gameSearchRef.current.contains(e.target as Node)) {
+        setGameSearchOpen(false); setGameSearch('')
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -175,6 +189,16 @@ export default function CommunityWritePage() {
     setTimeout(() => chanInputRef.current?.focus(), 0)
   }, [])
 
+  const openGameSearchDropdown = useCallback(() => {
+    setGameSearchOpen(true); setGameSearch('')
+    setTimeout(() => gameSearchInputRef.current?.focus(), 0)
+  }, [])
+
+  const pickGame = (gameId: string) => {
+    setSelectedGameId(gameId)
+    setGameSearchOpen(false); setGameSearch('')
+  }
+
   const pickChannel = (value: string, gameId?: string) => {
     selectChannel(value)
     if (gameId) setSelectedGameId(gameId)
@@ -183,14 +207,7 @@ export default function CommunityWritePage() {
 
   const allSearchItems = [
     ...FLAT_CHANNELS,
-    ...betaGames.map(g => ({
-      value: 'beta-game',
-      gameId: g._id,
-      label: g.title,
-      icon: FlaskConical,
-      path: `전체 > 베타게임 > ${g.title}`,
-      thumbnail: g.thumbnail,
-    })),
+    // 베타게임은 자녀(개별 게임) 없이 채널 하나로만 검색됨 — 게임 선택은 별도 드롭다운(아래 "게임 선택")에서
     ...liveGames.map(g => ({
       value: 'live-game',
       gameId: g._id,
@@ -207,13 +224,18 @@ export default function CommunityWritePage() {
       )
     : allSearchItems
 
+  const filteredBetaGames = gameSearch.trim()
+    ? betaGames.filter(g => g.title.toLowerCase().includes(gameSearch.trim().toLowerCase()))
+    : betaGames
+
   const subGames: WriteGame[] = channel === 'beta-game' ? betaGames : channel === 'live-game' ? liveGames : []
   const selectedGame = subGames.find(g => g._id === selectedGameId)
 
   const currentPath = (() => {
     const flat = FLAT_CHANNELS.find(c => c.value === channel)
     if (!flat) return channel
-    if (selectedGame) return flat.path + ' > ' + selectedGame.title
+    // 베타게임은 자녀 게임이 없으므로 브레드크럼도 "베타게임"까지만 표시 — 게임 이름은 별도 드롭다운으로 선택
+    if (selectedGame && channel !== 'beta-game') return flat.path + ' > ' + selectedGame.title
     return flat.path
   })()
 
@@ -236,8 +258,9 @@ export default function CommunityWritePage() {
                 {CHANNELS.map(ch => {
                   const Icon = ch.icon
                   const isActive = channel === ch.value
-                  const hasSubGames = ch.serviceType === 'beta' || ch.serviceType === 'live'
-                  const games = ch.serviceType === 'beta' ? betaGames : ch.serviceType === 'live' ? liveGames : []
+                  // 베타게임은 자녀(개별 게임) 목록을 보여주지 않는다 — 게임 선택은 아래 별도 드롭다운으로
+                  const hasSubGames = ch.serviceType === 'live'
+                  const games = ch.serviceType === 'live' ? liveGames : []
                   const isExpanded = expandedChan === ch.value
 
                   return (
@@ -290,8 +313,70 @@ export default function CommunityWritePage() {
                 })}
               </div>
 
-              {/* 선택된 게임 뱃지 */}
-              {selectedGame && (
+              {/* 베타게임은 자녀 목록이 없으므로 게임 선택을 별도 검색형 드롭다운으로 받는다 — 종료(운영 종료일 지남)된 게임은 목록 아래로 정렬됨 */}
+              {channel === 'beta-game' && (
+                <div className="mt-3 pt-3 border-t border-line" ref={gameSearchRef}>
+                  <p className="text-xs text-text-muted mb-1.5">게임 선택</p>
+                  <div className="relative">
+                    {gameSearchOpen ? (
+                      <div className="flex items-center gap-1.5 bg-bg-tertiary border border-accent rounded-lg px-2.5 py-2">
+                        <Search className="w-3 h-3 text-text-muted flex-shrink-0" />
+                        <input
+                          ref={gameSearchInputRef}
+                          value={gameSearch}
+                          onChange={e => setGameSearch(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Escape') { setGameSearchOpen(false); setGameSearch('') }
+                            if (e.key === 'Enter' && filteredBetaGames.length > 0) pickGame(filteredBetaGames[0]._id)
+                          }}
+                          placeholder="게임 검색..."
+                          className="flex-1 bg-transparent text-xs text-text-primary placeholder:text-text-muted focus:outline-none min-w-0"
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={openGameSearchDropdown}
+                        className="w-full flex items-center justify-between gap-1.5 bg-bg-tertiary border border-line text-left px-2.5 py-2 rounded-lg hover:border-accent transition-colors"
+                      >
+                        <span className={`text-xs truncate ${selectedGame ? 'text-text-primary' : 'text-text-muted'}`}>
+                          {selectedGame ? selectedGame.title : '게임을 선택하세요'}
+                        </span>
+                        <ChevronDown className="w-3 h-3 text-text-muted flex-shrink-0" />
+                      </button>
+                    )}
+
+                    {gameSearchOpen && (
+                      <div className="absolute left-0 top-full mt-1.5 w-full bg-bg-card border border-line rounded-xl shadow-lg z-30 py-1 max-h-56 overflow-y-auto">
+                        {filteredBetaGames.length === 0 && (
+                          <p className="px-3 py-2 text-xs text-text-muted">검색 결과가 없습니다</p>
+                        )}
+                        {filteredBetaGames.map(g => {
+                          const ended = !!g.endDate && new Date(g.endDate).getTime() < Date.now()
+                          return (
+                            <button
+                              key={g._id}
+                              type="button"
+                              onClick={() => pickGame(g._id)}
+                              className="w-full flex items-center gap-1.5 text-left px-3 py-1.5 text-xs hover:bg-bg-tertiary transition-colors"
+                            >
+                              {g.thumbnail
+                                ? <img src={`${UPLOADS_URL}${g.thumbnail}`} alt="" className="w-4 h-4 rounded object-cover flex-shrink-0" />
+                                : <Gamepad2 className="w-3 h-3 flex-shrink-0 opacity-50 text-text-muted" />
+                              }
+                              <span className={`truncate flex-1 ${ended ? 'text-text-muted' : 'text-text-primary'}`}>{g.title}</span>
+                              {ended && <span className="text-[10px] text-text-muted flex-shrink-0">(종료)</span>}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 선택된 게임 뱃지 (라이브게임 — 사이드바 자녀 목록에서 선택) */}
+              {selectedGame && channel === 'live-game' && (
                 <div className="mt-3 pt-3 border-t border-line">
                   <p className="text-xs text-text-muted mb-1.5">선택된 게임</p>
                   <div className="flex items-center gap-1.5 bg-bg-tertiary rounded-lg px-2.5 py-1.5">

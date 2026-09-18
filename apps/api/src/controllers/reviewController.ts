@@ -1,7 +1,7 @@
 import { Response } from 'express'
 import mongoose from 'mongoose'
 import { AuthRequest } from '../middleware/auth'
-import { ReviewModel as Review, GameModel as Game, PlayerActivityModel as PlayerActivity } from '@gameup/db'
+import { ReviewModel as Review, GameModel as Game, PlayerActivityModel as PlayerActivity, GameTesterApplicationModel as GameTesterApplication } from '@gameup/db'
 
 const VALID_FEEDBACK_TYPES = ['general', 'bug', 'suggestion', 'praise']
 const VALID_SEVERITIES = ['low', 'medium', 'high', 'critical']
@@ -80,6 +80,14 @@ export const upsertReview = async (req: AuthRequest, res: Response) => {
 
     const game = await Game.findById(gameId)
     if (!game) return res.status(404).json({ message: '게임을 찾을 수 없습니다' })
+
+    // 🔒 베타존 게임은 신청(hasApplied)한 유저만 리뷰 작성 가능 — play 기록만으로는 부족
+    if (game.serviceType === 'beta') {
+      const hasApplied = await GameTesterApplication.exists({ gameId, userId })
+      if (!hasApplied) {
+        return res.status(403).json({ message: '베타존 신청자만 리뷰를 작성할 수 있습니다' })
+      }
+    }
 
     const hasPlayed = await PlayerActivity.exists({ userId, gameId, type: 'play' })
     if (!hasPlayed) {

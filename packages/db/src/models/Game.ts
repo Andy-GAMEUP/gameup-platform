@@ -21,6 +21,7 @@ export interface IGame extends Document {
   developerId: mongoose.Types.ObjectId
   thumbnail?: string
   bannerImage?: string
+  subIcon?: string
   gameFile?: string
   gameDomain?: string
   price: number
@@ -53,6 +54,9 @@ export interface IGame extends Document {
   trailer?: string
   website?: string
   discord?: string
+  instagram?: string
+  twitter?: string
+  youtube?: string
   notes?: string
   approvedAt?: Date
   approvedBy?: mongoose.Types.ObjectId
@@ -104,6 +108,9 @@ const gameSchema = new Schema<IGame>(
       type: String
     },
     bannerImage: {
+      type: String
+    },
+    subIcon: {
       type: String
     },
     gameFile: {
@@ -202,6 +209,9 @@ const gameSchema = new Schema<IGame>(
     trailer: { type: String, default: '' },
     website: { type: String, default: '' },
     discord: { type: String, default: '' },
+    instagram: { type: String, default: '' },
+    twitter: { type: String, default: '' },
+    youtube: { type: String, default: '' },
     notes: { type: String, default: '' },
     shopCurrencyIconUrl: { type: String, default: '' },
     shopCurrencyName: { type: String, default: '' },
