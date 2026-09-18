@@ -1,0 +1,23 @@
+name: Diagnose Server Access (read-only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: [self-hosted, gameup-prod]
+    steps:
+      - name: Whoami / permissions check
+        run: |
+          echo "== whoami =="
+          whoami
+          id
+          echo "== sudo check =="
+          sudo -n true 2>&1 && echo "sudo: OK (no password needed)" || echo "sudo: NOT available without password"
+          echo "== cert dir =="
+          ls -la /opt/gameup/nginx/certs/ || echo "cannot list certs dir"
+          echo "== root authorized_keys writable? =="
+          test -w /root/.ssh/authorized_keys && echo "writable" || echo "NOT writable (or not root)"
+          ls -la /root/.ssh/ 2>&1 || echo "cannot access /root/.ssh"
+          echo "== docker access =="
+          docker ps --format '{{.Names}}' 2>&1 || echo "no docker access"
