@@ -1,0 +1,47 @@
+name: Deploy SSL Certificate
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-cert:
+    runs-on: [self-hosted, gameup-prod]
+    steps:
+      - name: Backup existing certs
+        run: |
+          cd /opt/gameup/nginx/certs
+          ts=$(date +%Y%m%d%H%M%S)
+          for f in *.crt *.pem *.key; do
+            [ -f "$f" ] && cp "$f" "$f.bak.$ts" 2>/dev/null || true
+          done
+
+      - name: Write new certificate files from secrets
+        run: |
+          echo "${{ secrets.CERT_BUNDLE_CRT_B64 }}" | base64 -d > /opt/gameup/nginx/certs/gameup.co.kr_bundle.crt
+          echo "${{ secrets.CERT_CHAIN_PEM_B64 }}" | base64 -d > /opt/gameup/nginx/certs/gameup.co.kr_bundle.pem
+          echo "${{ secrets.CERT_KEY_B64 }}" | base64 -d > /opt/gameup/nginx/certs/gameup.co.kr.key
+          chmod 600 /opt/gameup/nginx/certs/gameup.co.kr.key
+
+      - name: Validate cert/key match
+        run: |
+          cert_mod=$(openssl x509 -noout -modulus -in /opt/gameup/nginx/certs/gameup.co.kr_bundle.crt | openssl md5)
+          key_mod=$(openssl rsa -noout -modulus -in /opt/gameup/nginx/certs/gameup.co.kr.key | openssl md5)
+          echo "cert modulus: $cert_mod"
+          echo "key modulus:  $key_mod"
+          if [ "$cert_mod" != "$key_mod" ]; then
+            echo "MISMATCH: certificate and key do not match!"
+            exit 1
+          fi
+          echo "OK: cert and key match"
+          openssl x509 -in /opt/gameup/nginx/certs/gameup.co.kr_bundle.crt -noout -subject -enddate
+
+      - name: Reload nginx
+        run: |
+          cd /opt/gameup
+          docker compose exec -T nginx nginx -t
+          docker compose exec -T nginx nginx -s reload
+
+      - name: Verify live
+        run: |
+          sleep 2
+          echo | openssl s_client -connect gameup.co.kr:443 -servername gameup.co.kr 2>/dev/null | openssl x509 -noout -enddate
