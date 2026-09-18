@@ -214,7 +214,8 @@ export default function Navbar() {
                   >
                     <div className="relative w-[25px] h-[25px] rounded-full bg-accent flex items-center justify-center text-text-inverse text-[11px] font-bold overflow-hidden">
                       {user.profileImage ? (
-                        <Image src={user.profileImage} alt="" fill sizes="25px" className="object-cover" />
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={user.profileImage} alt="" className="w-full h-full object-cover" />
                       ) : (
                         user.username[0].toUpperCase()
                       )}
